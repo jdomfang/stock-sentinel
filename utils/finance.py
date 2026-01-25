@@ -1,0 +1,570 @@
+"""
+Financial data processing module.
+"""
+
+from datetime import datetime, timedelta
+from typing import Dict, List, Optional
+import streamlit as st
+from polygon import RESTClient
+import numpy as np
+import logging
+import time
+import random
+import json
+import os
+
+# Configure logging
+logger = logging.getLogger(__name__)
+logger.setLevel(logging.INFO)
+
+# Cache configurations
+VALIDATION_CACHE_DURATION = 7 * 24 * 60 * 60  # 7 days in seconds
+STOCK_DATA_CACHE_DURATION = 30 * 60  # 30 minutes in seconds
+
+# Global caches
+VALIDATION_CACHE = {}
+STOCK_DATA_CACHE = {}
+
+def _get_cache_key(ticker: str, operation: str) -> str:
+    """Generate cache key for ticker and operation."""
+    return f"{ticker.upper()}_{operation}"
+
+def _is_cache_valid(cache_entry: dict) -> bool:
+    """Check if cache entry is still valid."""
+    return time.time() < cache_entry.get('expires_at', 0)
+
+def _get_cached_result(cache: dict, key: str):
+    """Get result from cache if valid."""
+    if key in cache and _is_cache_valid(cache[key]):
+        logger.info(f"Cache hit for {key}")
+        return cache[key]['result']
+    elif key in cache:
+        # Cache expired, remove it
+        logger.info(f"Cache expired for {key}, removing")
+        del cache[key]
+    return None
+
+def _set_cached_result(cache: dict, key: str, result: dict, duration: int):
+    """Store result in cache with expiry."""
+    cache[key] = {
+        'result': result,
+        'timestamp': time.time(),
+        'expires_at': time.time() + duration
+    }
+    logger.info(f"Cached result for {key}, expires in {duration/3600:.1f} hours")
+
+def _cleanup_expired_cache(cache: dict):
+    """Remove expired entries from cache."""
+    expired_keys = [k for k, v in cache.items() if not _is_cache_valid(v)]
+    for key in expired_keys:
+        del cache[key]
+    if expired_keys:
+        logger.info(f"Cleaned up {len(expired_keys)} expired cache entries")
+
+def get_cache_stats():
+    """Get cache statistics for monitoring."""
+    _cleanup_expired_cache(VALIDATION_CACHE)
+    _cleanup_expired_cache(STOCK_DATA_CACHE)
+
+    return {
+        'validation_cache': {
+            'entries': len(VALIDATION_CACHE),
+            'total_size': sum(len(str(v)) for v in VALIDATION_CACHE.values())
+        },
+        'stock_data_cache': {
+            'entries': len(STOCK_DATA_CACHE),
+            'total_size': sum(len(str(v)) for v in STOCK_DATA_CACHE.values())
+        }
+    }
+
+# Bulk ticker download and storage
+TICKER_MASTER_FILE = os.path.join(os.path.dirname(__file__), '..', 'data', 'tickers.json')
+
+def download_ticker_master_list() -> Dict[str, Dict]:
+    """
+    Download complete list of active US tickers from Polygon and save to local file.
+
+    Returns:
+        Dictionary mapping ticker symbols to ticker data, or None if failed
+    """
+    try:
+        # Get API key from secrets
+        api_key = st.secrets["POLYGON_API_KEY"]
+
+        # Initialize Polygon client
+        client = RESTClient(api_key)
+
+        # Prepare data structure
+        tickers_data = {
+            'metadata': {
+                'downloaded_at': time.time(),
+                'source': 'polygon_bulk_api',
+                'version': '1.0'
+            },
+            'tickers': {}
+        }
+
+        logger.info("Starting bulk ticker download from Polygon...")
+
+        # Monkey patch the client's _get method to add rate limiting
+        original_get = client._get
+        def rate_limited_get(*args, **kwargs):
+            _rate_limit(15.0)  # 15 seconds between API calls for bulk downloads
+            return original_get(*args, **kwargs)
+
+        client._get = rate_limited_get
+
+        try:
+            # Use the standard iterator but with rate limiting
+            ticker_count = 0
+            for ticker in client.list_tickers(
+                market='stocks',      # Only stocks, not crypto/forex
+                active=True,          # Only actively traded
+                limit=1000,           # Maximum allowed by API (1000 per page)
+                sort='ticker'         # Sort for consistency
+            ):
+                # Extract relevant fields from ticker object
+                ticker_info = {
+                    'name': getattr(ticker, 'name', ''),
+                    'exchange': getattr(ticker, 'primary_exchange', ''),
+                    'market': getattr(ticker, 'market', ''),
+                    'active': getattr(ticker, 'active', True),
+                    'type': getattr(ticker, 'type', ''),
+                    'sector': getattr(ticker, 'sic_description', None),
+                    'industry': getattr(ticker, 'sic_code', None),
+                    'locale': getattr(ticker, 'locale', ''),
+                    'currency': getattr(ticker, 'currency_name', ''),
+                    'last_updated': getattr(ticker, 'last_updated_utc', None)
+                }
+
+                # Store by uppercase ticker symbol
+                tickers_data['tickers'][ticker.ticker.upper()] = ticker_info
+                ticker_count += 1
+
+                # Progress logging every 1000 tickers
+                if ticker_count % 1000 == 0:
+                    logger.info(f"Downloaded {ticker_count} tickers...")
+
+        finally:
+            # Restore original _get method
+            client._get = original_get
+
+        logger.info(f"Completed bulk download: {ticker_count} total tickers")
+
+        # Ensure data directory exists
+        os.makedirs(os.path.dirname(TICKER_MASTER_FILE), exist_ok=True)
+
+        # Save to local JSON file
+        with open(TICKER_MASTER_FILE, 'w', encoding='utf-8') as f:
+            json.dump(tickers_data, f, indent=2, ensure_ascii=False)
+
+        logger.info(f"Saved ticker data to {TICKER_MASTER_FILE}")
+
+        return tickers_data['tickers']
+
+    except Exception as e:
+        logger.error(f"Bulk ticker download failed: {str(e)}")
+        return None
+
+def get_ticker_master_list() -> Dict[str, Dict]:
+    """
+    Get ticker master list from local file, downloading if necessary.
+
+    Returns:
+        Dictionary mapping ticker symbols to ticker data
+    """
+    try:
+        # Check if file exists and is recent (< 24 hours old)
+        if os.path.exists(TICKER_MASTER_FILE):
+            with open(TICKER_MASTER_FILE, 'r', encoding='utf-8') as f:
+                data = json.load(f)
+
+        # Check if data is fresh (< 30 days)
+        downloaded_at = data.get('metadata', {}).get('downloaded_at', 0)
+        age_hours = (time.time() - downloaded_at) / 3600
+        max_age_hours = 30 * 24
+
+        if age_hours < max_age_hours:  # Less than 30 days old
+            ticker_count = len(data.get('tickers', {}))
+            logger.info(
+                f"Loaded {ticker_count} tickers from cache (age: {age_hours:.1f} hours)"
+            )
+            return data['tickers']
+
+        # File missing or stale - download fresh data
+        logger.info("Ticker master list missing or stale, downloading fresh data...")
+        fresh_data = download_ticker_master_list()
+        return fresh_data if fresh_data else {}
+
+    except Exception as e:
+        logger.error(f"Failed to get ticker master list: {str(e)}")
+        # Try one more time to download
+        fresh_data = download_ticker_master_list()
+        return fresh_data if fresh_data else {}
+
+# Rate limiting: minimum seconds between API calls
+API_RATE_LIMIT = 1.0  # 1 second between requests
+last_api_call = 0
+
+def _rate_limit(rate_limit_seconds=None):
+    """Enforce rate limiting between API calls."""
+    global last_api_call, API_RATE_LIMIT
+    # Allow temporary override of rate limit
+    effective_limit = rate_limit_seconds if rate_limit_seconds is not None else API_RATE_LIMIT
+
+    elapsed = time.time() - last_api_call
+    if elapsed < effective_limit:
+        sleep_time = effective_limit - elapsed + random.uniform(0.1, 0.5)  # Add jitter
+        time.sleep(sleep_time)
+    last_api_call = time.time()
+
+def _retry_with_backoff(func, max_retries=3, base_delay=2):
+    """Retry a function with exponential backoff on 429 errors."""
+    for attempt in range(max_retries):
+        try:
+            _rate_limit()  # Apply rate limiting
+            return func()
+        except Exception as e:
+            error_msg = str(e).lower()
+            if ("429" in error_msg or "rate" in error_msg or "too many" in error_msg) and attempt < max_retries - 1:
+                delay = base_delay * (2 ** attempt) + random.uniform(0.5, 1.5)  # Exponential backoff with jitter
+                logger.warning(f"Rate limit hit, retrying in {delay:.1f} seconds (attempt {attempt + 1}/{max_retries})")
+                time.sleep(delay)
+                continue
+            else:
+                raise e
+
+
+def validate_ticker(ticker: str) -> Dict:
+    """
+    Validate if a ticker is a legitimate US stock using Polygon ticker details API.
+    Filters by market type, exchange, and active status to exclude:
+    - Currencies (forex)
+    - Commodities
+    - OTC/Pink Sheet stocks
+    - Non-US stocks
+    - Delisted companies
+
+    Uses caching to reduce API calls (7-day cache duration).
+
+    Args:
+        ticker: Stock ticker symbol to validate
+
+    Returns:
+        Dictionary with keys:
+        - valid: Boolean indicating if ticker is valid US stock
+        - name: Company name if available
+        - exchange: Primary exchange (e.g., XNYS, XNAS)
+        - market: Market type (should be 'stocks')
+        - sector: Industry sector (e.g., 'Technology', 'Healthcare')
+        - industry: Industry classification
+        - error: Error message if any, None otherwise
+    """
+    # Check cache first
+    cache_key = _get_cache_key(ticker, 'validation')
+    cached_result = _get_cached_result(VALIDATION_CACHE, cache_key)
+    if cached_result:
+        return cached_result
+
+    try:
+        # Get API key from secrets
+        api_key = st.secrets["POLYGON_API_KEY"]
+        
+        # Initialize Polygon client
+        client = RESTClient(api_key)
+        
+        # Get ticker details for comprehensive validation
+        try:
+            def _get_ticker_details():
+                return client.get_ticker_details(ticker.upper())
+
+            details = _retry_with_backoff(_get_ticker_details)
+            
+            # Check if we got valid data
+            if not details:
+                return {
+                    'valid': False,
+                    'name': None,
+                    'exchange': None,
+                    'market': None,
+                    'sector': None,
+                    'industry': None,
+                    'error': f"No data available for {ticker}"
+                }
+            
+            # Extract key attributes
+            market = getattr(details, 'market', None)
+            primary_exchange = getattr(details, 'primary_exchange', None)
+            active = getattr(details, 'active', False)
+            ticker_type = getattr(details, 'type', None)
+            company_name = getattr(details, 'name', ticker.upper())
+            sector = getattr(details, 'sector', None)
+            industry = getattr(details, 'industry', None)
+            
+            # Validation checks
+            # 1. Must be in stocks market (not fx, crypto, commodities)
+            if market != 'stocks':
+                return {
+                    'valid': False,
+                    'name': company_name,
+                    'exchange': primary_exchange,
+                    'market': market,
+                    'sector': sector,
+                    'industry': industry,
+                    'error': f"Not a stock (market: {market or 'unknown'})"
+                }
+            
+            # 2. Must be on major US exchanges (NYSE, NASDAQ, AMEX)
+            # Exchange codes: XNYS (NYSE), XNAS (NASDAQ), XASE (AMEX/NYSE American)
+            valid_exchanges = {'XNYS', 'XNAS', 'XASE'}
+            if primary_exchange not in valid_exchanges:
+                return {
+                    'valid': False,
+                    'name': company_name,
+                    'exchange': primary_exchange,
+                    'market': market,
+                    'sector': sector,
+                    'industry': industry,
+                    'error': f"Not on major US exchange (exchange: {primary_exchange or 'unknown'})"
+                }
+            
+            # 3. Must be actively traded
+            if not active:
+                return {
+                    'valid': False,
+                    'name': company_name,
+                    'exchange': primary_exchange,
+                    'market': market,
+                    'sector': sector,
+                    'industry': industry,
+                    'error': "Not actively traded (possibly delisted)"
+                }
+            
+            # 4. Prefer common stocks (CS), but allow some other types
+            # Exclude warrants, rights, units, etc.
+            excluded_types = {'WARRANT', 'RIGHT', 'UNIT', 'ETN', 'ETF'}
+            if ticker_type in excluded_types:
+                return {
+                    'valid': False,
+                    'name': company_name,
+                    'exchange': primary_exchange,
+                    'market': market,
+                    'sector': sector,
+                    'industry': industry,
+                    'error': f"Not a common stock (type: {ticker_type})"
+                }
+            
+            # All checks passed
+            result = {
+                'valid': True,
+                'name': company_name,
+                'exchange': primary_exchange,
+                'market': market,
+                'sector': sector,
+                'industry': industry,
+                'error': None
+            }
+            logger.info(f"Validated {ticker}: {company_name} on {primary_exchange}")
+            _set_cached_result(VALIDATION_CACHE, cache_key, result, VALIDATION_CACHE_DURATION)
+            return result
+            
+        except Exception as api_error:
+            error_msg = str(api_error)
+            logger.warning(f"Validation failed for {ticker}: {error_msg}")
+            
+            # Categorize errors for better user feedback
+            if "NOT_FOUND" in error_msg.upper() or "404" in error_msg:
+                return {
+                    'valid': False,
+                    'name': None,
+                    'exchange': None,
+                    'market': None,
+                    'sector': None,
+                    'industry': None,
+                    'error': f"Ticker not found (invalid or non-US)"
+                }
+            elif "FORBIDDEN" in error_msg.upper() or "403" in error_msg:
+                return {
+                    'valid': False,
+                    'name': None,
+                    'exchange': None,
+                    'market': None,
+                    'sector': None,
+                    'industry': None,
+                    'error': "Access denied (check API tier)"
+                }
+            elif "RATE_LIMIT" in error_msg.upper() or "429" in error_msg:
+                return {
+                    'valid': False,
+                    'name': None,
+                    'exchange': None,
+                    'market': None,
+                    'sector': None,
+                    'industry': None,
+                    'error': "Rate limit exceeded"
+                }
+            else:
+                return {
+                    'valid': False,
+                    'name': None,
+                    'exchange': None,
+                    'market': None,
+                    'sector': None,
+                    'industry': None,
+                    'error': f"API error: {error_msg[:50]}"
+                }
+                
+    except KeyError:
+        return {
+            'valid': False,
+            'name': None,
+            'exchange': None,
+            'market': None,
+            'sector': None,
+            'industry': None,
+            'error': "POLYGON_API_KEY not found in secrets"
+        }
+    except Exception as e:
+        logger.error(f"Unexpected error validating {ticker}: {str(e)}")
+        return {
+            'valid': False,
+            'name': None,
+            'exchange': None,
+            'market': None,
+            'sector': None,
+            'industry': None,
+            'error': f"Validation error: {str(e)[:50]}"
+        }
+
+
+def get_stock_data(ticker: str, days: int = 30) -> Dict:
+    """
+    Fetch stock data from Polygon API and calculate volatility.
+    Now with robust error handling for non-US tickers and API issues.
+
+    Uses caching to reduce API calls (30-minute cache duration).
+
+    Args:
+        ticker: Stock ticker symbol (e.g., 'AAPL')
+        days: Number of days of historical data to fetch (default 30)
+
+    Returns:
+        Dictionary with keys:
+        - prices: List of closing prices
+        - volatility: Volatility as percentage (std dev of daily returns)
+        - error: Error message if any, None otherwise
+    """
+    # Check cache first
+    cache_key = _get_cache_key(ticker, f'stock_data_{days}')
+    cached_result = _get_cached_result(STOCK_DATA_CACHE, cache_key)
+    if cached_result:
+        return cached_result
+
+    try:
+        # Get API key from secrets
+        api_key = st.secrets["POLYGON_API_KEY"]
+        
+        # Initialize Polygon client
+        client = RESTClient(api_key)
+        
+        # Calculate date range
+        end_date = datetime.now()
+        start_date = end_date - timedelta(days=days + 5)  # Extra days to ensure we get enough data
+        
+        # Format dates for API
+        from_date = start_date.strftime('%Y-%m-%d')
+        to_date = end_date.strftime('%Y-%m-%d')
+        
+        # Fetch aggregate bars (daily OHLC data)
+        aggs = []
+        try:
+            def _get_aggs():
+                result = []
+                for agg in client.list_aggs(
+                    ticker=ticker.upper(),
+                    multiplier=1,
+                    timespan="day",
+                    from_=from_date,
+                    to=to_date,
+                    limit=50
+                ):
+                    result.append(agg)
+                return result
+
+            aggs = _retry_with_backoff(_get_aggs)
+        except Exception as api_error:
+            error_msg = str(api_error)
+            logger.warning(f"Failed to fetch data for {ticker}: {error_msg}")
+            
+            # Provide specific error messages for common issues
+            if "NOT_FOUND" in error_msg.upper() or "404" in error_msg:
+                return {
+                    'prices': [],
+                    'volatility': 0.0,
+                    'error': f"Ticker not found (possibly non-US stock)"
+                }
+            elif "FORBIDDEN" in error_msg.upper() or "403" in error_msg:
+                return {
+                    'prices': [],
+                    'volatility': 0.0,
+                    'error': "Access denied (check API tier)"
+                }
+            elif "RATE_LIMIT" in error_msg.upper() or "429" in error_msg:
+                return {
+                    'prices': [],
+                    'volatility': 0.0,
+                    'error': "Rate limit exceeded"
+                }
+            else:
+                return {
+                    'prices': [],
+                    'volatility': 0.0,
+                    'error': f"API error: {error_msg[:50]}"
+                }
+        
+        # Check if we got data
+        if not aggs or len(aggs) < 5:
+            logger.info(f"Insufficient data for {ticker} (got {len(aggs)} data points)")
+            return {
+                'prices': [],
+                'volatility': 0.0,
+                'error': f"Insufficient data (need at least 5 days, got {len(aggs)})"
+            }
+        
+        # Extract closing prices
+        prices = [float(agg.close) for agg in aggs]
+        
+        # Calculate daily returns
+        returns = []
+        for i in range(1, len(prices)):
+            daily_return = (prices[i] - prices[i-1]) / prices[i-1]
+            returns.append(daily_return)
+        
+        # Calculate volatility (annualized standard deviation of returns)
+        if len(returns) > 1:
+            volatility = np.std(returns) * np.sqrt(252) * 100  # Annualized, as percentage
+        else:
+            volatility = 0.0
+        
+        result = {
+            'prices': prices,
+            'volatility': round(volatility, 2),
+            'error': None
+        }
+        logger.info(f"Successfully fetched data for {ticker}: {len(prices)} prices, volatility {volatility:.2f}%")
+        _set_cached_result(STOCK_DATA_CACHE, cache_key, result, STOCK_DATA_CACHE_DURATION)
+        return result
+        
+    except KeyError:
+        return {
+            'prices': [],
+            'volatility': 0.0,
+            'error': "POLYGON_API_KEY not found in secrets"
+        }
+    except Exception as e:
+        logger.error(f"Unexpected error fetching data for {ticker}: {str(e)}")
+        return {
+            'prices': [],
+            'volatility': 0.0,
+            'error': f"Error: {str(e)[:50]}"
+        }

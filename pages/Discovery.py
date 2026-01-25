@@ -1,0 +1,637 @@
+import streamlit as st
+import requests
+import json
+import pandas as pd
+from collections import defaultdict
+import logging
+from utils.navigation import render_sidebar_navigation
+from utils.sentiment import extract_tickers, analyze_sentiment
+from utils.finance import get_stock_data, get_ticker_master_list
+from utils.projections import simple_projection
+from utils.deep_analysis import ANALYSIS_PROMPTS, run_deep_analysis, generate_ai_summary
+
+# Set up logging - ensure it shows in Streamlit console
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+    force=True  # Override any existing configuration
+)
+logger = logging.getLogger(__name__)
+logger.setLevel(logging.INFO)
+
+# Sidebar navigation
+render_sidebar_navigation()
+
+st.markdown('<style> .stDataFrame { width: 100%; } </style>', unsafe_allow_html=True)
+st.markdown(
+    """
+    <style>
+    div[data-testid="stMainBlockContainer"] {
+        max-width: 100%;
+        padding-left: 2rem;
+        padding-right: 2rem;
+        padding-top: 0.25rem;
+    }
+    .discovery-wrapper {
+        max-width: 1400px;
+        margin: 0 auto;
+        padding: 0 1rem;
+    }
+    .discovery-wrapper h1 {
+        margin-bottom: 0.25rem;
+    }
+    .discovery-wrapper [data-testid="stCaptionContainer"] {
+        margin-bottom: 0.25rem;
+    }
+    .search-anchor {
+        height: 0;
+        margin: 0;
+        padding: 0;
+    }
+    .search-anchor + div {
+        padding: 16px;
+        border-radius: 12px;
+        border: 1px solid #e5e7eb;
+        background: #ffffff;
+        margin-top: 0;
+    }
+    .search-card {
+        margin-top: -0.8rem;
+    }
+    .search-anchor + div h3 {
+        margin-top: 0.35rem;
+    }
+    .search-anchor + div .stSelectbox label,
+    .search-anchor + div .stSlider label {
+        display: none;
+    }
+    .search-anchor + div [data-testid="stWidgetLabel"] {
+        display: none;
+    }
+    .ticker-row {
+        padding: 0.75rem 1rem;
+        border: 1px solid rgba(148, 163, 184, 0.35);
+        border-radius: 12px;
+        margin-bottom: 0.6rem;
+        background: rgba(15, 23, 42, 0.02);
+        transition: background 0.2s ease, border 0.2s ease;
+    }
+    .ticker-row:hover {
+        background: rgba(59, 130, 246, 0.08);
+        border-color: rgba(59, 130, 246, 0.4);
+    }
+    .ticker-row .stButton > button {
+        opacity: 0;
+        transition: opacity 0.2s ease;
+    }
+    .ticker-row:hover .stButton > button {
+        opacity: 1;
+    }
+    </style>
+    """,
+    unsafe_allow_html=True
+)
+
+st.markdown('<div class="discovery-wrapper">', unsafe_allow_html=True)
+
+st.title("Search Parameters")
+st.caption("Scan X for emerging stock opportunities based on sentiment and engagement")
+
+if "selected_ticker" not in st.session_state:
+    st.session_state.selected_ticker = None
+if "selected_sector" not in st.session_state:
+    st.session_state.selected_sector = None
+if "deep_analysis_results" not in st.session_state:
+    st.session_state.deep_analysis_results = None
+if "df_valid" not in st.session_state:
+    st.session_state.df_valid = None
+if "df_unvalidated" not in st.session_state:
+    st.session_state.df_unvalidated = None
+
+# Input form
+st.markdown("<div class=\"search-anchor\"></div>", unsafe_allow_html=True)
+st.markdown("<div class=\"search-card\">", unsafe_allow_html=True)
+
+st.subheader("Select Sector")
+sector = st.selectbox(
+    "Select Sector",
+    options=[
+        'tech',
+        'healthcare',
+        'energy',
+        'finance',
+        'consumer',
+        'utilities',
+        'real estate',
+        'industrials',
+        'materials',
+        'communication'
+    ],
+    index=0,
+    label_visibility="collapsed"
+)
+
+max_results = 100
+
+scan_clicked = st.button("Scan X for emerging stocks", type="primary")
+
+st.markdown("</div>", unsafe_allow_html=True)
+
+# Scan button
+if scan_clicked:
+    try:
+        # Load X Bearer Token from secrets
+        x_bearer_token = st.secrets["X_BEARER_TOKEN"]
+        
+        # Construct search query with sector-specific keywords (Free-tier compatible)
+        # Note: Advanced operators like min_faves, filter:, and since: require Basic tier or higher
+        # Using only basic operators: Boolean, lang, and -is:retweet for Free tier
+
+        # Add sector-specific keywords to improve relevance
+        sector_keywords = {
+            'tech': 'technology OR software OR AI OR chip OR semiconductor OR cloud OR internet',
+            'healthcare': 'healthcare OR medical OR pharma OR biotechnology OR drug OR clinical OR FDA',
+            'energy': 'energy OR oil OR gas OR renewable OR solar OR wind OR fossil OR petroleum',
+            'finance': 'finance OR bank OR financial OR investment OR lending OR credit OR wealth',
+            'consumer': 'consumer OR retail OR e-commerce OR shopping OR consumer goods OR discretionary',
+            'utilities': 'utilities OR electric OR power OR water OR gas OR infrastructure OR telecom',
+            'real estate': 'real estate OR property OR REIT OR housing OR commercial OR residential',
+            'industrials': 'industrials OR manufacturing OR industrial OR aerospace OR defense OR construction',
+            'materials': 'materials OR mining OR chemical OR steel OR cement OR commodity OR metals',
+            'communication': 'communication OR telecom OR media OR entertainment OR broadcasting OR wireless'
+        }
+
+        sector_terms = sector_keywords.get(sector.lower(), sector)
+        query = f"({sector} OR {sector_terms}) stock (bullish OR opportunity OR catalyst OR growth OR earnings) -bearish lang:en -is:retweet"
+        
+        # API endpoint
+        url = "https://api.twitter.com/2/tweets/search/recent"
+        
+        # Headers
+        headers = {
+            "Authorization": f"Bearer {x_bearer_token}"
+        }
+        
+        # Parameters
+        params = {
+            "query": query,
+            "max_results": max_results,
+            "tweet.fields": "text,created_at,public_metrics"
+        }
+        
+        logger.info(f"🔍 Starting X search for sector: {sector}")
+        logger.info(f"📝 Search query: {query}")
+        logger.info(f"📊 Max results requested: {max_results}")
+
+        # Show loading spinner
+        with st.spinner("Searching X for emerging stocks..."):
+            # Make API request
+            response = requests.get(url, headers=headers, params=params)
+
+        logger.info(f"📡 X API response status: {response.status_code}")
+
+        # Handle different response codes
+        if response.status_code == 200:
+            # Success - display results
+            data = response.json()
+            tweets = data.get('data', [])
+            logger.info(f"📄 Raw tweets from X API: {len(tweets)}")
+
+            # Filter tweets for sector relevance
+            sector_relevant_tweets = []
+            for tweet in tweets:
+                text = tweet.get('text', '').lower()
+                # Check if tweet contains sector-specific keywords
+                if any(keyword.lower() in text for keyword in sector_terms.split(' OR ')) or sector.lower() in text:
+                    sector_relevant_tweets.append(tweet)
+
+            tweets = sector_relevant_tweets
+            logger.info(f"🎯 Sector-relevant tweets after filtering: {len(tweets)}")
+            st.success(f"✅ Found {len(tweets)} sector-relevant posts!")
+            
+            # Process tweets for ticker extraction and sentiment analysis
+            if tweets:
+                with st.spinner("Analyzing tickers and sentiment..."):
+                    # Aggregate data by ticker
+                    ticker_data = defaultdict(lambda: {
+                        'mentions': 0,
+                        'sentiment_scores': [],
+                        'sentiments': [],
+                        'sample_tweets': []
+                    })
+                    
+                    # Process each tweet
+                    for tweet in tweets:
+                        text = tweet.get('text', '')
+                        
+                        # Extract tickers
+                        tickers = extract_tickers(text)
+                        
+                        # Analyze sentiment
+                        sentiment_result = analyze_sentiment(text)
+                        
+                        # Aggregate by ticker
+                        for ticker in tickers:
+                            ticker_data[ticker]['mentions'] += 1
+                            # Store the actual score and label for debugging
+                            ticker_data[ticker]['sentiment_scores'].append(sentiment_result['score'])
+                            ticker_data[ticker]['sentiments'].append(sentiment_result['sentiment'])
+                            # Also store raw label for verification
+                            if 'raw_labels' not in ticker_data[ticker]:
+                                ticker_data[ticker]['raw_labels'] = []
+                            ticker_data[ticker]['raw_labels'].append(f"{sentiment_result['label']}:{sentiment_result['score']:.3f}")
+                            
+                            # Keep up to 3 sample tweets
+                            if len(ticker_data[ticker]['sample_tweets']) < 3:
+                                # Truncate long tweets
+                                short_text = text[:150] + "..." if len(text) > 150 else text
+                                ticker_data[ticker]['sample_tweets'].append(short_text)
+                    
+                    # Convert to DataFrame
+                    if ticker_data:
+                        rows = []
+                        for ticker, info in ticker_data.items():
+                            avg_sentiment = sum(info['sentiment_scores']) / len(info['sentiment_scores'])
+                            # Determine overall sentiment
+                            sentiment_counts = {}
+                            for s in info['sentiments']:
+                                sentiment_counts[s] = sentiment_counts.get(s, 0) + 1
+                            overall_sentiment = max(sentiment_counts, key=sentiment_counts.get)
+                            
+                            rows.append({
+                                'Ticker': ticker,
+                                'Mentions': info['mentions'],
+                                'Avg Sentiment Score': round(avg_sentiment, 3),
+                                'Overall Sentiment': overall_sentiment,
+                                'Sample Tweets': ' | '.join(info['sample_tweets'])
+                            })
+                        
+                        # Sort by mentions (descending)
+                        df = pd.DataFrame(rows).sort_values('Mentions', ascending=False)
+
+                        logger.info(f"📊 Ticker analysis complete:")
+                        logger.info(f"   • Total unique tickers found: {len(df)}")
+                        logger.info(f"   • Top 5 by mentions: {df.head(5)[['Ticker', 'Mentions', 'Avg Sentiment Score', 'Overall Sentiment']].to_dict('records')}")
+                        logger.info(f"   • Top tickers for validation: {df.head(10)['Ticker'].tolist()}")
+
+                        # Load local ticker database for fast validation
+                        st.info("📈 Validating tickers using local database and fetching financial data...")
+
+                        # Load comprehensive ticker database
+                        ticker_master_list = get_ticker_master_list()
+
+                        if not ticker_master_list:
+                            st.error("❌ Could not load ticker database. Please check the data directory.")
+                        else:
+                            top_tickers = df.head(10)['Ticker'].tolist()  # Check top 10
+
+                            # Add placeholder columns
+                            df['Valid'] = False
+                            df['Company Name'] = 'N/A'
+                            df['Volatility (%)'] = 'N/A'
+                            df['Projected Gain (%)'] = 'N/A'
+                            df['Current Price ($)'] = 'N/A'
+                            df['Suggested Hold (days)'] = 'N/A'
+
+                            validated_count = 0
+                            validation_errors = []
+
+                            logger.info(f"🔍 Starting validation of top {len(top_tickers)} tickers for sector '{sector}'")
+
+                            with st.spinner(f"Validating up to {len(top_tickers)} top tickers..."):
+                                for idx, row in df.iterrows():
+                                    ticker = row['Ticker']
+
+                                    # Only process top tickers to avoid rate limits
+                                    if ticker not in top_tickers:
+                                        continue
+
+                                    logger.info(f"🔎 Validating ticker: {ticker} (mentions: {row['Mentions']}, sentiment: {row['Avg Sentiment Score']:.3f})")
+
+                                    # Check if ticker exists in our local database (no API call needed!)
+                                    ticker_upper = ticker.upper()
+                                    if ticker_upper in ticker_master_list:
+                                        ticker_info = ticker_master_list[ticker_upper]
+
+                                        # Check if ticker sector matches selected sector
+                                        ticker_sector = ticker_info.get('sector', '').lower() if ticker_info.get('sector') else ''
+
+                                        # Map Polygon sectors to our UI sectors for comparison
+                                        sector_mapping = {
+                                            'technology': 'tech',
+                                            'healthcare': 'healthcare',
+                                            'energy': 'energy',
+                                            'financial services': 'finance',
+                                            'consumer cyclical': 'consumer',
+                                            'utilities': 'utilities',
+                                            'real estate': 'real estate',
+                                            'industrials': 'industrials',
+                                            'basic materials': 'materials',
+                                            'communication services': 'communication'
+                                        }
+
+                                        mapped_sector = sector_mapping.get(ticker_sector, ticker_sector)
+
+                                        # Allow tickers to pass validation if sector is unknown (empty)
+                                        # Since sector filtering happens at tweet search level, we only reject
+                                        # when sector explicitly doesn't match
+                                        sector_matches = (mapped_sector == sector.lower()) or (mapped_sector == "")
+
+                                        if sector_matches:
+                                            # Sector matches or is unknown - mark as valid and get company info from local data
+                                            df.at[idx, 'Valid'] = True
+                                            df.at[idx, 'Company Name'] = ticker_info.get('name', ticker)
+                                            validated_count += 1
+                                            if mapped_sector == "":
+                                                logger.info(f"✅ {ticker}: VALID - {ticker_info.get('name', ticker)} (sector: unknown)")
+                                            else:
+                                                logger.info(f"✅ {ticker}: VALID - {ticker_info.get('name', ticker)} (sector: {mapped_sector})")
+
+                                            # Now make API call only for price data (the expensive part)
+                                            logger.info(f"💰 Fetching financial data for {ticker}...")
+                                            stock_data = get_stock_data(ticker)
+
+                                            if stock_data['error'] is None and stock_data['prices']:
+                                                # Update volatility and current price (show partial data even if projections fail)
+                                                df.at[idx, 'Volatility (%)'] = stock_data['volatility']
+                                                # Extract the most recent closing price
+                                                current_price = stock_data['prices'][-1] if stock_data['prices'] else 'N/A'
+                                                df.at[idx, 'Current Price ($)'] = f"{current_price:.2f}" if isinstance(current_price, (int, float)) else 'N/A'
+                                                logger.info(f"📈 {ticker}: Volatility calculated - {stock_data['volatility']:.2f}% from {len(stock_data['prices'])} price points, current price: ${current_price:.2f}")
+
+                                                # Try to run projection
+                                                avg_sentiment_score = row['Avg Sentiment Score']
+                                                logger.info(f"🔮 Running projection for {ticker} (sentiment: {avg_sentiment_score:.3f})...")
+                                                try:
+                                                    projection = simple_projection(
+                                                        stock_data['prices'],
+                                                        avg_sentiment_score,
+                                                        days=30
+                                                    )
+
+                                                    if projection['error'] is None:
+                                                        df.at[idx, 'Projected Gain (%)'] = projection['avg_gain']
+                                                        df.at[idx, 'Suggested Hold (days)'] = projection['suggested_hold_days']
+                                                        logger.info(f"🎯 {ticker}: Projection complete - {projection['avg_gain']:.1f}% gain, hold {projection['suggested_hold_days']} days")
+                                                    else:
+                                                        # Partial data: we have volatility but projections failed
+                                                        validation_errors.append(f"{ticker}: Projection failed - {projection.get('error', 'Unknown')}")
+                                                        logger.warning(f"⚠️ {ticker}: Projection failed - {projection.get('error', 'Unknown')}")
+                                                except Exception as proj_error:
+                                                    # Keep the ticker valid but note projection issue
+                                                    validation_errors.append(f"{ticker}: Projection error - {str(proj_error)[:50]}")
+                                                    logger.warning(f"⚠️ {ticker}: Projection error - {str(proj_error)[:50]}")
+                        # Filter to show only validated tickers (with financial data)
+                        df_valid = df[df['Valid'] == True].copy()
+                        df_valid = df_valid.drop(columns=['Valid'])
+
+                        # Also show unvalidated tickers separately
+                        df_unvalidated = df[df['Valid'] == False].copy()
+                        df_unvalidated = df_unvalidated.drop(columns=['Valid', 'Company Name', 'Volatility (%)', 'Projected Gain (%)', 'Current Price ($)', 'Suggested Hold (days)'])
+
+                        st.session_state.df_valid = df_valid
+                        st.session_state.df_unvalidated = df_unvalidated
+                        st.session_state.selected_sector = sector
+                        st.session_state.selected_ticker = None
+                        st.session_state.deep_analysis_results = None
+                        
+                        # Show unvalidated tickers in expander - HIDDEN FROM UI
+                        # if len(df_unvalidated) > 0:
+                        #     with st.expander(f"⚠️ Other Mentions ({len(df_unvalidated)}) - May include non-stock terms"):
+                        #         st.dataframe(
+                        #             df_unvalidated,
+                        #             column_config={
+                        #                 "Ticker": st.column_config.TextColumn("Ticker", width="small"),
+                        #                 "Mentions": st.column_config.NumberColumn("Mentions", width="small"),
+                        #                 "Avg Sentiment Score": st.column_config.NumberColumn(
+                        #                     "Avg Sentiment Score",
+                        #                     format="%.3f",
+                        #                     width="small"
+                        #                 ),
+                        #                 "Overall Sentiment": st.column_config.TextColumn("Overall Sentiment", width="small"),
+                        #                 "Sample Tweets": st.column_config.TextColumn("Sample Tweets", width="large")
+                        #             },
+                        #             hide_index=True,
+                        #             use_container_width=True
+                        #         )
+                        #         st.caption("These items couldn't be validated as stocks (may be abbreviations, news orgs, etc.)")
+                        
+                        # Show validation errors if any - HIDDEN FROM UI
+                        # if validation_errors:
+                        #     with st.expander("🔍 Validation Details"):
+                        #         st.caption("Why some tickers couldn't be validated:")
+                        #         for error in validation_errors:
+                        #             st.text(f"• {error}")
+                    else:
+                        st.warning("⚠️ No stock tickers found in the tweets. Try a different search query.")
+                
+                # Show raw data in expander - HIDDEN FROM UI
+                # with st.expander("📄 View Raw API Response"):
+                #     st.json(data)
+            else:
+                st.warning("No tweets found matching your search criteria.")
+
+        elif response.status_code == 401:
+            # Unauthorized
+            st.error("❌ Authentication failed (401): Invalid X Bearer Token. Please check your credentials in .streamlit/secrets.toml")
+
+        elif response.status_code == 429:
+            # Rate limit exceeded
+            st.error("⚠️ Rate limit exceeded (429): Too many requests. Please wait a few minutes before trying again.")
+            st.info("X API has rate limits. Consider reducing the frequency of requests.")
+
+        else:
+            # Other errors
+            st.error(f"❌ API Error ({response.status_code}): {response.text}")
+
+    except KeyError:
+        st.error("❌ Missing X_BEARER_TOKEN in .streamlit/secrets.toml")
+        st.info("Please add your X Bearer Token to the secrets file.")
+
+    except requests.exceptions.RequestException as e:
+        st.error(f"❌ Network Error: {str(e)}")
+        st.info("Please check your internet connection and try again.")
+
+    except Exception as e:
+        st.error(f"❌ Unexpected Error: {str(e)}")
+
+if st.session_state.df_valid is not None:
+    df_valid_display = st.session_state.df_valid.drop(columns=["Mentions", "Sample Tweets"], errors="ignore")
+
+    if len(df_valid_display) > 0:
+        st.subheader("✅ Validated Stocks with Financial Data")
+        header_cols = st.columns([1.1, 1.6, 1.2, 1.1, 1.1, 1.1, 1.2, 1.0, 1.0])
+        header_labels = [
+            "Ticker",
+            "Company",
+            "Avg Sentiment",
+            "Overall",
+            "Volatility",
+            "Projected Gain",
+            "Current Price",
+            "Hold (days)",
+            "Deep Analyze"
+        ]
+        for col, label in zip(header_cols, header_labels):
+            col.markdown(f"**{label}**")
+
+        for _, row in df_valid_display.iterrows():
+            ticker_symbol = row["Ticker"]
+            company_name = row["Company Name"]
+            sentiment_score = row["Avg Sentiment Score"]
+            overall_sentiment = row["Overall Sentiment"]
+            volatility = row["Volatility (%)"]
+            projected_gain = row["Projected Gain (%)"]
+            current_price = row["Current Price ($)"]
+            hold_days = row["Suggested Hold (days)"]
+
+            st.markdown("<div class='ticker-row'>", unsafe_allow_html=True)
+            col1, col2, col3, col4, col5, col6, col7, col8, col9 = st.columns(
+                [1.1, 1.6, 1.2, 1.1, 1.1, 1.1, 1.2, 1.0, 1.0]
+            )
+            with col1:
+                st.markdown(f"**{ticker_symbol}**")
+            with col2:
+                st.markdown(company_name)
+            with col3:
+                st.markdown(sentiment_score)
+            with col4:
+                st.markdown(overall_sentiment)
+            with col5:
+                st.markdown(volatility)
+            with col6:
+                st.markdown(projected_gain)
+            with col7:
+                st.markdown(current_price)
+            with col8:
+                st.markdown(hold_days)
+            with col9:
+                if st.button("Deep Analyze", key=f"deep_analyze_{ticker_symbol}"):
+                    st.session_state.selected_ticker = ticker_symbol
+                    with st.spinner(f"Running deep analysis for {ticker_symbol}..."):
+                        st.session_state.deep_analysis_results = run_deep_analysis(
+                            ticker_symbol,
+                            st.session_state.selected_sector
+                        )
+            st.markdown("</div>", unsafe_allow_html=True)
+
+        st.success(f"📊 {len(df_valid_display)} validated stock(s) with complete financial analysis")
+    else:
+        st.warning("⚠️ No valid stock tickers found with financial data.")
+
+if st.session_state.selected_ticker and st.session_state.deep_analysis_results:
+    st.markdown("---")
+    st.subheader(
+        f"🧠 Deep Analysis for {st.session_state.selected_ticker} ({st.session_state.selected_sector})"
+    )
+    ai_summary = generate_ai_summary(st.session_state.deep_analysis_results)
+
+    col1, col2, col3 = st.columns([1.2, 1, 2])
+    with col1:
+        st.metric("Recommendation", ai_summary["recommendation"])
+    with col2:
+        st.metric("Confidence", ai_summary["confidence"])
+    with col3:
+        st.metric("Weighted Sentiment", f"{ai_summary['avg_sentiment']:.3f}")
+
+    st.markdown("**Rationale:**")
+    for bullet in ai_summary["rationale"]:
+        st.markdown(f"- {bullet}")
+
+    with st.expander("📦 Full Analysis Details", expanded=False):
+        summary_rows = []
+        for prompt_name, result in st.session_state.deep_analysis_results.items():
+            summary_rows.append({
+                "Analysis Type": prompt_name,
+                "Sentiment Score": result["sentiment_score"],
+                "Overall Sentiment": result["overall_sentiment"],
+                "Mentions": result["mention_count"],
+                "Key Themes": ", ".join(result["key_themes"]) if result["key_themes"] else "None",
+                "Catalysts": "Check insights below",
+                "Risks": "Check insights below"
+            })
+
+        df_summary = pd.DataFrame(summary_rows)
+        st.dataframe(
+            df_summary,
+            column_config={
+                "Analysis Type": st.column_config.TextColumn("Analysis Type", width="medium"),
+                "Sentiment Score": st.column_config.NumberColumn("Sentiment Score", format="%.3f"),
+                "Overall Sentiment": st.column_config.TextColumn("Overall Sentiment", width="small"),
+                "Mentions": st.column_config.NumberColumn("Mentions", width="small"),
+                "Key Themes": st.column_config.TextColumn("Key Themes", width="medium"),
+                "Catalysts": st.column_config.TextColumn("Catalysts", width="medium"),
+                "Risks": st.column_config.TextColumn("Risks", width="medium")
+            },
+            hide_index=True,
+            use_container_width=True
+        )
+
+        st.subheader("📋 Detailed Analysis")
+        for prompt_name, config in ANALYSIS_PROMPTS.items():
+            st.markdown(f"### 🔍 {prompt_name}")
+            st.markdown(f"**Description:** {config['description']}")
+            st.markdown(f"**Timeframe:** {config['timeframe']}")
+
+            if prompt_name in st.session_state.deep_analysis_results:
+                result = st.session_state.deep_analysis_results[prompt_name]
+
+                col1, col2, col3 = st.columns(3)
+                with col1:
+                    st.metric("Sentiment Score", f"{result['sentiment_score']:.3f}")
+                with col2:
+                    st.metric("Overall Sentiment", result['overall_sentiment'].title())
+                with col3:
+                    st.metric("Mentions Found", result['mention_count'])
+
+                st.markdown(f"**Key Insights:** {result['insights']}")
+
+                if result['key_themes']:
+                    st.markdown(f"**Key Themes:** {', '.join(result['key_themes'])}")
+
+                if result['sample_tweets']:
+                    st.markdown("**Sample Tweets:**")
+                    for i, tweet in enumerate(result['sample_tweets'], 1):
+                        st.text(f"{i}. {tweet}")
+            else:
+                st.error("Analysis failed for this prompt.")
+
+            st.markdown("---")
+
+# Performance statistics (show in expander) - HIDDEN FROM UI
+# with st.expander("📊 Performance & Database Stats"):
+#     from utils.finance import get_cache_stats, get_ticker_master_list
+
+#     # Show ticker database stats
+#     ticker_db = get_ticker_master_list()
+#     db_size = len(ticker_db) if ticker_db else 0
+
+#     col1, col2 = st.columns(2)
+
+#     with col1:
+#         st.metric("US Stock Database", f"{db_size} tickers")
+#         st.caption("Comprehensive US stock database")
+
+#     with col2:
+#         cache_stats = get_cache_stats()
+#         st.metric("Price Data Cache", f"{cache_stats['stock_data_cache']['entries']} entries")
+#         st.caption("30-minute cache for price data")
+
+#     st.success("✅ **Optimized Performance**: Local database validation eliminates most API calls!")
+#     st.info("• Ticker validation: Instant (local database lookup)")
+#     st.info("• Price data: Cached for 30 minutes")
+#     st.info("• Only price analysis requires API calls")
+
+# Information section
+with st.expander("How it works", expanded=False):
+    st.markdown("""
+- Enter a sector or topic to search for (e.g., "tech", "energy", "biotech")
+- Adjust the number of posts to fetch
+- Click the button to search X for posts with bullish sentiment
+- The query filters for English posts, excludes retweets and bearish sentiment
+
+**Note:** This uses Free-tier compatible X API operators (Boolean, lang, -is:retweet).
+For advanced filtering (date ranges, engagement metrics, minimum likes), upgrade to Basic tier or higher.
+""")
+
+st.markdown("</div>", unsafe_allow_html=True)
