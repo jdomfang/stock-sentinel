@@ -1,4 +1,5 @@
 import streamlit as st
+import streamlit.components.v1 as components
 import requests
 import json
 import pandas as pd
@@ -22,80 +23,356 @@ logger.setLevel(logging.INFO)
 # Sidebar navigation
 render_sidebar_navigation()
 
-st.markdown('<style> .stDataFrame { width: 100%; } </style>', unsafe_allow_html=True)
 st.markdown(
     """
     <style>
+    /* --- Global dark theme (TradingView-lite) --- */
+    :root {
+      --bg: #0B1220;
+      --panel: #0F172A;
+      --panel2: rgba(15, 23, 42, 0.55);
+      --border: rgba(148, 163, 184, 0.18);
+      --text: #E5E7EB;
+      --muted: #94A3B8;
+      --accent: #38BDF8;
+      --good: #22C55E;
+      --bad: #EF4444;
+      --warn: #F59E0B;
+    }
+
+    /* Ensure text stays readable on dark background */
+    h1, h2, h3, h4, h5, h6, p, span, div, label {
+      color: var(--text);
+    }
+    .stCaption, [data-testid="stCaptionContainer"] {
+      color: var(--muted) !important;
+    }
+
+    /* Page background */
+    [data-testid="stAppViewContainer"] {
+      background: radial-gradient(1200px 500px at 20% 0%, rgba(56,189,248,.12), transparent 50%),
+                  radial-gradient(900px 400px at 80% 10%, rgba(34,197,94,.10), transparent 45%),
+                  var(--bg);
+      color: var(--text);
+    }
+
+    /* Streamlit sometimes renders select popovers inside the sidebar layer.
+       Make sidebar visually neutral/dark so dropdown menus remain readable. */
+    section.stSidebar,
+    .stSidebar,
+    [data-testid="stSidebar"] {
+      background-color: #0B1220 !important;
+      background: #0B1220 !important;
+    }
+
+    /* If Streamlit portals the dropdown into the sidebar, force its surfaces dark */
+    .stSidebar ul,
+    .stSidebar [role="list"],
+    .stSidebar [role="listbox"],
+    .stSidebar [data-baseweb="menu"],
+    [data-testid="stSidebar"] ul,
+    [data-testid="stSidebar"] [role="list"],
+    [data-testid="stSidebar"] [role="listbox"],
+    [data-testid="stSidebar"] [data-baseweb="menu"] {
+      background-color: #0F172A !important;
+      color: #E5E7EB !important;
+    }
+
+    .stSidebar li,
+    .stSidebar li *,
+    [data-testid="stSidebar"] li,
+    [data-testid="stSidebar"] li * {
+      color: #E5E7EB !important;
+      opacity: 1 !important;
+    }
+
+    /* Main container spacing */
     div[data-testid="stMainBlockContainer"] {
-        max-width: 100%;
-        padding-left: 2rem;
-        padding-right: 2rem;
-        padding-top: 0.25rem;
+      max-width: 100%;
+      padding-left: 2rem;
+      padding-right: 2rem;
+      padding-top: 0.75rem;
     }
+
     .discovery-wrapper {
-        max-width: 1400px;
-        margin: 0 auto;
-        padding: 0 1rem;
+      max-width: 1400px;
+      margin: 0 auto;
+      padding: 0 1rem;
     }
-    .discovery-wrapper h1 {
-        margin-bottom: 0.25rem;
+
+    /* Titles */
+    .discovery-title {
+      font-size: 2.0rem;
+      font-weight: 750;
+      letter-spacing: -0.02em;
+      margin: 0;
+      line-height: 1.15;
     }
-    .discovery-wrapper [data-testid="stCaptionContainer"] {
-        margin-bottom: 0.25rem;
+    .discovery-subtitle {
+      color: var(--muted);
+      margin-top: 0.25rem;
+      margin-bottom: 1.0rem;
+      font-size: 0.98rem;
     }
-    .search-anchor {
-        height: 0;
-        margin: 0;
-        padding: 0;
+
+    /* Generic card */
+    .card {
+      border: 1px solid var(--border);
+      background: linear-gradient(180deg, rgba(15,23,42,.92), rgba(15,23,42,.75));
+      border-radius: 14px;
+      padding: 16px;
     }
-    .search-anchor + div {
-        padding: 16px;
-        border-radius: 12px;
-        border: 1px solid #e5e7eb;
-        background: #ffffff;
-        margin-top: 0;
+
+    /* Control row */
+    .control-hint {
+      color: var(--muted);
+      font-size: 0.9rem;
+      margin-top: 0.25rem;
     }
-    .search-card {
-        margin-top: -0.8rem;
+
+    /* Metrics row tweaks */
+    [data-testid="stMetric"] {
+      border: 1px solid var(--border);
+      background: rgba(15,23,42,.65);
+      border-radius: 14px;
+      padding: 12px 14px;
     }
-    .search-anchor + div h3 {
-        margin-top: 0.35rem;
+    [data-testid="stMetric"] label {
+      color: var(--muted) !important;
     }
-    .search-anchor + div .stSelectbox label,
-    .search-anchor + div .stSlider label {
-        display: none;
+
+    /* Inputs */
+    [data-baseweb="select"] > div,
+    [data-baseweb="input"] > div {
+      background-color: rgba(2,6,23,.55) !important;
+      border-color: var(--border) !important;
+      color: var(--text) !important;
     }
-    .search-anchor + div [data-testid="stWidgetLabel"] {
-        display: none;
+
+    /* Select dropdown menu (Streamlit/Browser differences: BaseWeb + native fallbacks) */
+    [data-baseweb="popover"] { z-index: 9999; }
+
+    /* BaseWeb list surfaces */
+    [data-baseweb="popover"] [data-baseweb="menu"],
+    [data-baseweb="popover"] ul[role="listbox"],
+    [data-baseweb="popover"] div[role="listbox"],
+    ul[role="listbox"],
+    div[role="listbox"],
+    [role="listbox"],
+    [role="list"],
+    [role="menu"] {
+      background-color: #0F172A !important;
+      border: 1px solid var(--border) !important;
+      border-radius: 14px !important;
+      overflow: hidden;
+      box-shadow: 0 16px 40px rgba(0,0,0,.45) !important;
     }
+
+    /* BaseWeb option rows */
+    [role="option"],
+    [role="menuitem"] {
+      background-color: transparent !important;
+      color: #E5E7EB !important;
+      opacity: 1 !important;
+    }
+    [role="option"]:hover,
+    [role="menuitem"]:hover {
+      background-color: rgba(56,189,248,.16) !important;
+    }
+    [role="option"][aria-selected="true"] {
+      background-color: rgba(56,189,248,.22) !important;
+    }
+
+    /* Streamlit selectbox virtual dropdown (this is what you're seeing) */
+    /* Streamlit selectbox virtual dropdown (this is what you're seeing) */
+    ul[data-testid="stSelectboxVirtualDropdown"],
+    [data-testid="stSelectboxVirtualDropdown"] {
+      background: #0F172A !important;
+      background-color: #0F172A !important;
+      border: 1px solid var(--border) !important;
+      border-radius: 14px !important;
+      box-shadow: 0 16px 40px rgba(0,0,0,.45) !important;
+    }
+
+    /* Ensure list items inherit dark background */
+    ul[data-testid="stSelectboxVirtualDropdown"] li {
+      background: transparent !important;
+      background-color: transparent !important;
+      color: #E5E7EB !important;
+      opacity: 1 !important;
+    }
+    ul[data-testid="stSelectboxVirtualDropdown"] li:hover {
+      background: rgba(56,189,248,.16) !important;
+      background-color: rgba(56,189,248,.16) !important;
+    }
+
+    /* Force text within options */
+    ul[data-testid="stSelectboxVirtualDropdown"] li *,
+    ul[data-testid="stSelectboxVirtualDropdown"] * {
+      color: #E5E7EB !important;
+      opacity: 1 !important;
+    }
+
+    /* Native <select> fallback (Windows light theme can force pale options) */
+    select {
+      background-color: rgba(2,6,23,.55) !important;
+      color: #E5E7EB !important;
+      border-color: var(--border) !important;
+    }
+    select option {
+      background-color: #0F172A !important;
+      color: #E5E7EB !important;
+    }
+
+    /* Buttons */
+    .stButton > button {
+      border-radius: 12px;
+      border: 1px solid rgba(56,189,248,0.28);
+      background: rgba(15, 23, 42, 0.85);
+      background-color: rgba(15, 23, 42, 0.85);
+      color: #E5E7EB;
+      font-weight: 650;
+      opacity: 1;
+      filter: none;
+    }
+    .stButton > button:hover {
+      border-color: rgba(56, 189, 248, 0.55);
+      background: rgba(15, 23, 42, 1.0);
+      background-color: rgba(15, 23, 42, 1.0);
+    }
+
+    /* Secondary buttons (e.g., Deep Analyze) */
+    button[data-testid="stBaseButton-secondary"],
+    .stButton > button[kind="secondary"] {
+      background: rgba(15, 23, 42, 0.85) !important;
+      background-color: rgba(15, 23, 42, 0.85) !important;
+      color: #E5E7EB !important;
+      border: 1px solid rgba(56,189,248,0.28) !important;
+      opacity: 1 !important;
+    }
+    button[data-testid="stBaseButton-secondary"]:hover,
+    .stButton > button[kind="secondary"]:hover {
+      background: rgba(15, 23, 42, 1.0) !important;
+      background-color: rgba(15, 23, 42, 1.0) !important;
+      border-color: rgba(56,189,248,0.55) !important;
+    }
+
+    /* Primary CTA */
+    /* Primary buttons (Scan X) — must override the generic button rule */
+    button[data-testid="stBaseButton-primary"],
+    .stButton > button[kind="primary"] {
+      background: linear-gradient(180deg, rgba(56,189,248,.95), rgba(14,116,144,.95)) !important;
+      background-color: transparent !important;
+      border: 1px solid rgba(56,189,248,.45) !important;
+      color: #001018 !important;
+      font-weight: 650 !important;
+    }
+
+    /* Disabled state readability (fix Deep Analyze looking "invisible") */
+    .stButton > button:disabled {
+      background: rgba(15, 23, 42, 0.55) !important;
+      color: rgba(229, 231, 235, 0.70) !important;
+      border-color: rgba(56,189,248,0.20) !important;
+      opacity: 1 !important;
+      filter: none !important;
+    }
+
+    /* Dataframe */
+    .stDataFrame { width: 100%; }
+
+    /* Validated ticker rows */
     .ticker-row {
-        padding: 0.75rem 1rem;
-        border: 1px solid rgba(148, 163, 184, 0.35);
-        border-radius: 12px;
-        margin-bottom: 0.6rem;
-        background: rgba(15, 23, 42, 0.02);
-        transition: background 0.2s ease, border 0.2s ease;
+      padding: 0.85rem 1rem;
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      margin-bottom: 0.65rem;
+      background: rgba(15, 23, 42, 0.60);
+      transition: background 0.18s ease, border 0.18s ease, transform 0.18s ease;
     }
     .ticker-row:hover {
-        background: rgba(59, 130, 246, 0.08);
-        border-color: rgba(59, 130, 246, 0.4);
+      background: rgba(15, 23, 42, 0.85);
+      border-color: rgba(56, 189, 248, 0.40);
+      transform: translateY(-1px);
     }
-    .ticker-row .stButton > button {
-        opacity: 0;
-        transition: opacity 0.2s ease;
-    }
-    .ticker-row:hover .stButton > button {
-        opacity: 1;
-    }
+
+    /* Hide Streamlit "Made with" footer */
+    footer { visibility: hidden; }
     </style>
     """,
-    unsafe_allow_html=True
+    unsafe_allow_html=True,
+)
+
+# JS-only UI fix: Streamlit selectbox dropdown can render with forced white background on some builds.
+# This mutation observer applies a dark background + readable text whenever the dropdown menu appears.
+components.html(
+    """
+    <script>
+    (function () {
+      const APPLY_TO = (doc) => {
+        // Fix selectbox dropdown
+        const ul = doc.querySelector('ul[data-testid="stSelectboxVirtualDropdown"]');
+        if (ul) {
+          ul.style.setProperty('background-color', '#0F172A', 'important');
+          ul.style.setProperty('color', '#E5E7EB', 'important');
+          ul.querySelectorAll('li, li *').forEach((el) => {
+            el.style.setProperty('color', '#E5E7EB', 'important');
+            el.style.setProperty('opacity', '1', 'important');
+          });
+        }
+
+        // Fix secondary buttons (e.g. Deep Analyze) that get forced white by Streamlit theme
+        doc.querySelectorAll('button[data-testid="stBaseButton-secondary"]').forEach((btn) => {
+          btn.style.setProperty('background-color', 'rgba(15, 23, 42, 0.92)', 'important');
+          btn.style.setProperty('color', '#E5E7EB', 'important');
+          btn.style.setProperty('border', '1px solid rgba(56,189,248,0.28)', 'important');
+          btn.style.setProperty('opacity', '1', 'important');
+          btn.style.setProperty('filter', 'none', 'important');
+        });
+
+        // Restore primary button (Scan X) gradient
+        doc.querySelectorAll('button[data-testid="stBaseButton-primary"], button[kind="primary"]').forEach((btn) => {
+          btn.style.setProperty('background-image', 'linear-gradient(180deg, rgba(56,189,248,.95), rgba(14,116,144,.95))', 'important');
+          btn.style.setProperty('background-color', 'transparent', 'important');
+          btn.style.setProperty('border', '1px solid rgba(56,189,248,.45)', 'important');
+          btn.style.setProperty('color', '#001018', 'important');
+          btn.style.setProperty('font-weight', '650', 'important');
+          btn.style.setProperty('opacity', '1', 'important');
+        });
+      };
+
+      const APPLY = () => {
+        // Always apply to current document
+        APPLY_TO(document);
+
+        // Also try to apply to parent if accessible
+        try {
+          if (window.parent && window.parent.document) APPLY_TO(window.parent.document);
+        } catch (e) {}
+      };
+
+      const obs = new MutationObserver(() => APPLY());
+      obs.observe(document.documentElement, { childList: true, subtree: true });
+      window.addEventListener('load', APPLY);
+      setTimeout(APPLY, 250);
+      setTimeout(APPLY, 1000);
+      setInterval(APPLY, 750);
+    })();
+    </script>
+    """,
+    height=0,
 )
 
 st.markdown('<div class="discovery-wrapper">', unsafe_allow_html=True)
 
-st.title("Search Parameters")
-st.caption("Scan X for emerging stock opportunities based on sentiment and engagement")
+st.markdown(
+    """
+    <div class="card" style="padding: 18px 18px 14px 18px; margin-bottom: 14px;">
+      <div class="discovery-title">X‑Stock Sentinel</div>
+      <div class="discovery-subtitle">Scan X sentiment → validate tickers → surface market opportunities (fast, simple, no clutter).</div>
+    </div>
+    """,
+    unsafe_allow_html=True,
+)
 
 if "selected_ticker" not in st.session_state:
     st.session_state.selected_ticker = None
@@ -108,34 +385,48 @@ if "df_valid" not in st.session_state:
 if "df_unvalidated" not in st.session_state:
     st.session_state.df_unvalidated = None
 
-# Input form
-st.markdown("<div class=\"search-anchor\"></div>", unsafe_allow_html=True)
-st.markdown("<div class=\"search-card\">", unsafe_allow_html=True)
-
-st.subheader("Select Sector")
-sector = st.selectbox(
-    "Select Sector",
-    options=[
-        'tech',
-        'healthcare',
-        'energy',
-        'finance',
-        'consumer',
-        'utilities',
-        'real estate',
-        'industrials',
-        'materials',
-        'communication'
-    ],
-    index=0,
-    label_visibility="collapsed"
+# Input form (UI/UX only — functionality unchanged)
+st.markdown(
+    """
+    <div class="card" style="margin-bottom: 14px;">
+      <div style="display:flex; align-items:center; justify-content:space-between; gap: 12px;">
+        <div>
+          <div style="font-weight:700; font-size:1.05rem;">Scan Controls</div>
+          <div class="control-hint">Pick a sector and run a scan. Results are ranked by mentions + sentiment, then validated with market data.</div>
+        </div>
+      </div>
+    </div>
+    """,
+    unsafe_allow_html=True,
 )
 
+ctrl_left, ctrl_right = st.columns([3, 1.3])
+
+with ctrl_left:
+    sector = st.selectbox(
+        "Sector",
+        options=[
+            "tech",
+            "healthcare",
+            "energy",
+            "finance",
+            "consumer",
+            "utilities",
+            "real estate",
+            "industrials",
+            "materials",
+            "communication",
+        ],
+        index=0,
+    )
+
+# Keep the existing behavior (max_results=100) as a code-only setting
 max_results = 100
 
-scan_clicked = st.button("Scan X for emerging stocks", type="primary")
-
-st.markdown("</div>", unsafe_allow_html=True)
+with ctrl_right:
+    # Align button vertically with the selectbox by adding top padding
+    st.markdown("<div style='height: 1.65rem;'></div>", unsafe_allow_html=True)
+    scan_clicked = st.button("Scan X", type="primary", use_container_width=True)
 
 # Scan button
 if scan_clicked:
@@ -455,6 +746,28 @@ if scan_clicked:
     except Exception as e:
         st.error(f"❌ Unexpected Error: {str(e)}")
 
+# KPI strip (UI only)
+if st.session_state.df_valid is not None:
+    try:
+        dfv = st.session_state.df_valid
+        dfn = st.session_state.df_unvalidated
+
+        total_valid = int(len(dfv)) if dfv is not None else 0
+        total_other = int(len(dfn)) if dfn is not None else 0
+        total_unique = total_valid + total_other
+        tweets_analyzed = int(dfv["Mentions"].sum()) if (dfv is not None and "Mentions" in dfv.columns) else 0
+        avg_sent = float(dfv["Avg Sentiment Score"].mean()) if (dfv is not None and "Avg Sentiment Score" in dfv.columns and len(dfv) > 0) else 0.0
+
+        k1, k2, k3, k4 = st.columns(4)
+        k1.metric("Tweets analyzed", tweets_analyzed)
+        k2.metric("Unique tickers", total_unique)
+        k3.metric("Validated", total_valid)
+        k4.metric("Avg sentiment", f"{avg_sent:.3f}")
+        st.markdown("", unsafe_allow_html=True)
+    except Exception:
+        # Never let UI extras break the page
+        pass
+
 if st.session_state.df_valid is not None:
     df_valid_display = st.session_state.df_valid.drop(columns=["Mentions", "Sample Tweets"], errors="ignore")
 
@@ -635,3 +948,65 @@ For advanced filtering (date ranges, engagement metrics, minimum likes), upgrade
 """)
 
 st.markdown("</div>", unsafe_allow_html=True)
+
+# Late-injected CSS to override Streamlit's selectbox dropdown (ensures readability on Windows)
+st.markdown(
+    """
+    <style>
+    body ul.st-cx.st-al.st-c1[data-testid="stSelectboxVirtualDropdown"],
+    body ul.st-cx.st-al[data-testid="stSelectboxVirtualDropdown"],
+    body ul[data-testid="stSelectboxVirtualDropdown"].st-cx,
+    body ul.st-cx[data-testid="stSelectboxVirtualDropdown"],
+    body ul[data-testid="stSelectboxVirtualDropdown"] {
+      background: #0F172A !important;
+      background-color: #0F172A !important;
+      background-image: none !important;
+    }
+    body ul[data-testid="stSelectboxVirtualDropdown"] li {
+      background: transparent !important;
+      background-color: transparent !important;
+      color: #E5E7EB !important;
+      opacity: 1 !important;
+    }
+    body ul[data-testid="stSelectboxVirtualDropdown"] li:hover {
+      background: rgba(56,189,248,.16) !important;
+      background-color: rgba(56,189,248,.16) !important;
+    }
+    body ul[data-testid="stSelectboxVirtualDropdown"] li * {
+      color: #E5E7EB !important;
+      opacity: 1 !important;
+    }
+
+    /* Force Streamlit secondary buttons (Deep Analyze) to match dark theme */
+    html body button[data-testid="stBaseButton-secondary"],
+    div.stButton > button[kind="secondary"][data-testid="stBaseButton-secondary"],
+    .stButton > button[kind="secondary"][data-testid="stBaseButton-secondary"],
+    button[kind="secondary"][data-testid="stBaseButton-secondary"] {
+      background-color: rgba(15, 23, 42, 0.92) !important;
+      color: #E5E7EB !important;
+      border: 1px solid rgba(56,189,248,0.28) !important;
+      opacity: 1 !important;
+      filter: none !important;
+      text-shadow: none !important;
+    }
+    html body button[data-testid="stBaseButton-secondary"]:hover,
+    div.stButton > button[kind="secondary"][data-testid="stBaseButton-secondary"]:hover,
+    .stButton > button[kind="secondary"][data-testid="stBaseButton-secondary"]:hover,
+    button[kind="secondary"][data-testid="stBaseButton-secondary"]:hover {
+      background-color: rgba(15, 23, 42, 1.0) !important;
+      border-color: rgba(56,189,248,0.55) !important;
+    }
+
+    /* Force Scan X primary button back to gradient */
+    html body button[data-testid="stBaseButton-primary"],
+    html body .stButton > button[kind="primary"][data-testid="stBaseButton-primary"] {
+      background-image: linear-gradient(180deg, rgba(56,189,248,.95), rgba(14,116,144,.95)) !important;
+      background-color: transparent !important;
+      border: 1px solid rgba(56,189,248,.45) !important;
+      color: #001018 !important;
+      font-weight: 650 !important;
+    }
+    </style>
+    """,
+    unsafe_allow_html=True,
+)
