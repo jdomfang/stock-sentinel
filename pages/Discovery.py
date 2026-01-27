@@ -497,53 +497,68 @@ if "df_unvalidated" not in st.session_state:
 
 # Input form (UI/UX only — functionality unchanged)
 # Brief primer (keeps UI clean; replaces the old "How it works" expander)
-st.markdown(
-    """
-    <div style="
-      font-size: 1.05rem;
-      line-height: 1.35;
-      font-weight: 520;
-      color: rgba(229, 231, 235, 0.95);
-      margin: 0.25rem 0 0.75rem 0;
-      padding: 0.65rem 0.85rem;
-      border-left: 3px solid rgba(56, 189, 248, 0.65);
-      border-radius: 0.65rem;
-      background: rgba(15, 23, 42, 0.35);
-    ">
-      <span style="font-weight: 750; color: rgba(229, 231, 235, 1);">Pick a sector</span>
-      <span> and we turn real‑time market buzz into ranked ticker signals—fast.</span>
-    </div>
-    """,
-    unsafe_allow_html=True,
-)
+# Streamlit widgets can't truly be wrapped by an HTML <div>.
+# Left-align controls (dashboard feel) while keeping a sane max width.
+_main, _spacer = st.columns([2.8, 1.2])
 
-ctrl_left, ctrl_right = st.columns([3, 1.3])
-
-with ctrl_left:
-    sector = st.selectbox(
-        "Sector",
-        options=[
-            "tech",
-            "healthcare",
-            "energy",
-            "finance",
-            "consumer",
-            "utilities",
-            "real estate",
-            "industrials",
-            "materials",
-            "communication",
-        ],
-        index=0,
+with _main:
+    st.markdown(
+        """
+        <div style="
+          font-size: 1.05rem;
+          line-height: 1.35;
+          font-weight: 520;
+          color: rgba(229, 231, 235, 0.95);
+          margin: 0.2rem 0 0.6rem 0;
+          padding: 0.45rem 0.65rem;
+          border-left: 3px solid rgba(56, 189, 248, 0.65);
+          border-radius: 0.65rem;
+          background: rgba(15, 23, 42, 0.35);
+        ">
+          <span style="font-weight: 750; color: rgba(229, 231, 235, 1);">Pick a sector</span>
+          <span> and we turn real‑time market buzz into ranked ticker signals—fast.</span>
+        </div>
+        """,
+        unsafe_allow_html=True,
     )
 
-# Keep the existing behavior (max_results=100) as a code-only setting
-max_results = 100
+    # Controls (make sector field less wide by adding a right-side spacer column)
+    ctrl_left, ctrl_right, _ctrl_pad = st.columns([0.78, 0.55, 2.67])
 
-with ctrl_right:
-    # Align button vertically with the selectbox by adding top padding
-    st.markdown("<div style='height: 1.65rem;'></div>", unsafe_allow_html=True)
-    scan_clicked = st.button("Sentinel Scan", type="primary", use_container_width=True)
+    with ctrl_left:
+        sector = st.selectbox(
+            "Sector",
+            options=[
+                "tech",
+                "healthcare",
+                "energy",
+                "finance",
+                "consumer",
+                "utilities",
+                "real estate",
+                "industrials",
+                "materials",
+                "communication",
+            ],
+            index=0,
+        )
+
+    # Keep the existing behavior (max_results=100) as a code-only setting
+    max_results = 100
+
+    with ctrl_right:
+        st.markdown("<div style='height: 1.65rem;'></div>", unsafe_allow_html=True)
+        scan_clicked = st.button(
+            "Sentinel Scan",
+            type="primary",
+            use_container_width=True,
+            disabled=False,
+        )
+
+    with _ctrl_pad:
+        # intentional blank space to prevent full-width stretching
+        st.markdown("")
+
 
 # Scan button
 if scan_clicked:
