@@ -1,0 +1,22 @@
+{
+  "errors": [
+    {
+      "value": "EliotIsHungry",
+      "detail": "Could not find user with usernames: [EliotIsHungry].",
+      "title": "Not Found Error",
+      "resource_type": "user",
+      "parameter": "usernames",
+      "resource_id": "EliotIsHungry",
+      "type": "https://api.twitter.com/2/problems/resource-not-found"
+    },
+    {
+      "value": "flowalgo",
+      "detail": "Could not find user with usernames: [flowalgo].",
+      "title": "Not Found Error",
+      "resource_type": "user",
+      "parameter": "usernames",
+      "resource_id": "flowalgo",
+      "type": "https://api.twitter.com/2/problems/resource-not-found"
+    }
+  ]
+}

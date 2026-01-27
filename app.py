@@ -3,7 +3,7 @@ from utils.navigation import render_sidebar_navigation
 
 # Page configuration
 st.set_page_config(
-    page_title="X-Stock Sentinel",
+    page_title="Stock Sentinel",
     page_icon="📈",
     layout="wide",
     initial_sidebar_state="expanded"

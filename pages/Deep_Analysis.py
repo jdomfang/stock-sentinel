@@ -11,7 +11,7 @@ from utils.deep_analysis import ANALYSIS_PROMPTS, run_deep_analysis, generate_ai
 
 # Page configuration
 st.set_page_config(
-    page_title="Deep Analysis - X-Stock Sentinel",
+    page_title="Deep Analysis - Stock Sentinel",
     page_icon="🔬",
     layout="wide"
 )
@@ -30,16 +30,33 @@ with col1:
     ticker = st.text_input("Stock Ticker", "NVDA", help="Enter stock ticker symbol (e.g., NVDA, AAPL, TSLA)")
 
 with col2:
-    sector = st.selectbox("Sector", ["tech", "healthcare", "energy", "finance", "consumer", "utilities", "real estate", "industrials", "materials", "communication"], index=0)
-
+    sector = st.selectbox(
+        "Sector",
+        [
+            "tech",
+            "healthcare",
+            "energy",
+            "finance",
+            "consumer",
+            "utilities",
+            "real estate",
+            "industrials",
+            "materials",
+            "communication",
+        ],
+        index=0,
+    )
 
 # Main analysis button
 if st.button("🔬 Run Deep Analysis", type="primary"):
     if not ticker.strip():
         st.error("Please enter a stock ticker.")
     else:
-        with st.spinner("Running deep analysis across 8 dimensions... This may take a moment."):
-            analysis_results = run_deep_analysis(ticker.upper(), sector)
+        with st.spinner("Running deep analysis... This may take a moment."):
+            analysis_results = run_deep_analysis(
+                ticker.upper(),
+                sector,
+            )
 
         # Display results
         st.success("✅ Deep analysis complete!")
@@ -76,7 +93,7 @@ if st.button("🔬 Run Deep Analysis", type="primary"):
                     "Mentions": result["mention_count"],
                     "Key Themes": ", ".join(result["key_themes"]) if result["key_themes"] else "None",
                     "Catalysts": "Check insights below",
-                    "Risks": "Check insights below"
+                    "Risks": "Check insights below",
                 }
                 summary_data.append(row)
 
@@ -84,17 +101,17 @@ if st.button("🔬 Run Deep Analysis", type="primary"):
             df_summary = pd.DataFrame(summary_data)
 
             # Add financial projections if ticker is valid
-            if validation.get('valid', False):
+            if validation.get("valid", False):
                 stock_data = get_stock_data(ticker.upper())
-                if stock_data['error'] is None and stock_data['prices']:
+                if stock_data["error"] is None and stock_data["prices"]:
                     # Calculate average sentiment across all analyses
                     avg_sentiment = sum(r["sentiment_score"] for r in analysis_results.values()) / len(analysis_results)
 
-                    projection = simple_projection(stock_data['prices'], avg_sentiment, days=30)
+                    projection = simple_projection(stock_data["prices"], avg_sentiment, days=30)
 
-                    if projection['error'] is None:
-                        df_summary['Projected Gain (%)'] = projection['avg_gain']
-                        df_summary['Suggested Hold (days)'] = projection['suggested_hold_days']
+                    if projection["error"] is None:
+                        df_summary["Projected Gain (%)"] = projection["avg_gain"]
+                        df_summary["Suggested Hold (days)"] = projection["suggested_hold_days"]
 
             st.dataframe(
                 df_summary,
@@ -105,10 +122,10 @@ if st.button("🔬 Run Deep Analysis", type="primary"):
                     "Mentions": st.column_config.NumberColumn("Mentions", width="small"),
                     "Key Themes": st.column_config.TextColumn("Key Themes", width="medium"),
                     "Catalysts": st.column_config.TextColumn("Catalysts", width="medium"),
-                    "Risks": st.column_config.TextColumn("Risks", width="medium")
+                    "Risks": st.column_config.TextColumn("Risks", width="medium"),
                 },
                 hide_index=True,
-                use_container_width=True
+                use_container_width=True,
             )
 
             # Detailed analysis sections
@@ -126,18 +143,18 @@ if st.button("🔬 Run Deep Analysis", type="primary"):
                     with col1:
                         st.metric("Sentiment Score", f"{result['sentiment_score']:.3f}")
                     with col2:
-                        st.metric("Overall Sentiment", result['overall_sentiment'].title())
+                        st.metric("Overall Sentiment", result["overall_sentiment"].title())
                     with col3:
-                        st.metric("Mentions Found", result['mention_count'])
+                        st.metric("Mentions Found", result["mention_count"])
 
                     st.markdown(f"**Key Insights:** {result['insights']}")
 
-                    if result['key_themes']:
+                    if result["key_themes"]:
                         st.markdown(f"**Key Themes:** {', '.join(result['key_themes'])}")
 
-                    if result['sample_tweets']:
+                    if result["sample_tweets"]:
                         st.markdown("**Sample Tweets:**")
-                        for i, tweet in enumerate(result['sample_tweets'], 1):
+                        for i, tweet in enumerate(result["sample_tweets"], 1):
                             st.text(f"{i}. {tweet}")
                 else:
                     st.error("Analysis failed for this prompt.")
@@ -146,12 +163,14 @@ if st.button("🔬 Run Deep Analysis", type="primary"):
 
 # Information section
 st.markdown("---")
-st.info("""
+st.info(
+    """
 **How Deep Analysis Works:**
-- Runs 8 parallel X searches based on Abdul Shakoor methodology
+- Runs 4 X searches and derives 8 analysis sections (Abdul Shakoor-inspired lenses)
 - Each analysis focuses on different aspects (sentiment, trends, influencers, momentum, news, retail vs institutional, red flags, strategy)
 - Uses AI sentiment analysis, weighted signal aggregation, and financial data validation
 - Produces a single recommendation (Buy / Watch / Avoid) with rationale for buy-position readiness
 
 **Note:** Analysis is based on recent X discussions and should be combined with fundamental analysis.
-""")
+"""
+)

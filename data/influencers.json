@@ -1,0 +1,54 @@
+{
+  "version": 1,
+  "notes": "Seed influencer handles (US-focused). Run scripts/validate_influencers.py to verify and generate influencers_validated.json.",
+  "buckets": {
+    "news_amplifiers": [
+      "DeItaone",
+      "WalterBloomberg",
+      "FirstSquawk",
+      "FinancialJuice",
+      "Reuters",
+      "business",
+      "WSJmarkets",
+      "MarketWatch",
+      "Benzinga",
+      "zerohedge"
+    ],
+    "options_flow": [
+      "unusual_whales",
+      "spotgamma",
+      "CheddarFlow",
+      "OptionsHawk",
+      "SqueezeMetrics",
+      "EliotIsHungry",
+      "TradeIdeas",
+      "MenthorQ",
+      "theotrade",
+      "flowalgo"
+    ],
+    "fundamental_analysts": [
+      "AswathDamodaran",
+      "DivesTech",
+      "LizAnnSonders",
+      "BrianFeroldi",
+      "MichaelKitces",
+      "jasonzweigwsj",
+      "MorganHousel",
+      "HowardMarks",
+      "TruthGundlach",
+      "RonBaron"
+    ],
+    "macro": [
+      "NickTimiraos",
+      "MohamedElErian",
+      "LarrySummers",
+      "NeilDutta",
+      "KobeissiLetter",
+      "zerohedge",
+      "BofA",
+      "IMFNews",
+      "federalreserve",
+      "USTreasury"
+    ]
+  }
+}

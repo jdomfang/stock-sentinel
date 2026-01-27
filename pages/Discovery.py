@@ -65,6 +65,16 @@ st.markdown(
       background: #0B1220 !important;
     }
 
+    /* Hide the top-left sidebar toggle / arrow (collapsed control) */
+    [data-testid="collapsedControl"],
+    button[title="Open sidebar"],
+    button[title="Close sidebar"],
+    [data-testid="stSidebarCollapsedControl"],
+    [data-testid="stSidebarNavCollapseButton"],
+    [data-testid="stSidebarNavExpandButton"] {
+      display: none !important;
+    }
+
     /* If Streamlit portals the dropdown into the sidebar, force its surfaces dark */
     .stSidebar ul,
     .stSidebar [role="list"],
@@ -113,6 +123,61 @@ st.markdown(
       margin-top: 0.25rem;
       margin-bottom: 1.0rem;
       font-size: 0.98rem;
+    }
+
+    /* Hero (no box) */
+    .hero {
+      margin: 4px 0 16px 0;
+      padding: 6px 2px 2px 2px;
+    }
+    .hero-eyebrow {
+      color: rgba(56,189,248,.95);
+      font-weight: 750;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      font-size: 0.78rem;
+      margin-bottom: 10px;
+    }
+    .hero-title {
+      font-size: 2.05rem;
+      font-weight: 850;
+      letter-spacing: -0.03em;
+      line-height: 1.1;
+      margin: 0 0 10px 0;
+    }
+    .hero-subtitle {
+      color: var(--muted);
+      font-size: 1.05rem;
+      line-height: 1.5;
+      margin: 0 0 12px 0;
+      max-width: 980px;
+    }
+    .hero-chips {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin: 12px 0 10px 0;
+    }
+    .chip {
+      border: 1px solid var(--border);
+      border-radius: 999px;
+      padding: 7px 11px;
+      background: rgba(2,6,23,.30);
+      color: rgba(229,231,235,.92);
+      font-size: 0.92rem;
+      backdrop-filter: blur(6px);
+    }
+    .chip b { color: rgba(229,231,235,.98); }
+
+    /* Subtle label color-coding (keeps values neutral; avoids implying outcomes) */
+    .hero-chips .chip:nth-child(1) b { color: rgba(56,189,248,.95); }  /* Signal (accent) */
+    .hero-chips .chip:nth-child(2) b { color: rgba(34,197,94,.92); }   /* Projected gain (good) */
+    .hero-chips .chip:nth-child(3) b { color: rgba(245,158,11,.92); }  /* Volatility (warn) */
+    .hero-chips .chip:nth-child(4) b { color: rgba(148,163,184,.95); } /* Suggested hold (muted) */
+    .hero-caveat {
+      color: rgba(229,231,235,.70);
+      font-size: 0.92rem;
+      margin-top: 4px;
     }
 
     /* Generic card */
@@ -401,9 +466,19 @@ st.markdown('<div class="discovery-wrapper">', unsafe_allow_html=True)
 
 st.markdown(
     """
-    <div class="card" style="padding: 18px 18px 14px 18px; margin-bottom: 14px;">
-      <div class="discovery-title">X‑Stock Sentinel</div>
-      <div class="discovery-subtitle">Scan X sentiment → validate tickers → surface market opportunities (fast, simple, no clutter).</div>
+    <div class="hero">
+      <div class="hero-eyebrow">Stock Sentinel</div>
+      <div class="hero-title">Finding short‑term opportunities shouldn’t feel like a full‑time job.</div>
+      <div class="hero-subtitle">We turn noise into signals by analyzing <b>social media sentiment</b> and using <b>AI‑driven market data analysis</b> to validate real momentum.</div>
+
+      <div class="hero-chips">
+        <span class="chip"><b>Signal:</b> Buy / Watch / Avoid</span>
+        <span class="chip"><b>Projected gain:</b> Estimated range</span>
+        <span class="chip"><b>Volatility:</b> Risk level</span>
+        <span class="chip"><b>Suggested hold:</b> Days to hold</span>
+      </div>
+
+      <div class="hero-caveat">AI‑driven guidance, not guarantees — markets are unpredictable. Always manage risk.</div>
     </div>
     """,
     unsafe_allow_html=True,
@@ -421,15 +496,22 @@ if "df_unvalidated" not in st.session_state:
     st.session_state.df_unvalidated = None
 
 # Input form (UI/UX only — functionality unchanged)
+# Brief primer (keeps UI clean; replaces the old "How it works" expander)
 st.markdown(
     """
-    <div class="card" style="margin-bottom: 14px;">
-      <div style="display:flex; align-items:center; justify-content:space-between; gap: 12px;">
-        <div>
-          <div style="font-weight:700; font-size:1.05rem;">Scan Controls</div>
-          <div class="control-hint">Pick a sector and run a scan. Results are ranked by mentions + sentiment, then validated with market data.</div>
-        </div>
-      </div>
+    <div style="
+      font-size: 1.05rem;
+      line-height: 1.35;
+      font-weight: 520;
+      color: rgba(229, 231, 235, 0.95);
+      margin: 0.25rem 0 0.75rem 0;
+      padding: 0.65rem 0.85rem;
+      border-left: 3px solid rgba(56, 189, 248, 0.65);
+      border-radius: 0.65rem;
+      background: rgba(15, 23, 42, 0.35);
+    ">
+      <span style="font-weight: 750; color: rgba(229, 231, 235, 1);">Pick a sector</span>
+      <span> and we turn real‑time market buzz into ranked ticker signals—fast.</span>
     </div>
     """,
     unsafe_allow_html=True,
@@ -461,7 +543,7 @@ max_results = 100
 with ctrl_right:
     # Align button vertically with the selectbox by adding top padding
     st.markdown("<div style='height: 1.65rem;'></div>", unsafe_allow_html=True)
-    scan_clicked = st.button("Scan X", type="primary", use_container_width=True)
+    scan_clicked = st.button("Sentinel Scan", type="primary", use_container_width=True)
 
 # Scan button
 if scan_clicked:
@@ -859,7 +941,7 @@ if st.session_state.df_valid is not None:
                     with st.spinner(f"Running deep analysis for {ticker_symbol}..."):
                         st.session_state.deep_analysis_results = run_deep_analysis(
                             ticker_symbol,
-                            st.session_state.selected_sector
+                            st.session_state.selected_sector,
                         )
             st.markdown("</div>", unsafe_allow_html=True)
 
@@ -969,18 +1051,6 @@ if st.session_state.selected_ticker and st.session_state.deep_analysis_results:
 #     st.info("• Ticker validation: Instant (local database lookup)")
 #     st.info("• Price data: Cached for 30 minutes")
 #     st.info("• Only price analysis requires API calls")
-
-# Information section
-with st.expander("How it works", expanded=False):
-    st.markdown("""
-- Enter a sector or topic to search for (e.g., "tech", "energy", "biotech")
-- Adjust the number of posts to fetch
-- Click the button to search X for posts with bullish sentiment
-- The query filters for English posts, excludes retweets and bearish sentiment
-
-**Note:** This uses Free-tier compatible X API operators (Boolean, lang, -is:retweet).
-For advanced filtering (date ranges, engagement metrics, minimum likes), upgrade to Basic tier or higher.
-""")
 
 st.markdown("</div>", unsafe_allow_html=True)
 

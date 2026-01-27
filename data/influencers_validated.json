@@ -1,0 +1,571 @@
+{
+  "version": 1,
+  "buckets": {
+    "news_amplifiers": [
+      "DeItaone",
+      "WalterBloomberg",
+      "FirstSquawk",
+      "financialjuice",
+      "Reuters",
+      "business",
+      "WSJmarkets",
+      "MarketWatch",
+      "Benzinga",
+      "zerohedge"
+    ],
+    "options_flow": [
+      "unusual_whales",
+      "spotgamma",
+      "CheddarFlow",
+      "OptionsHawk",
+      "SqueezeMetrics",
+      "TradeIdeas",
+      "menthorq",
+      "TheoTrade"
+    ],
+    "fundamental_analysts": [
+      "AswathDamodaran",
+      "DivesTech",
+      "LizAnnSonders",
+      "BrianFeroldi",
+      "MichaelKitces",
+      "jasonzweigwsj",
+      "morganhousel",
+      "howardmarks",
+      "TruthGundlach",
+      "ronbaron"
+    ],
+    "macro": [
+      "NickTimiraos",
+      "mohamedelerian",
+      "LarrySummers",
+      "neildutta",
+      "KobeissiLetter",
+      "zerohedge",
+      "bofa",
+      "IMFNews",
+      "federalreserve",
+      "USTreasury"
+    ]
+  },
+  "users": {
+    "DeItaone": {
+      "id": "2704294333",
+      "username": "DeItaone",
+      "verified": false,
+      "public_metrics": {
+        "followers_count": 1160608,
+        "following_count": 38,
+        "tweet_count": 181994,
+        "listed_count": 19321,
+        "like_count": 8495,
+        "media_count": 5489
+      },
+      "created_at": "2014-08-03T14:34:52.000Z"
+    },
+    "WalterBloomberg": {
+      "id": "1333275365301649408",
+      "username": "WalterBloomberg",
+      "verified": false,
+      "public_metrics": {
+        "followers_count": 9980,
+        "following_count": 53,
+        "tweet_count": 62,
+        "listed_count": 178,
+        "like_count": 44,
+        "media_count": 6
+      },
+      "created_at": "2020-11-30T05:03:20.000Z"
+    },
+    "FirstSquawk": {
+      "id": "3295423333",
+      "username": "FirstSquawk",
+      "verified": false,
+      "public_metrics": {
+        "followers_count": 430886,
+        "following_count": 251,
+        "tweet_count": 282753,
+        "listed_count": 8930,
+        "like_count": 826,
+        "media_count": 2129
+      },
+      "created_at": "2015-07-26T14:40:19.000Z"
+    },
+    "financialjuice": {
+      "id": "381696140",
+      "username": "financialjuice",
+      "verified": false,
+      "public_metrics": {
+        "followers_count": 631899,
+        "following_count": 47,
+        "tweet_count": 385696,
+        "listed_count": 10663,
+        "like_count": 1627,
+        "media_count": 8746
+      },
+      "created_at": "2011-09-28T19:38:30.000Z"
+    },
+    "Reuters": {
+      "id": "1652541",
+      "username": "Reuters",
+      "verified": true,
+      "public_metrics": {
+        "followers_count": 24880625,
+        "following_count": 1192,
+        "tweet_count": 1332204,
+        "listed_count": 134662,
+        "like_count": 673,
+        "media_count": 1001636
+      },
+      "created_at": "2007-03-20T17:46:05.000Z"
+    },
+    "business": {
+      "id": "34713362",
+      "username": "business",
+      "verified": true,
+      "public_metrics": {
+        "followers_count": 9736839,
+        "following_count": 104,
+        "tweet_count": 1228376,
+        "listed_count": 72093,
+        "like_count": 5378,
+        "media_count": 321662
+      },
+      "created_at": "2009-04-23T20:05:17.000Z"
+    },
+    "WSJmarkets": {
+      "id": "28164923",
+      "username": "WSJmarkets",
+      "verified": true,
+      "public_metrics": {
+        "followers_count": 1020476,
+        "following_count": 520,
+        "tweet_count": 102366,
+        "listed_count": 12009,
+        "like_count": 397,
+        "media_count": 3647
+      },
+      "created_at": "2009-04-01T18:44:17.000Z"
+    },
+    "MarketWatch": {
+      "id": "624413",
+      "username": "MarketWatch",
+      "verified": true,
+      "public_metrics": {
+        "followers_count": 4585187,
+        "following_count": 195,
+        "tweet_count": 449818,
+        "listed_count": 31375,
+        "like_count": 3131,
+        "media_count": 60415
+      },
+      "created_at": "2007-01-11T05:15:48.000Z"
+    },
+    "Benzinga": {
+      "id": "44060322",
+      "username": "Benzinga",
+      "verified": true,
+      "public_metrics": {
+        "followers_count": 321397,
+        "following_count": 2912,
+        "tweet_count": 245752,
+        "listed_count": 5607,
+        "like_count": 44857,
+        "media_count": 48517
+      },
+      "created_at": "2009-06-02T04:43:10.000Z"
+    },
+    "zerohedge": {
+      "id": "18856867",
+      "username": "zerohedge",
+      "verified": false,
+      "public_metrics": {
+        "followers_count": 2440014,
+        "following_count": 934,
+        "tweet_count": 609054,
+        "listed_count": 35621,
+        "like_count": 55,
+        "media_count": 26700
+      },
+      "created_at": "2009-01-11T04:08:58.000Z"
+    },
+    "unusual_whales": {
+      "id": "1200616796295847936",
+      "username": "unusual_whales",
+      "verified": false,
+      "public_metrics": {
+        "followers_count": 3100697,
+        "following_count": 2377,
+        "tweet_count": 152172,
+        "listed_count": 21286,
+        "like_count": 67175,
+        "media_count": 29618
+      },
+      "created_at": "2019-11-30T03:25:32.000Z"
+    },
+    "spotgamma": {
+      "id": "1156656695038357504",
+      "username": "spotgamma",
+      "verified": false,
+      "public_metrics": {
+        "followers_count": 135112,
+        "following_count": 259,
+        "tweet_count": 13926,
+        "listed_count": 3447,
+        "like_count": 18009,
+        "media_count": 4150
+      },
+      "created_at": "2019-07-31T20:03:40.000Z"
+    },
+    "CheddarFlow": {
+      "id": "1004137473679679488",
+      "username": "CheddarFlow",
+      "verified": false,
+      "public_metrics": {
+        "followers_count": 326237,
+        "following_count": 97,
+        "tweet_count": 46875,
+        "listed_count": 4352,
+        "like_count": 10384,
+        "media_count": 19046
+      },
+      "created_at": "2018-06-05T23:06:44.000Z"
+    },
+    "OptionsHawk": {
+      "id": "61342056",
+      "username": "OptionsHawk",
+      "verified": false,
+      "public_metrics": {
+        "followers_count": 114731,
+        "following_count": 909,
+        "tweet_count": 190111,
+        "listed_count": 3785,
+        "like_count": 3599,
+        "media_count": 22246
+      },
+      "created_at": "2009-07-30T00:42:54.000Z"
+    },
+    "SqueezeMetrics": {
+      "id": "4858859837",
+      "username": "SqueezeMetrics",
+      "verified": false,
+      "public_metrics": {
+        "followers_count": 89655,
+        "following_count": 186,
+        "tweet_count": 24016,
+        "listed_count": 2703,
+        "like_count": 40192,
+        "media_count": 2605
+      },
+      "created_at": "2016-01-29T03:40:02.000Z"
+    },
+    "TradeIdeas": {
+      "id": "10202342",
+      "username": "TradeIdeas",
+      "verified": false,
+      "public_metrics": {
+        "followers_count": 32182,
+        "following_count": 5876,
+        "tweet_count": 94243,
+        "listed_count": 738,
+        "like_count": 126465,
+        "media_count": 35675
+      },
+      "created_at": "2007-11-13T02:43:46.000Z"
+    },
+    "menthorq": {
+      "id": "1103484308419829760",
+      "username": "menthorq",
+      "verified": false,
+      "public_metrics": {
+        "followers_count": 10,
+        "following_count": 2,
+        "tweet_count": 27,
+        "listed_count": 1,
+        "like_count": 25,
+        "media_count": 3
+      },
+      "created_at": "2019-03-07T02:35:35.000Z"
+    },
+    "TheoTrade": {
+      "id": "4236788299",
+      "username": "TheoTrade",
+      "verified": false,
+      "public_metrics": {
+        "followers_count": 4073,
+        "following_count": 111,
+        "tweet_count": 6440,
+        "listed_count": 82,
+        "like_count": 15,
+        "media_count": 281
+      },
+      "created_at": "2015-11-14T17:25:16.000Z"
+    },
+    "AswathDamodaran": {
+      "id": "33216611",
+      "username": "AswathDamodaran",
+      "verified": false,
+      "public_metrics": {
+        "followers_count": 446085,
+        "following_count": 3,
+        "tweet_count": 3158,
+        "listed_count": 6119,
+        "like_count": 15,
+        "media_count": 1050
+      },
+      "created_at": "2009-04-19T14:54:22.000Z"
+    },
+    "DivesTech": {
+      "id": "1082353582228176896",
+      "username": "DivesTech",
+      "verified": false,
+      "public_metrics": {
+        "followers_count": 232854,
+        "following_count": 387,
+        "tweet_count": 38643,
+        "listed_count": 2487,
+        "like_count": 58587,
+        "media_count": 1325
+      },
+      "created_at": "2019-01-07T19:09:37.000Z"
+    },
+    "LizAnnSonders": {
+      "id": "2961589380",
+      "username": "LizAnnSonders",
+      "verified": false,
+      "public_metrics": {
+        "followers_count": 510124,
+        "following_count": 745,
+        "tweet_count": 38089,
+        "listed_count": 8457,
+        "like_count": 6544,
+        "media_count": 27405
+      },
+      "created_at": "2015-01-06T23:33:53.000Z"
+    },
+    "BrianFeroldi": {
+      "id": "61558281",
+      "username": "BrianFeroldi",
+      "verified": false,
+      "public_metrics": {
+        "followers_count": 653596,
+        "following_count": 507,
+        "tweet_count": 33303,
+        "listed_count": 12117,
+        "like_count": 30143,
+        "media_count": 7282
+      },
+      "created_at": "2009-07-30T18:20:35.000Z"
+    },
+    "MichaelKitces": {
+      "id": "16825716",
+      "username": "MichaelKitces",
+      "verified": false,
+      "public_metrics": {
+        "followers_count": 94130,
+        "following_count": 460,
+        "tweet_count": 131338,
+        "listed_count": 2300,
+        "like_count": 76,
+        "media_count": 21366
+      },
+      "created_at": "2008-10-17T15:08:51.000Z"
+    },
+    "jasonzweigwsj": {
+      "id": "89043072",
+      "username": "jasonzweigwsj",
+      "verified": false,
+      "public_metrics": {
+        "followers_count": 234433,
+        "following_count": 2417,
+        "tweet_count": 25836,
+        "listed_count": 4239,
+        "like_count": 4839,
+        "media_count": 3769
+      },
+      "created_at": "2009-11-10T22:44:00.000Z"
+    },
+    "morganhousel": {
+      "id": "284278132",
+      "username": "morganhousel",
+      "verified": false,
+      "public_metrics": {
+        "followers_count": 615898,
+        "following_count": 824,
+        "tweet_count": 21291,
+        "listed_count": 8752,
+        "like_count": 83168,
+        "media_count": 2171
+      },
+      "created_at": "2011-04-19T00:24:40.000Z"
+    },
+    "howardmarks": {
+      "id": "14503196",
+      "username": "howardmarks",
+      "verified": false,
+      "public_metrics": {
+        "followers_count": 30394,
+        "following_count": 316,
+        "tweet_count": 4769,
+        "listed_count": 764,
+        "like_count": 22087,
+        "media_count": 2241
+      },
+      "created_at": "2008-04-23T23:56:03.000Z"
+    },
+    "TruthGundlach": {
+      "id": "861619895485726722",
+      "username": "TruthGundlach",
+      "verified": false,
+      "public_metrics": {
+        "followers_count": 367598,
+        "following_count": 6,
+        "tweet_count": 1043,
+        "listed_count": 5011,
+        "like_count": 0,
+        "media_count": 4
+      },
+      "created_at": "2017-05-08T16:32:46.000Z"
+    },
+    "ronbaron": {
+      "id": "42922262",
+      "username": "ronbaron",
+      "verified": false,
+      "public_metrics": {
+        "followers_count": 0,
+        "following_count": 0,
+        "tweet_count": 0,
+        "listed_count": 0,
+        "like_count": 0,
+        "media_count": 0
+      },
+      "created_at": "2009-05-27T16:51:11.000Z"
+    },
+    "NickTimiraos": {
+      "id": "59603406",
+      "username": "NickTimiraos",
+      "verified": false,
+      "public_metrics": {
+        "followers_count": 458047,
+        "following_count": 118,
+        "tweet_count": 48080,
+        "listed_count": 9469,
+        "like_count": 32611,
+        "media_count": 9713
+      },
+      "created_at": "2009-07-23T22:06:04.000Z"
+    },
+    "mohamedelerian": {
+      "id": "177248736",
+      "username": "mohamedelerian",
+      "verified": false,
+      "public_metrics": {
+        "followers_count": 4,
+        "following_count": 0,
+        "tweet_count": 55,
+        "listed_count": 0,
+        "like_count": 0,
+        "media_count": 0
+      },
+      "created_at": "2010-08-11T17:02:02.000Z"
+    },
+    "LarrySummers": {
+      "id": "21689848",
+      "username": "LarrySummers",
+      "verified": false,
+      "public_metrics": {
+        "followers_count": 108,
+        "following_count": 70,
+        "tweet_count": 171,
+        "listed_count": 3,
+        "like_count": 0,
+        "media_count": 2
+      },
+      "created_at": "2009-02-23T20:29:24.000Z"
+    },
+    "neildutta": {
+      "id": "34748272",
+      "username": "neildutta",
+      "verified": false,
+      "public_metrics": {
+        "followers_count": 6,
+        "following_count": 1,
+        "tweet_count": 0,
+        "listed_count": 0,
+        "like_count": 0,
+        "media_count": 0
+      },
+      "created_at": "2009-04-23T22:11:19.000Z"
+    },
+    "KobeissiLetter": {
+      "id": "3316376038",
+      "username": "KobeissiLetter",
+      "verified": true,
+      "public_metrics": {
+        "followers_count": 1304313,
+        "following_count": 606,
+        "tweet_count": 28941,
+        "listed_count": 14795,
+        "like_count": 21381,
+        "media_count": 12079
+      },
+      "created_at": "2015-06-10T00:34:15.000Z"
+    },
+    "bofa": {
+      "id": "4826884418",
+      "username": "bofa",
+      "verified": false,
+      "public_metrics": {
+        "followers_count": 471,
+        "following_count": 2,
+        "tweet_count": 0,
+        "listed_count": 1,
+        "like_count": 0,
+        "media_count": 0
+      },
+      "created_at": "2016-01-28T19:49:17.000Z"
+    },
+    "IMFNews": {
+      "id": "25098482",
+      "username": "IMFNews",
+      "verified": true,
+      "public_metrics": {
+        "followers_count": 2351293,
+        "following_count": 356,
+        "tweet_count": 31070,
+        "listed_count": 13212,
+        "like_count": 895,
+        "media_count": 15069
+      },
+      "created_at": "2009-03-18T16:13:51.000Z"
+    },
+    "federalreserve": {
+      "id": "26538229",
+      "username": "federalreserve",
+      "verified": true,
+      "public_metrics": {
+        "followers_count": 1433124,
+        "following_count": 27,
+        "tweet_count": 11286,
+        "listed_count": 12859,
+        "like_count": 0,
+        "media_count": 2461
+      },
+      "created_at": "2009-03-25T17:03:50.000Z"
+    },
+    "USTreasury": {
+      "id": "120176950",
+      "username": "USTreasury",
+      "verified": true,
+      "public_metrics": {
+        "followers_count": 1117311,
+        "following_count": 199,
+        "tweet_count": 8060,
+        "listed_count": 7713,
+        "like_count": 232,
+        "media_count": 996
+      },
+      "created_at": "2010-03-05T18:03:14.000Z"
+    }
+  }
+}
