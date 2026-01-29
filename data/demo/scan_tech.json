@@ -1,0 +1,51 @@
+{
+  "sector": "tech",
+  "generated_at": "demo",
+  "notes": {
+    "source": "one-shot snapshot",
+    "x_query": "(tech OR technology OR software OR AI OR chip OR semiconductor OR cloud OR internet) stock (bullish OR opportunity OR catalyst OR growth OR earnings) -bearish lang:en -is:retweet",
+    "top_n_validated": 6
+  },
+  "validated_rows": [
+    {
+      "Ticker": "GOOG",
+      "Company Name": "Alphabet Inc. Class C Capital Stock",
+      "Avg Sentiment Score": "0.999",
+      "Overall Sentiment": "Bullish",
+      "Volatility (%)": "17.48",
+      "Projected Gain (%)": "13.18",
+      "Current Price ($)": "328.43",
+      "Suggested Hold (days)": "12"
+    },
+    {
+      "Ticker": "GME",
+      "Company Name": "GameStop Corp. Class A",
+      "Avg Sentiment Score": "0.998",
+      "Overall Sentiment": "Bullish",
+      "Volatility (%)": "33.48",
+      "Projected Gain (%)": "12.66",
+      "Current Price ($)": "22.99",
+      "Suggested Hold (days)": "9"
+    },
+    {
+      "Ticker": "CRWV",
+      "Company Name": "CoreWeave, Inc. Class A Common Stock",
+      "Avg Sentiment Score": "0.997",
+      "Overall Sentiment": "Bullish",
+      "Volatility (%)": "75.83",
+      "Projected Gain (%)": "24.46",
+      "Current Price ($)": "92.98",
+      "Suggested Hold (days)": "6"
+    },
+    {
+      "Ticker": "NVDA",
+      "Company Name": "Nvidia Corp",
+      "Avg Sentiment Score": "0.997",
+      "Overall Sentiment": "Bullish",
+      "Volatility (%)": "26.23",
+      "Projected Gain (%)": "5.20",
+      "Current Price ($)": "187.67",
+      "Suggested Hold (days)": "12"
+    }
+  ]
+}

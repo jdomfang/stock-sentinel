@@ -89,7 +89,9 @@ def download_ticker_master_list() -> Dict[str, Dict]:
     """
     try:
         # Get API key from secrets
-        api_key = st.secrets["POLYGON_API_KEY"]
+        api_key = st.secrets.get("POLYGON_API_KEY", os.getenv("POLYGON_API_KEY"))
+        if not api_key:
+            raise RuntimeError("POLYGON_API_KEY not found in secrets or env")
 
         # Initialize Polygon client
         client = RESTClient(api_key)
@@ -268,7 +270,9 @@ def validate_ticker(ticker: str) -> Dict:
 
     try:
         # Get API key from secrets
-        api_key = st.secrets["POLYGON_API_KEY"]
+        api_key = st.secrets.get("POLYGON_API_KEY", os.getenv("POLYGON_API_KEY"))
+        if not api_key:
+            raise RuntimeError("POLYGON_API_KEY not found in secrets or env")
         
         # Initialize Polygon client
         client = RESTClient(api_key)
@@ -462,7 +466,9 @@ def get_stock_data(ticker: str, days: int = 30) -> Dict:
 
     try:
         # Get API key from secrets
-        api_key = st.secrets["POLYGON_API_KEY"]
+        api_key = st.secrets.get("POLYGON_API_KEY", os.getenv("POLYGON_API_KEY"))
+        if not api_key:
+            raise RuntimeError("POLYGON_API_KEY not found in secrets or env")
         
         # Initialize Polygon client
         client = RESTClient(api_key)

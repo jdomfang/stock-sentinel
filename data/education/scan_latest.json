@@ -1,0 +1,96 @@
+{
+  "sector": "tech",
+  "generated_at": "snapshot",
+  "validated_rows": [
+    {
+      "Ticker": "MSFT",
+      "Avg Sentiment Score": 0.099,
+      "Overall Sentiment": "Neutral",
+      "Company Name": "Microsoft Corp",
+      "Volatility (%)": 21.43,
+      "Projected Gain (%)": -6.01,
+      "Current Price ($)": "470.28",
+      "Suggested Hold (days)": 14
+    },
+    {
+      "Ticker": "META",
+      "Avg Sentiment Score": 0.382,
+      "Overall Sentiment": "Neutral",
+      "Company Name": "Meta Platforms, Inc. Class A Common Stock",
+      "Volatility (%)": 29.42,
+      "Projected Gain (%)": -0.51,
+      "Current Price ($)": "672.36",
+      "Suggested Hold (days)": 13
+    },
+    {
+      "Ticker": "NVDA",
+      "Avg Sentiment Score": 0.172,
+      "Overall Sentiment": "Neutral",
+      "Company Name": "Nvidia Corp",
+      "Volatility (%)": 24.23,
+      "Projected Gain (%)": -1.66,
+      "Current Price ($)": "186.47",
+      "Suggested Hold (days)": 11
+    },
+    {
+      "Ticker": "ASML",
+      "Avg Sentiment Score": 0.919,
+      "Overall Sentiment": "Bullish",
+      "Company Name": "ASML Holding NV",
+      "Volatility (%)": 46.25,
+      "Projected Gain (%)": 67.24,
+      "Current Price ($)": "1413.35",
+      "Suggested Hold (days)": 4
+    },
+    {
+      "Ticker": "PINS",
+      "Avg Sentiment Score": -0.947,
+      "Overall Sentiment": "Bearish",
+      "Company Name": "Pinterest, Inc. Class A Common Stock",
+      "Volatility (%)": 27.36,
+      "Projected Gain (%)": -1.94,
+      "Current Price ($)": "25.90",
+      "Suggested Hold (days)": 12
+    },
+    {
+      "Ticker": "AMZN",
+      "Avg Sentiment Score": 0.141,
+      "Overall Sentiment": "Bullish",
+      "Company Name": "Amazon.Com Inc",
+      "Volatility (%)": 25.55,
+      "Projected Gain (%)": 3.87,
+      "Current Price ($)": "238.42",
+      "Suggested Hold (days)": 13
+    },
+    {
+      "Ticker": "CRWV",
+      "Avg Sentiment Score": 0.287,
+      "Overall Sentiment": "Neutral",
+      "Company Name": "CoreWeave, Inc. Class A Common Stock",
+      "Volatility (%)": 74.7,
+      "Projected Gain (%)": 42.6,
+      "Current Price ($)": "98.31",
+      "Suggested Hold (days)": 4
+    },
+    {
+      "Ticker": "GOOGL",
+      "Avg Sentiment Score": 0.296,
+      "Overall Sentiment": "Bullish",
+      "Company Name": "Alphabet Inc. Class A Common Stock",
+      "Volatility (%)": 17.36,
+      "Projected Gain (%)": 9.77,
+      "Current Price ($)": "333.26",
+      "Suggested Hold (days)": 12
+    },
+    {
+      "Ticker": "QQQ",
+      "Avg Sentiment Score": 0.45,
+      "Overall Sentiment": "Bullish",
+      "Company Name": "Invesco QQQ Trust, Series 1",
+      "Volatility (%)": 12.14,
+      "Projected Gain (%)": 0.94,
+      "Current Price ($)": "625.46",
+      "Suggested Hold (days)": 21
+    }
+  ]
+}

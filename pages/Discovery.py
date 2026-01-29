@@ -698,7 +698,7 @@ if scan_clicked:
                         logger.info(f"   • Top tickers for validation: {df.head(10)['Ticker'].tolist()}")
 
                         # Load local ticker database for fast validation
-                        st.info("📈 Validating tickers using local database and fetching financial data...")
+                        st.info("📈 Validating tickers...")
 
                         # Load comprehensive ticker database
                         ticker_master_list = get_ticker_master_list()
@@ -877,6 +877,62 @@ if scan_clicked:
 
     except Exception as e:
         st.error(f"❌ Unexpected Error: {str(e)}")
+
+# --- Admin-only: Save demo snapshots for Home (local only; no API calls) ---
+# These buttons save the *current* results to data/education/ so Home can show
+# a "clean" educational snapshot without running any paid API calls.
+
+ADMIN_MODE = bool(st.secrets.get("ADMIN_MODE", False))
+
+if ADMIN_MODE:
+    with st.expander("🛠 Admin: Demo snapshot tools", expanded=False):
+        # Save Scan snapshot (validated table)
+        if st.session_state.get("df_valid") is not None and len(st.session_state.df_valid) > 0:
+            if st.button("💾 Save Scan Snapshot for Home (demo)"):
+                try:
+                    from pathlib import Path
+                    import json
+
+                    out_dir = Path(__file__).resolve().parents[1] / "data" / "education"
+                    out_dir.mkdir(parents=True, exist_ok=True)
+
+                    df_out = st.session_state.df_valid.drop(columns=["Valid"], errors="ignore")
+                    df_out = df_out.drop(columns=["Mentions", "Sample Tweets"], errors="ignore")
+
+                    payload = {
+                        "sector": st.session_state.get("selected_sector") or "",
+                        "generated_at": "snapshot",
+                        "validated_rows": df_out.to_dict(orient="records"),
+                    }
+                    (out_dir / "scan_latest.json").write_text(json.dumps(payload, indent=2), encoding="utf-8")
+                    st.success("Saved: data/education/scan_latest.json")
+                except Exception as e:
+                    st.error(f"Failed to save scan snapshot: {e}")
+        else:
+            st.caption("Run a scan to enable saving scan snapshot.")
+
+        # Save Deep Analyze snapshot
+        if st.session_state.get("selected_ticker") and st.session_state.get("deep_analysis_results"):
+            if st.button("💾 Save Deep Analyze Snapshot for Home (demo)"):
+                try:
+                    from pathlib import Path
+                    import json
+
+                    out_dir = Path(__file__).resolve().parents[1] / "data" / "education"
+                    out_dir.mkdir(parents=True, exist_ok=True)
+
+                    payload = {
+                        "ticker": st.session_state.get("selected_ticker") or "",
+                        "sector": st.session_state.get("selected_sector") or "",
+                        "generated_at": "snapshot",
+                        "analysis_results": st.session_state.get("deep_analysis_results") or {},
+                    }
+                    (out_dir / "deep_latest.json").write_text(json.dumps(payload, indent=2), encoding="utf-8")
+                    st.success("Saved: data/education/deep_latest.json")
+                except Exception as e:
+                    st.error(f"Failed to save deep snapshot: {e}")
+        else:
+            st.caption("Run Deep Analyze to enable saving deep snapshot.")
 
 # KPI strip (UI only)
 if st.session_state.df_valid is not None:

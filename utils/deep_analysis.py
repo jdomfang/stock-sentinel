@@ -6,7 +6,7 @@ from typing import Dict, List, Any
 from pathlib import Path
 import json
 
-from utils.sentiment import analyze_sentiment
+from utils.sentiment import analyze_sentiment, load_sentiment_pipeline, score_finbert_output
 
 # ---- Prompt definitions (UI + reporting structure) ----
 # NOTE: We still present 8 prompts, but we only make 4 X API calls.
@@ -88,9 +88,43 @@ def _load_influencer_usernames(limit: int = 40) -> List[str]:
 
 
 def _build_influencer_query(usernames: List[str], ticker: str, sector: str) -> str:
-    from_clause = " OR ".join([f"from:{u}" for u in usernames])
-    # Require relevance: mention ticker symbol or sector.
-    return f"(({from_clause})) ({ticker} OR {sector}) lang:en -is:retweet"
+    """Build a `from:` query safely under X query-length limits.
+
+    X recent search queries have a max length (~512). We keep headroom to avoid 400 errors.
+
+    IMPORTANT: Parentheses must be balanced; otherwise X returns 400 with
+    "mismatched input '<EOF>' expecting ')'".
+    """
+
+    ticker = (ticker or "").strip().upper() or "NVDA"
+    sector = (sector or "").strip().lower() or "tech"
+
+    # Base filter we want regardless of influencer list.
+    tail = f"({ticker} OR {sector}) lang:en -is:retweet"
+
+    parts: List[str] = []
+    MAX_LEN = 500  # leave headroom under 512
+
+    for u in usernames:
+        u = (u or "").strip().lstrip("@")
+        if not u:
+            continue
+
+        candidate = f"from:{u}"
+        next_parts = parts + [candidate]
+        from_clause = " OR ".join(next_parts)
+
+        # Fully balanced query
+        q = f"(({from_clause}) {tail})"
+        if len(q) > MAX_LEN:
+            break
+        parts = next_parts
+
+    if not parts:
+        return tail
+
+    from_clause = " OR ".join(parts)
+    return f"(({from_clause}) {tail})"
 
 
 # ---- X API search ----
@@ -98,7 +132,10 @@ def _build_influencer_query(usernames: List[str], ticker: str, sector: str) -> s
 def search_x_tweets(query: str, max_results: int = 100, timeframe: str = "24h") -> Dict[str, Any]:
     """Search X (Twitter) Recent Search for tweets matching the query."""
     try:
-        x_bearer_token = st.secrets["X_BEARER_TOKEN"]
+        import os
+        x_bearer_token = st.secrets.get("X_BEARER_TOKEN", os.getenv("X_BEARER_TOKEN"))
+        if not x_bearer_token:
+            raise RuntimeError("Missing X_BEARER_TOKEN (set in .streamlit/secrets.toml or env var)")
 
         since_date = None
         if timeframe:
@@ -142,13 +179,20 @@ def search_x_tweets(query: str, max_results: int = 100, timeframe: str = "24h") 
 # ---- Bucketing + analysis ----
 
 def _mentions_ticker(text: str, ticker: str) -> bool:
+    """Return True if the tweet text mentions the ticker as a token (optionally $-prefixed).
+
+    Avoids substring false-positives (e.g., ticker "IN" matching "INTO").
+    """
+    import re
+
     t = (ticker or "").strip().upper()
     if not t:
         return False
+
     s = (text or "")
-    su = s.upper()
-    # match either $TICKER or plain TICKER token
-    return (f"${t}" in su) or (t in su)
+    # Token boundary match: (^|\W)\$?TICKER(\W|$)
+    pattern = rf"(^|\W)\$?{re.escape(t)}(\W|$)"
+    return re.search(pattern, s, flags=re.IGNORECASE) is not None
 
 
 def analyze_tweets_for_prompt(tweets: List[Dict[str, Any]], prompt_name: str, ticker: str) -> Dict[str, Any]:
@@ -157,6 +201,11 @@ def analyze_tweets_for_prompt(tweets: List[Dict[str, Any]], prompt_name: str, ti
     Notes:
     - We filter by ticker mention for ticker-scoped prompts.
     - We do NOT filter by ticker for the sector trends prompt.
+
+    ML/Signal notes:
+    - Uses FinBERT (via utils.sentiment.analyze_sentiment).
+    - Uses a SIGNED score in [-1, 1] so averages are meaningful.
+    - For Momentum, sample tweets are chosen by engagement.
     """
     if not tweets:
         return {
@@ -166,55 +215,102 @@ def analyze_tweets_for_prompt(tweets: List[Dict[str, Any]], prompt_name: str, ti
             "insights": "No tweets found for analysis.",
             "sample_tweets": [],
             "mention_count": 0,
+            "tweet_ids": [],
         }
 
     ticker_scoped = prompt_name != "Sector Narrative & Trends"
 
-    sentiments: List[float] = []
-    themes: List[str] = []
-    sample_tweets: List[str] = []
-
-    for tweet in tweets:
-        text = (tweet.get("text") or "")
+    # Filter to relevant tweets first
+    filtered: List[Dict[str, Any]] = []
+    for tw in tweets:
+        text = (tw.get("text") or "")
         if ticker_scoped and not _mentions_ticker(text, ticker):
             continue
+        filtered.append(tw)
 
-        sentiment_result = analyze_sentiment(text)
-        sentiments.append(sentiment_result["score"])
+    if not filtered:
+        return {
+            "sentiment_score": 0.0,
+            "overall_sentiment": "neutral",
+            "key_themes": [],
+            "insights": "No tweets found for analysis.",
+            "sample_tweets": [],
+            "mention_count": 0,
+            "tweet_ids": [],
+        }
 
-        text_lower = text.lower()
+    # --- Batch sentiment inference (perf) ---
+    texts = [(tw.get("text") or "")[:512] for tw in filtered]
 
-        if prompt_name == "Real-Time Market Sentiment":
-            if any(w in text_lower for w in ["bullish", "buy", "moon", "rocket", "long"]):
-                themes.append("bullish")
-            if any(w in text_lower for w in ["bearish", "sell", "crash", "dump", "short"]):
-                themes.append("bearish")
+    sentiments: List[float] = []
+    themes: List[str] = []
 
-        elif prompt_name == "Sector Narrative & Trends":
-            if any(w in text_lower for w in ["trend", "emerging", "gaining", "traction", "rotation", "narrative"]):
-                themes.append("trend")
+    try:
+        # HF pipeline supports list input; this is much faster than per-tweet calls.
+        sentiment_pipeline = load_sentiment_pipeline()
+        BATCH_SIZE = 24
+        batch_out_all = []
+        for i in range(0, len(texts), BATCH_SIZE):
+            batch_out_all.extend(sentiment_pipeline(texts[i:i+BATCH_SIZE]))
 
-        elif prompt_name == "Track Smart Money and Influencer Moves":
-            themes.append("influencer")
+        for tw, out in zip(filtered, batch_out_all):
+            label = out.get("label")
+            conf = float(out.get("score", 0.0))
+            signed, _trading_sent, _label_norm = score_finbert_output(label=label, confidence=conf, neutral_threshold=0.55)
 
-        elif prompt_name == "Momentum (High Engagement)":
-            themes.append("momentum")
+            sentiments.append(signed)
 
-        elif prompt_name == "Monitor Breaking News and Catalysts":
-            themes.append("catalyst")
+            text_lower = (tw.get("text") or "").lower()
 
-        elif prompt_name == "Gauge Retail vs. Institutional Sentiment":
-            themes.append("positioning")
+            if prompt_name == "Real-Time Market Sentiment":
+                if any(w in text_lower for w in ["bullish", "buy", "moon", "rocket", "long"]):
+                    themes.append("bullish")
+                if any(w in text_lower for w in ["bearish", "sell", "crash", "dump", "short"]):
+                    themes.append("bearish")
 
-        elif prompt_name == "Detect Early Warning Signs and Red Flags":
-            themes.append("risk")
+            elif prompt_name == "Sector Narrative & Trends":
+                if any(w in text_lower for w in ["trend", "emerging", "gaining", "traction", "rotation", "narrative"]):
+                    themes.append("trend")
 
-        elif prompt_name == "Trading Intent / Watchlist Signals":
-            themes.append("trading_intent")
+            elif prompt_name == "Track Smart Money and Influencer Moves":
+                themes.append("influencer")
 
-        if len(sample_tweets) < 3:
-            short_text = text[:160] + "..." if len(text) > 160 else text
-            sample_tweets.append(short_text)
+            elif prompt_name == "Momentum (High Engagement)":
+                themes.append("momentum")
+
+            elif prompt_name == "Monitor Breaking News and Catalysts":
+                themes.append("catalyst")
+
+            elif prompt_name == "Gauge Retail vs. Institutional Sentiment":
+                themes.append("positioning")
+
+            elif prompt_name == "Detect Early Warning Signs and Red Flags":
+                themes.append("risk")
+
+            elif prompt_name == "Trading Intent / Watchlist Signals":
+                themes.append("trading_intent")
+
+    except Exception:
+        # Fallback to the slower, safer per-tweet sentiment path
+        for tw in filtered:
+            text = (tw.get("text") or "")
+            sr = analyze_sentiment(text)
+            sentiments.append(float(sr.get("score", 0.0)))
+
+    # --- Sample tweet selection ---
+    def _shorten(s: str) -> str:
+        return s[:160] + "..." if len(s) > 160 else s
+
+    if prompt_name == "Momentum (High Engagement)":
+        # Pick the top engagement tweets for a more convincing demo.
+        def score_eng(tw: Dict[str, Any]) -> int:
+            m = (tw.get("public_metrics") or {})
+            return int(m.get("like_count", 0)) + 2 * int(m.get("retweet_count", 0)) + int(m.get("quote_count", 0))
+
+        ranked = sorted(filtered, key=score_eng, reverse=True)
+        sample_tweets = [_shorten((tw.get("text") or "")) for tw in ranked[:3]]
+    else:
+        sample_tweets = [_shorten((tw.get("text") or "")) for tw in filtered[:3]]
 
     avg_sentiment = sum(sentiments) / len(sentiments) if sentiments else 0.0
 
@@ -225,6 +321,15 @@ def analyze_tweets_for_prompt(tweets: List[Dict[str, Any]], prompt_name: str, ti
     else:
         overall_sentiment = "neutral"
 
+    tweet_ids: List[str] = []
+    for tw in filtered:
+        tid = tw.get("id")
+        if tid is not None:
+            tweet_ids.append(str(tid))
+        else:
+            # Fallback to a stable hash if id is missing
+            tweet_ids.append(hashlib.sha1((tw.get("text") or "").encode("utf-8")).hexdigest())
+
     return {
         "sentiment_score": round(avg_sentiment, 3),
         "overall_sentiment": overall_sentiment,
@@ -232,6 +337,7 @@ def analyze_tweets_for_prompt(tweets: List[Dict[str, Any]], prompt_name: str, ti
         "insights": f"Found {len(sentiments)} relevant tweets with {overall_sentiment} sentiment.",
         "sample_tweets": sample_tweets,
         "mention_count": len(sentiments),
+        "tweet_ids": tweet_ids,
     }
 
 
@@ -264,7 +370,8 @@ def run_deep_analysis(ticker: str, sector: str) -> Dict[str, Dict[str, Any]]:
     trends_query = f"{sector} (emerging OR trend OR gaining OR traction OR rotation OR narrative) lang:en -is:retweet"
     momentum_query = f"({ticker} OR {sector}) (viral OR trending OR momentum OR breakout OR squeeze) lang:en -is:retweet"
 
-    influencer_usernames = _load_influencer_usernames(limit=40)
+    # Cap influencers to keep the `from:` query under X query length limits.
+    influencer_usernames = _load_influencer_usernames(limit=12)
     influencer_query = (
         _build_influencer_query(influencer_usernames, ticker, sector)
         if influencer_usernames
@@ -440,19 +547,26 @@ def generate_ai_summary(analysis_results: Dict[str, Dict]) -> Dict[str, Any]:
     bearish_count = 0
     neutral_count = 0
     error_count = 0
-    total_mentions = 0
+    # Dedupe across prompts to avoid "confidence inflation" when the same tweets appear in multiple buckets.
+    unique_ids = set()
+
     red_flag_sentiment = 0.0
     red_flag_mentions = 0
 
     for prompt_name, result in analysis_results.items():
-        mentions = result.get("mention_count", 0)
+        tweet_ids = result.get("tweet_ids", []) or []
+        unique_mentions = 0
+        for tid in tweet_ids:
+            if tid not in unique_ids:
+                unique_ids.add(tid)
+                unique_mentions += 1
+
         sentiment = result.get("sentiment_score", 0.0)
         overall = result.get("overall_sentiment", "neutral")
 
-        weight = max(mentions, 1)
+        weight = max(unique_mentions, 1)
         total_weighted_sentiment += sentiment * weight
         total_weight += weight
-        total_mentions += mentions
 
         if overall == "bullish":
             bullish_count += 1
@@ -465,23 +579,30 @@ def generate_ai_summary(analysis_results: Dict[str, Dict]) -> Dict[str, Any]:
 
         if "Red Flags" in prompt_name:
             red_flag_sentiment = sentiment
-            red_flag_mentions = mentions
+            red_flag_mentions = unique_mentions
 
+    total_mentions = len(unique_ids)
     avg_sentiment = total_weighted_sentiment / total_weight if total_weight else 0.0
 
-    if avg_sentiment >= 0.25 and bullish_count >= 5 and red_flag_sentiment > -0.1:
+    # Sanity guard: avoid strong calls on thin evidence
+    if total_mentions < 8:
+        recommendation = "Watch"
+    elif avg_sentiment >= 0.25 and bullish_count >= 5 and red_flag_sentiment > -0.1:
         recommendation = "Buy"
     elif avg_sentiment <= -0.1 or bearish_count >= 4 or red_flag_sentiment < -0.2:
         recommendation = "Avoid"
     else:
         recommendation = "Watch"
 
-    if abs(avg_sentiment) >= 0.35 and total_mentions >= 30:
-        confidence = "High conviction"
+    # Sanity guard: if evidence is thin, force low confidence.
+    if total_mentions < 8:
+        confidence = "Low"
+    elif abs(avg_sentiment) >= 0.35 and total_mentions >= 30:
+        confidence = "High"
     elif abs(avg_sentiment) >= 0.2 or total_mentions >= 15:
-        confidence = "Moderate conviction"
+        confidence = "Moderate"
     else:
-        confidence = "Low conviction"
+        confidence = "Low"
 
     rationale = [
         f"{bullish_count}/8 analyses bullish; weighted sentiment {avg_sentiment:.2f}.",

@@ -91,7 +91,7 @@ if st.button("🔬 Run Deep Analysis", type="primary"):
                     "Sentiment Score": result["sentiment_score"],
                     "Overall Sentiment": result["overall_sentiment"],
                     "Mentions": result["mention_count"],
-                    "Key Themes": ", ".join(result["key_themes"]) if result["key_themes"] else "None",
+                    "Tags": ", ".join(result["key_themes"]) if result["key_themes"] else "None",
                     "Catalysts": "Check insights below",
                     "Risks": "Check insights below",
                 }
@@ -110,7 +110,13 @@ if st.button("🔬 Run Deep Analysis", type="primary"):
                     projection = simple_projection(stock_data["prices"], avg_sentiment, days=30)
 
                     if projection["error"] is None:
-                        df_summary["Projected Gain (%)"] = projection["avg_gain"]
+                        p10 = projection.get("gain_p10")
+                        p90 = projection.get("gain_p90")
+                        if p10 is not None and p90 is not None:
+                            df_summary["Projected Gain (%)"] = f"{p10:.1f}–{p90:.1f}"
+                        else:
+                            df_summary["Projected Gain (%)"] = projection.get("avg_gain", 0.0)
+
                         df_summary["Suggested Hold (days)"] = projection["suggested_hold_days"]
 
             st.dataframe(
@@ -120,7 +126,7 @@ if st.button("🔬 Run Deep Analysis", type="primary"):
                     "Sentiment Score": st.column_config.NumberColumn("Sentiment Score", format="%.3f"),
                     "Overall Sentiment": st.column_config.TextColumn("Overall Sentiment", width="small"),
                     "Mentions": st.column_config.NumberColumn("Mentions", width="small"),
-                    "Key Themes": st.column_config.TextColumn("Key Themes", width="medium"),
+                    "Tags": st.column_config.TextColumn("Tags", width="medium"),
                     "Catalysts": st.column_config.TextColumn("Catalysts", width="medium"),
                     "Risks": st.column_config.TextColumn("Risks", width="medium"),
                 },
@@ -150,7 +156,7 @@ if st.button("🔬 Run Deep Analysis", type="primary"):
                     st.markdown(f"**Key Insights:** {result['insights']}")
 
                     if result["key_themes"]:
-                        st.markdown(f"**Key Themes:** {', '.join(result['key_themes'])}")
+                        st.markdown(f"**Tags:** {', '.join(result['key_themes'])}")
 
                     if result["sample_tweets"]:
                         st.markdown("**Sample Tweets:**")

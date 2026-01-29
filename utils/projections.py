@@ -17,12 +17,14 @@ def simple_projection(prices: List[float], sentiment_score: float, days: int = 3
     
     Args:
         prices: List of historical closing prices
-        sentiment_score: Sentiment score from 0-1 (used to adjust expected returns)
+        sentiment_score: Signed sentiment score in [-1, 1] (used to adjust expected returns)
         days: Number of days to project forward (default 30)
         
     Returns:
         Dictionary with keys:
         - avg_gain: Average projected gain as percentage
+        - gain_p10: 10th percentile projected gain (%)
+        - gain_p90: 90th percentile projected gain (%)
         - suggested_hold_days: Average days to reach +5% target
         - success_rate: Percentage of simulations reaching +5% within timeframe
     """
@@ -42,18 +44,28 @@ def simple_projection(prices: List[float], sentiment_score: float, days: int = 3
             daily_return = (prices[i] - prices[i-1]) / prices[i-1]
             returns.append(daily_return)
         
-        # Calculate historical statistics
-        mean_return = np.mean(returns)
-        std_return = np.std(returns)
+        # Calculate historical statistics (winsorize returns to reduce outlier blowups)
+        returns = np.array(returns, dtype=float)
+        lo, hi = np.percentile(returns, [2, 98])
+        returns = np.clip(returns, lo, hi)
+
+        mean_return = float(np.mean(returns))
+        std_return = float(np.std(returns))
+        # Hard cap volatility to avoid absurd simulations on noisy tickers
+        std_return = min(std_return, 0.12)  # ~12% daily std cap
 
         logger.debug(f"📊 Historical stats: {len(prices)} prices, mean_return={mean_return:.6f}, std_return={std_return:.6f}")
 
-        # Adjust mean return based on sentiment
-        # sentiment_score ranges from 0-1, we map to multiplier 0.5-1.5
-        sentiment_multiplier = 0.5 + sentiment_score
+        # Adjust mean return based on sentiment.
+        # sentiment_score is expected to be in [-1, 1] (negative=bearish, positive=bullish).
+        # Keep this effect small to avoid absurd projections.
+        sentiment_score = float(max(-1.0, min(1.0, sentiment_score)))
+        sentiment_multiplier = 1.0 + (0.25 * sentiment_score)  # +/- 25% drift adjustment
         adjusted_mean = mean_return * sentiment_multiplier
 
-        logger.debug(f"🎭 Sentiment adjustment: score={sentiment_score:.3f}, multiplier={sentiment_multiplier:.3f}, adjusted_mean={adjusted_mean:.6f}")
+        logger.debug(
+            f"🎭 Sentiment adjustment: score={sentiment_score:.3f}, multiplier={sentiment_multiplier:.3f}, adjusted_mean={adjusted_mean:.6f}"
+        )
         
         # Run Monte Carlo simulations
         num_simulations = 100
@@ -84,7 +96,9 @@ def simple_projection(prices: List[float], sentiment_score: float, days: int = 3
             final_gains.append(final_gain)
         
         # Calculate statistics
-        avg_gain = np.mean(final_gains) * 100  # Convert to percentage
+        avg_gain = float(np.mean(final_gains)) * 100  # Convert to percentage
+        gain_p10 = float(np.percentile(final_gains, 10)) * 100
+        gain_p90 = float(np.percentile(final_gains, 90)) * 100
         success_rate = (len(days_to_target) / num_simulations) * 100
         
         # Calculate suggested hold time
@@ -98,6 +112,8 @@ def simple_projection(prices: List[float], sentiment_score: float, days: int = 3
 
         return {
             'avg_gain': round(avg_gain, 2),
+            'gain_p10': round(gain_p10, 2),
+            'gain_p90': round(gain_p90, 2),
             'suggested_hold_days': suggested_hold,
             'success_rate': round(success_rate, 1),
             'error': None

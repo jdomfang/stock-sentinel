@@ -81,7 +81,7 @@ def load_sentiment_pipeline():
     """
     return pipeline(
         "sentiment-analysis",
-        model="distilbert-base-uncased-finetuned-sst-2-english",
+        model="ProsusAI/finbert",
         device=-1  # Use CPU
     )
 
@@ -136,6 +136,28 @@ def extract_tickers(text: str) -> List[str]:
     return tickers
 
 
+def score_finbert_output(label: str, confidence: float, neutral_threshold: float = 0.55) -> tuple[float, str, str]:
+    """Map FinBERT output -> (signed_score, trading_sentiment, normalized_label).
+
+    - signed_score in [-1, 1]
+    - trading_sentiment in {Bullish, Bearish, Neutral}
+    - normalized_label in {POSITIVE, NEGATIVE, NEUTRAL, UNKNOWN}
+    """
+    label_norm = str(label).strip().upper() if label is not None else "UNKNOWN"
+    conf = float(confidence or 0.0)
+
+    if conf < neutral_threshold or label_norm == "NEUTRAL":
+        return 0.0, "Neutral", "NEUTRAL" if label_norm != "UNKNOWN" else "UNKNOWN"
+
+    if label_norm == "POSITIVE":
+        return conf, "Bullish", "POSITIVE"
+
+    if label_norm == "NEGATIVE":
+        return -conf, "Bearish", "NEGATIVE"
+
+    return 0.0, "Neutral", "UNKNOWN"
+
+
 def analyze_sentiment(text: str) -> Dict[str, any]:
     """
     Analyze the sentiment of text using a pre-trained model.
@@ -161,33 +183,32 @@ def analyze_sentiment(text: str) -> Dict[str, any]:
         # Get sentiment
         result = sentiment_pipeline(text)[0]
         
-        # Map to trading sentiment
-        label = result['label']
-        score = result['score']
-        
-        # Convert to bullish/bearish/neutral
-        # Score > 0.5 means confident in the label
-        if label == 'POSITIVE' and score > 0.5:
-            trading_sentiment = 'Bullish'
-        elif label == 'NEGATIVE' and score > 0.5:
-            trading_sentiment = 'Bearish'
-        else:
-            # Low confidence, mark as neutral
-            trading_sentiment = 'Neutral'
+        label = result.get('label')
+        confidence = float(result.get('score', 0.0))
 
-        logger.debug(f"😊 Sentiment analysis: '{text[:50]}...' -> {label}:{score:.3f} -> {trading_sentiment}")
+        signed_score, trading_sentiment, label_norm = score_finbert_output(
+            label=label,
+            confidence=confidence,
+            neutral_threshold=0.55,
+        )
+
+        logger.debug(
+            f"😊 Sentiment analysis: '{text[:50]}...' -> {label}:{confidence:.3f} -> {trading_sentiment} (signed={signed_score:.3f})"
+        )
 
         return {
-            'label': label,
-            'score': score,
-            'sentiment': trading_sentiment
+            'label': label_norm,
+            'confidence': confidence,
+            'score': signed_score,
+            'sentiment': trading_sentiment,
         }
         
     except Exception as e:
         # Return neutral sentiment on error
         return {
             'label': 'UNKNOWN',
-            'score': 0.5,
+            'confidence': 0.0,
+            'score': 0.0,
             'sentiment': 'Neutral',
             'error': str(e)
         }

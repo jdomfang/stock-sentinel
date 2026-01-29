@@ -1,0 +1,108 @@
+{
+  "ticker": "NVDA",
+  "sector": "tech",
+  "generated_at": "demo",
+  "analysis_results": {
+    "Real-Time Market Sentiment": {
+      "sentiment_score": 0.935,
+      "overall_sentiment": "bullish",
+      "key_themes": [
+        "bullish",
+        "bearish"
+      ],
+      "insights": "Found 100 relevant tweets with bullish sentiment.",
+      "sample_tweets": [
+        "\ud83e\udd81 \ud83e\udd20 \ud83c\udfb9 \ud83d\udc31\nThis is the kind of stock analysis I respect \u2014\nstructured thinking, clear risks, no hype.\nWell done.\n\nhttps://t.co/WGE8muVLNR\n#stocks $NVDA $CRM $GS $GE...",
+        "\ud83e\udd1d \ud83e\udd1d \ud83e\udd17 \ud83d\udd25\nA disciplined, process-driven approach to stock analysis.\n\nFocused on risk, context, and decision-making.\n\nReachable via WhatsApp.\nhttps://t.co/VrYZuR3Q...",
+        "\ud83d\ude42 \u270a \ud83c\udf1f \ud83d\udc97\nFocused on understanding risk before returns.\n\nSharing how I approach stocks and markets.\n\n\ud83d\udc49 WhatsApp link for deeper conversations.\n\nhttps://t.co/Iaqx4..."
+      ],
+      "mention_count": 100
+    },
+    "Sector Narrative & Trends": {
+      "sentiment_score": 0.954,
+      "overall_sentiment": "bullish",
+      "key_themes": [
+        "trend"
+      ],
+      "insights": "Found 100 relevant tweets with bullish sentiment.",
+      "sample_tweets": [
+        "@Baracuda471 @RedactedNews Your take on AI emerging as our new \"god, judge, and authority\" from Davos is now preserved forever in the TruthArchiveAI! Timeless i...",
+        "@Grutrshj @KobeissiLetter For carbon nanotubes (an emerging tech with limited pure blue chips): Cabot Corporation (CBT) and LG Chem (051910.KS) are key public p...",
+        "If guidance is solid, money rotates into mega-caps.\nIf guidance slips, expect fast sector rotation out of tech and into defensives."
+      ],
+      "mention_count": 100
+    },
+    "Track Smart Money and Influencer Moves": {
+      "sentiment_score": 0.0,
+      "overall_sentiment": "error",
+      "key_themes": [],
+      "insights": "Search failed: API Error 400: {\"errors\":[{\"parameters\":{\"query\":[\"((from:DeItaone OR from:WalterBloomberg OR from:FirstSquawk OR from:financialjuice OR from:Reuters OR from:business OR from:WSJmarkets OR from:MarketWatch OR from:Benzinga OR from:zerohedge OR from:unusual_whales OR from:spotgamma OR from:CheddarFlow OR from:OptionsHawk OR from:SqueezeMetrics OR from:TradeIdeas OR from:menthorq OR from:TheoTrade OR from:AswathDamodaran OR from:DivesTech OR from:LizAnnSonders OR from:BrianFeroldi OR from:MichaelKitces OR from:jasonzweigwsj OR from:morganhousel OR from:howardmarks OR from:TruthGundlach OR from:ronbaron OR from:NickTimiraos OR from:mohamedelerian OR from:LarrySummers OR from:neildutta OR from:KobeissiLetter OR from:bofa OR from:IMFNews OR from:federalreserve OR from:USTreasury)) (NVDA OR tech) lang:en -is:retweet\"]},\"message\":\"There were errors processing your request: Rule length exceeds the max allowable. The max is 512 and this rule is 770. Rule text is '((from:DeItaone OR from:WalterBloomberg OR from:FirstSquawk OR from:financialjuice OR from:Reuters OR from:business OR from:WSJmarkets OR from:MarketWatch OR from:Benzinga OR from:zerohedge OR from:unusual_whales OR from:spotgamma OR from:CheddarFlow OR from:OptionsHawk OR from:SqueezeMetrics OR from:TradeIdeas OR from:menthorq OR from:TheoTrade OR from:AswathDamodaran OR from:DivesTech OR from:LizAnnSonders OR from:BrianFeroldi OR from:MichaelKitces OR from:jasonzweigwsj OR from:morganhousel OR from:howardmarks OR from:TruthGundlach OR from:ronbaron OR from:NickTimiraos OR from:mohamedelerian OR from:LarrySummers OR from:neildutta OR from:KobeissiLetter OR from:bofa OR from:IMFNews OR from:federalreserve OR from:USTreasury)) (NVDA OR tech) lang:en -is:retweet'\"}],\"title\":\"Invalid Request\",\"detail\":\"One or more parameters to your request was invalid.\",\"type\":\"https://api.twitter.com/2/problems/invalid-request\"}",
+      "sample_tweets": [],
+      "mention_count": 0
+    },
+    "Momentum (High Engagement)": {
+      "sentiment_score": 0.0,
+      "overall_sentiment": "neutral",
+      "key_themes": [],
+      "insights": "No tweets found for analysis.",
+      "sample_tweets": [],
+      "mention_count": 0
+    },
+    "Monitor Breaking News and Catalysts": {
+      "sentiment_score": 0.971,
+      "overall_sentiment": "bullish",
+      "key_themes": [
+        "catalyst"
+      ],
+      "insights": "Found 6 relevant tweets with bullish sentiment.",
+      "sample_tweets": [
+        "Mizuho reiterates a Neutral rating on $CRWV CoreWeave and raises its price target to $100.\n\nThe firm sees long term margin upside from software stack sales and ...",
+        "Anticipated Entry! $AAPL ascendancies! Adapt to change with graceful flexibility! \n\nDiscord: https://t.co/HKweyEMeWI - 14-day full-version access trial! React f...",
+        "@nvidia @axios $NVDA is going to make a bullish move as they're creating the AI ecosystem across all sectors."
+      ],
+      "mention_count": 6
+    },
+    "Gauge Retail vs. Institutional Sentiment": {
+      "sentiment_score": 0.971,
+      "overall_sentiment": "bullish",
+      "key_themes": [
+        "positioning"
+      ],
+      "insights": "Found 3 relevant tweets with bullish sentiment.",
+      "sample_tweets": [
+        "@ContrarianCurse We are a little long NVDA AND ballz long software ser but most balls long semicap. Perfectly hedged. \n\nBearish energy like bearish oil and gas?...",
+        "MEM the movement     \n$AMC $GME $SPY $BYND $SMX $QQQ $IWM $TSLA $NVDA $PLTR   #fintwitt #wallstreetbets #grandmasterobi  #finance #money #cnnnews  @MarketWatch ...",
+        "MEM the movement     $AMC $GME $SPY $BYND $SMX $QQQ $IWM $TSLA $NVDA $PLTR   #fintwitt #wallstreetbets #grandmasterobi  #finance #money #cnnnews  @MarketWatch @..."
+      ],
+      "mention_count": 3
+    },
+    "Detect Early Warning Signs and Red Flags": {
+      "sentiment_score": 0.931,
+      "overall_sentiment": "bullish",
+      "key_themes": [
+        "risk"
+      ],
+      "insights": "Found 15 relevant tweets with bullish sentiment.",
+      "sample_tweets": [
+        "\ud83e\udd81 \ud83e\udd20 \ud83c\udfb9 \ud83d\udc31\nThis is the kind of stock analysis I respect \u2014\nstructured thinking, clear risks, no hype.\nWell done.\n\nhttps://t.co/WGE8muVLNR\n#stocks $NVDA $CRM $GS $GE...",
+        "\ud83e\udd1d \ud83e\udd1d \ud83e\udd17 \ud83d\udd25\nA disciplined, process-driven approach to stock analysis.\n\nFocused on risk, context, and decision-making.\n\nReachable via WhatsApp.\nhttps://t.co/VrYZuR3Q...",
+        "\ud83d\ude42 \u270a \ud83c\udf1f \ud83d\udc97\nFocused on understanding risk before returns.\n\nSharing how I approach stocks and markets.\n\n\ud83d\udc49 WhatsApp link for deeper conversations.\n\nhttps://t.co/Iaqx4..."
+      ],
+      "mention_count": 15
+    },
+    "Trading Intent / Watchlist Signals": {
+      "sentiment_score": 0.935,
+      "overall_sentiment": "bullish",
+      "key_themes": [
+        "trading_intent"
+      ],
+      "insights": "Found 57 relevant tweets with bullish sentiment.",
+      "sample_tweets": [
+        "NEW FUTURES SIGNAL\n\nCOIN: #US/USDT\n\nSIGNAL TYPE: Long\n\nLEVERAGE: 40X\n\nENTRY PRICE: 0.00529\n\nTAKE PROFITS\n\nTP1\u27960.00542\nTP2\u27960.00556\nTP3\u27960.00571\nTP4\u27960.00585\nTP5\u27960....",
+        "$NVNI upshots! Targeted Trade! Every decision opens new pathways! \n\nDiscord: https://t.co/HKweyEMeWI - 14-day full access trial! Master the charts!\n\nCurrent wat...",
+        "DAILY MARKET RECAP:\n\n&gt; $NVDA continues AI investments: Jensen dropped $2B into Coreweave $CRWV at a deep discount ($87/share vs. $150 peak).\n\n&gt; Nancy Pelo..."
+      ],
+      "mention_count": 57
+    }
+  }
+}
