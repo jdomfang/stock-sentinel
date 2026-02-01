@@ -8,6 +8,7 @@ from typing import Any
 import stripe
 from fastapi import FastAPI, Header, HTTPException, Request
 from fastapi.responses import JSONResponse
+from postgrest.exceptions import APIError
 
 logger = logging.getLogger("payments_api")
 logging.basicConfig(level=logging.INFO)
@@ -45,6 +46,60 @@ def _supabase_admin_client():
     from supabase import create_client
 
     return create_client(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY)
+
+
+def _mark_stripe_event_processed(*, event_id: str, user_id: str | None = None, session_id: str | None = None) -> bool:
+    """Idempotency guard.
+
+    Returns True if this is the first time we see the event.
+    Returns False if it was already processed.
+
+    Requires Supabase SQL table `stripe_events_processed`.
+    """
+    sb = _supabase_admin_client()
+    try:
+        sb.table("stripe_events_processed").insert(
+            {"event_id": event_id, "user_id": user_id, "checkout_session_id": session_id}
+        ).execute()
+        return True
+    except APIError as e:
+        # PostgREST returns 409 on unique violation
+        if getattr(e, "code", None) in {"23505"} or "duplicate" in str(e).lower() or "already exists" in str(e).lower():
+            return False
+        raise
+    except Exception as e:
+        # Some client versions wrap the APIError.
+        if "duplicate" in str(e).lower() or "23505" in str(e):
+            return False
+        raise
+
+
+def _record_purchase(
+    *,
+    user_id: str,
+    event_id: str,
+    checkout_session_id: str | None,
+    payment_intent_id: str | None,
+    amount_total: int | None,
+    currency: str | None,
+    status: str | None,
+) -> None:
+    """Best-effort purchase audit record."""
+    try:
+        sb = _supabase_admin_client()
+        sb.table("purchases").insert(
+            {
+                "user_id": user_id,
+                "event_id": event_id,
+                "checkout_session_id": checkout_session_id,
+                "payment_intent_id": payment_intent_id,
+                "amount_total": amount_total,
+                "currency": currency,
+                "status": status,
+            }
+        ).execute()
+    except Exception:
+        logger.info("purchases insert skipped/failed (non-fatal)")
 
 
 def _require_shared_secret(x_payments_shared_secret: str | None) -> None:
@@ -153,14 +208,31 @@ async def stripe_webhook(request: Request):
     # Default: acknowledge (Stripe retries on non-2xx)
     try:
         if etype == "checkout.session.completed":
+            event_id = event.get("id")
             session = event["data"]["object"]
+            session_id = session.get("id")
             meta = session.get("metadata") or {}
             user_id = meta.get("user_id")
             scan_delta = int(meta.get("scan_credits") or 1)
             deep_delta = int(meta.get("deep_credits") or 1)
 
+            if not event_id:
+                logger.info("Stripe event missing id; skipping idempotency guard")
+            elif not _mark_stripe_event_processed(event_id=event_id, user_id=user_id, session_id=session_id):
+                logger.info("Duplicate Stripe event ignored event_id=%s type=%s", event_id, etype)
+                return {"ok": True}
+
             if user_id:
                 _apply_credit_delta(user_id=user_id, scan_delta=scan_delta, deep_delta=deep_delta, reason=etype)
+                _record_purchase(
+                    user_id=user_id,
+                    event_id=event_id or "",
+                    checkout_session_id=session_id,
+                    payment_intent_id=session.get("payment_intent"),
+                    amount_total=session.get("amount_total"),
+                    currency=session.get("currency"),
+                    status=session.get("payment_status") or session.get("status"),
+                )
 
         elif etype in {"charge.refunded", "charge.dispute.created"}:
             # Revoke credits on refund/dispute.
