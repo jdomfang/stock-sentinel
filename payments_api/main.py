@@ -2,11 +2,15 @@ from __future__ import annotations
 
 import json
 import os
+import logging
 from typing import Any
 
 import stripe
 from fastapi import FastAPI, Header, HTTPException, Request
-from fastapi.responses import JSONResponse, RedirectResponse
+from fastapi.responses import JSONResponse
+
+logger = logging.getLogger("payments_api")
+logging.basicConfig(level=logging.INFO)
 
 
 # -------- Config --------
@@ -116,7 +120,9 @@ async def create_checkout_session(
             payment_intent_data={"metadata": pack_meta},
         )
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Failed to create checkout session") from e
+        # Log full error server-side, but keep client response generic.
+        logger.exception("Failed to create Stripe Checkout Session")
+        raise HTTPException(status_code=500, detail="Failed to create checkout session") from e
 
     return {"checkout_url": session.url, "id": session.id}
 
