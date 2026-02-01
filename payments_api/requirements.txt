@@ -1,2 +1,4 @@
 fastapi==0.115.8
 uvicorn[standard]==0.30.6
+stripe==10.12.0
+supabase==2.12.0
