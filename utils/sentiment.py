@@ -5,7 +5,6 @@ Sentiment analysis module.
 import re
 from typing import List, Dict
 import streamlit as st
-from transformers import pipeline
 import logging
 
 # Set up logging
@@ -75,14 +74,23 @@ EXCLUDED_WORDS = {
 
 @st.cache_resource
 def load_sentiment_pipeline():
+    """Load and cache the sentiment analysis pipeline.
+
+    NOTE: We import transformers lazily here so the app can boot even if
+    transformers/torch cannot be installed on a given platform.
     """
-    Load and cache the sentiment analysis pipeline.
-    Using a lightweight model for better performance.
-    """
+    try:
+        from transformers import pipeline  # type: ignore
+    except Exception as e:
+        raise RuntimeError(
+            "Sentiment model dependencies are not available in this environment. "
+            "Please ensure 'transformers' and 'torch' are installed."
+        ) from e
+
     return pipeline(
         "sentiment-analysis",
         model="ProsusAI/finbert",
-        device=-1  # Use CPU
+        device=-1,  # Use CPU
     )
 
 
