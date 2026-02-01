@@ -8,7 +8,6 @@ from typing import Any
 import stripe
 from fastapi import FastAPI, Header, HTTPException, Request
 from fastapi.responses import JSONResponse
-from postgrest.exceptions import APIError
 
 logger = logging.getLogger("payments_api")
 logging.basicConfig(level=logging.INFO)
@@ -62,14 +61,10 @@ def _mark_stripe_event_processed(*, event_id: str, user_id: str | None = None, s
             {"event_id": event_id, "user_id": user_id, "checkout_session_id": session_id}
         ).execute()
         return True
-    except APIError as e:
-        # PostgREST returns 409 on unique violation
-        if getattr(e, "code", None) in {"23505"} or "duplicate" in str(e).lower() or "already exists" in str(e).lower():
-            return False
-        raise
     except Exception as e:
-        # Some client versions wrap the APIError.
-        if "duplicate" in str(e).lower() or "23505" in str(e):
+        # Supabase/PostgREST client errors differ by version; detect unique violation defensively.
+        msg = str(e).lower()
+        if "duplicate" in msg or "23505" in msg or "unique" in msg:
             return False
         raise
 
