@@ -162,16 +162,18 @@ def search_x_tweets(query: str, max_results: int = 100, timeframe: str = "24h") 
                 "meta": data.get("meta", {}) or {},
             }
 
+        # Never leak raw provider response text to the UI.
         return {
             "success": False,
-            "error": f"API Error {response.status_code}: {response.text}",
+            "error": f"API Error {response.status_code}",
             "tweets": [],
         }
 
-    except Exception as e:
+    except Exception:
+        # Keep internal error generic; full trace should be logged by callers.
         return {
             "success": False,
-            "error": str(e),
+            "error": "Request failed",
             "tweets": [],
         }
 
@@ -604,19 +606,56 @@ def generate_ai_summary(analysis_results: Dict[str, Dict]) -> Dict[str, Any]:
     else:
         confidence = "Low"
 
-    rationale = [
-        f"{bullish_count}/8 analyses bullish; weighted sentiment {avg_sentiment:.2f}.",
-        f"Total mentions analyzed: {total_mentions}.",
-    ]
-
+    # Build comprehensive rationale with critical insights
+    rationale = []
+    
+    # 1. Consensus breakdown
+    consensus_text = f"{bullish_count} bullish, {bearish_count} bearish, {neutral_count} neutral"
+    if bullish_count + bearish_count == 0:
+        consensus_level = "No clear consensus"
+    elif max(bullish_count, bearish_count) == 0:
+        consensus_level = "Neutral consensus"
+    elif max(bullish_count, bearish_count) / max(bullish_count + bearish_count, 1) >= 0.67:
+        consensus_level = "Strong consensus"
+    else:
+        consensus_level = "Mixed signals"
+    
+    rationale.append(f"{consensus_text} ({consensus_level})")
+    
+    # 2. Sentiment strength
+    if abs(avg_sentiment) >= 0.3:
+        sentiment_level = "Strong"
+    elif abs(avg_sentiment) >= 0.15:
+        sentiment_level = "Moderate"
+    else:
+        sentiment_level = "Weak"
+    
+    rationale.append(f"Sentiment: {sentiment_level} {'bullish' if avg_sentiment > 0 else 'bearish' if avg_sentiment < 0 else 'neutral'} ({avg_sentiment:.3f})")
+    
+    # 3. Evidence quality
+    if total_mentions >= 50:
+        evidence_text = f"Strong evidence base ({total_mentions} unique mentions)"
+    elif total_mentions >= 20:
+        evidence_text = f"Moderate evidence ({total_mentions} unique mentions)"
+    else:
+        evidence_text = f"Limited evidence ({total_mentions} mentions)"
+    
+    rationale.append(evidence_text)
+    
+    # 4. Red flags
     if red_flag_mentions > 0:
-        if red_flag_sentiment < -0.1:
-            rationale.append("Red-flag channel shows elevated risk signals.")
+        if red_flag_sentiment < -0.2:
+            rationale.append("⚠️ Strong risk signals detected - caution advised")
+        elif red_flag_sentiment < -0.05:
+            rationale.append("⚠️ Moderate risk signals present")
         else:
-            rationale.append("Red-flag channel does not show strong risk clusters.")
-
+            rationale.append("✓ Red-flag analysis shows limited concerns")
+    
+    # 5. Momentum
     if bullish_count - bearish_count >= 3:
-        rationale.append("Bullish signals outweigh bearish signals across prompts.")
+        rationale.append("✓ Bullish momentum outweighs bearish pressure")
+    elif bearish_count - bullish_count >= 3:
+        rationale.append("✗ Bearish momentum outweighs bullish pressure")
 
     return {
         "recommendation": recommendation,

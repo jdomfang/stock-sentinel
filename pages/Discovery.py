@@ -5,9 +5,10 @@ import json
 import pandas as pd
 from collections import defaultdict
 import logging
-from utils.navigation import render_sidebar_navigation
+from utils.navigation import render_sidebar_navigation, render_top_nav
+from utils.ui import apply_theme, close_page
 from utils.sentiment import extract_tickers, analyze_sentiment
-from utils.finance import get_stock_data, get_ticker_master_list
+from utils.finance import get_ticker_master_list, get_stock_data
 from utils.projections import simple_projection
 from utils.deep_analysis import ANALYSIS_PROMPTS, run_deep_analysis, generate_ai_summary
 
@@ -22,86 +23,31 @@ logger.setLevel(logging.INFO)
 
 # Sidebar navigation
 render_sidebar_navigation()
+render_top_nav()
+apply_theme()
+
+from utils.guard import require_active_account
+from utils.credits import consume_credit
+
+_profile = require_active_account()
 
 st.markdown(
     """
     <style>
-    /* --- Global dark theme (TradingView-lite) --- */
-    :root {
-      --bg: #0B1220;
-      --panel: #0F172A;
-      --panel2: rgba(15, 23, 42, 0.55);
-      --border: rgba(148, 163, 184, 0.18);
-      --text: #E5E7EB;
-      --muted: #94A3B8;
-      --accent: #38BDF8;
-      --good: #22C55E;
-      --bad: #EF4444;
-      --warn: #F59E0B;
-    }
-
-    /* Ensure text stays readable on dark background */
-    h1, h2, h3, h4, h5, h6, p, span, div, label {
-      color: var(--text);
-    }
-    .stCaption, [data-testid="stCaptionContainer"] {
-      color: var(--muted) !important;
-    }
-
-    /* Page background */
-    [data-testid="stAppViewContainer"] {
-      background: radial-gradient(1200px 500px at 20% 0%, rgba(56,189,248,.12), transparent 50%),
-                  radial-gradient(900px 400px at 80% 10%, rgba(34,197,94,.10), transparent 45%),
-                  var(--bg);
-      color: var(--text);
-    }
-
-    /* Streamlit sometimes renders select popovers inside the sidebar layer.
-       Make sidebar visually neutral/dark so dropdown menus remain readable. */
-    section.stSidebar,
-    .stSidebar,
-    [data-testid="stSidebar"] {
-      background-color: #0B1220 !important;
-      background: #0B1220 !important;
-    }
-
-    /* Hide the top-left sidebar toggle / arrow (collapsed control) */
-    [data-testid="collapsedControl"],
-    button[title="Open sidebar"],
-    button[title="Close sidebar"],
-    [data-testid="stSidebarCollapsedControl"],
-    [data-testid="stSidebarNavCollapseButton"],
-    [data-testid="stSidebarNavExpandButton"] {
-      display: none !important;
-    }
-
-    /* If Streamlit portals the dropdown into the sidebar, force its surfaces dark */
-    .stSidebar ul,
-    .stSidebar [role="list"],
-    .stSidebar [role="listbox"],
-    .stSidebar [data-baseweb="menu"],
-    [data-testid="stSidebar"] ul,
-    [data-testid="stSidebar"] [role="list"],
-    [data-testid="stSidebar"] [role="listbox"],
-    [data-testid="stSidebar"] [data-baseweb="menu"] {
-      background-color: #0F172A !important;
-      color: #E5E7EB !important;
-    }
-
-    .stSidebar li,
-    .stSidebar li *,
-    [data-testid="stSidebar"] li,
-    [data-testid="stSidebar"] li * {
-      color: #E5E7EB !important;
-      opacity: 1 !important;
-    }
+    /* Discovery page styling; global theme comes from utils.ui.apply_theme() */
 
     /* Main container spacing */
     div[data-testid="stMainBlockContainer"] {
       max-width: 100%;
       padding-left: 2rem;
       padding-right: 2rem;
-      padding-top: 0.75rem;
+      padding-top: 0rem;
+    }
+
+    /* Remove extra top whitespace so hero sits closer to the sticky top nav */
+    div[data-testid="stMainBlockContainer"] > div:first-child {
+      margin-top: 0 !important;
+      padding-top: 0 !important;
     }
 
     .discovery-wrapper {
@@ -127,8 +73,8 @@ st.markdown(
 
     /* Hero (no box) */
     .hero {
-      margin: 4px 0 16px 0;
-      padding: 6px 2px 2px 2px;
+      margin: -22px 0 5px 0;
+      padding: 0;
     }
     .hero-eyebrow {
       color: rgba(56,189,248,.95);
@@ -462,23 +408,13 @@ components.html(
     height=0,
 )
 
-st.markdown('<div class="discovery-wrapper">', unsafe_allow_html=True)
+st.markdown('<div class="clawd-app-wrapper discovery-wrapper">', unsafe_allow_html=True)
 
 st.markdown(
     """
     <div class="hero">
       <div class="hero-eyebrow">Stock Sentinel</div>
       <div class="hero-title">Finding short‑term opportunities shouldn’t feel like a full‑time job.</div>
-      <div class="hero-subtitle">We turn noise into signals by analyzing <b>social media sentiment</b> and using <b>AI‑driven market data analysis</b> to validate real momentum.</div>
-
-      <div class="hero-chips">
-        <span class="chip"><b>Signal:</b> Buy / Watch / Avoid</span>
-        <span class="chip"><b>Projected gain:</b> Estimated range</span>
-        <span class="chip"><b>Volatility:</b> Risk level</span>
-        <span class="chip"><b>Suggested hold:</b> Days to hold</span>
-      </div>
-
-      <div class="hero-caveat">AI‑driven guidance, not guarantees — markets are unpredictable. Always manage risk.</div>
     </div>
     """,
     unsafe_allow_html=True,
@@ -516,7 +452,7 @@ with _main:
           background: rgba(15, 23, 42, 0.35);
         ">
           <span style="font-weight: 750; color: rgba(229, 231, 235, 1);">Pick a sector</span>
-          <span> and we turn real‑time market buzz into ranked ticker signals—fast.</span>
+          <span> and we identify <b>US stocks</b> gaining unusual attention in your selected sector—fast.</span>
         </div>
         """,
         unsafe_allow_html=True,
@@ -562,6 +498,11 @@ with _main:
 
 # Scan button
 if scan_clicked:
+    ok, err = consume_credit("scan")
+    if not ok:
+        st.error(err)
+        st.stop()
+
     try:
         # Load X Bearer Token from secrets
         x_bearer_token = st.secrets["X_BEARER_TOKEN"]
@@ -711,10 +652,6 @@ if scan_clicked:
                             # Add placeholder columns
                             df['Valid'] = False
                             df['Company Name'] = 'N/A'
-                            df['Volatility (%)'] = 'N/A'
-                            df['Projected Gain (%)'] = 'N/A'
-                            df['Current Price ($)'] = 'N/A'
-                            df['Suggested Hold (days)'] = 'N/A'
 
                             validated_count = 0
                             validation_errors = []
@@ -770,47 +707,15 @@ if scan_clicked:
                                             else:
                                                 logger.info(f"✅ {ticker}: VALID - {ticker_info.get('name', ticker)} (sector: {mapped_sector})")
 
-                                            # Now make API call only for price data (the expensive part)
-                                            logger.info(f"💰 Fetching financial data for {ticker}...")
-                                            stock_data = get_stock_data(ticker)
-
-                                            if stock_data['error'] is None and stock_data['prices']:
-                                                # Update volatility and current price (show partial data even if projections fail)
-                                                df.at[idx, 'Volatility (%)'] = stock_data['volatility']
-                                                # Extract the most recent closing price
-                                                current_price = stock_data['prices'][-1] if stock_data['prices'] else 'N/A'
-                                                df.at[idx, 'Current Price ($)'] = f"{current_price:.2f}" if isinstance(current_price, (int, float)) else 'N/A'
-                                                logger.info(f"📈 {ticker}: Volatility calculated - {stock_data['volatility']:.2f}% from {len(stock_data['prices'])} price points, current price: ${current_price:.2f}")
-
-                                                # Try to run projection
-                                                avg_sentiment_score = row['Avg Sentiment Score']
-                                                logger.info(f"🔮 Running projection for {ticker} (sentiment: {avg_sentiment_score:.3f})...")
-                                                try:
-                                                    projection = simple_projection(
-                                                        stock_data['prices'],
-                                                        avg_sentiment_score,
-                                                        days=30
-                                                    )
-
-                                                    if projection['error'] is None:
-                                                        df.at[idx, 'Projected Gain (%)'] = projection['avg_gain']
-                                                        df.at[idx, 'Suggested Hold (days)'] = projection['suggested_hold_days']
-                                                        logger.info(f"🎯 {ticker}: Projection complete - {projection['avg_gain']:.1f}% gain, hold {projection['suggested_hold_days']} days")
-                                                    else:
-                                                        # Partial data: we have volatility but projections failed
-                                                        validation_errors.append(f"{ticker}: Projection failed - {projection.get('error', 'Unknown')}")
-                                                        logger.warning(f"⚠️ {ticker}: Projection failed - {projection.get('error', 'Unknown')}")
-                                                except Exception as proj_error:
-                                                    # Keep the ticker valid but note projection issue
-                                                    validation_errors.append(f"{ticker}: Projection error - {str(proj_error)[:50]}")
-                                                    logger.warning(f"⚠️ {ticker}: Projection error - {str(proj_error)[:50]}")
+                                            # Price will be shown in Deep Analyze instead
+                                            pass
                         # Filter to show only validated tickers (with financial data)
                         df_valid = df[df['Valid'] == True].copy()
                         df_valid = df_valid.drop(columns=['Valid'])
 
                         # Also show unvalidated tickers separately
                         df_unvalidated = df[df['Valid'] == False].copy()
-                        df_unvalidated = df_unvalidated.drop(columns=['Valid', 'Company Name', 'Volatility (%)', 'Projected Gain (%)', 'Current Price ($)', 'Suggested Hold (days)'])
+                        df_unvalidated = df_unvalidated.drop(columns=['Valid', 'Company Name'])
 
                         st.session_state.df_valid = df_valid
                         st.session_state.df_unvalidated = df_unvalidated
@@ -865,18 +770,20 @@ if scan_clicked:
 
         else:
             # Other errors
-            st.error(f"❌ API Error ({response.status_code}): {response.text}")
+            # Hide raw provider errors from users
+            st.error("Something went wrong. Please try again later.")
 
     except KeyError:
         st.error("❌ Missing X_BEARER_TOKEN in .streamlit/secrets.toml")
         st.info("Please add your X Bearer Token to the secrets file.")
 
-    except requests.exceptions.RequestException as e:
-        st.error(f"❌ Network Error: {str(e)}")
+    except requests.exceptions.RequestException:
+        st.error("Something went wrong. Please try again later.")
         st.info("Please check your internet connection and try again.")
 
-    except Exception as e:
-        st.error(f"❌ Unexpected Error: {str(e)}")
+    except Exception:
+        logger.exception("Discovery scan failed")
+        st.error("Something went wrong. Please try again later.")
 
 # --- Admin-only: Save demo snapshots for Home (local only; no API calls) ---
 # These buttons save the *current* results to data/education/ so Home can show
@@ -896,8 +803,7 @@ if ADMIN_MODE:
                     out_dir = Path(__file__).resolve().parents[1] / "data" / "education"
                     out_dir.mkdir(parents=True, exist_ok=True)
 
-                    df_out = st.session_state.df_valid.drop(columns=["Valid"], errors="ignore")
-                    df_out = df_out.drop(columns=["Mentions", "Sample Tweets"], errors="ignore")
+                    df_out = st.session_state.df_valid.drop(columns=["Valid", "Mentions", "Sample Tweets"], errors="ignore")
 
                     payload = {
                         "sector": st.session_state.get("selected_sector") or "",
@@ -906,8 +812,8 @@ if ADMIN_MODE:
                     }
                     (out_dir / "scan_latest.json").write_text(json.dumps(payload, indent=2), encoding="utf-8")
                     st.success("Saved: data/education/scan_latest.json")
-                except Exception as e:
-                    st.error(f"Failed to save scan snapshot: {e}")
+                except Exception:
+                    st.error("Something went wrong. Please try again later.")
         else:
             st.caption("Run a scan to enable saving scan snapshot.")
 
@@ -929,8 +835,8 @@ if ADMIN_MODE:
                     }
                     (out_dir / "deep_latest.json").write_text(json.dumps(payload, indent=2), encoding="utf-8")
                     st.success("Saved: data/education/deep_latest.json")
-                except Exception as e:
-                    st.error(f"Failed to save deep snapshot: {e}")
+                except Exception:
+                    st.error("Something went wrong. Please try again later.")
         else:
             st.caption("Run Deep Analyze to enable saving deep snapshot.")
 
@@ -943,14 +849,12 @@ if st.session_state.df_valid is not None:
         total_valid = int(len(dfv)) if dfv is not None else 0
         total_other = int(len(dfn)) if dfn is not None else 0
         total_unique = total_valid + total_other
-        tweets_analyzed = int(dfv["Mentions"].sum()) if (dfv is not None and "Mentions" in dfv.columns) else 0
         avg_sent = float(dfv["Avg Sentiment Score"].mean()) if (dfv is not None and "Avg Sentiment Score" in dfv.columns and len(dfv) > 0) else 0.0
 
-        k1, k2, k3, k4 = st.columns(4)
-        k1.metric("Tweets analyzed", tweets_analyzed)
-        k2.metric("Unique tickers", total_unique)
-        k3.metric("Validated", total_valid)
-        k4.metric("Avg sentiment", f"{avg_sent:.3f}")
+        k1, k2, k3 = st.columns(3)
+        k1.metric("Validated stocks", total_valid)
+        k2.metric("Other mentions", total_other)
+        k3.metric("Avg sentiment", f"{avg_sent:.3f}")
         st.markdown("", unsafe_allow_html=True)
     except Exception:
         # Never let UI extras break the page
@@ -960,17 +864,13 @@ if st.session_state.df_valid is not None:
     df_valid_display = st.session_state.df_valid.drop(columns=["Mentions", "Sample Tweets"], errors="ignore")
 
     if len(df_valid_display) > 0:
-        st.subheader("✅ Validated Stocks with Financial Data")
-        header_cols = st.columns([1.1, 1.6, 1.2, 1.1, 1.1, 1.1, 1.2, 1.0, 1.0])
+        st.subheader("✅ Stocks Found with Market Sentiment")
+        header_cols = st.columns([0.9, 1.5, 1.1, 0.95, 0.9])
         header_labels = [
             "Ticker",
             "Company",
             "Avg Sentiment",
             "Overall",
-            "Volatility",
-            "Projected Gain",
-            "Current Price",
-            "Hold (days)",
             "Deep Analyze"
         ]
         for col, label in zip(header_cols, header_labels):
@@ -981,14 +881,10 @@ if st.session_state.df_valid is not None:
             company_name = row["Company Name"]
             sentiment_score = row["Avg Sentiment Score"]
             overall_sentiment = row["Overall Sentiment"]
-            volatility = row["Volatility (%)"]
-            projected_gain = row["Projected Gain (%)"]
-            current_price = row["Current Price ($)"]
-            hold_days = row["Suggested Hold (days)"]
 
             st.markdown("<div class='ticker-row'>", unsafe_allow_html=True)
-            col1, col2, col3, col4, col5, col6, col7, col8, col9 = st.columns(
-                [1.1, 1.6, 1.2, 1.1, 1.1, 1.1, 1.2, 1.0, 1.0]
+            col1, col2, col3, col4, col5 = st.columns(
+                [0.9, 1.5, 1.1, 0.95, 0.9]
             )
             with col1:
                 st.markdown(f"**{ticker_symbol}**")
@@ -999,14 +895,6 @@ if st.session_state.df_valid is not None:
             with col4:
                 st.markdown(overall_sentiment)
             with col5:
-                st.markdown(volatility)
-            with col6:
-                st.markdown(projected_gain)
-            with col7:
-                st.markdown(current_price)
-            with col8:
-                st.markdown(hold_days)
-            with col9:
                 if st.button("Deep Analyze", key=f"deep_analyze_{ticker_symbol}"):
                     st.session_state.selected_ticker = ticker_symbol
                     with st.spinner(f"Running deep analysis for {ticker_symbol}..."):
@@ -1016,7 +904,7 @@ if st.session_state.df_valid is not None:
                         )
             st.markdown("</div>", unsafe_allow_html=True)
 
-        st.success(f"📊 {len(df_valid_display)} validated stock(s) with complete financial analysis")
+        st.success(f"📊 {len(df_valid_display)} validated stock(s) found. Click 'Deep Analyze' for complete financial insights.")
     else:
         st.warning("⚠️ No valid stock tickers found with financial data.")
 
@@ -1027,6 +915,7 @@ if st.session_state.selected_ticker and st.session_state.deep_analysis_results:
     )
     ai_summary = generate_ai_summary(st.session_state.deep_analysis_results)
 
+    # --- Headline summary (always show a complete block) ---
     col1, col2, col3 = st.columns([1.2, 1, 2])
     with col1:
         st.metric("Recommendation", ai_summary["recommendation"])
@@ -1035,38 +924,142 @@ if st.session_state.selected_ticker and st.session_state.deep_analysis_results:
     with col3:
         st.metric("Weighted Sentiment", f"{ai_summary['avg_sentiment']:.3f}")
 
-    st.markdown("**Rationale:**")
+    # Financial metrics (best-effort; always displayed)
+    ticker = st.session_state.selected_ticker
+    price_display = "Unavailable"
+    price_reason = "Not fetched"
+    proj_display = "Unavailable"
+    proj_reason = "Need price data"
+    hold_display = "Unavailable"
+    hold_reason = "Need projection"
+    price_points = 0
+
+    try:
+        stock_data = get_stock_data(ticker)
+        if stock_data.get("error") is None and stock_data.get("prices"):
+            prices = stock_data.get("prices") or []
+            price_points = len(prices)
+            last_px = prices[-1]
+            if isinstance(last_px, (int, float)):
+                price_display = f"${last_px:.2f}"
+                price_reason = ""
+            else:
+                price_reason = "Invalid price"
+
+            # Projection (uses avg sentiment from AI summary)
+            projection = simple_projection(prices, ai_summary["avg_sentiment"], days=30)
+            if projection.get("error") is None:
+                p10 = projection.get("gain_p10")
+                p90 = projection.get("gain_p90")
+                if p10 is not None and p90 is not None:
+                    proj_display = f"{p10:.1f}–{p90:.1f}%"
+                else:
+                    proj_display = f"{float(projection.get('avg_gain', 0.0)):.1f}%"
+                proj_reason = ""
+
+                hold_display = f"{int(projection.get('suggested_hold_days', 0))} days"
+                hold_reason = ""
+            else:
+                proj_reason = projection.get("error") or "Projection failed"
+                hold_reason = "Projection failed"
+        else:
+            # Hide raw provider errors from users
+            price_reason = "Data unavailable"
+            proj_reason = "Data unavailable"
+            hold_reason = "Data unavailable"
+    except Exception:
+        # Hide raw exception details from users; full trace should be in server logs
+        price_reason = "Data unavailable"
+        proj_reason = "Data unavailable"
+        hold_reason = "Data unavailable"
+
+    f1, f2, f3 = st.columns([1.2, 1, 2])
+    with f1:
+        st.metric("Current Price", price_display)
+        if price_display == "Unavailable":
+            st.caption(f"Reason: {price_reason}")
+    with f2:
+        st.metric("Projected Gain (30d)", proj_display)
+        if proj_display == "Unavailable":
+            st.caption(f"Reason: {proj_reason}")
+    with f3:
+        st.metric("Hold Period", hold_display)
+        if hold_display == "Unavailable":
+            st.caption(f"Reason: {hold_reason}")
+
+    # Data quality line
+    try:
+        _uids = set()
+        for _r in (st.session_state.deep_analysis_results or {}).values():
+            for _tid in (_r.get("tweet_ids") or []):
+                _uids.add(_tid)
+        _mentions_ct = len(_uids)
+    except Exception:
+        _mentions_ct = 0
+
+    st.caption(f"Data quality: {_mentions_ct} mentions • {price_points} price points")
+
+    st.markdown("**📋 Rationale:**")
     for bullet in ai_summary["rationale"]:
         st.markdown(f"- {bullet}")
 
+    # Append a finance bullet to rationale for clarity
+    if price_display != "Unavailable" and proj_display != "Unavailable" and hold_display != "Unavailable":
+        st.markdown(f"- Price {price_display}; projected {proj_display} over 30d; suggested hold {hold_display}.")
+    elif price_display == "Unavailable":
+        st.markdown("- Price/projection unavailable.")
+
     with st.expander("📦 Full Analysis Details", expanded=False):
-        summary_rows = []
-        for prompt_name, result in st.session_state.deep_analysis_results.items():
-            summary_rows.append({
+        # --- Coverage / data-quality table (lean, non-insight) ---
+        coverage_rows = []
+        for prompt_name, result in (st.session_state.deep_analysis_results or {}).items():
+            timeframe = (ANALYSIS_PROMPTS.get(prompt_name, {}) or {}).get("timeframe", "")
+            evidence = int(result.get("mention_count", 0) or 0)
+            overall = (result.get("overall_sentiment") or "").lower()
+
+            # Strength (quantity). Do NOT conflate with bullish/bearish.
+            if overall == "error":
+                strength = "Unavailable"
+            elif evidence == 0:
+                strength = "No Signal"
+            elif evidence <= 5:
+                strength = "Weak"
+            else:
+                strength = "Strong"
+
+            # Tilt (direction)
+            if overall == "error":
+                tilt = "Unavailable"
+            elif evidence == 0:
+                tilt = "Neutral"
+            else:
+                tilt = overall.title() if overall in ("bullish", "bearish", "neutral") else "Neutral"
+
+            coverage_rows.append({
                 "Analysis Type": prompt_name,
-                "Sentiment Score": result["sentiment_score"],
-                "Overall Sentiment": result["overall_sentiment"],
-                "Mentions": result["mention_count"],
-                "Key Themes": ", ".join(result["key_themes"]) if result["key_themes"] else "None",
-                "Catalysts": "Check insights below",
-                "Risks": "Check insights below"
+                "Timeframe": timeframe,
+                "Evidence Count": evidence,
+                "Signal Strength": strength,
+                "Sentiment Tilt": tilt,
             })
 
-        df_summary = pd.DataFrame(summary_rows)
-        st.dataframe(
-            df_summary,
-            column_config={
-                "Analysis Type": st.column_config.TextColumn("Analysis Type", width="medium"),
-                "Sentiment Score": st.column_config.NumberColumn("Sentiment Score", format="%.3f"),
-                "Overall Sentiment": st.column_config.TextColumn("Overall Sentiment", width="small"),
-                "Mentions": st.column_config.NumberColumn("Mentions", width="small"),
-                "Key Themes": st.column_config.TextColumn("Key Themes", width="medium"),
-                "Catalysts": st.column_config.TextColumn("Catalysts", width="medium"),
-                "Risks": st.column_config.TextColumn("Risks", width="medium")
-            },
-            hide_index=True,
-            use_container_width=True
-        )
+        df_cov = pd.DataFrame(coverage_rows)
+
+        if not df_cov.empty:
+            st.dataframe(
+                df_cov,
+                column_config={
+                    "Analysis Type": st.column_config.TextColumn("Analysis Type", width="large"),
+                    "Timeframe": st.column_config.TextColumn("Timeframe", width="small"),
+                    "Evidence Count": st.column_config.NumberColumn("Evidence Count", width="small"),
+                    "Signal Strength": st.column_config.TextColumn("Signal Strength", width="small"),
+                    "Sentiment Tilt": st.column_config.TextColumn("Sentiment Tilt", width="small"),
+                },
+                hide_index=True,
+                use_container_width=True,
+            )
+        else:
+            st.caption("No coverage data available.")
 
         st.subheader("📋 Detailed Analysis")
         for prompt_name, config in ANALYSIS_PROMPTS.items():
@@ -1123,7 +1116,7 @@ if st.session_state.selected_ticker and st.session_state.deep_analysis_results:
 #     st.info("• Price data: Cached for 30 minutes")
 #     st.info("• Only price analysis requires API calls")
 
-st.markdown("</div>", unsafe_allow_html=True)
+close_page()
 
 # Late-injected CSS to override Streamlit's selectbox dropdown (ensures readability on Windows)
 st.markdown(

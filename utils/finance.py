@@ -12,6 +12,7 @@ import time
 import random
 import json
 import os
+from concurrent.futures import ThreadPoolExecutor, as_completed
 
 # Configure logging
 logger = logging.getLogger(__name__)
@@ -574,3 +575,72 @@ def get_stock_data(ticker: str, days: int = 30) -> Dict:
             'volatility': 0.0,
             'error': f"Error: {str(e)[:50]}"
         }
+
+
+def get_stock_data_batch(tickers: List[str], days: int = 30, max_workers: int = 5) -> Dict[str, Dict]:
+    """
+    Fetch stock data for multiple tickers in parallel (much faster than sequential).
+    
+    Uses ThreadPoolExecutor to fetch up to max_workers tickers concurrently.
+    Respects rate limiting and caching for each ticker.
+    
+    Args:
+        tickers: List of ticker symbols to fetch
+        days: Number of days of historical data (default 30)
+        max_workers: Max concurrent requests (default 5, max 10)
+    
+    Returns:
+        Dictionary mapping ticker -> stock data result
+        Example: {'AAPL': {...}, 'TSLA': {...}, ...}
+    """
+    # Limit workers to avoid overwhelming the API
+    max_workers = min(max(1, max_workers), 10)
+    
+    results = {}
+    
+    # Try cache first (very fast)
+    cached_tickers = []
+    uncached_tickers = []
+    
+    for ticker in tickers:
+        cache_key = _get_cache_key(ticker, f'stock_data_{days}')
+        cached_result = _get_cached_result(STOCK_DATA_CACHE, cache_key)
+        if cached_result:
+            results[ticker] = cached_result
+            cached_tickers.append(ticker)
+        else:
+            uncached_tickers.append(ticker)
+    
+    logger.info(f"Batch fetch: {len(cached_tickers)} cached, {len(uncached_tickers)} need API calls")
+    
+    # Fetch uncached tickers in parallel
+    if uncached_tickers:
+        start_time = time.time()
+        
+        with ThreadPoolExecutor(max_workers=max_workers) as executor:
+            # Submit all tasks
+            future_to_ticker = {
+                executor.submit(get_stock_data, ticker, days): ticker 
+                for ticker in uncached_tickers
+            }
+            
+            # Collect results as they complete
+            completed = 0
+            for future in as_completed(future_to_ticker):
+                ticker = future_to_ticker[future]
+                try:
+                    result = future.result()
+                    results[ticker] = result
+                    completed += 1
+                except Exception as e:
+                    logger.error(f"Batch fetch failed for {ticker}: {e}")
+                    results[ticker] = {
+                        'prices': [],
+                        'volatility': 0.0,
+                        'error': f"Batch fetch error: {str(e)[:50]}"
+                    }
+        
+        elapsed = time.time() - start_time
+        logger.info(f"Batch fetched {len(uncached_tickers)} tickers in {elapsed:.1f}s ({len(uncached_tickers)/elapsed:.1f} tickers/sec)")
+    
+    return results

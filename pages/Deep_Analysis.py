@@ -4,8 +4,9 @@ from datetime import datetime, timedelta
 import time
 from typing import Dict, List, Any
 
-from utils.navigation import render_sidebar_navigation
-from utils.finance import get_stock_data, validate_ticker
+from utils.navigation import render_sidebar_navigation, render_top_nav
+from utils.ui import open_page, close_page, GENERIC_ERROR_TEXT, safe_ui
+from utils.finance import get_stock_data
 from utils.projections import simple_projection
 from utils.deep_analysis import ANALYSIS_PROMPTS, run_deep_analysis, generate_ai_summary
 
@@ -13,58 +14,109 @@ from utils.deep_analysis import ANALYSIS_PROMPTS, run_deep_analysis, generate_ai
 st.set_page_config(
     page_title="Deep Analysis - Stock Sentinel",
     page_icon="🔬",
-    layout="wide"
+    layout="wide",
+    initial_sidebar_state="collapsed",
 )
 
 # Sidebar navigation
 render_sidebar_navigation()
+render_top_nav()
 
-st.title("🔬 Deep Analysis")
-st.markdown("Comprehensive X sentiment analysis using Abdul Shakoor methodology")
+from utils.guard import require_active_account
+from utils.credits import consume_credit
 
-# Input section
-st.subheader("Stock Analysis Parameters")
-col1, col2 = st.columns([2, 1])
+_profile = require_active_account()
 
-with col1:
-    ticker = st.text_input("Stock Ticker", "NVDA", help="Enter stock ticker symbol (e.g., NVDA, AAPL, TSLA)")
+open_page(
+    title="Deep Analysis",
+    subtitle="Full breakdown: sentiment, catalysts, risks, and an on-demand projection.",
+)
 
-with col2:
-    sector = st.selectbox(
-        "Sector",
-        [
-            "tech",
-            "healthcare",
-            "energy",
-            "finance",
-            "consumer",
-            "utilities",
-            "real estate",
-            "industrials",
-            "materials",
-            "communication",
-        ],
-        index=0,
-    )
+st.subheader("Stock Analysis")
+
+ticker = st.text_input(
+    "Stock Ticker",
+    "NVDA",
+    help="Enter stock ticker symbol (e.g., NVDA, AAPL, TSLA)",
+)
+
+# Auto-sector: Deep analysis can run without sector input. Default to unknown.
+sector = "unknown"
 
 # Main analysis button
 if st.button("🔬 Run Deep Analysis", type="primary"):
+    ok, err = consume_credit("deep_analyze")
+    if not ok:
+        st.error(err)
+        st.stop()
     if not ticker.strip():
         st.error("Please enter a stock ticker.")
     else:
         with st.spinner("Running deep analysis... This may take a moment."):
-            analysis_results = run_deep_analysis(
-                ticker.upper(),
-                sector,
+            analysis_results = safe_ui(
+                lambda: run_deep_analysis(ticker.upper(), sector),
+                context="deep_analysis.run_deep_analysis",
             )
+            if not analysis_results:
+                st.stop()
 
         # Display results
         st.success("✅ Deep analysis complete!")
 
         # AI-powered summary
         ai_summary = generate_ai_summary(analysis_results)
+        
+        # Fetch financial data for projections (best-effort; always display results or Unavailable)
+        current_price = "Unavailable"
+        current_price_reason = "Not fetched"
+        projected_gain = "Unavailable"
+        projected_gain_reason = "Need price data"
+        hold_days = "Unavailable"
+        hold_days_reason = "Need projection"
+        price_points = 0
+
+        try:
+            stock_data = get_stock_data(ticker.upper())
+            if stock_data.get("error") is None and stock_data.get("prices"):
+                prices = stock_data.get("prices") or []
+                price_points = len(prices)
+                last_px = prices[-1]
+                if isinstance(last_px, (int, float)):
+                    current_price = f"${last_px:.2f}"
+                    current_price_reason = ""
+                else:
+                    current_price_reason = "Invalid price"
+
+                # Calculate projections
+                projection = simple_projection(prices, ai_summary["avg_sentiment"], days=30)
+                if projection.get("error") is None:
+                    p10 = projection.get("gain_p10")
+                    p90 = projection.get("gain_p90")
+                    if p10 is not None and p90 is not None:
+                        projected_gain = f"{p10:.1f}–{p90:.1f}%"
+                    else:
+                        projected_gain = f"{float(projection.get('avg_gain', 0.0)):.1f}%"
+                    projected_gain_reason = ""
+
+                    hold_days = f"{int(projection.get('suggested_hold_days', 0))} days"
+                    hold_days_reason = ""
+                else:
+                    projected_gain_reason = projection.get("error") or "Projection failed"
+                    hold_days_reason = "Projection failed"
+            else:
+                # Hide raw provider errors from users
+                current_price_reason = "Data unavailable"
+                projected_gain_reason = "Data unavailable"
+                hold_days_reason = "Data unavailable"
+        except Exception:
+            # Hide raw exception details from users; full trace should be in server logs
+            current_price_reason = GENERIC_ERROR_TEXT
+            projected_gain_reason = GENERIC_ERROR_TEXT
+            hold_days_reason = GENERIC_ERROR_TEXT
+        
         st.subheader("🧠 AI-Powered Summary")
 
+        # Top row: Recommendation, Confidence, Sentiment
         col1, col2, col3 = st.columns([1.2, 1, 2])
         with col1:
             st.metric("Recommendation", ai_summary["recommendation"])
@@ -72,67 +124,86 @@ if st.button("🔬 Run Deep Analysis", type="primary"):
             st.metric("Confidence", ai_summary["confidence"])
         with col3:
             st.metric("Weighted Sentiment", f"{ai_summary['avg_sentiment']:.3f}")
+        
+        # Bottom row: Financial metrics (always show, with Unavailable reasons)
+        col4, col5, col6 = st.columns([1.2, 1, 2])
+        with col4:
+            st.metric("Current Price", current_price)
+            if current_price == "Unavailable":
+                st.caption(f"Reason: {current_price_reason}")
+        with col5:
+            st.metric("Projected Gain (30d)", projected_gain)
+            if projected_gain == "Unavailable":
+                st.caption(f"Reason: {projected_gain_reason}")
+        with col6:
+            st.metric("Hold Period", hold_days)
+            if hold_days == "Unavailable":
+                st.caption(f"Reason: {hold_days_reason}")
 
-        st.markdown("**Rationale:**")
+        st.caption(f"Data quality: {sum(r.get('mention_count', 0) for r in analysis_results.values())} total mentions • {price_points} price points")
+
+        st.markdown("**📋 Rationale:**")
         for bullet in ai_summary["rationale"]:
             st.markdown(f"- {bullet}")
 
+        if current_price != "Unavailable" and projected_gain != "Unavailable" and hold_days != "Unavailable":
+            st.markdown(f"- Price {current_price}; projected {projected_gain} over 30d; suggested hold {hold_days}.")
+        elif current_price == "Unavailable":
+            st.markdown("- Price/projection unavailable.")
+
         with st.expander("📦 Full Analysis Details", expanded=False):
-            # Summary table
-            st.subheader("📊 Analysis Summary")
+            # Coverage / data-quality table (lean, non-insight)
+            st.subheader("📊 Coverage")
 
-            # Get financial data for projections
-            validation = validate_ticker(ticker.upper())
-            summary_data = []
+            coverage_rows = []
+            for prompt_name, result in (analysis_results or {}).items():
+                timeframe = (ANALYSIS_PROMPTS.get(prompt_name, {}) or {}).get("timeframe", "")
+                evidence = int(result.get("mention_count", 0) or 0)
+                overall = (result.get("overall_sentiment") or "").lower()
 
-            for prompt_name, result in analysis_results.items():
-                row = {
+                # Strength (quantity). Do NOT conflate with bullish/bearish.
+                if overall == "error":
+                    strength = "Unavailable"
+                elif evidence == 0:
+                    strength = "No Signal"
+                elif evidence <= 5:
+                    strength = "Weak"
+                else:
+                    strength = "Strong"
+
+                # Tilt (direction)
+                if overall == "error":
+                    tilt = "Unavailable"
+                elif evidence == 0:
+                    tilt = "Neutral"
+                else:
+                    tilt = overall.title() if overall in ("bullish", "bearish", "neutral") else "Neutral"
+
+                coverage_rows.append({
                     "Analysis Type": prompt_name,
-                    "Sentiment Score": result["sentiment_score"],
-                    "Overall Sentiment": result["overall_sentiment"],
-                    "Mentions": result["mention_count"],
-                    "Tags": ", ".join(result["key_themes"]) if result["key_themes"] else "None",
-                    "Catalysts": "Check insights below",
-                    "Risks": "Check insights below",
-                }
-                summary_data.append(row)
+                    "Timeframe": timeframe,
+                    "Evidence Count": evidence,
+                    "Signal Strength": strength,
+                    "Sentiment Tilt": tilt,
+                })
 
-            # Create summary dataframe
-            df_summary = pd.DataFrame(summary_data)
+            df_cov = pd.DataFrame(coverage_rows)
 
-            # Add financial projections if ticker is valid
-            if validation.get("valid", False):
-                stock_data = get_stock_data(ticker.upper())
-                if stock_data["error"] is None and stock_data["prices"]:
-                    # Calculate average sentiment across all analyses
-                    avg_sentiment = sum(r["sentiment_score"] for r in analysis_results.values()) / len(analysis_results)
-
-                    projection = simple_projection(stock_data["prices"], avg_sentiment, days=30)
-
-                    if projection["error"] is None:
-                        p10 = projection.get("gain_p10")
-                        p90 = projection.get("gain_p90")
-                        if p10 is not None and p90 is not None:
-                            df_summary["Projected Gain (%)"] = f"{p10:.1f}–{p90:.1f}"
-                        else:
-                            df_summary["Projected Gain (%)"] = projection.get("avg_gain", 0.0)
-
-                        df_summary["Suggested Hold (days)"] = projection["suggested_hold_days"]
-
-            st.dataframe(
-                df_summary,
-                column_config={
-                    "Analysis Type": st.column_config.TextColumn("Analysis Type", width="medium"),
-                    "Sentiment Score": st.column_config.NumberColumn("Sentiment Score", format="%.3f"),
-                    "Overall Sentiment": st.column_config.TextColumn("Overall Sentiment", width="small"),
-                    "Mentions": st.column_config.NumberColumn("Mentions", width="small"),
-                    "Tags": st.column_config.TextColumn("Tags", width="medium"),
-                    "Catalysts": st.column_config.TextColumn("Catalysts", width="medium"),
-                    "Risks": st.column_config.TextColumn("Risks", width="medium"),
-                },
-                hide_index=True,
-                use_container_width=True,
-            )
+            if not df_cov.empty:
+                st.dataframe(
+                    df_cov,
+                    column_config={
+                        "Analysis Type": st.column_config.TextColumn("Analysis Type", width="large"),
+                        "Timeframe": st.column_config.TextColumn("Timeframe", width="small"),
+                        "Evidence Count": st.column_config.NumberColumn("Evidence Count", width="small"),
+                        "Signal Strength": st.column_config.TextColumn("Signal Strength", width="small"),
+                        "Sentiment Tilt": st.column_config.TextColumn("Sentiment Tilt", width="small"),
+                    },
+                    hide_index=True,
+                    use_container_width=True,
+                )
+            else:
+                st.caption("No coverage data available.")
 
             # Detailed analysis sections
             st.subheader("📋 Detailed Analysis")
@@ -167,16 +238,4 @@ if st.button("🔬 Run Deep Analysis", type="primary"):
 
                 st.markdown("---")
 
-# Information section
-st.markdown("---")
-st.info(
-    """
-**How Deep Analysis Works:**
-- Runs 4 X searches and derives 8 analysis sections (Abdul Shakoor-inspired lenses)
-- Each analysis focuses on different aspects (sentiment, trends, influencers, momentum, news, retail vs institutional, red flags, strategy)
-- Uses AI sentiment analysis, weighted signal aggregation, and financial data validation
-- Produces a single recommendation (Buy / Watch / Avoid) with rationale for buy-position readiness
-
-**Note:** Analysis is based on recent X discussions and should be combined with fundamental analysis.
-"""
-)
+close_page()

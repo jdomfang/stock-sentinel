@@ -5,7 +5,8 @@ import pandas as pd
 import streamlit as st
 import streamlit.components.v1 as components
 
-from utils.navigation import render_sidebar_navigation
+from utils.navigation import render_sidebar_navigation, render_top_nav
+from utils.ui import apply_theme, close_page
 from utils.deep_analysis import generate_ai_summary
 
 
@@ -79,80 +80,14 @@ st.set_page_config(
 )
 
 render_sidebar_navigation()
+render_top_nav()
+apply_theme()
 
-# --- IDENTICAL theme block from Discovery (keep Home + Discovery visually consistent) ---
+# --- Home-specific styling (global theme comes from utils.ui.apply_theme) ---
 st.markdown(
     """
     <style>
-    /* --- Global dark theme (TradingView-lite) --- */
-    :root {
-      --bg: #0B1220;
-      --panel: #0F172A;
-      --panel2: rgba(15, 23, 42, 0.55);
-      --border: rgba(148, 163, 184, 0.18);
-      --text: #E5E7EB;
-      --muted: #94A3B8;
-      --accent: #38BDF8;
-      --good: #22C55E;
-      --bad: #EF4444;
-      --warn: #F59E0B;
-    }
-
-    /* Ensure text stays readable on dark background */
-    h1, h2, h3, h4, h5, h6, p, span, div, label {
-      color: var(--text);
-    }
-    .stCaption, [data-testid="stCaptionContainer"] {
-      color: var(--muted) !important;
-    }
-
-    /* Page background */
-    [data-testid="stAppViewContainer"] {
-      background: radial-gradient(1200px 500px at 20% 0%, rgba(56,189,248,.12), transparent 50%),
-                  radial-gradient(900px 400px at 80% 10%, rgba(34,197,94,.10), transparent 45%),
-                  var(--bg);
-      color: var(--text);
-    }
-
-    /* Streamlit sometimes renders select popovers inside the sidebar layer.
-       Make sidebar visually neutral/dark so dropdown menus remain readable. */
-    section.stSidebar,
-    .stSidebar,
-    [data-testid="stSidebar"] {
-      background-color: #0B1220 !important;
-      background: #0B1220 !important;
-    }
-
-    /* Hide the top-left sidebar toggle / arrow (collapsed control) */
-    [data-testid="collapsedControl"],
-    button[title="Open sidebar"],
-    button[title="Close sidebar"],
-    [data-testid="stSidebarCollapsedControl"],
-    [data-testid="stSidebarNavCollapseButton"],
-    [data-testid="stSidebarNavExpandButton"] {
-      display: none !important;
-    }
-
-    /* If Streamlit portals the dropdown into the sidebar, force its surfaces dark */
-    .stSidebar ul,
-    .stSidebar [role="list"],
-    .stSidebar [role="listbox"],
-    .stSidebar [data-baseweb="menu"],
-    [data-testid="stSidebar"] ul,
-    [data-testid="stSidebar"] [role="list"],
-    [data-testid="stSidebar"] [role="listbox"],
-    [data-testid="stSidebar"] [data-baseweb="menu"] {
-      background-color: #0F172A !important;
-      color: #E5E7EB !important;
-    }
-
-    .stSidebar li,
-    .stSidebar li *,
-    [data-testid="stSidebar"] li,
-    [data-testid="stSidebar"] li * {
-      color: #E5E7EB !important;
-      opacity: 1 !important;
-    }
+    /* Home page styling; global theme comes from utils.ui.apply_theme() */
 
     /* Main container spacing */
     div[data-testid="stMainBlockContainer"] {
@@ -185,7 +120,7 @@ st.markdown(
 
     /* Hero (no box) */
     .hero {
-      margin: 4px 0 16px 0;
+      margin: -5rem 0 16px 0;
       padding: 6px 2px 2px 2px;
     }
     .hero-eyebrow {
@@ -335,7 +270,7 @@ components.html(
     height=0,
 )
 
-st.markdown('<div class="discovery-wrapper">', unsafe_allow_html=True)
+st.markdown('<div class="clawd-app-wrapper discovery-wrapper">', unsafe_allow_html=True)
 
 # --- Hero: same structure as Discovery; wording swapped for Home ---
 st.markdown(
@@ -357,7 +292,7 @@ st.subheader("How it works")
 h1, h2, h3 = st.columns(3)
 with h1:
     st.markdown("**1) Scan social chatter**")
-    st.caption("We identify stocks gaining unusual attention in your selected sector.")
+    st.caption("We identify **US stocks** gaining unusual attention in your selected sector.")
 with h2:
     st.markdown("**2) AI sentiment signal**")
     st.caption("We score sentiment and flag whether chatter supports a bullish entry or suggests caution.")
@@ -493,8 +428,9 @@ st.markdown("<div style='height: 1.25rem;'></div>", unsafe_allow_html=True)
 cta = st.container()
 with cta:
     if st.button("Run your scan", type="primary", use_container_width=False):
-        st.switch_page("pages/Discovery.py")
+        from utils.auth import is_logged_in
+        st.switch_page("pages/Discovery.py" if is_logged_in() else "pages/Auth.py")
     # Helper text should be directly below the button
     st.caption("Includes $5.00 in free credits to get started.")
 
-st.markdown('</div>', unsafe_allow_html=True)
+close_page()
