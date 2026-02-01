@@ -186,7 +186,8 @@ async def stripe_webhook(request: Request):
         # else: ignore other events
 
     except Exception:
-        # Return 200 to prevent infinite retries; errors should be inspected in Railway logs.
+        # Return 200 to prevent infinite retries, but log so we can debug.
+        logger.exception("Error handling Stripe webhook event type=%s", etype)
         return JSONResponse(status_code=200, content={"ok": True})
 
     return {"ok": True}
@@ -194,6 +195,14 @@ async def stripe_webhook(request: Request):
 
 def _apply_credit_delta(*, user_id: str, scan_delta: int, deep_delta: int, reason: str) -> None:
     sb = _supabase_admin_client()
+
+    logger.info(
+        "Applying credit delta user_id=%s scan_delta=%s deep_delta=%s reason=%s",
+        user_id,
+        scan_delta,
+        deep_delta,
+        reason,
+    )
 
     # Load current
     resp = sb.table("profiles").select("scan_credits,deep_credits").eq("user_id", user_id).maybe_single().execute()
@@ -205,18 +214,38 @@ def _apply_credit_delta(*, user_id: str, scan_delta: int, deep_delta: int, reaso
     new_scan = cur_scan + int(scan_delta)
     new_deep = cur_deep + int(deep_delta)
 
-    sb.table("profiles").update({"scan_credits": new_scan, "deep_credits": new_deep}).eq("user_id", user_id).execute()
+    # If the profile row doesn't exist for some reason, create it.
+    if not data:
+        try:
+            sb.table("profiles").insert({"user_id": user_id, "scan_credits": new_scan, "deep_credits": new_deep}).execute()
+            logger.info("Inserted missing profile row for user_id=%s", user_id)
+        except Exception:
+            logger.exception("Failed to insert missing profile row for user_id=%s", user_id)
+            raise
+    else:
+        try:
+            sb.table("profiles").update({"scan_credits": new_scan, "deep_credits": new_deep}).eq("user_id", user_id).execute()
+        except Exception:
+            logger.exception("Failed updating profile credits for user_id=%s", user_id)
+            raise
 
-    # Best-effort audit log (optional table)
+    logger.info("Credits updated user_id=%s scan=%s->%s deep=%s->%s", user_id, cur_scan, new_scan, cur_deep, new_deep)
+
+    # Best-effort audit log (optional table). Schema may differ depending on your Supabase SQL.
     try:
         sb.table("usage_events").insert(
             {
                 "user_id": user_id,
-                "event_type": "purchase" if scan_delta > 0 or deep_delta > 0 else "revoke",
-                "reason": reason,
-                "scan_delta": int(scan_delta),
-                "deep_delta": int(deep_delta),
+                "event_type": "scan",  # satisfy schema; details in metadata
+                "cost_scan_credits": -int(scan_delta),
+                "cost_deep_credits": -int(deep_delta),
+                "metadata": {
+                    "reason": reason,
+                    "source": "stripe",
+                    "scan_delta": int(scan_delta),
+                    "deep_delta": int(deep_delta),
+                },
             }
         ).execute()
     except Exception:
-        pass
+        logger.info("usage_events insert skipped/failed (non-fatal)")
