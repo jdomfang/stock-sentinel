@@ -871,7 +871,10 @@ if st.session_state.df_valid is not None:
         last_close_map = {}
         try:
             last_close_map = get_last_close_prices_best_effort(tickers_for_prices)
-        except Exception:
+        except Exception as e:
+            logger.exception("Last close price lookup failed")
+            # Don't break the scan UI; show a small hint for debugging.
+            st.caption(f"Price lookup failed: {str(e)[:120]}")
             last_close_map = {}
 
         header_labels = [

@@ -765,7 +765,12 @@ def get_last_close_prices_best_effort(tickers: list[str]) -> dict[str, float | N
     """
     tickers_u = [t.upper().strip() for t in tickers if t]
     tickers_u = list(dict.fromkeys(tickers_u))
-    cached = get_cached_last_close_prices(tickers_u)
+    try:
+        cached = get_cached_last_close_prices(tickers_u)
+    except Exception as e:
+        logger.warning(f"Price cache read failed; continuing without cache: {str(e)[:160]}")
+        cached = {}
+
     missing = [t for t in tickers_u if t not in cached]
     fetched: dict[str, float] = {}
     if missing:
