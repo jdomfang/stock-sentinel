@@ -697,8 +697,8 @@ def get_cached_last_close_prices(tickers: list[str]) -> dict[str, float]:
 def fetch_and_cache_last_close_prices(tickers: list[str]) -> dict[str, float]:
     """Fetch last close prices from Polygon (daily aggregates), then upsert to Supabase.
 
-    NOTE: We *cannot* rely on Polygon snapshot endpoints on some plans (HTTP 403 NOT_AUTHORIZED).
-    This implementation uses the daily aggregates endpoint per ticker, which is more widely available.
+    We use direct HTTP requests (instead of polygon client's built-in retry) so we can
+    handle 429 rate limits cleanly and avoid MaxRetryError storms.
 
     Returns dict {TICKER: close_price} for any prices successfully fetched.
     """
@@ -709,44 +709,49 @@ def fetch_and_cache_last_close_prices(tickers: list[str]) -> dict[str, float]:
 
     api_key = _get_polygon_api_key()
     sb = get_admin_client()
-    client = RESTClient(api_key=api_key)
 
     out: dict[str, float] = {}
 
-    # Fetch each ticker's most recent daily bar (last trading day).
-    # We query a small window to survive weekends/holidays.
+    # Query a small window to survive weekends/holidays.
     end = datetime.utcnow().date()
     start = end - timedelta(days=10)
 
     for t in tickers_u:
-        # Retry a few times in case of transient 429s.
+        # small pacing to reduce burstiness
+        time.sleep(0.25)
+
+        url = f"https://api.polygon.io/v2/aggs/ticker/{t}/range/1/day/{start.isoformat()}/{end.isoformat()}"
+        params = {
+            "adjusted": "true",
+            "sort": "desc",
+            "limit": 1,
+            "apiKey": api_key,
+        }
+
         for attempt in range(1, 4):
             try:
-                resp = client.get_aggs(
-                    ticker=t,
-                    multiplier=1,
-                    timespan="day",
-                    from_=start.isoformat(),
-                    to=end.isoformat(),
-                    limit=5,
-                    sort="desc",
-                )
-                results = getattr(resp, "results", None) or []
+                r = requests.get(url, params=params, timeout=20)
+                if r.status_code == 429:
+                    # backoff and retry
+                    wait = 2.0 * attempt
+                    logger.warning(f"Polygon 429 for {t} (attempt {attempt}/3). Sleeping {wait:.1f}s")
+                    time.sleep(wait)
+                    continue
+                if r.status_code != 200:
+                    logger.warning(f"Polygon aggs HTTP {r.status_code} for {t}: {r.text[:200]}")
+                    break
+
+                payload = r.json() or {}
+                results = payload.get("results") or []
                 if not results:
                     break
-                last_bar = results[0]
-                close = getattr(last_bar, "close", None)
+                close = results[0].get("c")
                 if isinstance(close, (int, float)):
                     out[t] = float(close)
                 break
             except Exception as e:
-                msg = str(e)
-                logger.warning(f"Polygon aggs failed for {t} (attempt {attempt}/3): {msg[:200]}")
-                # crude detection of 429/rate limit
-                if "429" in msg or "Too Many Requests" in msg:
-                    time.sleep(1.5 * attempt)
-                    continue
-                break
+                logger.warning(f"Polygon aggs failed for {t} (attempt {attempt}/3): {type(e).__name__}: {str(e)[:160]}")
+                time.sleep(1.0 * attempt)
 
     # Upsert
     if out:
@@ -759,7 +764,7 @@ def fetch_and_cache_last_close_prices(tickers: list[str]) -> dict[str, float]:
             for i in range(0, len(up_rows), 200):
                 sb.table("stock_prices").upsert(up_rows[i : i + 200]).execute()
         except Exception as e:
-            logger.warning(f"Supabase upsert stock_prices failed: {str(e)[:200]}")
+            logger.warning(f"Supabase upsert stock_prices failed: {type(e).__name__}: {str(e)[:200]}")
 
     return out
 
