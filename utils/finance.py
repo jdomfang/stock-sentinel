@@ -785,3 +785,100 @@ def get_last_close_prices_best_effort(tickers: list[str]) -> dict[str, float | N
         else:
             merged[t] = None
     return merged
+
+
+def get_top_500_tickers() -> list[str]:
+    """Return a deterministic list of 500 US tickers from the local master list."""
+    try:
+        tickers = get_ticker_master_list()  # dict ticker -> metadata
+        keys = list(tickers.keys())
+        return [k.upper() for k in keys[:500]]
+    except Exception as e:
+        logger.warning(f"Failed to load ticker master list for top 500: {str(e)[:160]}")
+        return []
+
+
+def _get_stock_prices_count(sb) -> int | None:
+    """Best-effort count of rows in stock_prices."""
+    try:
+        # supabase-py supports count='exact'
+        resp = sb.table("stock_prices").select("ticker", count="exact").limit(1).execute()
+        cnt = getattr(resp, "count", None)
+        if cnt is None and isinstance(resp, dict):
+            cnt = resp.get("count")
+        return int(cnt) if cnt is not None else None
+    except Exception as e:
+        logger.warning(f"Could not count stock_prices: {str(e)[:160]}")
+        return None
+
+
+def warm_prices_cache_top_500(progress_cb=None) -> tuple[bool, str]:
+    """Populate stock_prices cache for top 500 tickers.
+
+    Uses daily aggregates per ticker (entitlement-friendly). Upserts to Supabase.
+
+    progress_cb: optional fn(done:int,total:int) for UI progress.
+    """
+    sb = get_admin_client()
+    current_count = _get_stock_prices_count(sb)
+    if current_count is not None and current_count >= 450:
+        return True, "Cache already warm"
+
+    tickers = get_top_500_tickers()
+    if not tickers:
+        return False, "Could not load top 500 tickers"
+
+    api_key = _get_polygon_api_key()
+    client = RESTClient(api_key=api_key)
+
+    # Fetch last close for each ticker using aggs.
+    end = datetime.utcnow().date()
+    start = end - timedelta(days=10)
+
+    out_rows = []
+    total = len(tickers)
+    for i, t in enumerate(tickers, start=1):
+        try:
+            resp = client.get_aggs(
+                ticker=t,
+                multiplier=1,
+                timespan="day",
+                from_=start.isoformat(),
+                to=end.isoformat(),
+                limit=5,
+                sort="desc",
+            )
+            results = getattr(resp, "results", None) or []
+            if results:
+                close = getattr(results[0], "close", None)
+                if isinstance(close, (int, float)):
+                    out_rows.append(
+                        {
+                            "ticker": t,
+                            "close_price": float(close),
+                            "last_updated": datetime.utcnow().isoformat(),
+                            "currency": "USD",
+                        }
+                    )
+        except Exception as e:
+            logger.warning(f"Warm cache aggs failed for {t}: {str(e)[:120]}")
+
+        if progress_cb:
+            progress_cb(i, total)
+
+        # Upsert in chunks to avoid huge payloads
+        if len(out_rows) >= 200:
+            try:
+                sb.table("stock_prices").upsert(out_rows).execute()
+                out_rows = []
+            except Exception as e:
+                return False, f"Supabase upsert failed: {str(e)[:160]}"
+
+    if out_rows:
+        try:
+            sb.table("stock_prices").upsert(out_rows).execute()
+        except Exception as e:
+            return False, f"Supabase upsert failed: {str(e)[:160]}"
+
+    final_count = _get_stock_prices_count(sb)
+    return True, f"Warm complete (stock_prices count={final_count})"
