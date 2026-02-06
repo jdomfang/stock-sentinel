@@ -723,14 +723,22 @@ def fetch_and_cache_last_close_prices(tickers: list[str]) -> dict[str, float]:
         }
 
         try:
-            r = requests.get(url, params=params, timeout=15)
-            r.raise_for_status()
+            r = requests.get(url, params=params, timeout=20)
+            if r.status_code != 200:
+                logger.warning(
+                    f"Polygon snapshot HTTP {r.status_code} for {len(chunk)} tickers: {r.text[:200]}"
+                )
+                continue
             payload = r.json() or {}
         except Exception as e:
-            logger.warning(f"Polygon snapshot batch failed ({len(chunk)} tickers): {str(e)[:120]}")
+            logger.warning(f"Polygon snapshot batch failed ({len(chunk)} tickers): {str(e)[:200]}")
             continue
 
         items = payload.get("tickers") or []
+        if not items:
+            logger.warning(
+                f"Polygon snapshot returned 0 tickers for chunk of {len(chunk)}. Payload keys={list(payload.keys())[:10]}"
+            )
         for it in items:
             t = (it.get("ticker") or "").upper()
             prev = it.get("prevDay") or {}
