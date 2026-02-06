@@ -815,7 +815,7 @@ def _get_stock_prices_count(sb) -> int | None:
 def warm_prices_cache_top_500(progress_cb=None) -> tuple[bool, str]:
     """Populate stock_prices cache for top 500 tickers.
 
-    Uses daily aggregates per ticker (entitlement-friendly). Upserts to Supabase.
+    Uses daily aggregates per ticker (more entitlement-friendly than snapshot).
 
     progress_cb: optional fn(done:int,total:int) for UI progress.
     """
@@ -828,6 +828,7 @@ def warm_prices_cache_top_500(progress_cb=None) -> tuple[bool, str]:
     if not tickers:
         return False, "Could not load top 500 tickers"
 
+    # Fail fast if key missing
     api_key = _get_polygon_api_key()
     client = RESTClient(api_key=api_key)
 
@@ -835,8 +836,12 @@ def warm_prices_cache_top_500(progress_cb=None) -> tuple[bool, str]:
     end = datetime.utcnow().date()
     start = end - timedelta(days=10)
 
-    out_rows = []
+    out_rows: list[dict] = []
     total = len(tickers)
+    successes = 0
+    failures = 0
+    first_error: str | None = None
+
     for i, t in enumerate(tickers, start=1):
         try:
             resp = client.get_aggs(
@@ -860,8 +865,20 @@ def warm_prices_cache_top_500(progress_cb=None) -> tuple[bool, str]:
                             "currency": "USD",
                         }
                     )
+                    successes += 1
+                else:
+                    failures += 1
+            else:
+                failures += 1
         except Exception as e:
-            logger.warning(f"Warm cache aggs failed for {t}: {str(e)[:120]}")
+            failures += 1
+            if first_error is None:
+                first_error = f"{type(e).__name__}: {str(e)[:200]}"
+            logger.warning(f"Warm cache aggs failed for {t}: {type(e).__name__}: {str(e)[:200]}")
+
+        # If everything is failing early, stop and show a useful message
+        if i >= 15 and successes == 0:
+            return False, f"Polygon aggs failed for first 15 tickers. Example error: {first_error or 'unknown'}"
 
         if progress_cb:
             progress_cb(i, total)
@@ -872,13 +889,16 @@ def warm_prices_cache_top_500(progress_cb=None) -> tuple[bool, str]:
                 sb.table("stock_prices").upsert(out_rows).execute()
                 out_rows = []
             except Exception as e:
-                return False, f"Supabase upsert failed: {str(e)[:160]}"
+                return False, f"Supabase upsert failed: {type(e).__name__}: {str(e)[:200]}"
 
     if out_rows:
         try:
             sb.table("stock_prices").upsert(out_rows).execute()
         except Exception as e:
-            return False, f"Supabase upsert failed: {str(e)[:160]}"
+            return False, f"Supabase upsert failed: {type(e).__name__}: {str(e)[:200]}"
 
     final_count = _get_stock_prices_count(sb)
-    return True, f"Warm complete (stock_prices count={final_count})"
+    if successes < 50:
+        return False, f"Warmup fetched too few prices ({successes}/{total}). Example error: {first_error or 'none'}"
+
+    return True, f"Warm complete (fetched={successes}, failed={failures}, stock_prices count={final_count})"

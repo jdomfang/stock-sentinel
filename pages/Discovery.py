@@ -498,6 +498,11 @@ with _main:
 
 # Scan button
 if scan_clicked:
+    # Must be logged in to scan and warm cache.
+    if not st.session_state.get("auth.user"):
+        st.error("Please log in to scan.")
+        st.stop()
+
     # Warm price cache (top 500) on the *first* scan if needed.
     if not st.session_state.get("prices_cache_warmed", False):
         prog = st.progress(0, text="Warming price cache (top 500) for faster scans...")
