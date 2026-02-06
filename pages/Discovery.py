@@ -8,7 +8,7 @@ import logging
 from utils.navigation import render_sidebar_navigation, render_top_nav
 from utils.ui import apply_theme, close_page
 from utils.sentiment import extract_tickers, analyze_sentiment
-from utils.finance import get_ticker_master_list, get_stock_data
+from utils.finance import get_ticker_master_list, get_stock_data, get_last_close_prices_best_effort
 from utils.projections import simple_projection
 from utils.deep_analysis import ANALYSIS_PROMPTS, run_deep_analysis, generate_ai_summary
 
@@ -866,10 +866,18 @@ if st.session_state.df_valid is not None:
     if len(df_valid_display) > 0:
         st.subheader("✅ Stocks Found with Market Sentiment")
         header_cols = st.columns([0.9, 1.5, 1.1, 0.95, 0.9])
+        # Load last close prices (cache → Polygon on miss → cache)
+        tickers_for_prices = [str(t) for t in df_valid_display["Ticker"].tolist()]
+        last_close_map = {}
+        try:
+            last_close_map = get_last_close_prices_best_effort(tickers_for_prices)
+        except Exception:
+            last_close_map = {}
+
         header_labels = [
             "Ticker",
             "Company",
-            "Avg Sentiment",
+            "Last Close",
             "Overall",
             "Deep Analyze"
         ]
@@ -879,8 +887,9 @@ if st.session_state.df_valid is not None:
         for _, row in df_valid_display.iterrows():
             ticker_symbol = row["Ticker"]
             company_name = row["Company Name"]
-            sentiment_score = row["Avg Sentiment Score"]
             overall_sentiment = row["Overall Sentiment"]
+            last_close = last_close_map.get(str(ticker_symbol).upper())
+            last_close_display = "N/A" if last_close is None else f"${float(last_close):.2f}"
 
             st.markdown("<div class='ticker-row'>", unsafe_allow_html=True)
             col1, col2, col3, col4, col5 = st.columns(
@@ -891,7 +900,7 @@ if st.session_state.df_valid is not None:
             with col2:
                 st.markdown(company_name)
             with col3:
-                st.markdown(sentiment_score)
+                st.markdown(last_close_display)
             with col4:
                 st.markdown(overall_sentiment)
             with col5:

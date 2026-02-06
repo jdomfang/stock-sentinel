@@ -5,7 +5,11 @@ Financial data processing module.
 from datetime import datetime, timedelta
 from typing import Dict, List, Optional
 import streamlit as st
+import requests
 from polygon import RESTClient
+
+# --- Price cache (Supabase stock_prices) helpers ---
+from utils.supabase_client import get_admin_client
 import numpy as np
 import logging
 import time
@@ -644,3 +648,135 @@ def get_stock_data_batch(tickers: List[str], days: int = 30, max_workers: int = 
         logger.info(f"Batch fetched {len(uncached_tickers)} tickers in {elapsed:.1f}s ({len(uncached_tickers)/elapsed:.1f} tickers/sec)")
     
     return results
+
+
+# ==============================
+# Price cache (last close prices)
+# ==============================
+
+def _get_polygon_api_key() -> str:
+    key = st.secrets.get("POLYGON_API_KEY", "")
+    if not key:
+        raise RuntimeError("Missing POLYGON_API_KEY in secrets")
+    return key
+
+
+def get_cached_last_close_prices(tickers: list[str]) -> dict[str, float]:
+    """Fetch cached last close prices from Supabase stock_prices.
+
+    Returns a dict of {TICKER: close_price} for any tickers found.
+    """
+    tickers_u = [t.upper().strip() for t in tickers if t]
+    tickers_u = list(dict.fromkeys(tickers_u))
+    if not tickers_u:
+        return {}
+
+    sb = get_admin_client()
+
+    # Supabase has a max URL length; chunk to be safe.
+    out: dict[str, float] = {}
+    chunk_size = 200
+    for i in range(0, len(tickers_u), chunk_size):
+        chunk = tickers_u[i : i + chunk_size]
+        resp = (
+            sb.table("stock_prices")
+            .select("ticker,close_price")
+            .in_("ticker", chunk)
+            .execute()
+        )
+        rows = getattr(resp, "data", None) or []
+        for r in rows:
+            t = (r.get("ticker") or "").upper()
+            cp = r.get("close_price")
+            if t and isinstance(cp, (int, float)):
+                out[t] = float(cp)
+
+    return out
+
+
+def fetch_and_cache_last_close_prices(tickers: list[str]) -> dict[str, float]:
+    """Fetch last close prices from Polygon (batch snapshot), then upsert to Supabase.
+
+    Uses Polygon snapshot endpoint which supports multiple tickers per request.
+
+    Returns dict {TICKER: close_price} for any prices successfully fetched.
+    """
+    tickers_u = [t.upper().strip() for t in tickers if t]
+    tickers_u = list(dict.fromkeys(tickers_u))
+    if not tickers_u:
+        return {}
+
+    api_key = _get_polygon_api_key()
+    sb = get_admin_client()
+
+    out: dict[str, float] = {}
+
+    # Polygon snapshot tickers endpoint supports multiple tickers.
+    # Keep chunks modest to avoid URL limits.
+    chunk_size = 100
+    for i in range(0, len(tickers_u), chunk_size):
+        chunk = tickers_u[i : i + chunk_size]
+        url = "https://api.polygon.io/v2/snapshot/locale/us/markets/stocks/tickers"
+        params = {
+            "tickers": ",".join(chunk),
+            "apiKey": api_key,
+        }
+
+        try:
+            r = requests.get(url, params=params, timeout=15)
+            r.raise_for_status()
+            payload = r.json() or {}
+        except Exception as e:
+            logger.warning(f"Polygon snapshot batch failed ({len(chunk)} tickers): {str(e)[:120]}")
+            continue
+
+        items = payload.get("tickers") or []
+        for it in items:
+            t = (it.get("ticker") or "").upper()
+            prev = it.get("prevDay") or {}
+            close = prev.get("c")
+            if t and isinstance(close, (int, float)):
+                out[t] = float(close)
+
+        # Upsert any we got for this chunk
+        if out:
+            now_iso = datetime.utcnow().isoformat()
+            up_rows = [
+                {"ticker": t, "close_price": out[t], "last_updated": now_iso, "currency": "USD"}
+                for t in out
+                if t in chunk
+            ]
+            if up_rows:
+                try:
+                    sb.table("stock_prices").upsert(up_rows).execute()
+                except Exception as e:
+                    logger.warning(f"Supabase upsert stock_prices failed: {str(e)[:160]}")
+
+    return out
+
+
+def get_last_close_prices_best_effort(tickers: list[str]) -> dict[str, float | None]:
+    """Best-effort last close prices.
+
+    1) Read cache from Supabase.
+    2) For missing tickers, fetch from Polygon and upsert to cache.
+
+    Returns dict mapping each input ticker (uppercased) to a price or None.
+    """
+    tickers_u = [t.upper().strip() for t in tickers if t]
+    tickers_u = list(dict.fromkeys(tickers_u))
+    cached = get_cached_last_close_prices(tickers_u)
+    missing = [t for t in tickers_u if t not in cached]
+    fetched: dict[str, float] = {}
+    if missing:
+        fetched = fetch_and_cache_last_close_prices(missing)
+
+    merged: dict[str, float | None] = {}
+    for t in tickers_u:
+        if t in cached:
+            merged[t] = cached[t]
+        elif t in fetched:
+            merged[t] = fetched[t]
+        else:
+            merged[t] = None
+    return merged
