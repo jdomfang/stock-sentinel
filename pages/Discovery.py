@@ -8,7 +8,7 @@ import logging
 from utils.navigation import render_sidebar_navigation, render_top_nav
 from utils.ui import apply_theme, close_page
 from utils.sentiment import extract_tickers, analyze_sentiment
-from utils.finance import get_ticker_master_list, get_stock_data, get_last_close_prices_best_effort, warm_prices_cache_top_500
+from utils.finance import get_ticker_master_list, get_stock_data, get_last_close_prices_best_effort
 from utils.projections import simple_projection
 from utils.deep_analysis import ANALYSIS_PROMPTS, run_deep_analysis, generate_ai_summary
 
@@ -498,25 +498,10 @@ with _main:
 
 # Scan button
 if scan_clicked:
-    # Must be logged in to scan and warm cache.
+    # Must be logged in to scan.
     if not st.session_state.get("auth.user"):
         st.error("Please log in to scan.")
         st.stop()
-
-    # Warm price cache (top 500) on the *first* scan if needed.
-    if not st.session_state.get("prices_cache_warmed", False):
-        prog = st.progress(0, text="Warming price cache (top 500) for faster scans...")
-
-        def _cb(done: int, total: int):
-            pct = int((done / max(total, 1)) * 100)
-            prog.progress(pct, text=f"Warming price cache: {done}/{total}")
-
-        ok_warm, msg_warm = warm_prices_cache_top_500(progress_cb=_cb)
-        prog.empty()
-        if not ok_warm:
-            st.error(f"Price cache warmup failed: {msg_warm}")
-            st.stop()
-        st.session_state["prices_cache_warmed"] = True
 
     ok, err = consume_credit("scan")
     if not ok:
