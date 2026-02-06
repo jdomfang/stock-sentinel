@@ -11,9 +11,8 @@ import json
 import os
 import sys
 import logging
-from datetime import datetime
+from datetime import datetime, timedelta
 from typing import List, Dict
-from concurrent.futures import ThreadPoolExecutor, as_completed
 
 # Add parent dir to path so we can import utils
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -79,36 +78,29 @@ def get_top_tickers(all_tickers: Dict[str, Dict], limit: int = 500) -> List[str]
     
     return tickers_to_fetch[:limit]
 
-def fetch_prices_batch(client: RESTClient, tickers: List[str]) -> List[Dict]:
-    """Fetch latest close prices for multiple tickers in ONE batch API call."""
+def fetch_last_close(client: RESTClient, ticker: str) -> dict:
+    """Fetch last close price using daily aggregates (more widely entitled than snapshot)."""
+    end = datetime.utcnow().date()
+    start = end - timedelta(days=10)
     try:
-        # Polygon batch endpoint: comma-separated tickers
-        ticker_str = ",".join(tickers)
         resp = client.get_aggs(
-            ticker=ticker_str,
+            ticker=ticker,
+            multiplier=1,
             timespan="day",
-            limit=1
+            from_=start.isoformat(),
+            to=end.isoformat(),
+            limit=5,
+            sort="desc",
         )
-        
-        results = []
-        if resp and resp.results:
-            for agg in resp.results:
-                results.append({
-                    "ticker": agg.ticker,
-                    "close_price": agg.close,
-                    "error": None
-                })
-        
-        # Check which tickers were found, mark missing ones as N/A
-        found_tickers = {r["ticker"] for r in results}
-        for ticker in tickers:
-            if ticker not in found_tickers:
-                results.append({"ticker": ticker, "close_price": None, "error": "No data"})
-        
-        return results
+        results = getattr(resp, "results", None) or []
+        if not results:
+            return {"ticker": ticker, "close_price": None, "error": "No data"}
+        close = getattr(results[0], "close", None)
+        if isinstance(close, (int, float)):
+            return {"ticker": ticker, "close_price": float(close), "error": None}
+        return {"ticker": ticker, "close_price": None, "error": "Invalid close"}
     except Exception as e:
-        logger.warning(f"Batch fetch failed: {str(e)[:60]}")
-        return [{"ticker": t, "close_price": None, "error": str(e)[:100]} for t in tickers]
+        return {"ticker": ticker, "close_price": None, "error": str(e)[:160]}
 
 def sync_prices(limit: int = 500, workers: int = 10) -> None:
     """
@@ -140,29 +132,22 @@ def sync_prices(limit: int = 500, workers: int = 10) -> None:
         logger.error(f"Failed to create Polygon client: {e}")
         return
     
-    # Fetch prices in batches (100 tickers per batch = 1 API call)
-    batch_size = 100
+    # Fetch prices (daily aggregates per ticker — more widely entitled than snapshot/batch endpoints)
     results = []
     failed = 0
     success = 0
-    
-    for batch_start in range(0, len(tickers_to_fetch), batch_size):
-        batch = tickers_to_fetch[batch_start:batch_start + batch_size]
-        batch_num = (batch_start // batch_size) + 1
-        total_batches = (len(tickers_to_fetch) + batch_size - 1) // batch_size
-        
-        logger.info(f"Fetching batch {batch_num}/{total_batches} ({len(batch)} tickers)...")
-        
-        batch_results = fetch_prices_batch(client, batch)
-        results.extend(batch_results)
-        
-        for result in batch_results:
-            if result["error"]:
-                failed += 1
-            else:
-                success += 1
-    
-    logger.info(f"Polygon batch fetch complete: {success} success, {failed} failed, {len(results)} total")
+
+    for idx, ticker in enumerate(tickers_to_fetch, start=1):
+        r = fetch_last_close(client, ticker)
+        results.append(r)
+        if r.get("error"):
+            failed += 1
+        else:
+            success += 1
+        if idx % 50 == 0:
+            logger.info(f"Fetched {idx}/{len(tickers_to_fetch)}...")
+
+    logger.info(f"Polygon aggs fetch complete: {success} success, {failed} failed")
     
     # Update Supabase
     logger.info("Updating Supabase stock_prices table...")
@@ -170,7 +155,7 @@ def sync_prices(limit: int = 500, workers: int = 10) -> None:
         sb = get_admin_client()
         
         # Filter successful results
-        valid_results = [r for r in results if r["close_price"] is not None]
+        valid_results = [r for r in results if (r.get("close_price") is not None and not r.get("error"))]
         
         if valid_results:
             # Upsert (insert or update)
