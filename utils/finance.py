@@ -695,9 +695,10 @@ def get_cached_last_close_prices(tickers: list[str]) -> dict[str, float]:
 
 
 def fetch_and_cache_last_close_prices(tickers: list[str]) -> dict[str, float]:
-    """Fetch last close prices from Polygon (batch snapshot), then upsert to Supabase.
+    """Fetch last close prices from Polygon (daily aggregates), then upsert to Supabase.
 
-    Uses Polygon snapshot endpoint which supports multiple tickers per request.
+    NOTE: We *cannot* rely on Polygon snapshot endpoints on some plans (HTTP 403 NOT_AUTHORIZED).
+    This implementation uses the daily aggregates endpoint per ticker, which is more widely available.
 
     Returns dict {TICKER: close_price} for any prices successfully fetched.
     """
@@ -708,57 +709,48 @@ def fetch_and_cache_last_close_prices(tickers: list[str]) -> dict[str, float]:
 
     api_key = _get_polygon_api_key()
     sb = get_admin_client()
+    client = RESTClient(api_key=api_key)
 
     out: dict[str, float] = {}
 
-    # Polygon snapshot tickers endpoint supports multiple tickers.
-    # Keep chunks modest to avoid URL limits.
-    chunk_size = 100
-    for i in range(0, len(tickers_u), chunk_size):
-        chunk = tickers_u[i : i + chunk_size]
-        url = "https://api.polygon.io/v2/snapshot/locale/us/markets/stocks/tickers"
-        params = {
-            "tickers": ",".join(chunk),
-            "apiKey": api_key,
-        }
+    # Fetch each ticker's most recent daily bar (last trading day).
+    # We query a small window to survive weekends/holidays.
+    end = datetime.utcnow().date()
+    start = end - timedelta(days=10)
 
+    for t in tickers_u:
         try:
-            r = requests.get(url, params=params, timeout=20)
-            if r.status_code != 200:
-                logger.warning(
-                    f"Polygon snapshot HTTP {r.status_code} for {len(chunk)} tickers: {r.text[:200]}"
-                )
-                continue
-            payload = r.json() or {}
-        except Exception as e:
-            logger.warning(f"Polygon snapshot batch failed ({len(chunk)} tickers): {str(e)[:200]}")
-            continue
-
-        items = payload.get("tickers") or []
-        if not items:
-            logger.warning(
-                f"Polygon snapshot returned 0 tickers for chunk of {len(chunk)}. Payload keys={list(payload.keys())[:10]}"
+            resp = client.get_aggs(
+                ticker=t,
+                multiplier=1,
+                timespan="day",
+                from_=start.isoformat(),
+                to=end.isoformat(),
+                limit=5,
+                sort="desc",
             )
-        for it in items:
-            t = (it.get("ticker") or "").upper()
-            prev = it.get("prevDay") or {}
-            close = prev.get("c")
-            if t and isinstance(close, (int, float)):
+            results = getattr(resp, "results", None) or []
+            if not results:
+                continue
+            last_bar = results[0]
+            close = getattr(last_bar, "close", None)
+            if isinstance(close, (int, float)):
                 out[t] = float(close)
+        except Exception as e:
+            logger.warning(f"Polygon aggs failed for {t}: {str(e)[:160]}")
 
-        # Upsert any we got for this chunk
-        if out:
-            now_iso = datetime.utcnow().isoformat()
-            up_rows = [
-                {"ticker": t, "close_price": out[t], "last_updated": now_iso, "currency": "USD"}
-                for t in out
-                if t in chunk
-            ]
-            if up_rows:
-                try:
-                    sb.table("stock_prices").upsert(up_rows).execute()
-                except Exception as e:
-                    logger.warning(f"Supabase upsert stock_prices failed: {str(e)[:160]}")
+    # Upsert
+    if out:
+        now_iso = datetime.utcnow().isoformat()
+        up_rows = [
+            {"ticker": t, "close_price": out[t], "last_updated": now_iso, "currency": "USD"}
+            for t in out
+        ]
+        try:
+            for i in range(0, len(up_rows), 200):
+                sb.table("stock_prices").upsert(up_rows[i : i + 200]).execute()
+        except Exception as e:
+            logger.warning(f"Supabase upsert stock_prices failed: {str(e)[:200]}")
 
     return out
 
