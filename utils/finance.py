@@ -719,25 +719,34 @@ def fetch_and_cache_last_close_prices(tickers: list[str]) -> dict[str, float]:
     start = end - timedelta(days=10)
 
     for t in tickers_u:
-        try:
-            resp = client.get_aggs(
-                ticker=t,
-                multiplier=1,
-                timespan="day",
-                from_=start.isoformat(),
-                to=end.isoformat(),
-                limit=5,
-                sort="desc",
-            )
-            results = getattr(resp, "results", None) or []
-            if not results:
-                continue
-            last_bar = results[0]
-            close = getattr(last_bar, "close", None)
-            if isinstance(close, (int, float)):
-                out[t] = float(close)
-        except Exception as e:
-            logger.warning(f"Polygon aggs failed for {t}: {str(e)[:160]}")
+        # Retry a few times in case of transient 429s.
+        for attempt in range(1, 4):
+            try:
+                resp = client.get_aggs(
+                    ticker=t,
+                    multiplier=1,
+                    timespan="day",
+                    from_=start.isoformat(),
+                    to=end.isoformat(),
+                    limit=5,
+                    sort="desc",
+                )
+                results = getattr(resp, "results", None) or []
+                if not results:
+                    break
+                last_bar = results[0]
+                close = getattr(last_bar, "close", None)
+                if isinstance(close, (int, float)):
+                    out[t] = float(close)
+                break
+            except Exception as e:
+                msg = str(e)
+                logger.warning(f"Polygon aggs failed for {t} (attempt {attempt}/3): {msg[:200]}")
+                # crude detection of 429/rate limit
+                if "429" in msg or "Too Many Requests" in msg:
+                    time.sleep(1.5 * attempt)
+                    continue
+                break
 
     # Upsert
     if out:
