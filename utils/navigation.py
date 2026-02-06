@@ -173,7 +173,7 @@ def render_top_nav() -> None:
 
         # Keep header minimal: Services dropdown close to Log in on the right
         # Adjusted proportions: services column significantly wider for 25% larger dropdown
-        @st.cache_data(ttl=10, show_spinner=False)
+        @st.cache_data(ttl=2, show_spinner=False)
         def _load_credit_counts(user_id: str) -> tuple[int, int] | None:
             """Return (scan_credits, deep_credits) for the given user_id.
 
