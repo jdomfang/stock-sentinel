@@ -41,6 +41,11 @@ def consume_credit(event_type: str) -> tuple[bool, str]:
         new_scan = int(prof.get("scan_credits", 0)) - 1
         sb.table("profiles").update({"scan_credits": new_scan}).eq("user_id", uid).execute()
         sb.table("usage_events").insert({"user_id": uid, "event_type": "scan", "cost_scan_credits": 1, "cost_deep_credits": 0}).execute()
+        # Ensure nav credit badge updates immediately (navigation uses st.cache_data).
+        try:
+            st.cache_data.clear()
+        except Exception:
+            pass
         return True, ""
 
     # deep_analyze
@@ -49,4 +54,9 @@ def consume_credit(event_type: str) -> tuple[bool, str]:
     new_deep = int(prof.get("deep_credits", 0)) - 1
     sb.table("profiles").update({"deep_credits": new_deep}).eq("user_id", uid).execute()
     sb.table("usage_events").insert({"user_id": uid, "event_type": "deep_analyze", "cost_scan_credits": 0, "cost_deep_credits": 1}).execute()
+    # Ensure nav credit badge updates immediately (navigation uses st.cache_data).
+    try:
+        st.cache_data.clear()
+    except Exception:
+        pass
     return True, ""
