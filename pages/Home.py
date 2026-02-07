@@ -343,7 +343,7 @@ st.markdown(
     <div class="hero">
       <div class="hero-eyebrow">Stock Sentinel</div>
       <div class="hero-title">Finding short‑term opportunities shouldn’t feel like a full‑time job.</div>
-      <div class="hero-subtitle">We turn noise into signals by analyzing social media sentiment and using AI‑driven market data analysis to validate real momentum.</div>
+      <div class="hero-subtitle">We turn noise into signals by analyzing social media sentiment and using market data to validate real momentum.</div>
 
       <!-- chips + disclaimer removed on request -->
     </div>
