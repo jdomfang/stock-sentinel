@@ -94,7 +94,7 @@ st.markdown(
       max-width: 100%;
       padding-left: 2rem;
       padding-right: 2rem;
-      padding-top: 0.75rem;
+      padding-top: 0.25rem;
     }
 
     .discovery-wrapper {
@@ -184,7 +184,8 @@ st.markdown(
 
     /* Hero (no box) */
     .hero {
-      margin: -2.5rem 0 18px 0;
+      /* Pull hero up so it sits closer to the top nav */
+      margin: -4.25rem 0 18px 0;
       padding: 8px 2px 2px 2px;
     }
     .hero-eyebrow {
