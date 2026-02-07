@@ -77,10 +77,24 @@ with c_demo1:
             st.error("No scan results in this session. Run a scan on Discovery first.")
         else:
             try:
+                # Enrich validated rows with Last Close prices (cache-first, fetch-on-miss)
+                from utils.finance import get_last_close_prices_best_effort
+
+                dfv2 = dfv.drop(columns=["Sample Tweets"], errors="ignore").copy()
+                tickers = [str(t) for t in dfv2.get("Ticker", []).tolist()] if "Ticker" in dfv2.columns else []
+                price_map = get_last_close_prices_best_effort(tickers)
+
+                validated_rows = []
+                for r in dfv2.to_dict("records"):
+                    t = str(r.get("Ticker") or "").upper()
+                    px = price_map.get(t)
+                    r["Last Close"] = (None if px is None else float(px))
+                    validated_rows.append(r)
+
                 payload = {
                     "sector": st.session_state.get("selected_sector") or "",
                     "generated_at": "snapshot",
-                    "validated_rows": (dfv.drop(columns=["Sample Tweets"], errors="ignore").to_dict("records")),
+                    "validated_rows": validated_rows,
                     "unvalidated_rows": (dfn.to_dict("records") if dfn is not None else []),
                 }
                 out = edu_dir / "scan_latest.json"

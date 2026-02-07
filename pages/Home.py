@@ -310,16 +310,13 @@ else:
     st.subheader("Sample scan results (demo)")
     st.caption("Shortlist for action: This table ranks candidates worth a closer look. If a ticker stands out, click Deep Analyze to see catalysts, red flags, and guidance.")
 
-    header_cols = st.columns([1.1, 1.6, 1.2, 1.1, 1.1, 1.1, 1.2, 1.0, 1.0])
+    # Match the simplified post-scan Discovery table
+    header_cols = st.columns([1.1, 1.8, 1.2, 1.1, 1.0])
     header_labels = [
         "Ticker",
         "Company",
-        "Avg Sentiment",
+        "Last Close",
         "Overall",
-        "Volatility",
-        "Projected Gain",
-        "Current Price",
-        "Hold (days)",
         "Deep Analyze",
     ]
     for col, label in zip(header_cols, header_labels):
@@ -328,35 +325,25 @@ else:
     for _, row in df_demo.iterrows():
         ticker_symbol = row.get("Ticker", "")
         company_name = row.get("Company Name", "")
-        sentiment_score = row.get("Avg Sentiment Score", "")
         overall_sentiment = row.get("Overall Sentiment", "")
-        volatility = row.get("Volatility (%)", "")
-        projected_gain = row.get("Projected Gain (%)", "")
-        current_price = row.get("Current Price ($)", "")
-        hold_days = row.get("Suggested Hold (days)", "")
+
+        last_close = row.get("Last Close", None)
+        if isinstance(last_close, (int, float)):
+            last_close_display = f"${float(last_close):.2f}"
+        else:
+            last_close_display = "N/A"
 
         st.markdown("<div class='ticker-row'>", unsafe_allow_html=True)
-        col1, col2, col3, col4, col5, col6, col7, col8, col9 = st.columns(
-            [1.1, 1.6, 1.2, 1.1, 1.1, 1.1, 1.2, 1.0, 1.0]
-        )
+        col1, col2, col3, col4, col5 = st.columns([1.1, 1.8, 1.2, 1.1, 1.0])
         with col1:
             st.markdown(f"**{ticker_symbol}**")
         with col2:
             st.markdown(company_name)
         with col3:
-            st.markdown(sentiment_score)
+            st.markdown(last_close_display)
         with col4:
             st.markdown(overall_sentiment)
         with col5:
-            st.markdown(volatility)
-        with col6:
-            st.markdown(projected_gain)
-        with col7:
-            st.markdown(current_price)
-        with col8:
-            st.markdown(hold_days)
-        with col9:
-            # Demo-only: keep the button styling, but disable it (no navigation, no message).
             st.button("Deep Analyze", key=f"home_deep_{ticker_symbol}", disabled=True)
         st.markdown("</div>", unsafe_allow_html=True)
 
