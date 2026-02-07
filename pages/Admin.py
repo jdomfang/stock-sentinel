@@ -1,3 +1,6 @@
+import json
+from pathlib import Path
+
 import streamlit as st
 
 from utils.navigation import render_sidebar_navigation, render_top_nav
@@ -55,6 +58,57 @@ if not rows:
     st.stop()
 
 st.dataframe(rows, use_container_width=True)
+
+st.markdown("---")
+st.subheader("🎛️ Demo refresh tooling")
+st.caption("These buttons save the *current session's* latest scan / deep analyze into data/education so Home can render updated demos.")
+
+root = Path(__file__).resolve().parents[1]
+edu_dir = root / "data" / "education"
+edu_dir.mkdir(parents=True, exist_ok=True)
+
+c_demo1, c_demo2 = st.columns([1, 1])
+
+with c_demo1:
+    if st.button("💾 Save current scan as demo", type="primary"):
+        dfv = st.session_state.get("df_valid")
+        dfn = st.session_state.get("df_unvalidated")
+        if dfv is None or len(dfv) == 0:
+            st.error("No scan results in this session. Run a scan on Discovery first.")
+        else:
+            try:
+                payload = {
+                    "sector": st.session_state.get("selected_sector") or "",
+                    "generated_at": "snapshot",
+                    "validated_rows": (dfv.drop(columns=["Sample Tweets"], errors="ignore").to_dict("records")),
+                    "unvalidated_rows": (dfn.to_dict("records") if dfn is not None else []),
+                }
+                out = edu_dir / "scan_latest.json"
+                out.write_text(json.dumps(payload, indent=2), encoding="utf-8")
+                st.success("Saved: data/education/scan_latest.json")
+            except Exception as e:
+                st.error(f"Failed to save scan demo: {str(e)[:200]}")
+
+with c_demo2:
+    if st.button("💾 Save current deep analyze as demo", type="primary"):
+        ticker = st.session_state.get("selected_ticker") or ""
+        sector = st.session_state.get("selected_sector") or ""
+        results = st.session_state.get("deep_analysis_results")
+        if not ticker or not results:
+            st.error("No deep analysis results in this session. Run Deep Analyze first.")
+        else:
+            try:
+                payload = {
+                    "ticker": ticker,
+                    "sector": sector,
+                    "generated_at": "snapshot",
+                    "analysis_results": results,
+                }
+                out = edu_dir / "deep_latest.json"
+                out.write_text(json.dumps(payload, indent=2), encoding="utf-8")
+                st.success("Saved: data/education/deep_latest.json")
+            except Exception as e:
+                st.error(f"Failed to save deep demo: {str(e)[:200]}")
 
 st.markdown("---")
 st.subheader("⚙️ Manage a user")
