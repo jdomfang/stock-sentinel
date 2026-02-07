@@ -98,9 +98,73 @@ st.markdown(
     }
 
     .discovery-wrapper {
-      max-width: 1400px;
+      max-width: 1240px;
       margin: 0 auto;
       padding: 0 1rem;
+    }
+
+    /* Section titles */
+    .section-title {
+      font-size: 1.35rem;
+      font-weight: 800;
+      letter-spacing: -0.02em;
+      margin: 0.25rem 0 0.75rem 0;
+    }
+
+    /* How-it-works cards */
+    .how-card {
+      border: 1px solid var(--border);
+      background: linear-gradient(180deg, rgba(15,23,42,.80), rgba(2,6,23,.35));
+      border-radius: 16px;
+      padding: 14px 14px 12px 14px;
+      min-height: 120px;
+    }
+    .how-step {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 28px;
+      height: 28px;
+      border-radius: 999px;
+      background: rgba(56,189,248,.15);
+      border: 1px solid rgba(56,189,248,.30);
+      color: rgba(56,189,248,.98);
+      font-weight: 800;
+      font-size: 0.90rem;
+      margin-right: 10px;
+      flex: 0 0 auto;
+    }
+    .how-head {
+      display: flex;
+      align-items: center;
+      margin-bottom: 8px;
+    }
+    .how-title {
+      font-weight: 800;
+      font-size: 1.02rem;
+      margin: 0;
+      color: rgba(229,231,235,.98);
+    }
+    .how-desc {
+      color: rgba(229,231,235,.78);
+      font-size: 0.94rem;
+      line-height: 1.45;
+      margin: 0;
+    }
+
+    /* Demo table tweaks */
+    .demo-note {
+      color: rgba(229,231,235,.70);
+      font-size: 0.92rem;
+      margin-top: -2px;
+      margin-bottom: 10px;
+    }
+    .ticker-row {
+      border: 1px solid rgba(148,163,184,0.14);
+      border-radius: 14px;
+      padding: 10px 10px;
+      margin: 10px 0;
+      background: rgba(2,6,23,.22);
     }
 
     /* Titles */
@@ -120,8 +184,8 @@ st.markdown(
 
     /* Hero (no box) */
     .hero {
-      margin: -5rem 0 16px 0;
-      padding: 6px 2px 2px 2px;
+      margin: -2.5rem 0 18px 0;
+      padding: 8px 2px 2px 2px;
     }
     .hero-eyebrow {
       color: rgba(56,189,248,.95);
@@ -286,19 +350,40 @@ st.markdown(
     unsafe_allow_html=True,
 )
 
-# How it works (compact, above scan table)
-st.subheader("How it works")
+# How it works (polished cards)
+st.markdown('<div class="section-title">How it works</div>', unsafe_allow_html=True)
 
 h1, h2, h3 = st.columns(3)
 with h1:
-    st.markdown("**1) Scan social chatter**")
-    st.caption("We identify **US stocks** gaining unusual attention in your selected sector.")
+    st.markdown(
+        """
+        <div class="how-card">
+          <div class="how-head"><div class="how-step">1</div><div class="how-title">Scan social chatter</div></div>
+          <p class="how-desc">Pick a sector and we identify <b>US stocks</b> gaining unusual attention—fast.</p>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
 with h2:
-    st.markdown("**2) AI sentiment signal**")
-    st.caption("We score sentiment and flag whether chatter supports a bullish entry or suggests caution.")
+    st.markdown(
+        """
+        <div class="how-card">
+          <div class="how-head"><div class="how-step">2</div><div class="how-title">AI sentiment signal</div></div>
+          <p class="how-desc">We summarize the tone and confidence so you can triage what’s worth a closer look.</p>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
 with h3:
-    st.markdown("**3) Deep Analyze guidance**")
-    st.caption("Get a Buy / Watch / Avoid recommendation with key drivers and risk notes.")
+    st.markdown(
+        """
+        <div class="how-card">
+          <div class="how-head"><div class="how-step">3</div><div class="how-title">Deep Analyze guidance</div></div>
+          <p class="how-desc">Get a Buy / Watch / Avoid recommendation with key drivers and risk notes.</p>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
 
 st.markdown("<div style='height: 1.25rem;'></div>", unsafe_allow_html=True)
 
@@ -307,8 +392,8 @@ df_demo = _load_demo_scan()
 if df_demo.empty:
     st.info("No demo data found yet. You can generate it via scripts/record_demo.py")
 else:
-    st.subheader("Sample scan results (demo)")
-    st.caption("Shortlist for action: This table ranks candidates worth a closer look. If a ticker stands out, click Deep Analyze to see catalysts, red flags, and guidance.")
+    st.markdown('<div class="section-title">Sample scan results <span style="color: rgba(229,231,235,.65); font-weight: 700;">(demo)</span></div>', unsafe_allow_html=True)
+    st.markdown('<div class="demo-note">Shortlist for action: This table ranks candidates worth a closer look. If a ticker stands out, click Deep Analyze to see catalysts, red flags, and guidance.</div>', unsafe_allow_html=True)
 
     # Match the simplified post-scan Discovery table
     header_cols = st.columns([1.1, 1.8, 1.2, 1.1, 1.0])
