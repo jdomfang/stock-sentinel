@@ -185,7 +185,7 @@ st.markdown(
     /* Hero (no box) */
     .hero {
       /* Pull hero up so it sits closer to the top nav (top-only tweak; keep below layout unchanged) */
-      margin: -4.75rem 0 18px 0;
+      margin: -5.65rem 0 18px 0;
       padding: 8px 2px 2px 2px;
     }
     .hero-eyebrow {
@@ -194,7 +194,7 @@ st.markdown(
       letter-spacing: 0.06em;
       text-transform: uppercase;
       font-size: 0.78rem;
-      margin-bottom: 10px;
+      margin-bottom: 6px;
     }
     .hero-title {
       font-size: 2.05rem;
