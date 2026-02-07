@@ -913,6 +913,12 @@ if st.session_state.df_valid is not None:
                 st.markdown(overall_sentiment)
             with col5:
                 if st.button("Deep Analyze", key=f"deep_analyze_{ticker_symbol}"):
+                    # Consume a Deep Analyze credit here (most users use the inline button).
+                    ok, err = consume_credit("deep_analyze")
+                    if not ok:
+                        st.error(err)
+                        st.stop()
+
                     st.session_state.selected_ticker = ticker_symbol
                     with st.spinner(f"Running deep analysis for {ticker_symbol}..."):
                         st.session_state.deep_analysis_results = run_deep_analysis(
