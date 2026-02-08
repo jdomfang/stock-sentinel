@@ -195,15 +195,16 @@ def render_footer() -> None:
         unsafe_allow_html=True,
     )
 
-    # Links row
-    st.markdown('<div class="clawd-footer-links">', unsafe_allow_html=True)
+    # Links row (keep FAQ + Contact adjacent)
     try:
-        st.page_link("pages/FAQ.py", label="FAQ")
-        st.page_link("pages/Contact.py", label="Contact")
+        c1, c2, _sp = st.columns([0.25, 0.35, 5.0])
+        with c1:
+            st.page_link("pages/FAQ.py", label="FAQ")
+        with c2:
+            st.page_link("pages/Contact.py", label="Contact")
     except Exception:
         # Older Streamlit builds: fail silently
         pass
-    st.markdown('</div>', unsafe_allow_html=True)
 
     # Disclaimer
     st.markdown(
