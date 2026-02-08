@@ -291,7 +291,7 @@ def render_top_nav() -> None:
 
         # Services menu (nav link + chevron) — keep Login button untouched
         with services_col:
-            st.markdown('<div class="clawd-services">', unsafe_allow_html=True)
+            st.markdown('<div class="clawd-services" id="clawd-services-pop">', unsafe_allow_html=True)
             with st.popover("Services ▾"):
                 if st.button("Discover", use_container_width=True, key="svc_discover"):
                     st.switch_page("pages/Discovery.py" if is_logged_in() else "pages/Auth.py")
@@ -318,47 +318,32 @@ def render_top_nav() -> None:
         """
         <script>
         (function () {
-          const applyDropdownTheme = (doc) => {
-            // Fix dropdown menu visibility
-            const ul = doc.querySelector('ul[data-testid="stSelectboxVirtualDropdown"]');
-            if (ul) {
-              ul.style.setProperty('background-color', '#0F172A', 'important');
-              ul.style.setProperty('color', '#E5E7EB', 'important');
-              ul.style.setProperty('border', '1px solid rgba(148,163,184,0.18)', 'important');
-              ul.style.setProperty('border-radius', '14px', 'important');
-              ul.querySelectorAll('li, li *').forEach((el) => {
-                el.style.setProperty('color', '#E5E7EB', 'important');
-                el.style.setProperty('opacity', '1', 'important');
-              });
-            }
-            
-            // Ensure Services selectbox placeholder is visible
-            const serviceSelectboxes = doc.querySelectorAll('[data-testid="stSelectbox"]');
-            serviceSelectboxes.forEach((select) => {
-              // Target the button (dropdown trigger)
-              const button = select.querySelector('[role="button"]');
-              if (button) {
-                button.style.setProperty('color', '#E5E7EB', 'important');
-                button.style.setProperty('opacity', '1', 'important');
-                button.style.setProperty('font-weight', '600', 'important');
-              }
-              // Target all text nodes and spans recursively
-              const allElements = select.querySelectorAll('*');
-              allElements.forEach((el) => {
-                el.style.setProperty('color', '#E5E7EB', 'important');
-                el.style.setProperty('opacity', '1', 'important');
-                if (el.tagName === 'SPAN' || el.tagName === 'DIV') {
-                  el.style.setProperty('font-weight', '600', 'important');
-                }
-              });
-            });
+          const styleServicesPopover = (doc) => {
+            // Force the Services popover trigger to look like a nav link (no white button)
+            const root = doc.querySelector('#clawd-services-pop');
+            if (!root) return;
+
+            // Streamlit popover trigger is a <button> inside the popover container
+            const trigger = root.querySelector('button');
+            if (!trigger) return;
+
+            const set = (k, v) => trigger.style.setProperty(k, v, 'important');
+            set('background', 'transparent');
+            set('background-color', 'transparent');
+            set('border', 'none');
+            set('box-shadow', 'none');
+            set('color', 'rgba(229,231,235,.92)');
+            set('padding', '0.10rem 0.10rem');
+            set('min-height', '32px');
+            set('border-radius', '999px');
+            set('width', 'fit-content');
           };
 
           const applyAll = () => {
-            try { applyDropdownTheme(document); } catch (e) {}
+            try { styleServicesPopover(document); } catch (e) {}
             try {
               if (window.parent && window.parent.document) {
-                applyDropdownTheme(window.parent.document);
+                styleServicesPopover(window.parent.document);
               }
             } catch (e) {}
           };
@@ -366,6 +351,7 @@ def render_top_nav() -> None:
           const obs = new MutationObserver(() => applyAll());
           obs.observe(document.documentElement, { childList: true, subtree: true });
           window.addEventListener('load', applyAll);
+          setTimeout(applyAll, 50);
           setTimeout(applyAll, 250);
           setTimeout(applyAll, 1000);
         })();
