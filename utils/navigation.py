@@ -77,37 +77,44 @@ def render_top_nav() -> None:
           margin-bottom: 0.15rem;
         }
 
-        /* Match Discovery page select styling (inputs) */
-        .clawd-topnav [data-baseweb="select"] > div {
-          border-radius: 999px !important;
-          background-color: rgba(2,6,23,.52) !important;
-          border-color: rgba(148,163,184,0.16) !important;
-          color: #E5E7EB !important;
+        /* Services nav-link popover trigger (LunarCrush-style) */
+        .clawd-topnav .clawd-services button {
+          background: transparent !important;
+          border: none !important;
+          padding: 0.10rem 0.10rem !important;
           min-height: 32px !important;
+          box-shadow: none !important;
+          color: rgba(229,231,235,.92) !important;
+          font-weight: 700 !important;
+          font-size: 0.86rem !important;
         }
-        .clawd-topnav [data-baseweb="select"] * {
-          color: #E5E7EB !important;
-          opacity: 1 !important;
+        .clawd-topnav .clawd-services button:hover {
+          color: rgba(229,231,235,1) !important;
+          text-decoration: underline;
+          text-underline-offset: 4px;
+          text-decoration-color: rgba(56,189,248,.55);
         }
-        
-        /* Improve placeholder text visibility */
-        .clawd-topnav [data-baseweb="select"] [role="button"] {
-          color: #E5E7EB !important;
-          font-weight: 600 !important;
-          opacity: 1 !important;
+
+        /* Popover panel styling (subtle floating menu) */
+        .clawd-topnav .clawd-services [data-testid="stPopoverBody"] {
+          background: rgba(15,23,42,0.98) !important;
+          border: 1px solid rgba(148,163,184,0.18) !important;
+          border-radius: 14px !important;
+          box-shadow: 0 18px 50px rgba(0,0,0,.50) !important;
         }
-        .clawd-topnav [data-baseweb="select"] [role="button"]::placeholder {
-          color: #E5E7EB !important;
-          opacity: 1 !important;
+        .clawd-topnav .clawd-services [data-testid="stPopoverBody"] [data-testid="stButton"] > button {
+          width: 100% !important;
+          justify-content: flex-start !important;
+          border-radius: 10px !important;
+          padding: 0.48rem 0.65rem !important;
+          font-size: 0.88rem !important;
+          background: transparent !important;
+          border: 1px solid transparent !important;
+          box-shadow: none !important;
         }
-        .clawd-topnav [data-baseweb="select"] span {
-          color: #E5E7EB !important;
-          font-size: 0.92rem !important;
-          font-weight: 600 !important;
-          opacity: 1 !important;
-        }
-        .clawd-topnav [data-baseweb="select"] * {
-          opacity: 1 !important;
+        .clawd-topnav .clawd-services [data-testid="stPopoverBody"] [data-testid="stButton"] > button:hover {
+          background: rgba(56,189,248,.12) !important;
+          border-color: rgba(56,189,248,.16) !important;
         }
 
         /* Dropdown menu (options) readability — match Discovery */
@@ -155,26 +162,7 @@ def render_top_nav() -> None:
           padding-bottom: 0 !important;
         }
         
-        /* Services selectbox: compact (LunarCrush-style) */
-        .clawd-topnav [data-testid="stSelectbox"] {
-          max-width: 200px !important;
-          min-width: 170px !important;
-        }
-        .clawd-topnav [data-baseweb="select"] {
-          width: 100% !important;
-          max-width: 200px !important;
-        }
-
-        /* Tablet: give Services a bit more room so labels don't truncate */
-        @media (min-width: 700px) and (max-width: 1024px) {
-          .clawd-topnav [data-testid="stSelectbox"] {
-            max-width: 240px !important;
-            min-width: 220px !important;
-          }
-          .clawd-topnav [data-baseweb="select"] {
-            max-width: 240px !important;
-          }
-        }
+        /* (Services is now a popover nav-link, not a selectbox) */
         
         /* Shrink Login button to 50% width */
         .clawd-topnav [data-testid="stButton"] {
@@ -285,21 +273,15 @@ def render_top_nav() -> None:
                     if st.button("🛠️", use_container_width=True, help="Admin Dashboard"):
                         st.switch_page("pages/Admin.py")
 
-        # Services dropdown (always present, always adjacent to auth)
+        # Services menu (nav link + chevron) — keep Login button untouched
         with services_col:
-            choice = st.selectbox(
-                "Services",
-                options=["Discover", "Deep Analyze"],
-                index=None,
-                placeholder="Services",
-                label_visibility="collapsed",
-                key="topnav_services",
-            )
-
-            if choice == "Discover":
-                st.switch_page("pages/Discovery.py" if is_logged_in() else "pages/Auth.py")
-            elif choice == "Deep Analyze":
-                st.switch_page("pages/Deep_Analysis.py" if is_logged_in() else "pages/Auth.py")
+            st.markdown('<div class="clawd-services">', unsafe_allow_html=True)
+            with st.popover("Services ▾"):
+                if st.button("Discover", use_container_width=True, key="svc_discover"):
+                    st.switch_page("pages/Discovery.py" if is_logged_in() else "pages/Auth.py")
+                if st.button("Deep Analyze", use_container_width=True, key="svc_deep"):
+                    st.switch_page("pages/Deep_Analysis.py" if is_logged_in() else "pages/Auth.py")
+            st.markdown("</div>", unsafe_allow_html=True)
 
         # Auth button (right-most)
         with auth_col:
