@@ -104,13 +104,21 @@ def render_top_nav() -> None:
           padding-right: 10px !important;
         }
         /* Make sure the word "Services" is readable (some browsers dim placeholder text) */
-        .clawd-topnav .clawd-services [data-baseweb="select"] * {
-          color: rgba(229,231,235,.92) !important;
+        .clawd-topnav .clawd-services [data-baseweb="select"] [role="button"],
+        .clawd-topnav .clawd-services [data-baseweb="select"] [role="button"] * {
+          color: rgba(229,231,235,.95) !important;
+          -webkit-text-fill-color: rgba(229,231,235,.95) !important; /* Safari/Chrome */
           opacity: 1 !important;
+          font-weight: 700 !important;
         }
         .clawd-topnav .clawd-services [data-baseweb="select"] [role="button"] {
-          font-weight: 700 !important;
           padding-right: 8px !important;
+        }
+        /* Some BaseWeb builds mark placeholder/value with lower-opacity styles */
+        .clawd-topnav .clawd-services [data-baseweb="select"] [aria-selected],
+        .clawd-topnav .clawd-services [data-baseweb="select"] [data-baseweb="tag"],
+        .clawd-topnav .clawd-services [data-baseweb="select"] [data-baseweb="select"] {
+          opacity: 1 !important;
         }
 
         /* Tablet: give Services a touch more width so it doesn't look cramped */
@@ -146,11 +154,16 @@ def render_top_nav() -> None:
           color: #E5E7EB !important;
           opacity: 1 !important;
           border-radius: 10px !important;
-          padding: 6px 8px !important;
-          margin: 0px !important;
+          padding: 0 !important; /* remove BaseWeb li padding so rows don't feel "puffy" */
+          margin: 0 !important;
           font-size: 0.90rem !important;
           line-height: 1.18 !important;
           white-space: nowrap !important;
+        }
+        ul[data-testid="stSelectboxVirtualDropdown"] li > div,
+        ul[data-testid="stSelectboxVirtualDropdown"] li > div > div {
+          padding: 6px 8px !important;
+          border-radius: 10px !important;
         }
         ul[data-testid="stSelectboxVirtualDropdown"] li:hover {
           background: rgba(56,189,248,.14) !important;
