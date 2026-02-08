@@ -77,9 +77,13 @@ def render_top_nav() -> None:
           margin-bottom: 0.15rem;
         }
 
-        /* Services nav-link popover trigger (LunarCrush-style) */
+        /* Services nav-link popover trigger (LunarCrush-style)
+           Streamlit popover renders a button; we must override default button styling hard.
+        */
+        .clawd-topnav .clawd-services [data-testid="stPopover"] > button,
         .clawd-topnav .clawd-services button {
           background: transparent !important;
+          background-color: transparent !important;
           border: none !important;
           padding: 0.10rem 0.10rem !important;
           min-height: 32px !important;
@@ -87,8 +91,12 @@ def render_top_nav() -> None:
           color: rgba(229,231,235,.92) !important;
           font-weight: 700 !important;
           font-size: 0.86rem !important;
+          width: fit-content !important;
         }
+        .clawd-topnav .clawd-services [data-testid="stPopover"] > button:hover,
         .clawd-topnav .clawd-services button:hover {
+          background: transparent !important;
+          background-color: transparent !important;
           color: rgba(229,231,235,1) !important;
           text-decoration: underline;
           text-underline-offset: 4px;
