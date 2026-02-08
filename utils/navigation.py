@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import streamlit as st
+import streamlit.components.v1 as st_components
 
 
 def render_sidebar_navigation() -> None:
@@ -166,25 +167,7 @@ def render_top_nav() -> None:
           border-radius: 10px !important;
         }
 
-        /* Hide sentinel "Services" option from the dropdown list (keeps control readable)
-           BaseWeb virtual list can still reserve space, so we collapse it aggressively.
-        */
-        ul[data-testid="stSelectboxVirtualDropdown"] li:first-child {
-          display: none !important;
-          height: 0 !important;
-          min-height: 0 !important;
-          padding: 0 !important;
-          margin: 0 !important;
-          border: 0 !important;
-        }
-        ul[data-testid="stSelectboxVirtualDropdown"] li:first-child > div,
-        ul[data-testid="stSelectboxVirtualDropdown"] li:first-child > div > div {
-          display: none !important;
-          height: 0 !important;
-          padding: 0 !important;
-          margin: 0 !important;
-        }
-        ul[data-testid="stSelectboxVirtualDropdown"] li:hover {
+ul[data-testid="stSelectboxVirtualDropdown"] li:hover {
           background: rgba(56,189,248,.14) !important;
           background-color: rgba(56,189,248,.14) !important;
         }
@@ -320,25 +303,19 @@ def render_top_nav() -> None:
         with services_col:
             st.markdown('<div class="clawd-services">', unsafe_allow_html=True)
 
-            # Use a sentinel first option so the control shows a real value (not a dim placeholder)
-            # while we hide the sentinel row from the dropdown list via CSS.
-            _SVC_SENTINEL = "__SERVICES__"
             choice = st.selectbox(
                 "Services",
-                options=[_SVC_SENTINEL, "Discover", "Deep Analyze"],
-                index=0,
+                options=["Discover", "Deep Analyze"],
+                index=None,
+                placeholder="Services",
                 label_visibility="collapsed",
-                key="topnav_services_v2",
-                format_func=lambda x: "Services" if x == _SVC_SENTINEL else x,
+                key="topnav_services",
             )
 
             if choice == "Discover":
                 st.switch_page("pages/Discovery.py" if is_logged_in() else "pages/Auth.py")
             elif choice == "Deep Analyze":
                 st.switch_page("pages/Deep_Analysis.py" if is_logged_in() else "pages/Auth.py")
-            else:
-                # Sentinel selected; do nothing
-                pass
 
             st.markdown("</div>", unsafe_allow_html=True)
 
