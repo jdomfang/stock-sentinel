@@ -104,14 +104,12 @@ def render_top_nav() -> None:
           padding-right: 10px !important;
         }
         /* Make sure the word "Services" is readable (some browsers dim placeholder text) */
-        .clawd-topnav .clawd-services [data-baseweb="select"] [role="button"],
-        .clawd-topnav .clawd-services [data-baseweb="select"] span,
-        .clawd-topnav .clawd-services [data-baseweb="select"] div {
+        .clawd-topnav .clawd-services [data-baseweb="select"] * {
           color: rgba(229,231,235,.92) !important;
           opacity: 1 !important;
-          font-weight: 650 !important;
         }
         .clawd-topnav .clawd-services [data-baseweb="select"] [role="button"] {
+          font-weight: 700 !important;
           padding-right: 8px !important;
         }
 
@@ -138,7 +136,7 @@ def render_top_nav() -> None:
           border: 1px solid rgba(148,163,184,0.18) !important;
           border-radius: 12px !important;
           box-shadow: 0 14px 36px rgba(0,0,0,.46) !important;
-          padding: 6px !important;
+          padding: 4px !important;
           min-width: 228px !important; /* avoid oversized detached panel */
         }
 
@@ -148,10 +146,10 @@ def render_top_nav() -> None:
           color: #E5E7EB !important;
           opacity: 1 !important;
           border-radius: 10px !important;
-          padding: 8px 9px !important;
-          margin: 2px 0 !important;
+          padding: 6px 8px !important;
+          margin: 0px !important;
           font-size: 0.90rem !important;
-          line-height: 1.22 !important;
+          line-height: 1.18 !important;
           white-space: nowrap !important;
         }
         ul[data-testid="stSelectboxVirtualDropdown"] li:hover {
