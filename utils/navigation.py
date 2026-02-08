@@ -80,6 +80,12 @@ def render_top_nav() -> None:
           margin-bottom: 0.15rem;
         }
 
+        /* Group Discover + Deep Analyze together */
+        .clawd-topnav .clawd-navgroup [data-testid="stHorizontalBlock"] {
+          justify-content: flex-end !important;
+          gap: 0.35rem !important; /* natural spacing between the two links */
+        }
+
         /* Top-nav link buttons (look like text links, LunarCrush-style) */
         .clawd-topnav .clawd-navlink [data-testid="stButton"] > button {
           background: transparent !important;
@@ -93,6 +99,7 @@ def render_top_nav() -> None:
           font-size: 0.86rem !important;
           letter-spacing: -0.01em;
           white-space: nowrap !important;
+          border-radius: 10px !important;
         }
         .clawd-topnav .clawd-navlink [data-testid="stButton"] > button:hover {
           background: transparent !important;
@@ -108,11 +115,6 @@ def render_top_nav() -> None:
           outline: none !important;
           box-shadow: none !important;
           border-color: transparent !important;
-        }
-
-        /* Ensure global topnav button styling doesn't re-add pill borders to nav links */
-        .clawd-topnav .clawd-navlink [data-testid="stButton"] > button {
-          border-radius: 10px !important;
         }
 
         /* Services dropdown (native Streamlit selectbox) — tighten empty space before caret */
@@ -239,12 +241,12 @@ def render_top_nav() -> None:
             return int(data.get("scan_credits") or 0), int(data.get("deep_credits") or 0)
 
         if is_logged_in():
-            spacer_col, credits_col, admin_col, discover_col, deep_col, auth_col = st.columns(
-                [5.6, 1.15, 0.55, 0.55, 0.75, 0.70]
+            spacer_col, credits_col, admin_col, nav_col, auth_col = st.columns(
+                [6.05, 1.15, 0.55, 1.10, 0.70]
             )
         else:
-            # Logged-out: right cluster should be tight (top-nav links + Login pill).
-            spacer_col, discover_col, deep_col, auth_col = st.columns([8.0, 0.6, 0.85, 0.75])
+            # Logged-out: right cluster should be tight (nav links grouped + Login pill).
+            spacer_col, nav_col, auth_col = st.columns([8.25, 1.15, 0.75])
 
         with spacer_col:
             st.markdown("")
@@ -292,20 +294,23 @@ def render_top_nav() -> None:
                     if st.button("🛠️", use_container_width=True, help="Admin Dashboard"):
                         st.switch_page("pages/Admin.py")
 
-        # Top-nav links (no dropdown)
-        with discover_col:
-            st.markdown('<div class="clawd-navlink">', unsafe_allow_html=True)
-            if st.button("Discover", use_container_width=False, key="nav_discover"):
-                st.switch_page("pages/Discovery.py" if is_logged_in() else "pages/Auth.py")
+        # Top-nav links (grouped)
+        with nav_col:
+            st.markdown('<div class="clawd-navgroup">', unsafe_allow_html=True)
+            c1, c2 = st.columns([0.95, 1.25])
+            with c1:
+                st.markdown('<div class="clawd-navlink">', unsafe_allow_html=True)
+                if st.button("Discover", use_container_width=False, key="nav_discover"):
+                    st.switch_page("pages/Discovery.py" if is_logged_in() else "pages/Auth.py")
+                st.markdown('</div>', unsafe_allow_html=True)
+            with c2:
+                st.markdown('<div class="clawd-navlink">', unsafe_allow_html=True)
+                if st.button("Deep Analyze", use_container_width=False, key="nav_deep"):
+                    st.switch_page("pages/Deep_Analysis.py" if is_logged_in() else "pages/Auth.py")
+                st.markdown('</div>', unsafe_allow_html=True)
             st.markdown('</div>', unsafe_allow_html=True)
 
-        with deep_col:
-            st.markdown('<div class="clawd-navlink">', unsafe_allow_html=True)
-            if st.button("Deep Analyze", use_container_width=False, key="nav_deep"):
-                st.switch_page("pages/Deep_Analysis.py" if is_logged_in() else "pages/Auth.py")
-            st.markdown('</div>', unsafe_allow_html=True)
-
-        # Auth button (right-most)        # Auth button (right-most)
+        # Auth button (right-most)
         with auth_col:
             st.markdown('<div class="clawd-auth">', unsafe_allow_html=True)
             if is_logged_in():
@@ -318,9 +323,5 @@ def render_top_nav() -> None:
             st.markdown('</div>', unsafe_allow_html=True)
 
         st.markdown('</div>', unsafe_allow_html=True)
-
-        # JS: hide the sentinel "Services" row in the dropdown menu (so menu shows only real destinations)
-
-    # JS: force selectbox placeholder/value readable + keep dropdown themed (the earlier working approach)
 
     # No extra spacer after nav (prevents big gap before the hero)
