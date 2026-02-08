@@ -40,7 +40,9 @@ def render_top_nav() -> None:
     st.markdown(
         """
         <style>
-        /* Make buttons in the top nav look more like a real navbar (compact like LunarCrush) */
+        /* Make buttons in the top nav look more like a real navbar (compact like LunarCrush)
+           Note: nav links override this via .clawd-navlink.
+        */
         .clawd-topnav [data-testid="stButton"] > button {
           border-radius: 999px;
           padding: 0.16rem 0.42rem;
@@ -82,7 +84,7 @@ def render_top_nav() -> None:
         .clawd-topnav .clawd-navlink [data-testid="stButton"] > button {
           background: transparent !important;
           background-color: transparent !important;
-          border: none !important;
+          border: 1px solid transparent !important;
           box-shadow: none !important;
           padding: 0.10rem 0.10rem !important;
           min-height: 32px !important;
@@ -93,9 +95,24 @@ def render_top_nav() -> None:
           white-space: nowrap !important;
         }
         .clawd-topnav .clawd-navlink [data-testid="stButton"] > button:hover {
+          background: transparent !important;
+          background-color: transparent !important;
+          border-color: transparent !important;
+          color: rgba(229,231,235,1) !important;
           text-decoration: underline;
           text-underline-offset: 4px;
           text-decoration-color: rgba(56,189,248,.55);
+        }
+        .clawd-topnav .clawd-navlink [data-testid="stButton"] > button:focus,
+        .clawd-topnav .clawd-navlink [data-testid="stButton"] > button:focus-visible {
+          outline: none !important;
+          box-shadow: none !important;
+          border-color: transparent !important;
+        }
+
+        /* Ensure global topnav button styling doesn't re-add pill borders to nav links */
+        .clawd-topnav .clawd-navlink [data-testid="stButton"] > button {
+          border-radius: 10px !important;
         }
 
         /* Services dropdown (native Streamlit selectbox) — tighten empty space before caret */
