@@ -132,14 +132,14 @@ def render_top_nav() -> None:
           padding-bottom: 0 !important;
         }
         
-        /* Services selectbox: significantly larger */
+        /* Services selectbox: compact (LunarCrush-style) */
         .clawd-topnav [data-testid="stSelectbox"] {
-          max-width: 300px !important;
-          min-width: 280px !important;
+          max-width: 240px !important;
+          min-width: 210px !important;
         }
         .clawd-topnav [data-baseweb="select"] {
           width: 100% !important;
-          max-width: 300px !important;
+          max-width: 240px !important;
         }
         
         /* Shrink Login button to 50% width */
@@ -201,7 +201,8 @@ def render_top_nav() -> None:
                 [6.0, 1.15, 0.55, 1.45, 0.75]
             )
         else:
-            spacer_col, services_col, auth_col = st.columns([7.6, 1.5, 0.9])
+            # Slightly narrower Services column so it hugs the auth button like LunarCrush
+            spacer_col, services_col, auth_col = st.columns([8.0, 1.25, 0.9])
 
         with spacer_col:
             st.markdown("")
