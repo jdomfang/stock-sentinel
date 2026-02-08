@@ -78,6 +78,26 @@ def render_top_nav() -> None:
           margin-bottom: 0.15rem;
         }
 
+        /* Top-nav link buttons (look like text links, LunarCrush-style) */
+        .clawd-topnav .clawd-navlink [data-testid="stButton"] > button {
+          background: transparent !important;
+          background-color: transparent !important;
+          border: none !important;
+          box-shadow: none !important;
+          padding: 0.10rem 0.10rem !important;
+          min-height: 32px !important;
+          color: rgba(229,231,235,.92) !important;
+          font-weight: 750 !important;
+          font-size: 0.86rem !important;
+          letter-spacing: -0.01em;
+          white-space: nowrap !important;
+        }
+        .clawd-topnav .clawd-navlink [data-testid="stButton"] > button:hover {
+          text-decoration: underline;
+          text-underline-offset: 4px;
+          text-decoration-color: rgba(56,189,248,.55);
+        }
+
         /* Services dropdown (native Streamlit selectbox) — tighten empty space before caret */
         .clawd-topnav .clawd-services {
           display: inline-flex;
@@ -131,50 +151,6 @@ def render_top_nav() -> None:
           .clawd-topnav .clawd-services [data-baseweb="select"] {
             max-width: 190px !important;
           }
-        }
-
-        /* Dropdown menu (options) readability — match Discovery */
-        [data-baseweb="popover"] {
-          z-index: 10050 !important;
-        }
-
-        ul[data-testid="stSelectboxVirtualDropdown"],
-        [data-testid="stSelectboxVirtualDropdown"] {
-          background: rgba(15,23,42,0.98) !important;
-          background-color: rgba(15,23,42,0.98) !important;
-          border: 1px solid rgba(148,163,184,0.18) !important;
-          border-radius: 12px !important;
-          box-shadow: 0 14px 36px rgba(0,0,0,.46) !important;
-          padding: 4px !important;
-          min-width: 228px !important; /* avoid oversized detached panel */
-        }
-
-        ul[data-testid="stSelectboxVirtualDropdown"] li {
-          background: transparent !important;
-          background-color: transparent !important;
-          color: #E5E7EB !important;
-          opacity: 1 !important;
-          border-radius: 10px !important;
-          padding: 0 !important; /* remove BaseWeb li padding so rows don't feel "puffy" */
-          margin: 0 !important;
-          font-size: 0.90rem !important;
-          line-height: 1.18 !important;
-          white-space: nowrap !important;
-        }
-        ul[data-testid="stSelectboxVirtualDropdown"] li > div,
-        ul[data-testid="stSelectboxVirtualDropdown"] li > div > div {
-          padding: 6px 8px !important;
-          border-radius: 10px !important;
-        }
-
-ul[data-testid="stSelectboxVirtualDropdown"] li:hover {
-          background: rgba(56,189,248,.14) !important;
-          background-color: rgba(56,189,248,.14) !important;
-        }
-        ul[data-testid="stSelectboxVirtualDropdown"] li *,
-        ul[data-testid="stSelectboxVirtualDropdown"] * {
-          color: #E5E7EB !important;
-          opacity: 1 !important;
         }
 
         /* Tighten spacing between columns inside the nav row + vertically align controls */
@@ -246,12 +222,12 @@ ul[data-testid="stSelectboxVirtualDropdown"] li:hover {
             return int(data.get("scan_credits") or 0), int(data.get("deep_credits") or 0)
 
         if is_logged_in():
-            spacer_col, credits_col, admin_col, services_col, auth_col = st.columns(
-                [6.0, 1.15, 0.55, 1.05, 0.75]
+            spacer_col, credits_col, admin_col, discover_col, deep_col, auth_col = st.columns(
+                [5.6, 1.15, 0.55, 0.55, 0.75, 0.70]
             )
         else:
-            # Logged-out: right cluster should be tight (Services dropdown + Login pill).
-            spacer_col, services_col, auth_col = st.columns([8.55, 0.70, 0.75])
+            # Logged-out: right cluster should be tight (top-nav links + Login pill).
+            spacer_col, discover_col, deep_col, auth_col = st.columns([8.0, 0.6, 0.85, 0.75])
 
         with spacer_col:
             st.markdown("")
@@ -299,32 +275,20 @@ ul[data-testid="stSelectboxVirtualDropdown"] li:hover {
                     if st.button("🛠️", use_container_width=True, help="Admin Dashboard"):
                         st.switch_page("pages/Admin.py")
 
-        # Services dropdown (native Streamlit selectbox for reliable dropdown behavior)
-        with services_col:
-            st.markdown('<div class="clawd-services">', unsafe_allow_html=True)
-
-            # Sentinel first option so the trigger shows a real value (not dim placeholder).
-            # We hide/collapse the sentinel row in the dropdown via CSS.
-            _SVC_SENTINEL = "__SERVICES__"
-            choice = st.selectbox(
-                "Services",
-                options=[_SVC_SENTINEL, "Discover", "Deep Analyze"],
-                index=0,
-                label_visibility="collapsed",
-                key="topnav_services_v3",
-                format_func=lambda x: "Services" if x == _SVC_SENTINEL else x,
-            )
-
-            if choice == "Discover":
+        # Top-nav links (no dropdown)
+        with discover_col:
+            st.markdown('<div class="clawd-navlink">', unsafe_allow_html=True)
+            if st.button("Discover", use_container_width=False, key="nav_discover"):
                 st.switch_page("pages/Discovery.py" if is_logged_in() else "pages/Auth.py")
-            elif choice == "Deep Analyze":
+            st.markdown('</div>', unsafe_allow_html=True)
+
+        with deep_col:
+            st.markdown('<div class="clawd-navlink">', unsafe_allow_html=True)
+            if st.button("Deep Analyze", use_container_width=False, key="nav_deep"):
                 st.switch_page("pages/Deep_Analysis.py" if is_logged_in() else "pages/Auth.py")
-            else:
-                pass
+            st.markdown('</div>', unsafe_allow_html=True)
 
-            st.markdown("</div>", unsafe_allow_html=True)
-
-        # Auth button (right-most)
+        # Auth button (right-most)        # Auth button (right-most)
         with auth_col:
             st.markdown('<div class="clawd-auth">', unsafe_allow_html=True)
             if is_logged_in():
@@ -339,59 +303,7 @@ ul[data-testid="stSelectboxVirtualDropdown"] li:hover {
         st.markdown('</div>', unsafe_allow_html=True)
 
         # JS: hide the sentinel "Services" row in the dropdown menu (so menu shows only real destinations)
-    st_components.html(
-        """
-        <script>
-        (function () {
-          const HIDE_SENTINEL = (doc) => {
-            const ul = doc.querySelector('ul[data-testid="stSelectboxVirtualDropdown"]');
-            if (!ul) return;
 
-            // Find any row that is exactly "Services" and hide/collapse it.
-            const items = Array.from(ul.querySelectorAll('li'));
-            for (const li of items) {
-              const t = (li.innerText || '').trim();
-              if (t === 'Services') {
-                li.style.setProperty('display', 'none', 'important');
-                li.style.setProperty('height', '0', 'important');
-                li.style.setProperty('min-height', '0', 'important');
-                li.style.setProperty('padding', '0', 'important');
-                li.style.setProperty('margin', '0', 'important');
-              }
-            }
-
-            // Some BaseWeb virtual lists still reserve top space even after hiding the first item.
-            // Force the dropdown container + list to have no extra top padding.
-            ul.style.setProperty('padding-top', '0px', 'important');
-            ul.style.setProperty('margin-top', '0px', 'important');
-
-            // Walk up a couple levels to the popover/listbox container.
-            let p = ul.parentElement;
-            for (let i = 0; i < 3 && p; i++) {
-              p.style.setProperty('padding-top', '0px', 'important');
-              p.style.setProperty('margin-top', '0px', 'important');
-              p = p.parentElement;
-            }
-          };
-
-          const APPLY = () => {
-            try { HIDE_SENTINEL(document); } catch (e) {}
-            try {
-              if (window.parent && window.parent.document) HIDE_SENTINEL(window.parent.document);
-            } catch (e) {}
-          };
-
-          const obs = new MutationObserver(() => APPLY());
-          obs.observe(document.documentElement, { childList: true, subtree: true });
-          window.addEventListener('load', APPLY);
-          setTimeout(APPLY, 50);
-          setTimeout(APPLY, 250);
-          setTimeout(APPLY, 1000);
-          setInterval(APPLY, 500);
-        })();
-        </script>
-        """,
-        height=0,
-    )
+    # JS: force selectbox placeholder/value readable + keep dropdown themed (the earlier working approach)
 
     # No extra spacer after nav (prevents big gap before the hero)
