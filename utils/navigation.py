@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import streamlit as st
-import streamlit.components.v1 as components
+import streamlit.components.v1 as st_components
 
 
 def render_sidebar_navigation() -> None:
@@ -334,7 +334,7 @@ def render_top_nav() -> None:
 
     # JS: force Services trigger readability (matches the earlier working fix)
     # We scope to the top nav container so we don't affect other selectboxes.
-    components.html(
+    st_components.html(
         """
         <script>
         (function () {
