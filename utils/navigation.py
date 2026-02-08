@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import streamlit as st
+import streamlit.components.v1 as components
 
 
 def render_sidebar_navigation() -> None:
@@ -77,60 +78,57 @@ def render_top_nav() -> None:
           margin-bottom: 0.15rem;
         }
 
-        /* Services nav-link popover trigger (LunarCrush-style)
-           Streamlit popover renders a button; we must override default button styling hard.
-        */
-        .clawd-topnav .clawd-services [data-testid="stPopover"] > button,
-        .clawd-topnav .clawd-services button,
-        .clawd-topnav button[aria-haspopup="dialog"] {
+        /* Services: custom nav-link + chevron (LunarCrush-style, not a form control) */
+        .clawd-topnav .svc-wrap {
+          position: relative;
+          display: inline-flex;
+          align-items: center;
+        }
+        .clawd-topnav .svc-trigger {
           background: transparent !important;
-          background-color: transparent !important;
           border: none !important;
           padding: 0.10rem 0.10rem !important;
           min-height: 32px !important;
-          box-shadow: none !important;
           color: rgba(229,231,235,.92) !important;
-          font-weight: 700 !important;
+          font-weight: 750 !important;
           font-size: 0.86rem !important;
-          width: fit-content !important;
-          filter: none !important;
+          letter-spacing: -0.01em;
+          cursor: pointer;
+          white-space: nowrap;
         }
-        .clawd-topnav .clawd-services [data-testid="stPopover"] > button:hover,
-        .clawd-topnav .clawd-services button:hover,
-        .clawd-topnav button[aria-haspopup="dialog"]:hover {
-          background: transparent !important;
-          background-color: transparent !important;
+        .clawd-topnav .svc-trigger:hover {
           color: rgba(229,231,235,1) !important;
           text-decoration: underline;
           text-underline-offset: 4px;
           text-decoration-color: rgba(56,189,248,.55);
         }
-
-        /* Absolute fallback: some Streamlit builds paint popover triggers white via inline styles */
-        .clawd-topnav button[aria-haspopup="dialog"] {
-          background-image: none !important;
+        .clawd-topnav .svc-menu {
+          position: absolute;
+          top: calc(100% + 10px);
+          right: 0;
+          min-width: 220px;
+          padding: 8px;
+          border-radius: 14px;
+          border: 1px solid rgba(148,163,184,0.18);
+          background: rgba(15,23,42,0.98);
+          box-shadow: 0 18px 50px rgba(0,0,0,.50);
+          z-index: 10050;
+          display: none;
         }
-
-        /* Popover panel styling (subtle floating menu) */
-        .clawd-topnav .clawd-services [data-testid="stPopoverBody"] {
-          background: rgba(15,23,42,0.98) !important;
-          border: 1px solid rgba(148,163,184,0.18) !important;
-          border-radius: 14px !important;
-          box-shadow: 0 18px 50px rgba(0,0,0,.50) !important;
+        .clawd-topnav .svc-menu a {
+          display: block;
+          padding: 10px 10px;
+          border-radius: 10px;
+          color: rgba(229,231,235,.92);
+          text-decoration: none;
+          font-weight: 650;
+          font-size: 0.90rem;
         }
-        .clawd-topnav .clawd-services [data-testid="stPopoverBody"] [data-testid="stButton"] > button {
-          width: 100% !important;
-          justify-content: flex-start !important;
-          border-radius: 10px !important;
-          padding: 0.48rem 0.65rem !important;
-          font-size: 0.88rem !important;
-          background: transparent !important;
-          border: 1px solid transparent !important;
-          box-shadow: none !important;
+        .clawd-topnav .svc-menu a:hover {
+          background: rgba(56,189,248,.12);
         }
-        .clawd-topnav .clawd-services [data-testid="stPopoverBody"] [data-testid="stButton"] > button:hover {
-          background: rgba(56,189,248,.12) !important;
-          border-color: rgba(56,189,248,.16) !important;
+        .clawd-topnav .svc-wrap[data-open="true"] .svc-menu {
+          display: block;
         }
 
         /* Dropdown menu (options) readability — match Discovery */
@@ -178,7 +176,7 @@ def render_top_nav() -> None:
           padding-bottom: 0 !important;
         }
         
-        /* (Services is now a popover nav-link, not a selectbox) */
+        /* (Services is a custom nav-link dropdown) */
         
         /* Shrink Login button to 50% width */
         .clawd-topnav [data-testid="stButton"] {
@@ -289,15 +287,56 @@ def render_top_nav() -> None:
                     if st.button("🛠️", use_container_width=True, help="Admin Dashboard"):
                         st.switch_page("pages/Admin.py")
 
-        # Services menu (nav link + chevron) — keep Login button untouched
+        # Services menu (link + chevron) — LunarCrush-like hierarchy next to Login
+        # We implement this as a small custom HTML dropdown so it doesn't render like a form field.
         with services_col:
-            st.markdown('<div class="clawd-services" id="clawd-services-pop">', unsafe_allow_html=True)
-            with st.popover("Services ▾"):
-                if st.button("Discover", use_container_width=True, key="svc_discover"):
-                    st.switch_page("pages/Discovery.py" if is_logged_in() else "pages/Auth.py")
-                if st.button("Deep Analyze", use_container_width=True, key="svc_deep"):
-                    st.switch_page("pages/Deep_Analysis.py" if is_logged_in() else "pages/Auth.py")
-            st.markdown("</div>", unsafe_allow_html=True)
+            st.markdown(
+                """
+                <div class="svc-wrap" id="svc-wrap">
+                  <button class="svc-trigger" id="svc-trigger" type="button">Services <span aria-hidden="true">▾</span></button>
+                  <div class="svc-menu" id="svc-menu" role="menu" aria-label="Services">
+                    <a role="menuitem" href="/Discovery">Discover</a>
+                    <a role="menuitem" href="/Deep_Analysis">Deep Analyze</a>
+                  </div>
+                </div>
+                """,
+                unsafe_allow_html=True,
+            )
+
+            components.html(
+                """
+                <script>
+                (function () {
+                  const root = window.parent?.document || document;
+                  const wrap = root.getElementById('svc-wrap');
+                  const trigger = root.getElementById('svc-trigger');
+                  if (!wrap || !trigger) return;
+
+                  const close = () => wrap.setAttribute('data-open', 'false');
+                  const open = () => wrap.setAttribute('data-open', 'true');
+                  const isOpen = () => wrap.getAttribute('data-open') === 'true';
+
+                  close();
+
+                  trigger.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    if (isOpen()) close();
+                    else open();
+                  });
+
+                  root.addEventListener('click', (e) => {
+                    if (!wrap.contains(e.target)) close();
+                  });
+
+                  root.addEventListener('keydown', (e) => {
+                    if (e.key === 'Escape') close();
+                  });
+                })();
+                </script>
+                """,
+                height=0,
+              )
 
         # Auth button (right-most)
         with auth_col:
@@ -310,54 +349,5 @@ def render_top_nav() -> None:
                     st.switch_page("pages/Auth.py")
 
         st.markdown('</div>', unsafe_allow_html=True)
-
-    # JS: dropdown readability fix + Services selectbox visibility (match Discovery).
-    import streamlit.components.v1 as components
-
-    components.html(
-        """
-        <script>
-        (function () {
-          const styleServicesPopover = (doc) => {
-            // Force the Services popover trigger to look like a nav link (no white button)
-            const root = doc.querySelector('#clawd-services-pop');
-            if (!root) return;
-
-            // Streamlit popover trigger is a <button> inside the popover container
-            const trigger = root.querySelector('button');
-            if (!trigger) return;
-
-            const set = (k, v) => trigger.style.setProperty(k, v, 'important');
-            set('background', 'transparent');
-            set('background-color', 'transparent');
-            set('border', 'none');
-            set('box-shadow', 'none');
-            set('color', 'rgba(229,231,235,.92)');
-            set('padding', '0.10rem 0.10rem');
-            set('min-height', '32px');
-            set('border-radius', '999px');
-            set('width', 'fit-content');
-          };
-
-          const applyAll = () => {
-            try { styleServicesPopover(document); } catch (e) {}
-            try {
-              if (window.parent && window.parent.document) {
-                styleServicesPopover(window.parent.document);
-              }
-            } catch (e) {}
-          };
-
-          const obs = new MutationObserver(() => applyAll());
-          obs.observe(document.documentElement, { childList: true, subtree: true });
-          window.addEventListener('load', applyAll);
-          setTimeout(applyAll, 50);
-          setTimeout(applyAll, 250);
-          setTimeout(applyAll, 1000);
-        })();
-        </script>
-        """,
-        height=0,
-    )
 
     # No extra spacer after nav (prevents big gap before the hero)
