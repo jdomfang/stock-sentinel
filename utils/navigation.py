@@ -103,6 +103,14 @@ def render_top_nav() -> None:
           padding-left: 10px !important;
           padding-right: 10px !important;
         }
+        /* Make sure the word "Services" is readable (some browsers dim placeholder text) */
+        .clawd-topnav .clawd-services [data-baseweb="select"] [role="button"],
+        .clawd-topnav .clawd-services [data-baseweb="select"] span,
+        .clawd-topnav .clawd-services [data-baseweb="select"] div {
+          color: rgba(229,231,235,.92) !important;
+          opacity: 1 !important;
+          font-weight: 650 !important;
+        }
         .clawd-topnav .clawd-services [data-baseweb="select"] [role="button"] {
           padding-right: 8px !important;
         }
@@ -128,10 +136,10 @@ def render_top_nav() -> None:
           background: rgba(15,23,42,0.98) !important;
           background-color: rgba(15,23,42,0.98) !important;
           border: 1px solid rgba(148,163,184,0.18) !important;
-          border-radius: 14px !important;
-          box-shadow: 0 18px 50px rgba(0,0,0,.50) !important;
+          border-radius: 12px !important;
+          box-shadow: 0 14px 36px rgba(0,0,0,.46) !important;
           padding: 6px !important;
-          min-width: 260px !important; /* menu wider than trigger = more natural */
+          min-width: 228px !important; /* avoid oversized detached panel */
         }
 
         ul[data-testid="stSelectboxVirtualDropdown"] li {
@@ -140,10 +148,10 @@ def render_top_nav() -> None:
           color: #E5E7EB !important;
           opacity: 1 !important;
           border-radius: 10px !important;
-          padding: 10px 10px !important;
+          padding: 8px 9px !important;
           margin: 2px 0 !important;
-          font-size: 0.92rem !important;
-          line-height: 1.25 !important;
+          font-size: 0.90rem !important;
+          line-height: 1.22 !important;
           white-space: nowrap !important;
         }
         ul[data-testid="stSelectboxVirtualDropdown"] li:hover {
