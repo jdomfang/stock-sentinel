@@ -314,7 +314,7 @@ def render_top_nav() -> None:
                 options=[_SVC_SENTINEL, "Discover", "Deep Analyze"],
                 index=0,
                 label_visibility="collapsed",
-                key="topnav_services",
+                key="topnav_services_v2",
                 format_func=lambda x: "Services" if x == _SVC_SENTINEL else x,
             )
 
