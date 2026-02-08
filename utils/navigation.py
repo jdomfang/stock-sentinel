@@ -342,41 +342,42 @@ def render_top_nav() -> None:
             const nav = doc.querySelector('.clawd-topnav');
             if (!nav) return;
 
-            // Find the Services selectbox within the top nav (scope to our wrapper)
-            const wrap = nav.querySelector('.clawd-services');
-            if (!wrap) return;
+            // Find auth button (Log in / Log out) and then select the nearest listbox trigger to its left.
+            const buttons = Array.from(nav.querySelectorAll('button'));
+            const authBtn = buttons.find(b => (b.innerText || '').trim() === 'Log in')
+                        || buttons.find(b => (b.innerText || '').trim() === 'Log out');
+            if (!authBtn) return;
+            const authRect = authBtn.getBoundingClientRect();
 
-            // Streamlit/BaseWeb can leave behind multiple selectboxes in the DOM.
-            // Prefer the *visible* one.
-            const candidates = Array.from(wrap.querySelectorAll('[data-testid="stSelectbox"]'));
-            const select = candidates.find((el) => el && el.offsetParent !== null) || candidates[0];
-            if (!select) return;
+            const listboxTriggers = Array.from(nav.querySelectorAll('[role="button"][aria-haspopup="listbox"], button[aria-haspopup="listbox"]'))
+              .filter(el => el && el.offsetParent !== null);
+            if (!listboxTriggers.length) return;
 
-            // Target the trigger button (visible)
-            const btns = Array.from(select.querySelectorAll('[role="button"]'));
-            const btn = btns.find((el) => el && el.offsetParent !== null) || btns[0];
-            if (btn) {
-              const set = (k, v) => btn.style.setProperty(k, v, 'important');
-              set('color', '#E5E7EB');
-              set('opacity', '1');
-              set('font-weight', '700');
-              set('-webkit-text-fill-color', '#E5E7EB');
-
-              // Also force the value/placeholder node(s) inside the button
-              btn.querySelectorAll('span, div, p, svg, path').forEach((el) => {
-                el.style.setProperty('color', '#E5E7EB', 'important');
-                el.style.setProperty('opacity', '1', 'important');
-                el.style.setProperty('font-weight', '700', 'important');
-                el.style.setProperty('-webkit-text-fill-color', '#E5E7EB', 'important');
-                el.style.setProperty('fill', '#E5E7EB', 'important');
-              });
+            // Choose the trigger immediately to the left of auth button.
+            let best = null;
+            let bestDist = Infinity;
+            for (const t of listboxTriggers) {
+              const r = t.getBoundingClientRect();
+              const dist = authRect.left - r.right;
+              if (dist >= -4 && dist < bestDist) { // allow tiny overlap
+                bestDist = dist;
+                best = t;
+              }
             }
+            const trigger = best || listboxTriggers[0];
 
-            // Force all inner nodes to be visible (BaseWeb sometimes dims placeholder)
-            select.querySelectorAll('*').forEach((el) => {
+            const force = (el) => {
+              if (!el) return;
               el.style.setProperty('color', '#E5E7EB', 'important');
               el.style.setProperty('opacity', '1', 'important');
+              el.style.setProperty('font-weight', '700', 'important');
               el.style.setProperty('-webkit-text-fill-color', '#E5E7EB', 'important');
+            };
+
+            force(trigger);
+            trigger.querySelectorAll('*').forEach((el) => {
+              force(el);
+              el.style.setProperty('fill', '#E5E7EB', 'important');
             });
           };
 
