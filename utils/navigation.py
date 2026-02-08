@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import streamlit as st
+import streamlit.components.v1 as components
 
 
 def render_sidebar_navigation() -> None:
@@ -330,5 +331,58 @@ def render_top_nav() -> None:
             st.markdown('</div>', unsafe_allow_html=True)
 
         st.markdown('</div>', unsafe_allow_html=True)
+
+    # JS: force Services trigger readability (matches the earlier working fix)
+    # We scope to the top nav container so we don't affect other selectboxes.
+    components.html(
+        """
+        <script>
+        (function () {
+          const APPLY_TO = (doc) => {
+            const nav = doc.querySelector('.clawd-topnav');
+            if (!nav) return;
+
+            // Find the Services selectbox within the top nav
+            const select = nav.querySelector('[data-testid="stSelectbox"]');
+            if (!select) return;
+
+            // Target the trigger button
+            const btn = select.querySelector('[role="button"]');
+            if (btn) {
+              btn.style.setProperty('color', '#E5E7EB', 'important');
+              btn.style.setProperty('opacity', '1', 'important');
+              btn.style.setProperty('font-weight', '700', 'important');
+              btn.style.setProperty('-webkit-text-fill-color', '#E5E7EB', 'important');
+            }
+
+            // Force all inner nodes to be visible (BaseWeb sometimes dims placeholder)
+            select.querySelectorAll('*').forEach((el) => {
+              el.style.setProperty('color', '#E5E7EB', 'important');
+              el.style.setProperty('opacity', '1', 'important');
+              el.style.setProperty('-webkit-text-fill-color', '#E5E7EB', 'important');
+            });
+          };
+
+          const APPLY = () => {
+            try { APPLY_TO(document); } catch (e) {}
+            try {
+              if (window.parent && window.parent.document) {
+                APPLY_TO(window.parent.document);
+              }
+            } catch (e) {}
+          };
+
+          const obs = new MutationObserver(() => APPLY());
+          obs.observe(document.documentElement, { childList: true, subtree: true });
+          window.addEventListener('load', APPLY);
+          setTimeout(APPLY, 50);
+          setTimeout(APPLY, 250);
+          setTimeout(APPLY, 1000);
+          setInterval(APPLY, 750);
+        })();
+        </script>
+        """,
+        height=0,
+    )
 
     # No extra spacer after nav (prevents big gap before the hero)
