@@ -204,7 +204,7 @@ def render_top_nav() -> None:
             # but it is NOT a selectable option.
             choice = st.selectbox(
                 "Services",
-                options=["Discover", "Deep Analyze"],
+                options=["Discover", "Deep Analyze", "FAQ", "Contact"],
                 index=None,
                 placeholder="Services",
                 label_visibility="collapsed",
@@ -216,6 +216,10 @@ def render_top_nav() -> None:
                 st.switch_page("pages/Discovery.py" if is_logged_in() else "pages/Auth.py")
             elif choice == "Deep Analyze":
                 st.switch_page("pages/Deep_Analysis.py" if is_logged_in() else "pages/Auth.py")
+            elif choice == "FAQ":
+                st.switch_page("pages/FAQ.py")
+            elif choice == "Contact":
+                st.switch_page("pages/Contact.py")
 
         with credits_col:
             if is_logged_in():
