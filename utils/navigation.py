@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import streamlit as st
-import streamlit.components.v1 as st_components
 
 
 def render_sidebar_navigation() -> None:
@@ -166,6 +165,11 @@ def render_top_nav() -> None:
           padding: 6px 8px !important;
           border-radius: 10px !important;
         }
+
+        /* Hide sentinel "Services" option from the dropdown list (keeps control readable) */
+        ul[data-testid="stSelectboxVirtualDropdown"] li:first-child {
+          display: none !important;
+        }
         ul[data-testid="stSelectboxVirtualDropdown"] li:hover {
           background: rgba(56,189,248,.14) !important;
           background-color: rgba(56,189,248,.14) !important;
@@ -302,19 +306,25 @@ def render_top_nav() -> None:
         with services_col:
             st.markdown('<div class="clawd-services">', unsafe_allow_html=True)
 
+            # Use a sentinel first option so the control shows a real value (not a dim placeholder)
+            # while we hide the sentinel row from the dropdown list via CSS.
+            _SVC_SENTINEL = "__SERVICES__"
             choice = st.selectbox(
                 "Services",
-                options=["Discover", "Deep Analyze"],
-                index=None,
-                placeholder="Services",
+                options=[_SVC_SENTINEL, "Discover", "Deep Analyze"],
+                index=0,
                 label_visibility="collapsed",
                 key="topnav_services",
+                format_func=lambda x: "Services" if x == _SVC_SENTINEL else x,
             )
 
             if choice == "Discover":
                 st.switch_page("pages/Discovery.py" if is_logged_in() else "pages/Auth.py")
             elif choice == "Deep Analyze":
                 st.switch_page("pages/Deep_Analysis.py" if is_logged_in() else "pages/Auth.py")
+            else:
+                # Sentinel selected; do nothing
+                pass
 
             st.markdown("</div>", unsafe_allow_html=True)
 
@@ -331,76 +341,5 @@ def render_top_nav() -> None:
             st.markdown('</div>', unsafe_allow_html=True)
 
         st.markdown('</div>', unsafe_allow_html=True)
-
-    # JS: force Services trigger readability (matches the earlier working fix)
-    # We scope to the top nav container so we don't affect other selectboxes.
-    st_components.html(
-        """
-        <script>
-        (function () {
-          const APPLY_TO = (doc) => {
-            const nav = doc.querySelector('.clawd-topnav');
-            if (!nav) return;
-
-            // Find auth button (Log in / Log out) and then select the nearest listbox trigger to its left.
-            const buttons = Array.from(nav.querySelectorAll('button'));
-            const authBtn = buttons.find(b => (b.innerText || '').trim() === 'Log in')
-                        || buttons.find(b => (b.innerText || '').trim() === 'Log out');
-            if (!authBtn) return;
-            const authRect = authBtn.getBoundingClientRect();
-
-            const listboxTriggers = Array.from(nav.querySelectorAll('[role="button"][aria-haspopup="listbox"], button[aria-haspopup="listbox"]'))
-              .filter(el => el && el.offsetParent !== null);
-            if (!listboxTriggers.length) return;
-
-            // Choose the trigger immediately to the left of auth button.
-            let best = null;
-            let bestDist = Infinity;
-            for (const t of listboxTriggers) {
-              const r = t.getBoundingClientRect();
-              const dist = authRect.left - r.right;
-              if (dist >= -4 && dist < bestDist) { // allow tiny overlap
-                bestDist = dist;
-                best = t;
-              }
-            }
-            const trigger = best || listboxTriggers[0];
-
-            const force = (el) => {
-              if (!el) return;
-              el.style.setProperty('color', '#E5E7EB', 'important');
-              el.style.setProperty('opacity', '1', 'important');
-              el.style.setProperty('font-weight', '700', 'important');
-              el.style.setProperty('-webkit-text-fill-color', '#E5E7EB', 'important');
-            };
-
-            force(trigger);
-            trigger.querySelectorAll('*').forEach((el) => {
-              force(el);
-              el.style.setProperty('fill', '#E5E7EB', 'important');
-            });
-          };
-
-          const APPLY = () => {
-            try { APPLY_TO(document); } catch (e) {}
-            try {
-              if (window.parent && window.parent.document) {
-                APPLY_TO(window.parent.document);
-              }
-            } catch (e) {}
-          };
-
-          const obs = new MutationObserver(() => APPLY());
-          obs.observe(document.documentElement, { childList: true, subtree: true });
-          window.addEventListener('load', APPLY);
-          setTimeout(APPLY, 50);
-          setTimeout(APPLY, 250);
-          setTimeout(APPLY, 1000);
-          setInterval(APPLY, 300);
-        })();
-        </script>
-        """,
-        height=0,
-    )
 
     # No extra spacer after nav (prevents big gap before the hero)
