@@ -84,24 +84,31 @@ def render_top_nav() -> None:
           justify-content: flex-end;
           align-items: center;
         }
+        /* Services trigger should look like a nav link, not a pill/button */
         .clawd-topnav .clawd-services [data-testid="stButton"] > button {
           background: transparent !important;
+          background-color: transparent !important;
           border: none !important;
           box-shadow: none !important;
-          padding: 0.10rem 0.10rem !important;
+          padding: 0.10rem 0.06rem !important;
           min-height: 32px !important;
           color: rgba(229,231,235,.92) !important;
           font-weight: 750 !important;
           font-size: 0.86rem !important;
           letter-spacing: -0.01em;
           width: fit-content !important;
+          white-space: nowrap !important;
         }
         .clawd-topnav .clawd-services [data-testid="stButton"] > button:hover {
           background: transparent !important;
+          background-color: transparent !important;
           color: rgba(229,231,235,1) !important;
           text-decoration: underline;
           text-underline-offset: 4px;
           text-decoration-color: rgba(56,189,248,.55);
+        }
+        .clawd-topnav .clawd-services [data-testid="stButton"] > button:focus {
+          outline: none !important;
         }
         .clawd-topnav .clawd-services-menu {
           position: absolute;
@@ -158,9 +165,10 @@ def render_top_nav() -> None:
           opacity: 1 !important;
         }
 
-        /* Tighten spacing between columns inside the nav row */
+        /* Tighten spacing between columns inside the nav row + vertically align controls */
         .clawd-topnav [data-testid="stHorizontalBlock"] {
           gap: 0.12rem;
+          align-items: center !important;
         }
         
         /* Reduce vertical margin below nav to close gap with hero */
@@ -175,21 +183,17 @@ def render_top_nav() -> None:
         
         /* (Services is a nav-link dropdown) */
         
-        /* Shrink Login button to 50% width */
-        .clawd-topnav [data-testid="stButton"] {
+        /* Auth button wrapper (keeps Login styling without affecting Services) */
+        .clawd-topnav .clawd-auth [data-testid="stButton"] {
           flex-grow: 0 !important;
         }
-        .clawd-topnav [data-testid="stButton"] > button {
-          width: auto !important;
-          padding: 0.22rem 0.4rem !important;
-          font-size: 0.80rem !important;
-          min-height: 32px !important;
-          white-space: nowrap !important;
-        }
-        .clawd-topnav [data-testid="stButton"] > button:hover {
+
+        /* Keep hover on non-primary buttons, but scope it away from Services link trigger */
+        .clawd-topnav :not(.clawd-services) [data-testid="stButton"] > button:hover {
           border-color: rgba(56,189,248,0.55);
           background: rgba(15,23,42,0.95);
         }
+
         .clawd-topnav .brand [data-testid="stButton"] > button {
           font-weight: 800;
           letter-spacing: -0.01em;
@@ -234,9 +238,8 @@ def render_top_nav() -> None:
                 [6.0, 1.15, 0.55, 1.45, 0.75]
             )
         else:
-            # Tablet Safari will wrap the Log in label vertically if the auth column is too narrow.
-            # Give the auth column enough width while keeping the cluster tight.
-            spacer_col, services_col, auth_col = st.columns([7.9, 1.15, 0.95])
+            # Logged-out: right cluster should be tight (Services link + Login pill).
+            spacer_col, services_col, auth_col = st.columns([8.6, 0.65, 0.75])
 
         with spacer_col:
             st.markdown("")
@@ -308,6 +311,7 @@ def render_top_nav() -> None:
 
         # Auth button (right-most)
         with auth_col:
+            st.markdown('<div class="clawd-auth">', unsafe_allow_html=True)
             if is_logged_in():
                 if st.button("Log out", use_container_width=False):
                     sign_out()
@@ -315,6 +319,7 @@ def render_top_nav() -> None:
             else:
                 if st.button("Log in", use_container_width=False, type="primary"):
                     st.switch_page("pages/Auth.py")
+            st.markdown('</div>', unsafe_allow_html=True)
 
         st.markdown('</div>', unsafe_allow_html=True)
 
