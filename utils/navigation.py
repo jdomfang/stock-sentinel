@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import streamlit as st
-import streamlit.components.v1 as st_components
 
 
 def render_sidebar_navigation() -> None:
@@ -303,19 +302,24 @@ ul[data-testid="stSelectboxVirtualDropdown"] li:hover {
         with services_col:
             st.markdown('<div class="clawd-services">', unsafe_allow_html=True)
 
+            # Sentinel first option so the trigger shows a real value (not dim placeholder).
+            # We hide/collapse the sentinel row in the dropdown via CSS.
+            _SVC_SENTINEL = "__SERVICES__"
             choice = st.selectbox(
                 "Services",
-                options=["Discover", "Deep Analyze"],
-                index=None,
-                placeholder="Services",
+                options=[_SVC_SENTINEL, "Discover", "Deep Analyze"],
+                index=0,
                 label_visibility="collapsed",
-                key="topnav_services",
+                key="topnav_services_v3",
+                format_func=lambda x: "Services" if x == _SVC_SENTINEL else x,
             )
 
             if choice == "Discover":
                 st.switch_page("pages/Discovery.py" if is_logged_in() else "pages/Auth.py")
             elif choice == "Deep Analyze":
                 st.switch_page("pages/Deep_Analysis.py" if is_logged_in() else "pages/Auth.py")
+            else:
+                pass
 
             st.markdown("</div>", unsafe_allow_html=True)
 
