@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import streamlit as st
+import streamlit.components.v1 as st_components
 
 
 def render_sidebar_navigation() -> None:
@@ -337,4 +338,47 @@ ul[data-testid="stSelectboxVirtualDropdown"] li:hover {
 
         st.markdown('</div>', unsafe_allow_html=True)
 
-        # No extra spacer after nav (prevents big gap before the hero)
+        # JS: hide the sentinel "Services" row in the dropdown menu (so menu shows only real destinations)
+    st_components.html(
+        """
+        <script>
+        (function () {
+          const HIDE_SENTINEL = (doc) => {
+            const ul = doc.querySelector('ul[data-testid="stSelectboxVirtualDropdown"]');
+            if (!ul) return;
+
+            // Find any row that is exactly "Services" and hide/collapse it.
+            const items = Array.from(ul.querySelectorAll('li'));
+            for (const li of items) {
+              const t = (li.innerText || '').trim();
+              if (t === 'Services') {
+                li.style.setProperty('display', 'none', 'important');
+                li.style.setProperty('height', '0', 'important');
+                li.style.setProperty('min-height', '0', 'important');
+                li.style.setProperty('padding', '0', 'important');
+                li.style.setProperty('margin', '0', 'important');
+              }
+            }
+          };
+
+          const APPLY = () => {
+            try { HIDE_SENTINEL(document); } catch (e) {}
+            try {
+              if (window.parent && window.parent.document) HIDE_SENTINEL(window.parent.document);
+            } catch (e) {}
+          };
+
+          const obs = new MutationObserver(() => APPLY());
+          obs.observe(document.documentElement, { childList: true, subtree: true });
+          window.addEventListener('load', APPLY);
+          setTimeout(APPLY, 50);
+          setTimeout(APPLY, 250);
+          setTimeout(APPLY, 1000);
+          setInterval(APPLY, 500);
+        })();
+        </script>
+        """,
+        height=0,
+    )
+
+    # No extra spacer after nav (prevents big gap before the hero)
