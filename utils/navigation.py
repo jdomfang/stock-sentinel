@@ -77,15 +77,15 @@ def render_top_nav() -> None:
           margin-bottom: 0.15rem;
         }
 
-        /* Services: nav-link trigger + floating menu (no Streamlit selectbox/popover) */
+        /* Services: nav-link style trigger (using st.popover overlay; no layout shift) */
         .clawd-topnav .clawd-services {
-          position: relative;
           display: inline-flex;
           justify-content: flex-end;
           align-items: center;
         }
-        /* Services trigger should look like a nav link, not a pill/button */
-        .clawd-topnav .clawd-services [data-testid="stButton"] > button {
+
+        /* Popover trigger button (make it look like a text link; remove focus border) */
+        .clawd-topnav .clawd-services [data-testid="stPopover"] > button {
           background: transparent !important;
           background-color: transparent !important;
           border: none !important;
@@ -98,8 +98,15 @@ def render_top_nav() -> None:
           letter-spacing: -0.01em;
           width: fit-content !important;
           white-space: nowrap !important;
+          outline: none !important;
+          -webkit-appearance: none !important;
         }
-        .clawd-topnav .clawd-services [data-testid="stButton"] > button:hover {
+        .clawd-topnav .clawd-services [data-testid="stPopover"] > button:focus,
+        .clawd-topnav .clawd-services [data-testid="stPopover"] > button:focus-visible {
+          outline: none !important;
+          box-shadow: none !important;
+        }
+        .clawd-topnav .clawd-services [data-testid="stPopover"] > button:hover {
           background: transparent !important;
           background-color: transparent !important;
           color: rgba(229,231,235,1) !important;
@@ -107,32 +114,27 @@ def render_top_nav() -> None:
           text-underline-offset: 4px;
           text-decoration-color: rgba(56,189,248,.55);
         }
-        .clawd-topnav .clawd-services [data-testid="stButton"] > button:focus {
-          outline: none !important;
+
+        /* Popover panel styling (subtle floating menu) */
+        .clawd-topnav .clawd-services [data-testid="stPopoverBody"] {
+          background: rgba(15,23,42,0.98) !important;
+          border: 1px solid rgba(148,163,184,0.18) !important;
+          border-radius: 14px !important;
+          box-shadow: 0 18px 50px rgba(0,0,0,.50) !important;
         }
-        .clawd-topnav .clawd-services-menu {
-          position: absolute;
-          top: calc(100% + 10px);
-          right: 0;
-          min-width: 220px;
-          padding: 8px;
-          border-radius: 14px;
-          border: 1px solid rgba(148,163,184,0.18);
-          background: rgba(15,23,42,0.98);
-          box-shadow: 0 18px 50px rgba(0,0,0,.50);
-          z-index: 10050;
+        .clawd-topnav .clawd-services [data-testid="stPopoverBody"] [data-testid="stButton"] > button {
+          width: 100% !important;
+          justify-content: flex-start !important;
+          border-radius: 10px !important;
+          padding: 0.48rem 0.65rem !important;
+          font-size: 0.88rem !important;
+          background: transparent !important;
+          border: 1px solid transparent !important;
+          box-shadow: none !important;
         }
-        .clawd-topnav .clawd-services-menu a {
-          display: block;
-          padding: 10px 10px;
-          border-radius: 10px;
-          color: rgba(229,231,235,.92);
-          text-decoration: none;
-          font-weight: 650;
-          font-size: 0.90rem;
-        }
-        .clawd-topnav .clawd-services-menu a:hover {
-          background: rgba(56,189,248,.12);
+        .clawd-topnav .clawd-services [data-testid="stPopoverBody"] [data-testid="stButton"] > button:hover {
+          background: rgba(56,189,248,.12) !important;
+          border-color: rgba(56,189,248,.16) !important;
         }
 
         /* Dropdown menu (options) readability — match Discovery */
@@ -287,26 +289,14 @@ def render_top_nav() -> None:
                     if st.button("🛠️", use_container_width=True, help="Admin Dashboard"):
                         st.switch_page("pages/Admin.py")
 
-        # Services menu (Services ▾ link + floating menu). Login stays a pill.
+        # Services menu (nav-link trigger + true overlay; no layout shift)
         with services_col:
             st.markdown('<div class="clawd-services">', unsafe_allow_html=True)
-
-            st.session_state.setdefault("services_open", False)
-
-            if st.button("Services ▾", key="services_trigger", use_container_width=False):
-                st.session_state.services_open = not st.session_state.services_open
-
-            if st.session_state.services_open:
-                st.markdown(
-                    """
-                    <div class="clawd-services-menu" role="menu" aria-label="Services">
-                      <a role="menuitem" href="/Discovery">Discover</a>
-                      <a role="menuitem" href="/Deep_Analysis">Deep Analyze</a>
-                    </div>
-                    """,
-                    unsafe_allow_html=True,
-                )
-
+            with st.popover("Services ▾"):
+                if st.button("Discover", use_container_width=True, key="svc_discover"):
+                    st.switch_page("pages/Discovery.py" if is_logged_in() else "pages/Auth.py")
+                if st.button("Deep Analyze", use_container_width=True, key="svc_deep"):
+                    st.switch_page("pages/Deep_Analysis.py" if is_logged_in() else "pages/Auth.py")
             st.markdown("</div>", unsafe_allow_html=True)
 
         # Auth button (right-most)
