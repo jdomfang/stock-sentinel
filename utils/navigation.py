@@ -333,4 +333,57 @@ ul[data-testid="stSelectboxVirtualDropdown"] li:hover {
 
         st.markdown('</div>', unsafe_allow_html=True)
 
+    # JS: force Services placeholder readable (no sentinel, no blank row)
+    # This is the same strategy that worked earlier: overwrite BaseWeb placeholder styles.
+    st_components.html(
+        """
+        <script>
+        (function () {
+          const APPLY_TO = (doc) => {
+            const nav = doc.querySelector('.clawd-topnav');
+            if (!nav) return;
+            const wrap = nav.querySelector('.clawd-services');
+            if (!wrap) return;
+            const select = wrap.querySelector('[data-testid="stSelectbox"]');
+            if (!select) return;
+            const btn = select.querySelector('[role="button"]');
+            if (!btn) return;
+
+            const force = (el) => {
+              if (!el) return;
+              el.style.setProperty('color', '#E5E7EB', 'important');
+              el.style.setProperty('opacity', '1', 'important');
+              el.style.setProperty('font-weight', '700', 'important');
+              el.style.setProperty('-webkit-text-fill-color', '#E5E7EB', 'important');
+            };
+
+            force(btn);
+            btn.querySelectorAll('*').forEach((el) => {
+              force(el);
+              el.style.setProperty('fill', '#E5E7EB', 'important');
+            });
+          };
+
+          const APPLY = () => {
+            try { APPLY_TO(document); } catch (e) {}
+            try {
+              if (window.parent && window.parent.document) {
+                APPLY_TO(window.parent.document);
+              }
+            } catch (e) {}
+          };
+
+          const obs = new MutationObserver(() => APPLY());
+          obs.observe(document.documentElement, { childList: true, subtree: true });
+          window.addEventListener('load', APPLY);
+          setTimeout(APPLY, 50);
+          setTimeout(APPLY, 250);
+          setTimeout(APPLY, 1000);
+          setInterval(APPLY, 500);
+        })();
+        </script>
+        """,
+        height=0,
+    )
+
     # No extra spacer after nav (prevents big gap before the hero)
