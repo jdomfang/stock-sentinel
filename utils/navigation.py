@@ -42,24 +42,26 @@ def render_top_nav() -> None:
         /* Make buttons in the top nav look more like a real navbar (compact like LunarCrush) */
         .clawd-topnav [data-testid="stButton"] > button {
           border-radius: 999px;
-          padding: 0.20rem 0.55rem;
-          font-size: 0.82rem;
+          padding: 0.16rem 0.42rem;
+          font-size: 0.80rem;
           letter-spacing: -0.01em;
-          border: 1px solid rgba(148,163,184,0.20);
-          background: rgba(15,23,42,0.66);
-          min-height: 36px;
+          border: 1px solid rgba(148,163,184,0.18);
+          background: rgba(15,23,42,0.62);
+          min-height: 32px;
           line-height: 1;
+          width: fit-content !important;
         }
 
         /* Primary (Log in) — slightly more premium, less "bulky" */
         .clawd-topnav button[data-testid="stBaseButton-primary"],
         .clawd-topnav .stButton > button[kind="primary"] {
-          min-height: 36px !important;
-          padding: 0.20rem 0.62rem !important;
-          font-size: 0.82rem !important;
+          min-height: 32px !important;
+          padding: 0.16rem 0.52rem !important;
+          font-size: 0.80rem !important;
           font-weight: 750 !important;
           border-radius: 999px !important;
-          box-shadow: 0 10px 24px rgba(0,0,0,.22);
+          box-shadow: 0 10px 24px rgba(0,0,0,.18);
+          width: fit-content !important;
         }
 
         /* Reduce extra vertical whitespace under the nav row */
@@ -70,10 +72,10 @@ def render_top_nav() -> None:
         /* Match Discovery page select styling (inputs) */
         .clawd-topnav [data-baseweb="select"] > div {
           border-radius: 999px !important;
-          background-color: rgba(2,6,23,.55) !important;
-          border-color: rgba(148,163,184,0.18) !important;
+          background-color: rgba(2,6,23,.52) !important;
+          border-color: rgba(148,163,184,0.16) !important;
           color: #E5E7EB !important;
-          min-height: 36px !important;
+          min-height: 32px !important;
         }
         .clawd-topnav [data-baseweb="select"] * {
           color: #E5E7EB !important;
@@ -132,7 +134,7 @@ def render_top_nav() -> None:
 
         /* Tighten spacing between columns inside the nav row */
         .clawd-topnav [data-testid="stHorizontalBlock"] {
-          gap: 0.22rem;
+          gap: 0.12rem;
         }
         
         /* Reduce vertical margin below nav to close gap with hero */
@@ -147,12 +149,12 @@ def render_top_nav() -> None:
         
         /* Services selectbox: compact (LunarCrush-style) */
         .clawd-topnav [data-testid="stSelectbox"] {
-          max-width: 210px !important;
-          min-width: 180px !important;
+          max-width: 185px !important;
+          min-width: 155px !important;
         }
         .clawd-topnav [data-baseweb="select"] {
           width: 100% !important;
-          max-width: 210px !important;
+          max-width: 185px !important;
         }
         
         /* Shrink Login button to 50% width */
@@ -214,8 +216,8 @@ def render_top_nav() -> None:
                 [6.0, 1.15, 0.55, 1.45, 0.75]
             )
         else:
-            # Slightly narrower Services column so it hugs the auth button like LunarCrush
-            spacer_col, services_col, auth_col = st.columns([8.0, 1.25, 0.9])
+            # Compact right-side cluster: Services immediately next to Log in with minimal extra width.
+            spacer_col, services_col, auth_col = st.columns([8.6, 1.05, 0.60])
 
         with spacer_col:
             st.markdown("")
@@ -282,11 +284,11 @@ def render_top_nav() -> None:
         # Auth button (right-most)
         with auth_col:
             if is_logged_in():
-                if st.button("Log out", use_container_width=True):
+                if st.button("Log out", use_container_width=False):
                     sign_out()
                     st.switch_page("pages/Home.py")
             else:
-                if st.button("Log in", use_container_width=True, type="primary"):
+                if st.button("Log in", use_container_width=False, type="primary"):
                     st.switch_page("pages/Auth.py")
 
         st.markdown('</div>', unsafe_allow_html=True)
