@@ -154,11 +154,61 @@ def open_page(*, title: str, subtitle: str | None = None, eyebrow: str = "Stock 
 
 
 def render_footer() -> None:
+    """Simple footer with support + disclaimer.
+
+    Note: Streamlit doesn't support real <a href> navigation for switch_page.
+    We use st.page_link so it works in-app.
+    """
+
     st.markdown(
         """
-        <div style="margin-top: 18px; padding: 14px 0 6px 0; color: rgba(148,163,184,.9); font-size: 0.86rem; line-height: 1.45;">
-          <div><b>Disclaimer:</b> Not financial advice.</div>
+        <style>
+          .clawd-footer {
+            margin-top: 18px;
+            padding: 14px 0 6px 0;
+            border-top: 1px solid rgba(148,163,184,0.12);
+          }
+          .clawd-footer .meta {
+            color: rgba(148,163,184,.9);
+            font-size: 0.86rem;
+            line-height: 1.45;
+            margin-top: 10px;
+          }
+          .clawd-footer-links [data-testid="stPageLink"] a {
+            color: rgba(229,231,235,.88) !important;
+            text-decoration: none !important;
+            font-weight: 650;
+          }
+          .clawd-footer-links [data-testid="stPageLink"] a:hover {
+            text-decoration: underline !important;
+          }
+          .clawd-footer-links {
+            display: flex;
+            gap: 14px;
+            flex-wrap: wrap;
+            align-items: center;
+          }
+        </style>
+        <div class="clawd-footer">
         </div>
+        """,
+        unsafe_allow_html=True,
+    )
+
+    # Links row
+    st.markdown('<div class="clawd-footer-links">', unsafe_allow_html=True)
+    try:
+        st.page_link("pages/FAQ.py", label="FAQ")
+        st.page_link("pages/Contact.py", label="Contact")
+    except Exception:
+        # Older Streamlit builds: fail silently
+        pass
+    st.markdown('</div>', unsafe_allow_html=True)
+
+    # Disclaimer
+    st.markdown(
+        """
+        <div class="meta"><b>Disclaimer:</b> Not financial advice.</div>
         """,
         unsafe_allow_html=True,
     )
