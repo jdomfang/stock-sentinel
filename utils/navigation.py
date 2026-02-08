@@ -359,6 +359,19 @@ ul[data-testid="stSelectboxVirtualDropdown"] li:hover {
                 li.style.setProperty('margin', '0', 'important');
               }
             }
+
+            // Some BaseWeb virtual lists still reserve top space even after hiding the first item.
+            // Force the dropdown container + list to have no extra top padding.
+            ul.style.setProperty('padding-top', '0px', 'important');
+            ul.style.setProperty('margin-top', '0px', 'important');
+
+            // Walk up a couple levels to the popover/listbox container.
+            let p = ul.parentElement;
+            for (let i = 0; i < 3 && p; i++) {
+              p.style.setProperty('padding-top', '0px', 'important');
+              p.style.setProperty('margin-top', '0px', 'important');
+              p = p.parentElement;
+            }
           };
 
           const APPLY = () => {
