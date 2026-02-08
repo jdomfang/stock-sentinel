@@ -81,7 +81,8 @@ def render_top_nav() -> None:
            Streamlit popover renders a button; we must override default button styling hard.
         */
         .clawd-topnav .clawd-services [data-testid="stPopover"] > button,
-        .clawd-topnav .clawd-services button {
+        .clawd-topnav .clawd-services button,
+        .clawd-topnav button[aria-haspopup="dialog"] {
           background: transparent !important;
           background-color: transparent !important;
           border: none !important;
@@ -92,15 +93,22 @@ def render_top_nav() -> None:
           font-weight: 700 !important;
           font-size: 0.86rem !important;
           width: fit-content !important;
+          filter: none !important;
         }
         .clawd-topnav .clawd-services [data-testid="stPopover"] > button:hover,
-        .clawd-topnav .clawd-services button:hover {
+        .clawd-topnav .clawd-services button:hover,
+        .clawd-topnav button[aria-haspopup="dialog"]:hover {
           background: transparent !important;
           background-color: transparent !important;
           color: rgba(229,231,235,1) !important;
           text-decoration: underline;
           text-underline-offset: 4px;
           text-decoration-color: rgba(56,189,248,.55);
+        }
+
+        /* Absolute fallback: some Streamlit builds paint popover triggers white via inline styles */
+        .clawd-topnav button[aria-haspopup="dialog"] {
+          background-image: none !important;
         }
 
         /* Popover panel styling (subtle floating menu) */
