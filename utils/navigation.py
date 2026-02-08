@@ -342,17 +342,28 @@ def render_top_nav() -> None:
             const nav = doc.querySelector('.clawd-topnav');
             if (!nav) return;
 
-            // Find the Services selectbox within the top nav
-            const select = nav.querySelector('[data-testid="stSelectbox"]');
+            // Find the Services selectbox within the top nav (scope to our wrapper)
+            const wrap = nav.querySelector('.clawd-services');
+            if (!wrap) return;
+            const select = wrap.querySelector('[data-testid="stSelectbox"]');
             if (!select) return;
 
             // Target the trigger button
             const btn = select.querySelector('[role="button"]');
             if (btn) {
-              btn.style.setProperty('color', '#E5E7EB', 'important');
-              btn.style.setProperty('opacity', '1', 'important');
-              btn.style.setProperty('font-weight', '700', 'important');
-              btn.style.setProperty('-webkit-text-fill-color', '#E5E7EB', 'important');
+              const set = (k, v) => btn.style.setProperty(k, v, 'important');
+              set('color', '#E5E7EB');
+              set('opacity', '1');
+              set('font-weight', '700');
+              set('-webkit-text-fill-color', '#E5E7EB');
+
+              // Also force the value/placeholder node(s) inside the button
+              btn.querySelectorAll('span, div, p').forEach((el) => {
+                el.style.setProperty('color', '#E5E7EB', 'important');
+                el.style.setProperty('opacity', '1', 'important');
+                el.style.setProperty('font-weight', '700', 'important');
+                el.style.setProperty('-webkit-text-fill-color', '#E5E7EB', 'important');
+              });
             }
 
             // Force all inner nodes to be visible (BaseWeb sometimes dims placeholder)
@@ -378,7 +389,7 @@ def render_top_nav() -> None:
           setTimeout(APPLY, 50);
           setTimeout(APPLY, 250);
           setTimeout(APPLY, 1000);
-          setInterval(APPLY, 750);
+          setInterval(APPLY, 300);
         })();
         </script>
         """,
