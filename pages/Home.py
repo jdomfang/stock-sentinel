@@ -89,11 +89,11 @@ st.markdown(
     <style>
     /* Home page styling; global theme comes from utils.ui.apply_theme() */
 
-    /* Main container spacing */
+    /* Main container spacing (fluid on mobile/tablet) */
     div[data-testid="stMainBlockContainer"] {
       max-width: 100%;
-      padding-left: 2rem;
-      padding-right: 2rem;
+      padding-left: clamp(16px, 4vw, 32px);
+      padding-right: clamp(16px, 4vw, 32px);
       padding-top: 0.25rem;
     }
 
@@ -184,7 +184,7 @@ st.markdown(
 
     /* Hero (no box) */
     .hero {
-      /* Pull hero up so it sits closer to the top nav (top-only tweak; keep below layout unchanged) */
+      /* Desktop: pull hero up closer to the top nav */
       margin: -5.65rem 0 18px 0;
       padding: 8px 2px 2px 2px;
     }
@@ -197,7 +197,7 @@ st.markdown(
       margin-bottom: 6px;
     }
     .hero-title {
-      font-size: 2.05rem;
+      font-size: clamp(28px, 3.0vw, 2.05rem);
       font-weight: 850;
       letter-spacing: -0.03em;
       line-height: 1.1;
@@ -205,7 +205,7 @@ st.markdown(
     }
     .hero-subtitle {
       color: var(--muted);
-      font-size: 1.05rem;
+      font-size: clamp(15px, 1.35vw, 1.05rem);
       line-height: 1.5;
       margin: 0 0 12px 0;
       max-width: 980px;
@@ -297,6 +297,50 @@ st.markdown(
 
     /* Hide Streamlit "Made with" footer */
     footer { visibility: hidden; }
+
+    /* -----------------------------
+       Responsive layout helpers
+       Goal: keep ONE layout, but allow Streamlit columns to wrap nicely.
+       ----------------------------- */
+
+    /* Allow our wrapped sections to reflow instead of cramming columns */
+    .how-grid [data-testid="stHorizontalBlock"],
+    .demo-header [data-testid="stHorizontalBlock"],
+    .ticker-row [data-testid="stHorizontalBlock"] {
+      flex-wrap: wrap !important;
+      gap: 12px !important;
+    }
+
+    /* Give Streamlit columns a sane min width so they wrap to 2-up / 1-up naturally */
+    .how-grid [data-testid="column"],
+    .demo-header [data-testid="column"],
+    .ticker-row [data-testid="column"] {
+      flex: 1 1 260px !important;
+      min-width: 260px !important;
+    }
+
+    /* On phones, force single-column flow for these sections */
+    @media (max-width: 640px) {
+      .hero {
+        /* Negative margin feels premium on desktop but can collide on small screens */
+        margin: -2.5rem 0 14px 0;
+      }
+
+      .how-grid [data-testid="column"],
+      .demo-header [data-testid="column"],
+      .ticker-row [data-testid="column"] {
+        flex: 1 1 100% !important;
+        min-width: 100% !important;
+      }
+
+      /* Make the CTA button easier to hit */
+      button[data-testid="stBaseButton-primary"],
+      .stButton > button[kind="primary"] {
+        min-height: 44px !important;
+        padding: 0.5rem 0.9rem !important;
+        font-size: 0.95rem !important;
+      }
+    }
     </style>
     """,
     unsafe_allow_html=True,
@@ -354,6 +398,9 @@ st.markdown(
 # How it works (polished cards)
 st.markdown('<div class="section-title">How it works</div>', unsafe_allow_html=True)
 
+# Wrapper div lets us apply responsive wrap rules to Streamlit columns
+st.markdown('<div class="how-grid">', unsafe_allow_html=True)
+
 h1, h2, h3 = st.columns(3)
 with h1:
     st.markdown(
@@ -386,6 +433,8 @@ with h3:
         unsafe_allow_html=True,
     )
 
+st.markdown('</div>', unsafe_allow_html=True)  # .how-grid
+
 st.markdown("<div style='height: 1.25rem;'></div>", unsafe_allow_html=True)
 
 # Demo scan output (match the post-scan layout from Discovery)
@@ -397,6 +446,7 @@ else:
     st.markdown('<div class="demo-note">Shortlist for action: This table ranks candidates worth a closer look. If a ticker stands out, click Deep Analyze to see catalysts, red flags, and guidance.</div>', unsafe_allow_html=True)
 
     # Match the simplified post-scan Discovery table
+    st.markdown('<div class="demo-header">', unsafe_allow_html=True)
     header_cols = st.columns([1.1, 1.8, 1.2, 1.1, 1.0])
     header_labels = [
         "Ticker",
@@ -407,6 +457,7 @@ else:
     ]
     for col, label in zip(header_cols, header_labels):
         col.markdown(f"**{label}**")
+    st.markdown('</div>', unsafe_allow_html=True)
 
     for _, row in df_demo.iterrows():
         ticker_symbol = row.get("Ticker", "")
