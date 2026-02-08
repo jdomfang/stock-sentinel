@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import streamlit as st
+import streamlit.components.v1 as components
 
 
 def render_sidebar_navigation() -> None:
@@ -98,6 +99,12 @@ def render_top_nav() -> None:
           letter-spacing: -0.01em;
           width: fit-content !important;
           white-space: nowrap !important;
+          outline: none !important;
+        }
+        .clawd-topnav .clawd-services [data-testid="stButton"] > button:focus,
+        .clawd-topnav .clawd-services [data-testid="stButton"] > button:focus-visible {
+          outline: none !important;
+          box-shadow: none !important;
         }
         .clawd-topnav .clawd-services [data-testid="stButton"] > button:hover {
           background: transparent !important;
@@ -106,9 +113,6 @@ def render_top_nav() -> None:
           text-decoration: underline;
           text-underline-offset: 4px;
           text-decoration-color: rgba(56,189,248,.55);
-        }
-        .clawd-topnav .clawd-services [data-testid="stButton"] > button:focus {
-          outline: none !important;
         }
         .clawd-topnav .clawd-services-menu {
           position: absolute;
@@ -300,12 +304,45 @@ def render_top_nav() -> None:
                 st.markdown(
                     """
                     <div class="clawd-services-menu" role="menu" aria-label="Services">
-                      <a role="menuitem" href="/Discovery">Discover</a>
-                      <a role="menuitem" href="/Deep_Analysis">Deep Analyze</a>
+                      <a role="menuitem" href="/Discovery" onclick="event.stopPropagation();">Discover</a>
+                      <a role="menuitem" href="/Deep_Analysis" onclick="event.stopPropagation();">Deep Analyze</a>
                     </div>
                     """,
                     unsafe_allow_html=True,
                 )
+
+            # Close menu when clicking anywhere outside the Services area
+            components.html(
+                """
+                <script>
+                (function () {
+                  const root = window.parent?.document || document;
+                  const svc = root.querySelector('.clawd-services');
+                  if (!svc) return;
+
+                  // install once
+                  if (root.__clawdSvcOutsideClick) return;
+                  root.__clawdSvcOutsideClick = true;
+
+                  root.addEventListener('click', (e) => {
+                    if (!svc.contains(e.target)) {
+                      // click the trigger to close if open
+                      const btn = svc.querySelector('button');
+                      if (btn) btn.click();
+                    }
+                  }, true);
+
+                  root.addEventListener('keydown', (e) => {
+                    if (e.key === 'Escape') {
+                      const btn = svc.querySelector('button');
+                      if (btn) btn.click();
+                    }
+                  }, true);
+                })();
+                </script>
+                """,
+                height=0,
+            )
 
             st.markdown("</div>", unsafe_allow_html=True)
 
