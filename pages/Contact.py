@@ -50,63 +50,43 @@ st.markdown(
     unsafe_allow_html=True,
 )
 
-left, right = st.columns([1.2, 1.0])
+st.markdown("<div class='contact-card'>", unsafe_allow_html=True)
+st.markdown("### Contact us")
+st.markdown(
+    "<div class='contact-muted'>We typically respond within 1–2 business days.</div>",
+    unsafe_allow_html=True,
+)
 
-with left:
-    st.markdown("<div class='contact-card'>", unsafe_allow_html=True)
-    st.markdown("### Send a message")
-
-    with st.form("contact_form", clear_on_submit=True):
-        topic = st.selectbox(
-            "Topic",
-            ["Question", "Bug report", "Billing", "Feature request", "Partnership"],
-            index=0,
-        )
-        email = st.text_input("Your email", placeholder="you@example.com")
-        message = st.text_area(
-            "Message",
-            placeholder="What happened / what do you need? If this is a bug, include steps to reproduce.",
-            height=160,
-        )
-        include_device = st.checkbox("Include device/browser details (recommended)", value=True)
-
-        submitted = st.form_submit_button("Submit", type="primary")
-
-    if submitted:
-        # Note: Streamlit apps often don’t have outbound email configured.
-        # For now we log it server-side and show the email fallback.
-        payload = {
-            "topic": topic,
-            "email": email,
-            "message": message,
-            "include_device": include_device,
-            "user_agent": st.context.headers.get("User-Agent") if include_device else None,
-        }
-        LOG.info("CONTACT_FORM_SUBMISSION: %s", payload)
-
-        st.success("Message received. If you don’t hear back soon, email us directly (below).")
-
-    st.markdown(
-        f"<div class='contact-muted'>Or email us directly: <b>{support_email}</b></div>",
-        unsafe_allow_html=True,
+with st.form("contact_form", clear_on_submit=True):
+    topic = st.selectbox(
+        "Topic",
+        ["Question", "Bug report", "Billing", "Feature request", "Partnership"],
+        index=0,
     )
-    st.markdown("</div>", unsafe_allow_html=True)
-
-with right:
-    st.markdown("<div class='contact-card'>", unsafe_allow_html=True)
-    st.markdown("### What to include")
-    st.markdown(
-        """
-- Ticker + sector (if relevant)
-- What you expected vs what happened
-- Screenshot (best)
-- Approx time it occurred
-
-**Response time:** typically within 1–2 business days.
-
-**Reminder:** Stock Sentinel is informational and not financial advice.
-        """
+    email = st.text_input("Your email", placeholder="you@example.com")
+    message = st.text_area(
+        "Message",
+        placeholder="Include the ticker/sector if relevant. For bugs, share steps to reproduce.",
+        height=160,
     )
-    st.markdown("</div>", unsafe_allow_html=True)
+
+    submitted = st.form_submit_button("Submit", type="primary")
+
+if submitted:
+    payload = {
+        "topic": topic,
+        "email": email,
+        "message": message,
+        "user_agent": st.context.headers.get("User-Agent"),
+    }
+    LOG.info("CONTACT_FORM_SUBMISSION: %s", payload)
+
+    st.success("Message received. If you don’t hear back soon, email us directly (below).")
+
+st.markdown(
+    f"<div class='contact-muted'>Or email us directly: <b>{support_email}</b></div>",
+    unsafe_allow_html=True,
+)
+st.markdown("</div>", unsafe_allow_html=True)
 
 close_page()
