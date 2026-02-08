@@ -125,11 +125,13 @@ def render_top_nav() -> None:
 
         ul[data-testid="stSelectboxVirtualDropdown"],
         [data-testid="stSelectboxVirtualDropdown"] {
-          background: #0F172A !important;
-          background-color: #0F172A !important;
+          background: rgba(15,23,42,0.98) !important;
+          background-color: rgba(15,23,42,0.98) !important;
           border: 1px solid rgba(148,163,184,0.18) !important;
           border-radius: 14px !important;
-          box-shadow: 0 16px 40px rgba(0,0,0,.45) !important;
+          box-shadow: 0 18px 50px rgba(0,0,0,.50) !important;
+          padding: 6px !important;
+          min-width: 260px !important; /* menu wider than trigger = more natural */
         }
 
         ul[data-testid="stSelectboxVirtualDropdown"] li {
@@ -137,10 +139,16 @@ def render_top_nav() -> None:
           background-color: transparent !important;
           color: #E5E7EB !important;
           opacity: 1 !important;
+          border-radius: 10px !important;
+          padding: 10px 10px !important;
+          margin: 2px 0 !important;
+          font-size: 0.92rem !important;
+          line-height: 1.25 !important;
+          white-space: nowrap !important;
         }
         ul[data-testid="stSelectboxVirtualDropdown"] li:hover {
-          background: rgba(56,189,248,.16) !important;
-          background-color: rgba(56,189,248,.16) !important;
+          background: rgba(56,189,248,.14) !important;
+          background-color: rgba(56,189,248,.14) !important;
         }
         ul[data-testid="stSelectboxVirtualDropdown"] li *,
         ul[data-testid="stSelectboxVirtualDropdown"] * {
