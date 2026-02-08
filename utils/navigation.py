@@ -171,8 +171,10 @@ def render_top_nav() -> None:
     with nav:
         st.markdown('<div class="clawd-topnav">', unsafe_allow_html=True)
 
-        # Keep header minimal: Services dropdown close to Log in on the right
-        # Adjusted proportions: services column significantly wider for 25% larger dropdown
+        # Keep header minimal: Services dropdown immediately adjacent to Log in/Log out.
+        # Important: if we reserve empty columns (credits/admin) while logged out,
+        # Services will NOT sit next to the auth button. So we render two layouts.
+
         @st.cache_data(ttl=2, show_spinner=False)
         def _load_credit_counts(user_id: str) -> tuple[int, int] | None:
             """Return (scan_credits, deep_credits) for the given user_id.
@@ -194,31 +196,19 @@ def render_top_nav() -> None:
                 return None
             return int(data.get("scan_credits") or 0), int(data.get("deep_credits") or 0)
 
-        spacer_col, services_col, credits_col, admin_col, auth_col = st.columns([6.8, 1.5, 1.0, 0.5, 0.7])
+        if is_logged_in():
+            spacer_col, credits_col, admin_col, services_col, auth_col = st.columns(
+                [6.0, 1.15, 0.55, 1.45, 0.75]
+            )
+        else:
+            spacer_col, services_col, auth_col = st.columns([7.6, 1.5, 0.9])
 
         with spacer_col:
             st.markdown("")
 
-        with services_col:
-            # Use a real placeholder so "Services" is shown when closed,
-            # but it is NOT a selectable option.
-            choice = st.selectbox(
-                "Services",
-                options=["Discover", "Deep Analyze"],
-                index=None,
-                placeholder="Services",
-                label_visibility="collapsed",
-                key="topnav_services",
-            )
-
-            # Only navigate when the user actually picks something.
-            if choice == "Discover":
-                st.switch_page("pages/Discovery.py" if is_logged_in() else "pages/Auth.py")
-            elif choice == "Deep Analyze":
-                st.switch_page("pages/Deep_Analysis.py" if is_logged_in() else "pages/Auth.py")
-
-        with credits_col:
-            if is_logged_in():
+        # Logged-in extras
+        if is_logged_in():
+            with credits_col:
                 user = get_user() or {}
                 uid = (user.get("id") if isinstance(user, dict) else getattr(user, "id", None)) or ""
                 try:
@@ -249,20 +239,33 @@ def render_top_nav() -> None:
                     )
                 else:
                     st.markdown("")
-            else:
-                st.markdown("")
 
-        with admin_col:
-            # Show Admin button only for admins
-            if is_logged_in():
+            with admin_col:
                 user = get_user() or {}
                 user_email = (user.get("email") if isinstance(user, dict) else getattr(user, "email", None)) or ""
                 admin_email = st.secrets.get("ADMIN_EMAIL", "").lower().strip()
-                
+
                 if user_email.lower().strip() == admin_email and admin_email:
                     if st.button("🛠️", use_container_width=True, help="Admin Dashboard"):
                         st.switch_page("pages/Admin.py")
 
+        # Services dropdown (always present, always adjacent to auth)
+        with services_col:
+            choice = st.selectbox(
+                "Services",
+                options=["Discover", "Deep Analyze"],
+                index=None,
+                placeholder="Services",
+                label_visibility="collapsed",
+                key="topnav_services",
+            )
+
+            if choice == "Discover":
+                st.switch_page("pages/Discovery.py" if is_logged_in() else "pages/Auth.py")
+            elif choice == "Deep Analyze":
+                st.switch_page("pages/Deep_Analysis.py" if is_logged_in() else "pages/Auth.py")
+
+        # Auth button (right-most)
         with auth_col:
             if is_logged_in():
                 if st.button("Log out", use_container_width=True):
