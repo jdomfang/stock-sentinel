@@ -50,6 +50,14 @@ def render_top_nav() -> None:
           min-height: 32px;
           line-height: 1;
           width: fit-content !important;
+          white-space: nowrap !important;
+        }
+
+        /* Prevent iPad/Safari from wrapping the auth label vertically */
+        .clawd-topnav button[data-testid="stBaseButton-primary"],
+        .clawd-topnav .stButton > button[kind="primary"] {
+          white-space: nowrap !important;
+          min-width: 86px !important;
         }
 
         /* Primary (Log in) — slightly more premium, less "bulky" */
@@ -149,12 +157,23 @@ def render_top_nav() -> None:
         
         /* Services selectbox: compact (LunarCrush-style) */
         .clawd-topnav [data-testid="stSelectbox"] {
-          max-width: 185px !important;
-          min-width: 155px !important;
+          max-width: 200px !important;
+          min-width: 170px !important;
         }
         .clawd-topnav [data-baseweb="select"] {
           width: 100% !important;
-          max-width: 185px !important;
+          max-width: 200px !important;
+        }
+
+        /* Tablet: give Services a bit more room so labels don't truncate */
+        @media (min-width: 700px) and (max-width: 1024px) {
+          .clawd-topnav [data-testid="stSelectbox"] {
+            max-width: 240px !important;
+            min-width: 220px !important;
+          }
+          .clawd-topnav [data-baseweb="select"] {
+            max-width: 240px !important;
+          }
         }
         
         /* Shrink Login button to 50% width */
@@ -216,8 +235,9 @@ def render_top_nav() -> None:
                 [6.0, 1.15, 0.55, 1.45, 0.75]
             )
         else:
-            # Compact right-side cluster: Services immediately next to Log in with minimal extra width.
-            spacer_col, services_col, auth_col = st.columns([8.6, 1.05, 0.60])
+            # Tablet Safari will wrap the Log in label vertically if the auth column is too narrow.
+            # Give the auth column enough width while keeping the cluster tight.
+            spacer_col, services_col, auth_col = st.columns([7.9, 1.15, 0.95])
 
         with spacer_col:
             st.markdown("")
