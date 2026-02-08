@@ -166,9 +166,23 @@ def render_top_nav() -> None:
           border-radius: 10px !important;
         }
 
-        /* Hide sentinel "Services" option from the dropdown list (keeps control readable) */
+        /* Hide sentinel "Services" option from the dropdown list (keeps control readable)
+           BaseWeb virtual list can still reserve space, so we collapse it aggressively.
+        */
         ul[data-testid="stSelectboxVirtualDropdown"] li:first-child {
           display: none !important;
+          height: 0 !important;
+          min-height: 0 !important;
+          padding: 0 !important;
+          margin: 0 !important;
+          border: 0 !important;
+        }
+        ul[data-testid="stSelectboxVirtualDropdown"] li:first-child > div,
+        ul[data-testid="stSelectboxVirtualDropdown"] li:first-child > div > div {
+          display: none !important;
+          height: 0 !important;
+          padding: 0 !important;
+          margin: 0 !important;
         }
         ul[data-testid="stSelectboxVirtualDropdown"] li:hover {
           background: rgba(56,189,248,.14) !important;
