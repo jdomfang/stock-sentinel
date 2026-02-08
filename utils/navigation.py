@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import streamlit as st
-import streamlit.components.v1 as components
 
 
 def render_sidebar_navigation() -> None:
@@ -78,65 +77,45 @@ def render_top_nav() -> None:
           margin-bottom: 0.15rem;
         }
 
-        /* Services: nav-link trigger + floating menu (no Streamlit selectbox/popover) */
+        /* Services dropdown (native Streamlit selectbox) — tighten empty space before caret */
         .clawd-topnav .clawd-services {
-          position: relative;
           display: inline-flex;
           justify-content: flex-end;
           align-items: center;
         }
-        /* Services trigger should look like a nav link, not a pill/button */
-        .clawd-topnav .clawd-services [data-testid="stButton"] > button {
-          background: transparent !important;
-          background-color: transparent !important;
-          border: none !important;
-          box-shadow: none !important;
-          padding: 0.10rem 0.06rem !important;
+
+        /* (1) Make the control narrower so there's less gap between label and caret */
+        .clawd-topnav .clawd-services [data-testid="stSelectbox"] {
+          min-width: 150px !important;
+          max-width: 170px !important;
+        }
+        .clawd-topnav .clawd-services [data-baseweb="select"] {
+          width: 100% !important;
+          max-width: 170px !important;
+        }
+
+        /* (2) Reduce internal padding so caret feels closer */
+        .clawd-topnav .clawd-services [data-baseweb="select"] > div {
+          border-radius: 999px !important;
+          background-color: rgba(2,6,23,.52) !important;
+          border-color: rgba(148,163,184,0.16) !important;
           min-height: 32px !important;
-          color: rgba(229,231,235,.92) !important;
-          font-weight: 750 !important;
-          font-size: 0.86rem !important;
-          letter-spacing: -0.01em;
-          width: fit-content !important;
-          white-space: nowrap !important;
-          outline: none !important;
+          padding-left: 10px !important;
+          padding-right: 10px !important;
         }
-        .clawd-topnav .clawd-services [data-testid="stButton"] > button:focus,
-        .clawd-topnav .clawd-services [data-testid="stButton"] > button:focus-visible {
-          outline: none !important;
-          box-shadow: none !important;
+        .clawd-topnav .clawd-services [data-baseweb="select"] [role="button"] {
+          padding-right: 8px !important;
         }
-        .clawd-topnav .clawd-services [data-testid="stButton"] > button:hover {
-          background: transparent !important;
-          background-color: transparent !important;
-          color: rgba(229,231,235,1) !important;
-          text-decoration: underline;
-          text-underline-offset: 4px;
-          text-decoration-color: rgba(56,189,248,.55);
-        }
-        .clawd-topnav .clawd-services-menu {
-          position: absolute;
-          top: calc(100% + 10px);
-          right: 0;
-          min-width: 220px;
-          padding: 8px;
-          border-radius: 14px;
-          border: 1px solid rgba(148,163,184,0.18);
-          background: rgba(15,23,42,0.98);
-          box-shadow: 0 18px 50px rgba(0,0,0,.50);
-          z-index: 10050;
-        }
-        .clawd-topnav .clawd-services-menu a {
-          display: block;
-          padding: 10px 10px;
-          border-radius: 10px;
-          color: rgba(229,231,235,.92);
-          text-decoration: none;
-          font-weight: 650;
-          font-size: 0.90rem;
-        }
-        .clawd-topnav .clawd-services-menu a:hover {
-          background: rgba(56,189,248,.12);
+
+        /* Tablet: give Services a touch more width so it doesn't look cramped */
+        @media (min-width: 700px) and (max-width: 1024px) {
+          .clawd-topnav .clawd-services [data-testid="stSelectbox"] {
+            min-width: 170px !important;
+            max-width: 190px !important;
+          }
+          .clawd-topnav .clawd-services [data-baseweb="select"] {
+            max-width: 190px !important;
+          }
         }
 
         /* Dropdown menu (options) readability — match Discovery */
@@ -239,11 +218,11 @@ def render_top_nav() -> None:
 
         if is_logged_in():
             spacer_col, credits_col, admin_col, services_col, auth_col = st.columns(
-                [6.0, 1.15, 0.55, 1.45, 0.75]
+                [6.0, 1.15, 0.55, 1.05, 0.75]
             )
         else:
-            # Logged-out: right cluster should be tight (Services link + Login pill).
-            spacer_col, services_col, auth_col = st.columns([8.6, 0.65, 0.75])
+            # Logged-out: right cluster should be tight (Services dropdown + Login pill).
+            spacer_col, services_col, auth_col = st.columns([8.55, 0.70, 0.75])
 
         with spacer_col:
             st.markdown("")
@@ -291,58 +270,23 @@ def render_top_nav() -> None:
                     if st.button("🛠️", use_container_width=True, help="Admin Dashboard"):
                         st.switch_page("pages/Admin.py")
 
-        # Services menu (Services ▾ link + floating menu). Login stays a pill.
+        # Services dropdown (native Streamlit selectbox for reliable dropdown behavior)
         with services_col:
             st.markdown('<div class="clawd-services">', unsafe_allow_html=True)
 
-            st.session_state.setdefault("services_open", False)
-
-            if st.button("Services ▾", key="services_trigger", use_container_width=False):
-                st.session_state.services_open = not st.session_state.services_open
-
-            if st.session_state.services_open:
-                st.markdown(
-                    """
-                    <div class="clawd-services-menu" role="menu" aria-label="Services">
-                      <a role="menuitem" href="/Discovery" onclick="event.stopPropagation();">Discover</a>
-                      <a role="menuitem" href="/Deep_Analysis" onclick="event.stopPropagation();">Deep Analyze</a>
-                    </div>
-                    """,
-                    unsafe_allow_html=True,
-                )
-
-            # Close menu when clicking anywhere outside the Services area
-            components.html(
-                """
-                <script>
-                (function () {
-                  const root = window.parent?.document || document;
-                  const svc = root.querySelector('.clawd-services');
-                  if (!svc) return;
-
-                  // install once
-                  if (root.__clawdSvcOutsideClick) return;
-                  root.__clawdSvcOutsideClick = true;
-
-                  root.addEventListener('click', (e) => {
-                    if (!svc.contains(e.target)) {
-                      // click the trigger to close if open
-                      const btn = svc.querySelector('button');
-                      if (btn) btn.click();
-                    }
-                  }, true);
-
-                  root.addEventListener('keydown', (e) => {
-                    if (e.key === 'Escape') {
-                      const btn = svc.querySelector('button');
-                      if (btn) btn.click();
-                    }
-                  }, true);
-                })();
-                </script>
-                """,
-                height=0,
+            choice = st.selectbox(
+                "Services",
+                options=["Discover", "Deep Analyze"],
+                index=None,
+                placeholder="Services",
+                label_visibility="collapsed",
+                key="topnav_services",
             )
+
+            if choice == "Discover":
+                st.switch_page("pages/Discovery.py" if is_logged_in() else "pages/Auth.py")
+            elif choice == "Deep Analyze":
+                st.switch_page("pages/Deep_Analysis.py" if is_logged_in() else "pages/Auth.py")
 
             st.markdown("</div>", unsafe_allow_html=True)
 
