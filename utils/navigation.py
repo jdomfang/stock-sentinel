@@ -55,7 +55,7 @@ def render_top_nav() -> None:
         .clawd-topnav button[data-testid="stBaseButton-primary"],
         .clawd-topnav .stButton > button[kind="primary"] {
           min-height: 36px !important;
-          padding: 0.20rem 0.70rem !important;
+          padding: 0.20rem 0.62rem !important;
           font-size: 0.82rem !important;
           font-weight: 750 !important;
           border-radius: 999px !important;
@@ -132,7 +132,7 @@ def render_top_nav() -> None:
 
         /* Tighten spacing between columns inside the nav row */
         .clawd-topnav [data-testid="stHorizontalBlock"] {
-          gap: 0.3rem;
+          gap: 0.22rem;
         }
         
         /* Reduce vertical margin below nav to close gap with hero */
@@ -147,12 +147,12 @@ def render_top_nav() -> None:
         
         /* Services selectbox: compact (LunarCrush-style) */
         .clawd-topnav [data-testid="stSelectbox"] {
-          max-width: 220px !important;
-          min-width: 190px !important;
+          max-width: 210px !important;
+          min-width: 180px !important;
         }
         .clawd-topnav [data-baseweb="select"] {
           width: 100% !important;
-          max-width: 220px !important;
+          max-width: 210px !important;
         }
         
         /* Shrink Login button to 50% width */
