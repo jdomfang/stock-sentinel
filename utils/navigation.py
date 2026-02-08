@@ -39,14 +39,27 @@ def render_top_nav() -> None:
     st.markdown(
         """
         <style>
-        /* Make buttons in the top nav look more like a real navbar */
+        /* Make buttons in the top nav look more like a real navbar (compact like LunarCrush) */
         .clawd-topnav [data-testid="stButton"] > button {
           border-radius: 999px;
-          padding: 0.22rem 0.58rem;
-          font-size: 0.84rem;
-          border: 1px solid rgba(148,163,184,0.22);
-          background: rgba(15,23,42,0.70);
-          min-height: 34px;
+          padding: 0.20rem 0.55rem;
+          font-size: 0.82rem;
+          letter-spacing: -0.01em;
+          border: 1px solid rgba(148,163,184,0.20);
+          background: rgba(15,23,42,0.66);
+          min-height: 36px;
+          line-height: 1;
+        }
+
+        /* Primary (Log in) — slightly more premium, less "bulky" */
+        .clawd-topnav button[data-testid="stBaseButton-primary"],
+        .clawd-topnav .stButton > button[kind="primary"] {
+          min-height: 36px !important;
+          padding: 0.20rem 0.70rem !important;
+          font-size: 0.82rem !important;
+          font-weight: 750 !important;
+          border-radius: 999px !important;
+          box-shadow: 0 10px 24px rgba(0,0,0,.22);
         }
 
         /* Reduce extra vertical whitespace under the nav row */
@@ -56,11 +69,11 @@ def render_top_nav() -> None:
 
         /* Match Discovery page select styling (inputs) */
         .clawd-topnav [data-baseweb="select"] > div {
-          border-radius: 14px !important;
+          border-radius: 999px !important;
           background-color: rgba(2,6,23,.55) !important;
           border-color: rgba(148,163,184,0.18) !important;
           color: #E5E7EB !important;
-          min-height: 34px !important;
+          min-height: 36px !important;
         }
         .clawd-topnav [data-baseweb="select"] * {
           color: #E5E7EB !important;
@@ -134,12 +147,12 @@ def render_top_nav() -> None:
         
         /* Services selectbox: compact (LunarCrush-style) */
         .clawd-topnav [data-testid="stSelectbox"] {
-          max-width: 240px !important;
-          min-width: 210px !important;
+          max-width: 220px !important;
+          min-width: 190px !important;
         }
         .clawd-topnav [data-baseweb="select"] {
           width: 100% !important;
-          max-width: 240px !important;
+          max-width: 220px !important;
         }
         
         /* Shrink Login button to 50% width */
