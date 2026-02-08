@@ -194,7 +194,7 @@ def render_top_nav() -> None:
                 return None
             return int(data.get("scan_credits") or 0), int(data.get("deep_credits") or 0)
 
-        spacer_col, services_col, credits_col, admin_col, auth_col = st.columns([6.8, 1.5, 1.0, 0.5, 0.7])
+        spacer_col, services_col, faq_col, contact_col, credits_col, admin_col, auth_col = st.columns([6.0, 1.45, 0.55, 0.65, 1.0, 0.5, 0.7])
 
         with spacer_col:
             st.markdown("")
@@ -204,7 +204,7 @@ def render_top_nav() -> None:
             # but it is NOT a selectable option.
             choice = st.selectbox(
                 "Services",
-                options=["Discover", "Deep Analyze", "FAQ", "Contact"],
+                options=["Discover", "Deep Analyze"],
                 index=None,
                 placeholder="Services",
                 label_visibility="collapsed",
@@ -216,9 +216,13 @@ def render_top_nav() -> None:
                 st.switch_page("pages/Discovery.py" if is_logged_in() else "pages/Auth.py")
             elif choice == "Deep Analyze":
                 st.switch_page("pages/Deep_Analysis.py" if is_logged_in() else "pages/Auth.py")
-            elif choice == "FAQ":
+
+        with faq_col:
+            if st.button("FAQ", use_container_width=True):
                 st.switch_page("pages/FAQ.py")
-            elif choice == "Contact":
+
+        with contact_col:
+            if st.button("Contact", use_container_width=True):
                 st.switch_page("pages/Contact.py")
 
         with credits_col:
