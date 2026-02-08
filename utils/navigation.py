@@ -345,11 +345,16 @@ def render_top_nav() -> None:
             // Find the Services selectbox within the top nav (scope to our wrapper)
             const wrap = nav.querySelector('.clawd-services');
             if (!wrap) return;
-            const select = wrap.querySelector('[data-testid="stSelectbox"]');
+
+            // Streamlit/BaseWeb can leave behind multiple selectboxes in the DOM.
+            // Prefer the *visible* one.
+            const candidates = Array.from(wrap.querySelectorAll('[data-testid="stSelectbox"]'));
+            const select = candidates.find((el) => el && el.offsetParent !== null) || candidates[0];
             if (!select) return;
 
-            // Target the trigger button
-            const btn = select.querySelector('[role="button"]');
+            // Target the trigger button (visible)
+            const btns = Array.from(select.querySelectorAll('[role="button"]'));
+            const btn = btns.find((el) => el && el.offsetParent !== null) || btns[0];
             if (btn) {
               const set = (k, v) => btn.style.setProperty(k, v, 'important');
               set('color', '#E5E7EB');
@@ -358,11 +363,12 @@ def render_top_nav() -> None:
               set('-webkit-text-fill-color', '#E5E7EB');
 
               // Also force the value/placeholder node(s) inside the button
-              btn.querySelectorAll('span, div, p').forEach((el) => {
+              btn.querySelectorAll('span, div, p, svg, path').forEach((el) => {
                 el.style.setProperty('color', '#E5E7EB', 'important');
                 el.style.setProperty('opacity', '1', 'important');
                 el.style.setProperty('font-weight', '700', 'important');
                 el.style.setProperty('-webkit-text-fill-color', '#E5E7EB', 'important');
+                el.style.setProperty('fill', '#E5E7EB', 'important');
               });
             }
 
