@@ -65,36 +65,6 @@ def render_top_nav() -> None:
           min-width: 86px !important;
         }
 
-        /* Mobile: tighten header so labels don't collide/stack */
-        @media (max-width: 600px) {
-          .clawd-topnav [data-testid="stHorizontalBlock"] {
-            flex-wrap: wrap !important;
-            justify-content: flex-end !important;
-            gap: 12px !important;
-            row-gap: 6px !important;
-          }
-          .clawd-topnav [data-testid="stColumn"] {
-            width: fit-content !important;
-            flex: 0 0 auto !important;
-            max-width: 100% !important;
-          }
-
-          /* Shrink nav link typography a notch */
-          .st-key-nav_discover [data-testid="stButton"] > button,
-          .st-key-nav_deep [data-testid="stButton"] > button {
-            font-size: 0.78rem !important;
-            padding: 0.06rem 0.06rem !important;
-          }
-
-          /* Make the CTA smaller on mobile so it stays one-line */
-          .clawd-topnav button[data-testid="stBaseButton-primary"],
-          .clawd-topnav .stButton > button[kind="primary"] {
-            min-width: 64px !important;
-            padding: 0.14rem 0.44rem !important;
-            font-size: 0.78rem !important;
-          }
-        }
-
         /* Primary (Log in) — slightly more premium, less "bulky" */
         .clawd-topnav button[data-testid="stBaseButton-primary"],
         .clawd-topnav .stButton > button[kind="primary"] {
