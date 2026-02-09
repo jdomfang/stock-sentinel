@@ -290,13 +290,13 @@ def render_top_nav() -> None:
             return int(data.get("scan_credits") or 0), int(data.get("deep_credits") or 0)
 
         if is_logged_in():
-            # Give both nav links the wider size (so "Analyze a Stock" stays on one line)
+            # Tune column widths so nav links sit closer together (premium spacing) while keeping labels single-line.
             spacer_col, credits_col, admin_col, discover_col, deep_col, auth_col = st.columns(
-                [5.1, 1.15, 0.55, 0.85, 0.85, 0.70]
+                [5.8, 1.15, 0.55, 0.55, 0.70, 0.70]
             )
         else:
-            # Logged-out: give both nav links the wider size (so both stay single-line)
-            spacer_col, discover_col, deep_col, auth_col = st.columns([7.0, 0.85, 0.85, 0.75])
+            # Logged-out: tune widths so Market Scan + Analyze a Stock sit closer together.
+            spacer_col, discover_col, deep_col, auth_col = st.columns([7.9, 0.55, 0.70, 0.75])
 
         with spacer_col:
             st.markdown("")
