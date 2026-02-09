@@ -295,13 +295,13 @@ def render_top_nav() -> None:
         # Top-nav links (no dropdown)
         with discover_col:
             st.markdown('<div class="clawd-navlink">', unsafe_allow_html=True)
-            if st.button("Discover", use_container_width=False, key="nav_discover"):
+            if st.button("Market Scan", use_container_width=False, key="nav_discover"):
                 st.switch_page("pages/Discovery.py" if is_logged_in() else "pages/Auth.py")
             st.markdown('</div>', unsafe_allow_html=True)
 
         with deep_col:
             st.markdown('<div class="clawd-navlink">', unsafe_allow_html=True)
-            if st.button("Deep Analyze", use_container_width=False, key="nav_deep"):
+            if st.button("Analyze a Stock", use_container_width=False, key="nav_deep"):
                 st.switch_page("pages/Deep_Analysis.py" if is_logged_in() else "pages/Auth.py")
             st.markdown('</div>', unsafe_allow_html=True)
 
