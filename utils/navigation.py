@@ -82,7 +82,7 @@ def render_top_nav() -> None:
 
         /* Keep Market Scan + Analyze a Stock closer together */
         .clawd-topnav [data-testid="stHorizontalBlock"] {
-          gap: 0.35rem !important;
+          gap: 0.20rem !important;
         }
 
         /* Top-nav link buttons (look like text links, LunarCrush-style) */
