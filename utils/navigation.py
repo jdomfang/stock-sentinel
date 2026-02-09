@@ -102,8 +102,8 @@ def render_top_nav() -> None:
         /* Top-nav link buttons (Market Scan / Analyze a Stock):
            We can't reliably "wrap" Streamlit elements with HTML, so we target by key.
         */
-        .clawd-topnav .st-key-nav_discover [data-testid="stButton"] > button,
-        .clawd-topnav .st-key-nav_deep [data-testid="stButton"] > button {
+        .st-key-nav_discover [data-testid="stButton"] > button,
+        .st-key-nav_deep [data-testid="stButton"] > button {
           background: transparent !important;
           background-color: transparent !important;
           border: 0 !important;
@@ -118,8 +118,8 @@ def render_top_nav() -> None:
           letter-spacing: -0.01em;
           white-space: nowrap !important;
         }
-        .clawd-topnav .st-key-nav_discover [data-testid="stButton"] > button:hover,
-        .clawd-topnav .st-key-nav_deep [data-testid="stButton"] > button:hover {
+        .st-key-nav_discover [data-testid="stButton"] > button:hover,
+        .st-key-nav_deep [data-testid="stButton"] > button:hover {
           background: transparent !important;
           background-color: transparent !important;
           border-color: transparent !important;
@@ -127,18 +127,18 @@ def render_top_nav() -> None:
           text-underline-offset: 4px;
           text-decoration-color: rgba(56,189,248,.55);
         }
-        .clawd-topnav .st-key-nav_discover [data-testid="stButton"] > button:focus,
-        .clawd-topnav .st-key-nav_deep [data-testid="stButton"] > button:focus,
-        .clawd-topnav .st-key-nav_discover [data-testid="stButton"] > button:focus-visible,
-        .clawd-topnav .st-key-nav_deep [data-testid="stButton"] > button:focus-visible {
+        .st-key-nav_discover [data-testid="stButton"] > button:focus,
+        .st-key-nav_deep [data-testid="stButton"] > button:focus,
+        .st-key-nav_discover [data-testid="stButton"] > button:focus-visible,
+        .st-key-nav_deep [data-testid="stButton"] > button:focus-visible {
           outline: 0 !important;
           border-color: transparent !important;
           box-shadow: none !important;
         }
 
         /* Ensure wrapper doesn't contribute a hairline outline */
-        .clawd-topnav .st-key-nav_discover [data-testid="stButton"],
-        .clawd-topnav .st-key-nav_deep [data-testid="stButton"] {
+        .st-key-nav_discover [data-testid="stButton"],
+        .st-key-nav_deep [data-testid="stButton"] {
           border: 0 !important;
           outline: 0 !important;
           background: transparent !important;
