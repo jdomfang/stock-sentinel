@@ -99,6 +99,11 @@ def render_top_nav() -> None:
           gap: 0.20rem !important;
         }
 
+        /* Force a minimum visual gap between the two nav links (prevents text overlap on desktop) */
+        .st-key-nav_discover [data-testid="stButton"] {
+          margin-right: 18px !important;
+        }
+
         /* Responsive nav note:
            Do NOT hide Market Scan / Analyze a Stock on mobile unless we actually render a replacement menu.
         */
