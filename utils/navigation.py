@@ -65,75 +65,7 @@ def render_top_nav() -> None:
           min-width: 86px !important;
         }
 
-        /* Tablet (iPad): allow wrap but prevent overlap by removing empty spacer/gap columns */
-        @media (min-width: 601px) and (max-width: 1024px) {
-          .clawd-topnav [data-testid="stHorizontalBlock"] {
-            flex-wrap: wrap !important;
-            justify-content: flex-end !important;
-            column-gap: 14px !important;
-            row-gap: 6px !important;
-            align-items: center !important;
-          }
-
-          /* Hide empty structural columns (spacer/gap) so nav doesn't collide */
-          .clawd-topnav [data-testid="stColumn"]:not(:has(button)):not(:has([data-baseweb="select"])) {
-            display: none !important;
-          }
-
-          /* Keep buttons on one line */
-          .st-key-nav_discover [data-testid="stButton"] > button,
-          .st-key-nav_deep [data-testid="stButton"] > button {
-            font-size: 0.80rem !important;
-            white-space: nowrap !important;
-          }
-
-          .clawd-topnav button[data-testid="stBaseButton-primary"],
-          .clawd-topnav .stButton > button[kind="primary"] {
-            min-width: 72px !important;
-            white-space: nowrap !important;
-          }
-        }
-
-        /* Phones: keep everything on ONE ROW (no vertical stacking) */
-        @media (max-width: 600px) {
-          .clawd-topnav [data-testid="stHorizontalBlock"] {
-            flex-wrap: nowrap !important;
-            justify-content: flex-end !important;
-            gap: 16px !important;
-            align-items: center !important;
-            overflow-x: auto !important;
-            -webkit-overflow-scrolling: touch;
-          }
-
-          /* Hide empty structural columns (spacer/gap) so we only have the real actions */
-          .clawd-topnav [data-testid="stColumn"]:not(:has(button)):not(:has([data-baseweb="select"])) {
-            display: none !important;
-          }
-
-          /* Shrink nav link typography slightly */
-          .st-key-nav_discover [data-testid="stButton"] > button,
-          .st-key-nav_deep [data-testid="stButton"] > button {
-            font-size: 0.76rem !important;
-            padding: 0.06rem 0.06rem !important;
-            white-space: nowrap !important;
-          }
-
-          /* Keep CTA compact and single-line */
-          .clawd-topnav button[data-testid="stBaseButton-primary"],
-          .clawd-topnav .stButton > button[kind="primary"] {
-            min-width: 64px !important;
-            padding: 0.14rem 0.44rem !important;
-            font-size: 0.76rem !important;
-            white-space: nowrap !important;
-          }
-        }
-
-        /* Extra-small phones: a bit tighter */
-        @media (max-width: 420px) {
-          .clawd-topnav [data-testid="stHorizontalBlock"] {
-            gap: 12px !important;
-          }
-        }
+        /* (responsive rules moved to bottom of the stylesheet for proper override order) */
 
         /* Primary (Log in) — slightly more premium, less "bulky" */
         .clawd-topnav button[data-testid="stBaseButton-primary"],
@@ -326,6 +258,58 @@ def render_top_nav() -> None:
           font-weight: 800;
           letter-spacing: -0.01em;
           border-color: rgba(56,189,248,0.28);
+        }
+
+        /* ---------------- Responsive header fixes (iPad + phones) ---------------- */
+        /* iPad/tablet: prevent overlap + keep Log in horizontal */
+        @media (max-width: 1024px) {
+          .clawd-topnav [data-testid="stHorizontalBlock"] {
+            gap: 18px !important;
+            align-items: center !important;
+          }
+
+          /* Slightly smaller nav labels */
+          .st-key-nav_discover [data-testid="stButton"] > button,
+          .st-key-nav_deep [data-testid="stButton"] > button {
+            font-size: 0.80rem !important;
+            white-space: nowrap !important;
+          }
+
+          /* Override earlier min-width that caused vertical letters */
+          .clawd-topnav button[data-testid="stBaseButton-primary"],
+          .clawd-topnav .stButton > button[kind="primary"] {
+            min-width: 72px !important;
+            white-space: nowrap !important;
+            padding: 0.14rem 0.44rem !important;
+            font-size: 0.80rem !important;
+          }
+        }
+
+        /* Phones: keep actions on one row (scroll if needed), avoid vertical stacking */
+        @media (max-width: 600px) {
+          .clawd-topnav [data-testid="stHorizontalBlock"] {
+            flex-wrap: nowrap !important;
+            overflow-x: auto !important;
+            -webkit-overflow-scrolling: touch;
+            gap: 14px !important;
+          }
+
+          .st-key-nav_discover [data-testid="stButton"] > button,
+          .st-key-nav_deep [data-testid="stButton"] > button {
+            font-size: 0.76rem !important;
+          }
+
+          .clawd-topnav button[data-testid="stBaseButton-primary"],
+          .clawd-topnav .stButton > button[kind="primary"] {
+            min-width: 64px !important;
+            font-size: 0.76rem !important;
+          }
+        }
+
+        @media (max-width: 420px) {
+          .clawd-topnav [data-testid="stHorizontalBlock"] {
+            gap: 12px !important;
+          }
         }
         </style>
         """,
