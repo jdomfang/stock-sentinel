@@ -99,9 +99,19 @@ def render_top_nav() -> None:
           gap: 0.20rem !important;
         }
 
-        /* Force a minimum visual gap between the two nav links (prevents text overlap on desktop) */
-        .st-key-nav_discover [data-testid="stButton"] {
-          margin-right: 18px !important;
+        /* Prevent nav link overlap when columns get narrower than their content.
+           Use :has() only when supported (Chrome/desktop). */
+        @supports selector(:has(*)) {
+          .clawd-topnav [data-testid="stColumn"]:has(.st-key-nav_discover),
+          .clawd-topnav [data-testid="stColumn"]:has(.st-key-nav_deep),
+          .clawd-topnav [data-testid="stColumn"]:has(.clawd-auth) {
+            flex: 0 0 auto !important;
+            width: max-content !important;
+            max-width: max-content !important;
+          }
+          .clawd-topnav [data-testid="stHorizontalBlock"] {
+            gap: 18px !important;
+          }
         }
 
         /* Responsive nav note:
