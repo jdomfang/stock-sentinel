@@ -80,9 +80,12 @@ def render_top_nav() -> None:
           margin-bottom: 0.15rem;
         }
 
-        /* Keep Market Scan + Analyze a Stock closer together */
-        .clawd-topnav [data-testid="stHorizontalBlock"] {
-          gap: 0.20rem !important;
+        /* Nav cluster: tighten spacing between Market Scan + Analyze a Stock to a precise value.
+           We target the Streamlit horizontal block that contains BOTH keyed elements.
+        */
+        div[data-testid="stHorizontalBlock"]:has(.st-key-nav_discover):has(.st-key-nav_deep) {
+          gap: 18px !important;
+          align-items: center !important;
         }
 
         /* Align nav items to the right edge of their columns so spacing is consistent */
@@ -290,13 +293,11 @@ def render_top_nav() -> None:
             return int(data.get("scan_credits") or 0), int(data.get("deep_credits") or 0)
 
         if is_logged_in():
-            # Give both nav links the wider size (so "Analyze a Stock" stays on one line)
-            spacer_col, credits_col, admin_col, discover_col, deep_col, auth_col = st.columns(
-                [5.1, 1.15, 0.55, 0.85, 0.85, 0.70]
+            spacer_col, credits_col, admin_col, nav_col, auth_col = st.columns(
+                [5.2, 1.15, 0.55, 1.55, 0.75]
             )
         else:
-            # Logged-out: give both nav links the wider size (so both stay single-line)
-            spacer_col, discover_col, deep_col, auth_col = st.columns([7.0, 0.85, 0.85, 0.75])
+            spacer_col, nav_col, auth_col = st.columns([7.25, 1.55, 0.75])
 
         with spacer_col:
             st.markdown("")
@@ -343,19 +344,15 @@ def render_top_nav() -> None:
                 if user_email.lower().strip() == admin_email and admin_email:
                     if st.button("🛠️", use_container_width=True, help="Admin Dashboard"):
                         st.switch_page("pages/Admin.py")
-
-        # Top-nav links (no dropdown)
-        with discover_col:
-            st.markdown('<div class="clawd-navlink">', unsafe_allow_html=True)
-            if st.button("Market Scan", use_container_width=False, key="nav_discover"):
-                st.switch_page("pages/Discovery.py" if is_logged_in() else "pages/Auth.py")
-            st.markdown('</div>', unsafe_allow_html=True)
-
-        with deep_col:
-            st.markdown('<div class="clawd-navlink">', unsafe_allow_html=True)
-            if st.button("Analyze a Stock", use_container_width=False, key="nav_deep"):
-                st.switch_page("pages/Deep_Analysis.py" if is_logged_in() else "pages/Auth.py")
-            st.markdown('</div>', unsafe_allow_html=True)
+        # Top-nav links (nav cluster)
+        with nav_col:
+            c1, c2 = st.columns([1, 1])
+            with c1:
+                if st.button("Market Scan", use_container_width=False, key="nav_discover"):
+                    st.switch_page("pages/Discovery.py" if is_logged_in() else "pages/Auth.py")
+            with c2:
+                if st.button("Analyze a Stock", use_container_width=False, key="nav_deep"):
+                    st.switch_page("pages/Deep_Analysis.py" if is_logged_in() else "pages/Auth.py")
 
         # Auth button (right-most)        # Auth button (right-most)
         with auth_col:
