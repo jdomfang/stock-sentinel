@@ -85,6 +85,20 @@ def render_top_nav() -> None:
           gap: 0.20rem !important;
         }
 
+        /* Align nav items to the right edge of their columns so spacing is consistent */
+        .clawd-topnav .clawd-navlink,
+        .clawd-topnav .clawd-auth {
+          display: flex;
+          justify-content: flex-end;
+          align-items: center;
+          width: 100%;
+        }
+
+        /* Create a slightly larger gap between the nav links and the CTA */
+        .clawd-topnav .clawd-auth {
+          margin-left: 0.25rem;
+        }
+
         /* Top-nav link buttons (look like text links, LunarCrush-style) */
         .clawd-topnav .clawd-navlink [data-testid="stButton"] > button {
           background: transparent !important;
