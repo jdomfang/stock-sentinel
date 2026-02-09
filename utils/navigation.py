@@ -261,36 +261,11 @@ def render_top_nav() -> None:
         }
 
         /* ---------------- Responsive header fixes (iPad + phones) ---------------- */
-        /* Safari iPad doesn't support :has() reliably, so we use nth-child to hide empty structural columns. */
-
-        /* iPad/tablet: allow wrapping + remove spacer/gap columns so items never collide */
+        /* iPad/tablet: prevent overlap + keep Log in horizontal */
         @media (max-width: 1024px) {
           .clawd-topnav [data-testid="stHorizontalBlock"] {
-            flex-wrap: wrap !important;
-            justify-content: flex-end !important;
-            column-gap: 16px !important;
-            row-gap: 8px !important;
+            gap: 18px !important;
             align-items: center !important;
-          }
-
-          /* Hide spacer column (always first) */
-          .clawd-topnav [data-testid="stHorizontalBlock"] > div[data-testid="stColumn"]:nth-child(1) {
-            display: none !important;
-          }
-          /* Hide gap column (logged-out layout: 4th) */
-          .clawd-topnav [data-testid="stHorizontalBlock"] > div[data-testid="stColumn"]:nth-child(4) {
-            display: none !important;
-          }
-          /* Hide gap column (logged-in layout: 6th) */
-          .clawd-topnav [data-testid="stHorizontalBlock"] > div[data-testid="stColumn"]:nth-child(6) {
-            display: none !important;
-          }
-
-          /* Make columns shrink-to-fit content */
-          .clawd-topnav [data-testid="stColumn"] {
-            width: fit-content !important;
-            flex: 0 0 auto !important;
-            max-width: 100% !important;
           }
 
           /* Slightly smaller nav labels */
@@ -310,21 +285,13 @@ def render_top_nav() -> None:
           }
         }
 
-        /* Phones: single row, scroll if needed (no stacking) */
+        /* Phones: keep actions on one row (scroll if needed), avoid vertical stacking */
         @media (max-width: 600px) {
           .clawd-topnav [data-testid="stHorizontalBlock"] {
             flex-wrap: nowrap !important;
             overflow-x: auto !important;
             -webkit-overflow-scrolling: touch;
-            column-gap: 14px !important;
-            row-gap: 0 !important;
-          }
-
-          /* hide spacer/gap columns again for phone layout */
-          .clawd-topnav [data-testid="stHorizontalBlock"] > div[data-testid="stColumn"]:nth-child(1),
-          .clawd-topnav [data-testid="stHorizontalBlock"] > div[data-testid="stColumn"]:nth-child(4),
-          .clawd-topnav [data-testid="stHorizontalBlock"] > div[data-testid="stColumn"]:nth-child(6) {
-            display: none !important;
+            gap: 14px !important;
           }
 
           .st-key-nav_discover [data-testid="stButton"] > button,
@@ -341,7 +308,7 @@ def render_top_nav() -> None:
 
         @media (max-width: 420px) {
           .clawd-topnav [data-testid="stHorizontalBlock"] {
-            column-gap: 12px !important;
+            gap: 12px !important;
           }
         }
         </style>
