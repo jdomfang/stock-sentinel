@@ -80,9 +80,8 @@ def render_top_nav() -> None:
           margin-bottom: 0.15rem;
         }
 
-        /* Keep Market Scan + Analyze a Stock closer together (scoped to the nav group) */
-        .clawd-topnav .clawd-navgroup [data-testid="stHorizontalBlock"] {
-          justify-content: flex-end !important;
+        /* Keep Market Scan + Analyze a Stock closer together */
+        .clawd-topnav [data-testid="stHorizontalBlock"] {
           gap: 0.20rem !important;
         }
 
@@ -95,9 +94,9 @@ def render_top_nav() -> None:
           width: 100%;
         }
 
-        /* Create a slightly larger gap between the nav links cluster and the CTA */
+        /* Create a slightly larger gap between the nav links and the CTA */
         .clawd-topnav .clawd-auth {
-          margin-left: 0.35rem;
+          margin-left: 0.25rem;
         }
 
         /* Top-nav link buttons (look like text links, LunarCrush-style) */
@@ -259,13 +258,13 @@ def render_top_nav() -> None:
             return int(data.get("scan_credits") or 0), int(data.get("deep_credits") or 0)
 
         if is_logged_in():
-            # Group nav links into one column so their spacing is controlled and consistent.
-            spacer_col, credits_col, admin_col, nav_col, auth_col = st.columns(
-                [4.95, 1.15, 0.55, 1.70, 0.70]
+            # Give both nav links the wider size (so "Analyze a Stock" stays on one line)
+            spacer_col, credits_col, admin_col, discover_col, deep_col, auth_col = st.columns(
+                [5.1, 1.15, 0.55, 0.85, 0.85, 0.70]
             )
         else:
-            # Logged-out: group nav links into one column (tight cluster) + separate CTA column.
-            spacer_col, nav_col, auth_col = st.columns([6.55, 1.70, 0.75])
+            # Logged-out: give both nav links the wider size (so both stay single-line)
+            spacer_col, discover_col, deep_col, auth_col = st.columns([7.0, 0.85, 0.85, 0.75])
 
         with spacer_col:
             st.markdown("")
@@ -313,23 +312,20 @@ def render_top_nav() -> None:
                     if st.button("🛠️", use_container_width=True, help="Admin Dashboard"):
                         st.switch_page("pages/Admin.py")
 
-        # Top-nav links (grouped cluster)
-        with nav_col:
-            st.markdown('<div class="clawd-navgroup">', unsafe_allow_html=True)
-            c1, c2 = st.columns([1.0, 1.0])
-            with c1:
-                st.markdown('<div class="clawd-navlink">', unsafe_allow_html=True)
-                if st.button("Market Scan", use_container_width=False, key="nav_discover"):
-                    st.switch_page("pages/Discovery.py" if is_logged_in() else "pages/Auth.py")
-                st.markdown('</div>', unsafe_allow_html=True)
-            with c2:
-                st.markdown('<div class="clawd-navlink">', unsafe_allow_html=True)
-                if st.button("Analyze a Stock", use_container_width=False, key="nav_deep"):
-                    st.switch_page("pages/Deep_Analysis.py" if is_logged_in() else "pages/Auth.py")
-                st.markdown('</div>', unsafe_allow_html=True)
+        # Top-nav links (no dropdown)
+        with discover_col:
+            st.markdown('<div class="clawd-navlink">', unsafe_allow_html=True)
+            if st.button("Market Scan", use_container_width=False, key="nav_discover"):
+                st.switch_page("pages/Discovery.py" if is_logged_in() else "pages/Auth.py")
             st.markdown('</div>', unsafe_allow_html=True)
 
-        # Auth button (right-most)
+        with deep_col:
+            st.markdown('<div class="clawd-navlink">', unsafe_allow_html=True)
+            if st.button("Analyze a Stock", use_container_width=False, key="nav_deep"):
+                st.switch_page("pages/Deep_Analysis.py" if is_logged_in() else "pages/Auth.py")
+            st.markdown('</div>', unsafe_allow_html=True)
+
+        # Auth button (right-most)        # Auth button (right-most)
         with auth_col:
             st.markdown('<div class="clawd-auth">', unsafe_allow_html=True)
             if is_logged_in():
