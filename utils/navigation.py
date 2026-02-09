@@ -80,18 +80,28 @@ def render_top_nav() -> None:
           margin-bottom: 0.15rem;
         }
 
-        /* Nav cluster: make the container holding both nav buttons a flex-row with an exact gap */
-        div[data-testid="stVerticalBlock"]:has(.st-key-nav_discover):has(.st-key-nav_deep) {
-          display: flex !important;
-          flex-direction: row !important;
-          justify-content: flex-end !important;
-          align-items: center !important;
+        /* Nav cluster: tighten spacing between Market Scan + Analyze a Stock to a precise value.
+           We target the Streamlit horizontal block that contains BOTH keyed elements.
+        */
+        div[data-testid="stHorizontalBlock"]:has(.st-key-nav_discover):has(.st-key-nav_deep) {
           gap: 18px !important;
+          align-items: center !important;
         }
-        div[data-testid="stVerticalBlock"]:has(.st-key-nav_discover):has(.st-key-nav_deep) .stElementContainer {
+        /* Remove Streamlit column gutters + stop columns from reserving extra width */
+        div[data-testid="stHorizontalBlock"]:has(.st-key-nav_discover):has(.st-key-nav_deep) > div[data-testid="stColumn"] {
+          padding-left: 0 !important;
+          padding-right: 0 !important;
+          margin-left: 0 !important;
+          margin-right: 0 !important;
+          flex: 0 0 auto !important;
           width: fit-content !important;
           max-width: fit-content !important;
-          margin: 0 !important;
+        }
+        /* Make sure the keyed element containers also shrink */
+        div[data-testid="stHorizontalBlock"]:has(.st-key-nav_discover):has(.st-key-nav_deep) .stElementContainer {
+          margin-bottom: 0 !important;
+          width: fit-content !important;
+          max-width: fit-content !important;
         }
 
         /* Align nav items to the right edge of their columns so spacing is consistent */
@@ -352,11 +362,13 @@ def render_top_nav() -> None:
                         st.switch_page("pages/Admin.py")
         # Top-nav links (nav cluster)
         with nav_col:
-            # Render both buttons in the same container; CSS will lay them out as a flex-row.
-            if st.button("Market Scan", use_container_width=False, key="nav_discover"):
-                st.switch_page("pages/Discovery.py" if is_logged_in() else "pages/Auth.py")
-            if st.button("Analyze a Stock", use_container_width=False, key="nav_deep"):
-                st.switch_page("pages/Deep_Analysis.py" if is_logged_in() else "pages/Auth.py")
+            c1, c2 = st.columns([1, 1])
+            with c1:
+                if st.button("Market Scan", use_container_width=False, key="nav_discover"):
+                    st.switch_page("pages/Discovery.py" if is_logged_in() else "pages/Auth.py")
+            with c2:
+                if st.button("Analyze a Stock", use_container_width=False, key="nav_deep"):
+                    st.switch_page("pages/Deep_Analysis.py" if is_logged_in() else "pages/Auth.py")
 
         # Auth button (right-most)        # Auth button (right-most)
         with auth_col:
