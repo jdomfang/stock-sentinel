@@ -242,6 +242,7 @@ def render_top_nav() -> None:
         /* Auth button wrapper (keeps Login styling without affecting Services) */
         .clawd-topnav .clawd-auth [data-testid="stButton"] {
           flex-grow: 0 !important;
+          margin-left: -9px; /* pull CTA slightly left to match premium spacing */
         }
 
         /* Keep hover on non-primary buttons, but scope it away from Services link trigger */
