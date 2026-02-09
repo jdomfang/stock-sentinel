@@ -224,7 +224,7 @@ def render_top_nav() -> None:
 
         /* Tighten spacing between columns inside the nav row + vertically align controls */
         .clawd-topnav [data-testid="stHorizontalBlock"] {
-          gap: 0.12rem;
+          gap: 0.02rem;
           align-items: center !important;
         }
         
