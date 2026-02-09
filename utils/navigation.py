@@ -307,11 +307,6 @@ def render_top_nav() -> None:
             white-space: nowrap !important;
           }
 
-          /* Hard spacing guard for iPad Safari: ensure the two nav items can't overlap */
-          .st-key-nav_discover {
-            margin-right: 18px !important;
-          }
-
           /* Override earlier min-width that caused vertical letters */
           .clawd-topnav button[data-testid="stBaseButton-primary"],
           .clawd-topnav .stButton > button[kind="primary"] {
