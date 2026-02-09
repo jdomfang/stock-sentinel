@@ -286,18 +286,11 @@ def render_top_nav() -> None:
             display: none !important;
           }
 
-          /* Prevent button text from overflowing into neighboring columns (causes overlap on iPad) */
-          .clawd-topnav [data-testid="stHorizontalBlock"] > div[data-testid="stColumn"] {
-            overflow: visible !important;
-          }
-          /* Force visible action columns to size to their content */
-          .clawd-topnav [data-testid="stHorizontalBlock"] > div[data-testid="stColumn"]:nth-child(2),
-          .clawd-topnav [data-testid="stHorizontalBlock"] > div[data-testid="stColumn"]:nth-child(3),
-          .clawd-topnav [data-testid="stHorizontalBlock"] > div[data-testid="stColumn"]:nth-child(5) {
+          /* Make columns shrink-to-fit content */
+          .clawd-topnav [data-testid="stColumn"] {
+            width: fit-content !important;
             flex: 0 0 auto !important;
-            width: auto !important;
-            min-width: max-content !important;
-            max-width: max-content !important;
+            max-width: 100% !important;
           }
 
           /* Slightly smaller nav labels */
