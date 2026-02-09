@@ -58,11 +58,23 @@ def render_top_nav() -> None:
           white-space: nowrap !important;
         }
 
-        /* Prevent iPad/Safari from wrapping the auth label vertically */
-        .clawd-topnav button[data-testid="stBaseButton-primary"],
-        .clawd-topnav .stButton > button[kind="primary"] {
-          white-space: nowrap !important;
-          min-width: 86px !important;
+        /* Prevent iPad/Safari from wrapping the auth label vertically (desktop/tablet landscape) */
+        @media (min-width: 1025px) {
+          .clawd-topnav button[data-testid="stBaseButton-primary"],
+          .clawd-topnav .stButton > button[kind="primary"] {
+            white-space: nowrap !important;
+            min-width: 86px !important;
+          }
+        }
+
+        /* Tablet/phone: keep CTA compact so it doesn't stack vertically */
+        @media (max-width: 1024px) {
+          .clawd-topnav button[data-testid="stBaseButton-primary"],
+          .clawd-topnav .stButton > button[kind="primary"] {
+            white-space: nowrap !important;
+            min-width: 64px !important;
+            padding: 0.14rem 0.44rem !important;
+          }
         }
 
         /* Primary (Log in) — slightly more premium, less "bulky" */
@@ -87,6 +99,22 @@ def render_top_nav() -> None:
           gap: 0.20rem !important;
         }
 
+        /* Responsive nav: on iPad/phone, hide the two link buttons and show a single Menu popover */
+        @media (max-width: 1024px) {
+          .st-key-nav_discover,
+          .st-key-nav_deep {
+            display: none !important;
+          }
+          .st-key-nav_menu {
+            display: block !important;
+          }
+        }
+        @media (min-width: 1025px) {
+          .st-key-nav_menu {
+            display: none !important;
+          }
+        }
+
         /* Align nav items to the right edge of their columns so spacing is consistent */
         .clawd-topnav .clawd-navlink,
         .clawd-topnav .clawd-auth {
@@ -108,8 +136,8 @@ def render_top_nav() -> None:
         .st-key-nav_deep [data-testid="stButton"] > button {
           background: transparent !important;
           background-color: transparent !important;
-          border: 0 !important;
-          border-color: transparent !important;
+          /* keep a 1px border for consistent sizing/spacing, but make it invisible */
+          border: 1px solid rgba(0,0,0,0) !important;
           outline: 0 !important;
           box-shadow: none !important;
           padding: 0.10rem 0.10rem !important;
@@ -141,7 +169,8 @@ def render_top_nav() -> None:
         /* Ensure wrapper doesn't contribute a hairline outline */
         .st-key-nav_discover [data-testid="stButton"],
         .st-key-nav_deep [data-testid="stButton"] {
-          border: 0 !important;
+          /* preserve box model without visible outline */
+          border: 1px solid rgba(0,0,0,0) !important;
           outline: 0 !important;
           background: transparent !important;
           box-shadow: none !important;
