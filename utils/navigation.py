@@ -115,12 +115,20 @@ def render_top_nav() -> None:
           letter-spacing: -0.01em;
           white-space: nowrap !important;
         }
-        /* Some Streamlit/BaseWeb styles can sneak a hairline border via pseudo elements */
+        /* Some Streamlit/BaseWeb styles can sneak a hairline border via wrappers/pseudo elements */
+        .clawd-topnav .clawd-navlink [data-testid="stButton"],
+        .clawd-topnav .clawd-navlink [data-testid="stButton"] > div {
+          border: 0 !important;
+          outline: 0 !important;
+          background: transparent !important;
+          box-shadow: none !important;
+        }
         .clawd-topnav .clawd-navlink [data-testid="stButton"] > button::before,
         .clawd-topnav .clawd-navlink [data-testid="stButton"] > button::after {
           border: 0 !important;
           border-color: transparent !important;
           outline: 0 !important;
+          box-shadow: none !important;
         }
         .clawd-topnav .clawd-navlink [data-testid="stButton"] > button:hover {
           background: transparent !important;
