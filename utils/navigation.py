@@ -99,8 +99,11 @@ def render_top_nav() -> None:
           margin-left: 0.25rem;
         }
 
-        /* Top-nav link buttons (look like text links, LunarCrush-style) */
-        .clawd-topnav .clawd-navlink [data-testid="stButton"] > button {
+        /* Top-nav link buttons (Market Scan / Analyze a Stock):
+           We can't reliably "wrap" Streamlit elements with HTML, so we target by key.
+        */
+        .clawd-topnav .st-key-nav_discover [data-testid="stButton"] > button,
+        .clawd-topnav .st-key-nav_deep [data-testid="stButton"] > button {
           background: transparent !important;
           background-color: transparent !important;
           border: 0 !important;
@@ -115,19 +118,30 @@ def render_top_nav() -> None:
           letter-spacing: -0.01em;
           white-space: nowrap !important;
         }
-        /* Some Streamlit/BaseWeb styles can sneak a hairline border via wrappers/pseudo elements */
-        .clawd-topnav .clawd-navlink [data-testid="stButton"],
-        .clawd-topnav .clawd-navlink [data-testid="stButton"] > div {
+        .clawd-topnav .st-key-nav_discover [data-testid="stButton"] > button:hover,
+        .clawd-topnav .st-key-nav_deep [data-testid="stButton"] > button:hover {
+          background: transparent !important;
+          background-color: transparent !important;
+          border-color: transparent !important;
+          text-decoration: underline;
+          text-underline-offset: 4px;
+          text-decoration-color: rgba(56,189,248,.55);
+        }
+        .clawd-topnav .st-key-nav_discover [data-testid="stButton"] > button:focus,
+        .clawd-topnav .st-key-nav_deep [data-testid="stButton"] > button:focus,
+        .clawd-topnav .st-key-nav_discover [data-testid="stButton"] > button:focus-visible,
+        .clawd-topnav .st-key-nav_deep [data-testid="stButton"] > button:focus-visible {
+          outline: 0 !important;
+          border-color: transparent !important;
+          box-shadow: none !important;
+        }
+
+        /* Ensure wrapper doesn't contribute a hairline outline */
+        .clawd-topnav .st-key-nav_discover [data-testid="stButton"],
+        .clawd-topnav .st-key-nav_deep [data-testid="stButton"] {
           border: 0 !important;
           outline: 0 !important;
           background: transparent !important;
-          box-shadow: none !important;
-        }
-        .clawd-topnav .clawd-navlink [data-testid="stButton"] > button::before,
-        .clawd-topnav .clawd-navlink [data-testid="stButton"] > button::after {
-          border: 0 !important;
-          border-color: transparent !important;
-          outline: 0 !important;
           box-shadow: none !important;
         }
         .clawd-topnav .clawd-navlink [data-testid="stButton"] > button:hover {
