@@ -87,15 +87,21 @@ def render_top_nav() -> None:
           gap: 18px !important;
           align-items: center !important;
         }
-        /* Remove Streamlit column gutters inside the nav cluster so the gap is truly ~18px */
+        /* Remove Streamlit column gutters + stop columns from reserving extra width */
         div[data-testid="stHorizontalBlock"]:has(.st-key-nav_discover):has(.st-key-nav_deep) > div[data-testid="stColumn"] {
           padding-left: 0 !important;
           padding-right: 0 !important;
           margin-left: 0 !important;
           margin-right: 0 !important;
+          flex: 0 0 auto !important;
+          width: fit-content !important;
+          max-width: fit-content !important;
         }
+        /* Make sure the keyed element containers also shrink */
         div[data-testid="stHorizontalBlock"]:has(.st-key-nav_discover):has(.st-key-nav_deep) .stElementContainer {
           margin-bottom: 0 !important;
+          width: fit-content !important;
+          max-width: fit-content !important;
         }
 
         /* Align nav items to the right edge of their columns so spacing is consistent */
