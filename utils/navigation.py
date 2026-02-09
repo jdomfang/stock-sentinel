@@ -24,6 +24,8 @@ def render_sidebar_navigation() -> None:
 def render_top_nav() -> None:
     """Render a LunarCrush-style top nav header.
 
+    (Hotfix: touched to force Streamlit Cloud redeploy after a transient tokenizer/caching error.)
+
     Streamlit has no global layout template, so call this at the top of every page.
 
     Notes:
