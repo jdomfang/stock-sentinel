@@ -99,21 +99,9 @@ def render_top_nav() -> None:
           gap: 0.20rem !important;
         }
 
-        /* Responsive nav: on iPad/phone, hide the two link buttons and show a single Menu popover */
-        @media (max-width: 1024px) {
-          .st-key-nav_discover,
-          .st-key-nav_deep {
-            display: none !important;
-          }
-          .st-key-nav_menu {
-            display: block !important;
-          }
-        }
-        @media (min-width: 1025px) {
-          .st-key-nav_menu {
-            display: none !important;
-          }
-        }
+        /* Responsive nav note:
+           Do NOT hide Market Scan / Analyze a Stock on mobile unless we actually render a replacement menu.
+        */
 
         /* Align nav items to the right edge of their columns so spacing is consistent */
         .clawd-topnav .clawd-navlink,
