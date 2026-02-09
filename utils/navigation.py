@@ -240,11 +240,12 @@ def render_top_nav() -> None:
 
         if is_logged_in():
             spacer_col, credits_col, admin_col, discover_col, deep_col, auth_col = st.columns(
-                [5.6, 1.15, 0.55, 0.55, 0.75, 0.70]
+                [5.5, 1.15, 0.55, 0.70, 0.70, 0.70]
             )
         else:
             # Logged-out: right cluster should be tight (top-nav links + Login pill).
-            spacer_col, discover_col, deep_col, auth_col = st.columns([8.0, 0.6, 0.85, 0.75])
+            # Give both nav links equal width for consistency.
+            spacer_col, discover_col, deep_col, auth_col = st.columns([7.85, 0.75, 0.75, 0.75])
 
         with spacer_col:
             st.markdown("")
