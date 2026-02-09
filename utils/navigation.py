@@ -96,7 +96,7 @@ def render_top_nav() -> None:
 
         /* Create a slightly larger gap between the nav links and the CTA */
         .clawd-topnav .clawd-auth {
-          margin-left: 0.25rem;
+          margin-left: 0.55rem;
         }
 
         /* Top-nav link buttons (Market Scan / Analyze a Stock):
