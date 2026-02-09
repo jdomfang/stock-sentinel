@@ -65,33 +65,55 @@ def render_top_nav() -> None:
           min-width: 86px !important;
         }
 
-        /* Mobile: tighten header so labels don't collide/stack */
-        @media (max-width: 600px) {
+        /* Mobile/Tablet: tighten header so labels don't collide/stack (iPad Safari included) */
+        @media (max-width: 1024px) {
           .clawd-topnav [data-testid="stHorizontalBlock"] {
             flex-wrap: wrap !important;
             justify-content: flex-end !important;
-            gap: 12px !important;
+            column-gap: 14px !important;
             row-gap: 6px !important;
+            align-items: center !important;
           }
+
+          /* Make each column shrink to content so we don't reserve huge blank space */
           .clawd-topnav [data-testid="stColumn"] {
             width: fit-content !important;
             flex: 0 0 auto !important;
             max-width: 100% !important;
           }
 
-          /* Shrink nav link typography a notch */
+          /* Keep nav items right-aligned inside their columns */
+          .clawd-topnav .clawd-navlink,
+          .clawd-topnav .clawd-auth {
+            justify-content: flex-end !important;
+          }
+
+          /* Shrink nav link typography so it fits on one line */
           .st-key-nav_discover [data-testid="stButton"] > button,
           .st-key-nav_deep [data-testid="stButton"] > button {
             font-size: 0.78rem !important;
             padding: 0.06rem 0.06rem !important;
+            white-space: nowrap !important;
           }
 
-          /* Make the CTA smaller on mobile so it stays one-line */
+          /* Make the CTA smaller so "Log in" never stacks vertically */
           .clawd-topnav button[data-testid="stBaseButton-primary"],
           .clawd-topnav .stButton > button[kind="primary"] {
             min-width: 64px !important;
             padding: 0.14rem 0.44rem !important;
             font-size: 0.78rem !important;
+            white-space: nowrap !important;
+          }
+        }
+
+        /* Extra-small phones: a bit tighter */
+        @media (max-width: 420px) {
+          .clawd-topnav [data-testid="stHorizontalBlock"] {
+            column-gap: 10px !important;
+          }
+          .st-key-nav_discover [data-testid="stButton"] > button,
+          .st-key-nav_deep [data-testid="stButton"] > button {
+            font-size: 0.74rem !important;
           }
         }
 
