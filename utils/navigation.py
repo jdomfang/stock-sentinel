@@ -65,8 +65,8 @@ def render_top_nav() -> None:
           min-width: 86px !important;
         }
 
-        /* Tablet (iPad): allow wrap but prevent overlap by removing empty spacer/gap columns */
-        @media (min-width: 601px) and (max-width: 1024px) {
+        /* Mobile/Tablet: tighten header so labels don't collide/stack (iPad Safari included) */
+        @media (max-width: 1024px) {
           .clawd-topnav [data-testid="stHorizontalBlock"] {
             flex-wrap: wrap !important;
             justify-content: flex-end !important;
@@ -75,55 +75,33 @@ def render_top_nav() -> None:
             align-items: center !important;
           }
 
-          /* Hide empty structural columns (spacer/gap) so nav doesn't collide */
-          .clawd-topnav [data-testid="stColumn"]:not(:has(button)):not(:has([data-baseweb="select"])) {
-            display: none !important;
+          /* Make each column shrink to content so we don't reserve huge blank space */
+          .clawd-topnav [data-testid="stColumn"] {
+            width: fit-content !important;
+            flex: 0 0 auto !important;
+            max-width: 100% !important;
           }
 
-          /* Keep buttons on one line */
-          .st-key-nav_discover [data-testid="stButton"] > button,
-          .st-key-nav_deep [data-testid="stButton"] > button {
-            font-size: 0.80rem !important;
-            white-space: nowrap !important;
-          }
-
-          .clawd-topnav button[data-testid="stBaseButton-primary"],
-          .clawd-topnav .stButton > button[kind="primary"] {
-            min-width: 72px !important;
-            white-space: nowrap !important;
-          }
-        }
-
-        /* Phones: keep everything on ONE ROW (no vertical stacking) */
-        @media (max-width: 600px) {
-          .clawd-topnav [data-testid="stHorizontalBlock"] {
-            flex-wrap: nowrap !important;
+          /* Keep nav items right-aligned inside their columns */
+          .clawd-topnav .clawd-navlink,
+          .clawd-topnav .clawd-auth {
             justify-content: flex-end !important;
-            gap: 16px !important;
-            align-items: center !important;
-            overflow-x: auto !important;
-            -webkit-overflow-scrolling: touch;
           }
 
-          /* Hide empty structural columns (spacer/gap) so we only have the real actions */
-          .clawd-topnav [data-testid="stColumn"]:not(:has(button)):not(:has([data-baseweb="select"])) {
-            display: none !important;
-          }
-
-          /* Shrink nav link typography slightly */
+          /* Shrink nav link typography so it fits on one line */
           .st-key-nav_discover [data-testid="stButton"] > button,
           .st-key-nav_deep [data-testid="stButton"] > button {
-            font-size: 0.76rem !important;
+            font-size: 0.78rem !important;
             padding: 0.06rem 0.06rem !important;
             white-space: nowrap !important;
           }
 
-          /* Keep CTA compact and single-line */
+          /* Make the CTA smaller so "Log in" never stacks vertically */
           .clawd-topnav button[data-testid="stBaseButton-primary"],
           .clawd-topnav .stButton > button[kind="primary"] {
             min-width: 64px !important;
             padding: 0.14rem 0.44rem !important;
-            font-size: 0.76rem !important;
+            font-size: 0.78rem !important;
             white-space: nowrap !important;
           }
         }
@@ -131,7 +109,11 @@ def render_top_nav() -> None:
         /* Extra-small phones: a bit tighter */
         @media (max-width: 420px) {
           .clawd-topnav [data-testid="stHorizontalBlock"] {
-            gap: 12px !important;
+            column-gap: 10px !important;
+          }
+          .st-key-nav_discover [data-testid="stButton"] > button,
+          .st-key-nav_deep [data-testid="stButton"] > button {
+            font-size: 0.74rem !important;
           }
         }
 
