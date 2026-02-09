@@ -103,7 +103,7 @@ def render_top_nav() -> None:
         .clawd-topnav .clawd-navlink [data-testid="stButton"] > button {
           background: transparent !important;
           background-color: transparent !important;
-          border: 1px solid transparent !important;
+          border: none !important;
           box-shadow: none !important;
           padding: 0.10rem 0.10rem !important;
           min-height: 32px !important;
@@ -132,6 +132,7 @@ def render_top_nav() -> None:
         /* Ensure global topnav button styling doesn't re-add pill borders to nav links */
         .clawd-topnav .clawd-navlink [data-testid="stButton"] > button {
           border-radius: 10px !important;
+          border: none !important;
         }
 
         /* Services dropdown (native Streamlit selectbox) — tighten empty space before caret */
