@@ -103,7 +103,9 @@ def render_top_nav() -> None:
         .clawd-topnav .clawd-navlink [data-testid="stButton"] > button {
           background: transparent !important;
           background-color: transparent !important;
-          border: none !important;
+          border: 0 !important;
+          border-color: transparent !important;
+          outline: 0 !important;
           box-shadow: none !important;
           padding: 0.10rem 0.10rem !important;
           min-height: 32px !important;
@@ -112,6 +114,13 @@ def render_top_nav() -> None:
           font-size: 0.86rem !important;
           letter-spacing: -0.01em;
           white-space: nowrap !important;
+        }
+        /* Some Streamlit/BaseWeb styles can sneak a hairline border via pseudo elements */
+        .clawd-topnav .clawd-navlink [data-testid="stButton"] > button::before,
+        .clawd-topnav .clawd-navlink [data-testid="stButton"] > button::after {
+          border: 0 !important;
+          border-color: transparent !important;
+          outline: 0 !important;
         }
         .clawd-topnav .clawd-navlink [data-testid="stButton"] > button:hover {
           background: transparent !important;
