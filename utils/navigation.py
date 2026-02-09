@@ -308,8 +308,7 @@ def render_top_nav() -> None:
           }
 
           /* Hard spacing guard for iPad Safari: ensure the two nav items can't overlap */
-          .st-key-nav_discover [data-testid="stButton"],
-          .st-key-nav_discover [data-testid="stButton"] > button {
+          .st-key-nav_discover {
             margin-right: 18px !important;
           }
 
