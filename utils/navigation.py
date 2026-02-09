@@ -73,7 +73,6 @@ def render_top_nav() -> None:
           border-radius: 999px !important;
           box-shadow: 0 10px 24px rgba(0,0,0,.18);
           width: fit-content !important;
-          margin-left: -9px !important; /* tighten nav→CTA gap */
         }
 
         /* Reduce extra vertical whitespace under the nav row */
