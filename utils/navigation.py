@@ -293,11 +293,11 @@ def render_top_nav() -> None:
             # Tune column widths so nav links sit closer together (premium spacing) while keeping labels single-line.
             # Add a tiny gap column before the CTA for a consistent nav→CTA separation.
             spacer_col, credits_col, admin_col, discover_col, deep_col, gap_col, auth_col = st.columns(
-                [5.85, 1.15, 0.55, 0.55, 0.70, 0.02, 0.70]
+                [5.90, 1.15, 0.55, 0.55, 0.70, 0.02, 0.65]
             )
         else:
             # Logged-out: tune widths so Market Scan + Analyze a Stock sit closer together.
-            spacer_col, discover_col, deep_col, gap_col, auth_col = st.columns([7.90, 0.55, 0.70, 0.02, 0.75])
+            spacer_col, discover_col, deep_col, gap_col, auth_col = st.columns([7.97, 0.55, 0.70, 0.02, 0.68])
 
         with spacer_col:
             st.markdown("")
