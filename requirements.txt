@@ -8,3 +8,4 @@ polygon-api-client==1.13.7
 scipy==1.13.1
 supabase==2.5.0
 websockets==11.0.0
+setuptools>=69.0.0
