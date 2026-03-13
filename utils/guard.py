@@ -9,7 +9,7 @@ from utils.profile import get_my_profile
 def require_login() -> None:
     if not is_logged_in():
         st.warning("Please log in to continue.")
-        if st.button("Log in", type="primary"):
+        if st.button("Log in", type="primary", key="guard_login_button"):
             st.switch_page("pages/Auth.py")
         st.stop()
 
