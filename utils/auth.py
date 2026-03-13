@@ -55,14 +55,38 @@ def sign_in(email: str, password: str, remember_me: bool = False) -> tuple[bool,
 
         st.session_state[SESSION_KEY] = session
         st.session_state[USER_KEY] = user
-        
+
         # Cache to browser if remember_me enabled
         if remember_me:
             _cache_auth_to_browser(session, user, email, password)
-        
+
         return True, ""
     except Exception as e:
-        return False, str(e)
+        # Add extra diagnostics for deployment debugging (does NOT print secrets).
+        try:
+            import socket
+            from urllib.parse import urlparse
+
+            supabase_url = st.secrets.get("SUPABASE_URL", "")
+            host = urlparse(supabase_url).hostname or "(no hostname parsed)"
+
+            dns_result = "not checked"
+            try:
+                infos = socket.getaddrinfo(host, 443)
+                ips = sorted({info[4][0] for info in infos if info and info[4]})
+                dns_result = f"OK ({', '.join(ips[:6])}{'...' if len(ips) > 6 else ''})"
+            except Exception as dns_e:
+                dns_result = f"FAILED ({dns_e})"
+
+            debug = (
+                f"{e}\n"
+                f"SUPABASE_URL={supabase_url}\n"
+                f"Parsed host={host}\n"
+                f"DNS lookup={dns_result}"
+            )
+            return False, debug
+        except Exception:
+            return False, str(e)
 
 
 def sign_up(email: str, password: str) -> tuple[bool, str]:
@@ -83,7 +107,31 @@ def sign_up(email: str, password: str) -> tuple[bool, str]:
         st.session_state[USER_KEY] = user
         return True, ""
     except Exception as e:
-        return False, str(e)
+        # Add extra diagnostics for deployment debugging (does NOT print secrets).
+        try:
+            import socket
+            from urllib.parse import urlparse
+
+            supabase_url = st.secrets.get("SUPABASE_URL", "")
+            host = urlparse(supabase_url).hostname or "(no hostname parsed)"
+
+            dns_result = "not checked"
+            try:
+                infos = socket.getaddrinfo(host, 443)
+                ips = sorted({info[4][0] for info in infos if info and info[4]})
+                dns_result = f"OK ({', '.join(ips[:6])}{'...' if len(ips) > 6 else ''})"
+            except Exception as dns_e:
+                dns_result = f"FAILED ({dns_e})"
+
+            debug = (
+                f"{e}\n"
+                f"SUPABASE_URL={supabase_url}\n"
+                f"Parsed host={host}\n"
+                f"DNS lookup={dns_result}"
+            )
+            return False, debug
+        except Exception:
+            return False, str(e)
 
 
 def restore_session_from_query_params() -> None:
