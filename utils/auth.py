@@ -67,22 +67,24 @@ def sign_in(email: str, password: str, remember_me: bool = False) -> tuple[bool,
             import socket
             from urllib.parse import urlparse
 
+            def _dns_check(h: str) -> str:
+                try:
+                    infos = socket.getaddrinfo(h, 443)
+                    ips = sorted({info[4][0] for info in infos if info and info[4]})
+                    return f"OK ({', '.join(ips[:6])}{'...' if len(ips) > 6 else ''})"
+                except Exception as dns_e:
+                    return f"FAILED ({dns_e})"
+
             supabase_url = st.secrets.get("SUPABASE_URL", "")
             host = urlparse(supabase_url).hostname or "(no hostname parsed)"
-
-            dns_result = "not checked"
-            try:
-                infos = socket.getaddrinfo(host, 443)
-                ips = sorted({info[4][0] for info in infos if info and info[4]})
-                dns_result = f"OK ({', '.join(ips[:6])}{'...' if len(ips) > 6 else ''})"
-            except Exception as dns_e:
-                dns_result = f"FAILED ({dns_e})"
 
             debug = (
                 f"{e}\n"
                 f"SUPABASE_URL={supabase_url}\n"
                 f"Parsed host={host}\n"
-                f"DNS lookup={dns_result}"
+                f"DNS supabase={_dns_check(host)}\n"
+                f"DNS example.com={_dns_check('example.com')}\n"
+                f"DNS google.com={_dns_check('google.com')}"
             )
             return False, debug
         except Exception:
