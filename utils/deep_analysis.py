@@ -5,8 +5,11 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 from typing import Dict, List, Any
 from pathlib import Path
 import json
+import logging
 
 from utils.sentiment import analyze_sentiment, load_sentiment_pipeline, score_finbert_output
+
+logger = logging.getLogger(__name__)
 
 # ---- Prompt definitions (UI + reporting structure) ----
 # NOTE: We still present 8 prompts, but we only make 4 X API calls.
@@ -130,9 +133,17 @@ def _build_influencer_query(usernames: List[str], ticker: str, sector: str) -> s
 # ---- X API search ----
 
 def search_x_tweets(query: str, max_results: int = 100, timeframe: str = "24h") -> Dict[str, Any]:
-    """Search X (Twitter) Recent Search for tweets matching the query."""
+    """Search X (Twitter) Recent Search for tweets matching the query.
+
+    Pagination notes:
+    - X Recent Search supports up to 100 results per request.
+    - If `max_results` > 100, we paginate using `meta.next_token` until we reach
+      `max_results` or a safety cap.
+    - Default behavior (max_results=100) remains a single call.
+    """
     try:
         import os
+
         x_bearer_token = st.secrets.get("X_BEARER_TOKEN", os.getenv("X_BEARER_TOKEN"))
         if not x_bearer_token:
             raise RuntimeError("Missing X_BEARER_TOKEN (set in .streamlit/secrets.toml or env var)")
@@ -144,29 +155,82 @@ def search_x_tweets(query: str, max_results: int = 100, timeframe: str = "24h") 
 
         url = "https://api.twitter.com/2/tweets/search/recent"
         headers = {"Authorization": f"Bearer {x_bearer_token}"}
+
+        # X API: max_results must be between 10 and 100 per request.
+        per_page = 100
+        target_total = max(0, int(max_results))
         params = {
             "query": query,
-            "max_results": min(int(max_results), 100),
+            "max_results": min(max(target_total or 100, 10), per_page),
             "tweet.fields": "text,created_at,public_metrics,author_id",
         }
         if since_date:
             params["start_time"] = since_date
 
-        response = requests.get(url, headers=headers, params=params, timeout=30)
+        # Safety cap: even if X has more, do not paginate forever.
+        # With per_page=100, max_pages=5 caps this call at ~500 tweets.
+        max_pages = 5
 
-        if response.status_code == 200:
-            data = response.json()
-            return {
-                "success": True,
-                "tweets": data.get("data", []) or [],
-                "meta": data.get("meta", {}) or {},
-            }
+        all_tweets: List[Dict[str, Any]] = []
+        last_meta: Dict[str, Any] = {}
+        next_token = None
 
-        # Never leak raw provider response text to the UI.
+        # If caller only asked for <=100 results, do a single request.
+        pages_to_fetch = 1 if target_total <= per_page else max_pages
+
+        for page in range(1, pages_to_fetch + 1):
+            if next_token:
+                params["next_token"] = next_token
+            else:
+                params.pop("next_token", None)
+
+            response = requests.get(url, headers=headers, params=params, timeout=30)
+
+            if response.status_code != 200:
+                # Never leak raw provider response text to the UI.
+                logger.info("📡 X API response status: %s", response.status_code)
+                return {
+                    "success": False,
+                    "error": f"API Error {response.status_code}",
+                    "tweets": [],
+                }
+
+            data = response.json() or {}
+            tweets = data.get("data", []) or []
+            meta = data.get("meta", {}) or {}
+            last_meta = meta
+
+            all_tweets.extend(tweets)
+            next_token = meta.get("next_token")
+
+            # Log pagination state before stop/continue decisions.
+            logger.info(
+                "📄 X page=%s got=%s total=%s has_next=%s",
+                page,
+                len(tweets),
+                len(all_tweets),
+                bool(next_token),
+            )
+
+            if not next_token:
+                logger.info("✅ X pagination finished at page=%s (no next_token)", page)
+                break
+
+            if target_total and len(all_tweets) >= target_total:
+                logger.info("🛑 X pagination stop at page=%s (hit target_total=%s)", page, target_total)
+                break
+
+            if page >= max_pages:
+                logger.info("🛑 X pagination stop at page=%s (hit max_pages=%s)", page, max_pages)
+                break
+
+        # Trim to requested size (if max_results was set > 0)
+        out = all_tweets[:target_total] if target_total else all_tweets
+
         return {
-            "success": False,
-            "error": f"API Error {response.status_code}",
-            "tweets": [],
+            "success": True,
+            "tweets": out,
+            "meta": last_meta,
         }
 
     except Exception:
