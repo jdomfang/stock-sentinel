@@ -573,15 +573,20 @@ if scan_clicked:
             tweets = result.get("tweets") or []
             logger.info(f"📄 Raw tweets from X API (after pagination): {len(tweets)}")
 
-            # Filter tweets for sector relevance
-            sector_relevant_tweets = []
-            for tweet in tweets:
-                text = tweet.get('text', '').lower()
-                # Check if tweet contains sector-specific keywords
-                if any(keyword.lower() in text for keyword in sector_terms.split(' OR ')) or sector.lower() in text:
-                    sector_relevant_tweets.append(tweet)
+            # Filter tweets for sector relevance.
+            # NOTE: For Materials we skip this second-pass filter because the query already encodes
+            # the sector topic set (v2) and the naive substring logic can accidentally drop good tweets
+            # (e.g., quoted phrases like "iron ore").
+            if sector_key != "materials":
+                sector_relevant_tweets = []
+                for tweet in tweets:
+                    text = tweet.get('text', '').lower()
+                    # Check if tweet contains sector-specific keywords
+                    if any(keyword.lower() in text for keyword in sector_terms.split(' OR ')) or sector.lower() in text:
+                        sector_relevant_tweets.append(tweet)
 
-            tweets = sector_relevant_tweets
+                tweets = sector_relevant_tweets
+
             logger.info(f"🎯 Sector-relevant tweets after filtering: {len(tweets)}")
             st.success(f"✅ Found {len(tweets)} sector-relevant posts!")
             
