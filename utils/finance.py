@@ -17,6 +17,7 @@ import random
 import json
 import os
 from concurrent.futures import ThreadPoolExecutor, as_completed
+from filelock import FileLock, Timeout
 
 # Configure logging
 logger = logging.getLogger(__name__)
@@ -84,6 +85,14 @@ def get_cache_stats():
 
 # Bulk ticker download and storage
 TICKER_MASTER_FILE = os.path.join(os.path.dirname(__file__), '..', 'data', 'tickers.json')
+
+# Optional: persist the master list in Supabase Storage so it survives app restarts
+TICKER_MASTER_BUCKET = os.getenv("TICKER_MASTER_BUCKET", "cache")
+TICKER_MASTER_OBJECT = os.getenv("TICKER_MASTER_OBJECT", "tickers/tickers.json")
+
+# Coarse lock to prevent concurrent refreshes within the same app instance
+TICKER_MASTER_LOCK_PATH = os.getenv("TICKER_MASTER_LOCK_PATH", "/tmp/ticker_master_refresh.lock")
+TICKER_MASTER_LOCK_TIMEOUT_S = int(os.getenv("TICKER_MASTER_LOCK_TIMEOUT_S", "5"))
 
 def download_ticker_master_list() -> Dict[str, Dict]:
     """
@@ -158,12 +167,12 @@ def download_ticker_master_list() -> Dict[str, Dict]:
 
         logger.info(f"Completed bulk download: {ticker_count} total tickers")
 
-        # Ensure data directory exists
+        # Save to local JSON file (atomic write)
         os.makedirs(os.path.dirname(TICKER_MASTER_FILE), exist_ok=True)
-
-        # Save to local JSON file
-        with open(TICKER_MASTER_FILE, 'w', encoding='utf-8') as f:
+        tmp_path = TICKER_MASTER_FILE + ".tmp"
+        with open(tmp_path, 'w', encoding='utf-8') as f:
             json.dump(tickers_data, f, indent=2, ensure_ascii=False)
+        os.replace(tmp_path, TICKER_MASTER_FILE)
 
         logger.info(f"Saved ticker data to {TICKER_MASTER_FILE}")
 
@@ -173,39 +182,144 @@ def download_ticker_master_list() -> Dict[str, Dict]:
         logger.error(f"Bulk ticker download failed: {str(e)}")
         return None
 
+def _load_ticker_master_from_supabase() -> Optional[dict]:
+    """Best-effort: download ticker master JSON from Supabase Storage."""
+    try:
+        sb = get_admin_client()
+        data_bytes = sb.storage.from_(TICKER_MASTER_BUCKET).download(TICKER_MASTER_OBJECT)
+        if not data_bytes:
+            return None
+        if isinstance(data_bytes, str):
+            # some clients may return a string
+            data_bytes = data_bytes.encode("utf-8")
+        return json.loads(data_bytes.decode("utf-8"))
+    except Exception as e:
+        logger.info(f"Supabase ticker master load skipped/failed: {type(e).__name__}: {str(e)[:160]}")
+        return None
+
+
+def _save_ticker_master_to_supabase(data: dict) -> None:
+    """Best-effort: upload ticker master JSON to Supabase Storage."""
+    try:
+        sb = get_admin_client()
+        payload = json.dumps(data, indent=2, ensure_ascii=False).encode("utf-8")
+
+        # Upload new version. If already exists, try update.
+        try:
+            sb.storage.from_(TICKER_MASTER_BUCKET).upload(
+                TICKER_MASTER_OBJECT,
+                payload,
+                file_options={"content-type": "application/json", "upsert": "true"},
+            )
+        except Exception:
+            # Some supabase-py versions prefer update() for overwrite
+            sb.storage.from_(TICKER_MASTER_BUCKET).update(
+                TICKER_MASTER_OBJECT,
+                payload,
+                file_options={"content-type": "application/json"},
+            )
+
+        logger.info(f"Saved ticker master list to Supabase Storage: {TICKER_MASTER_BUCKET}/{TICKER_MASTER_OBJECT}")
+    except Exception as e:
+        logger.info(f"Supabase ticker master save skipped/failed: {type(e).__name__}: {str(e)[:160]}")
+
+
 def get_ticker_master_list() -> Dict[str, Dict]:
-    """
-    Get ticker master list from local file, downloading if necessary.
+    """Get ticker master list (prefers Supabase Storage, then local file, else download).
 
     Returns:
         Dictionary mapping ticker symbols to ticker data
     """
     try:
-        # Check if file exists and is recent (< 24 hours old)
-        if os.path.exists(TICKER_MASTER_FILE):
-            with open(TICKER_MASTER_FILE, 'r', encoding='utf-8') as f:
-                data = json.load(f)
-
-        # Check if data is fresh (< 30 days)
-        downloaded_at = data.get('metadata', {}).get('downloaded_at', 0)
-        age_hours = (time.time() - downloaded_at) / 3600
         max_age_hours = 30 * 24
 
-        if age_hours < max_age_hours:  # Less than 30 days old
-            ticker_count = len(data.get('tickers', {}))
-            logger.info(
-                f"Loaded {ticker_count} tickers from cache (age: {age_hours:.1f} hours)"
-            )
-            return data['tickers']
+        # 1) Try Supabase Storage (durable across app restarts)
+        sb_data = _load_ticker_master_from_supabase()
+        if isinstance(sb_data, dict):
+            downloaded_at = sb_data.get("metadata", {}).get("downloaded_at", 0)
+            age_hours = (time.time() - downloaded_at) / 3600 if downloaded_at else 1e9
+            if age_hours < max_age_hours and isinstance(sb_data.get("tickers"), dict):
+                ticker_count = len(sb_data.get("tickers", {}))
+                logger.info(f"Loaded {ticker_count} tickers from Supabase cache (age: {age_hours:.1f} hours)")
+                return sb_data["tickers"]
 
-        # File missing or stale - download fresh data
-        logger.info("Ticker master list missing or stale, downloading fresh data...")
-        fresh_data = download_ticker_master_list()
-        return fresh_data if fresh_data else {}
+        # 2) Try local file (fastest within a single running instance)
+        data: Optional[dict] = None
+        if os.path.exists(TICKER_MASTER_FILE):
+            with open(TICKER_MASTER_FILE, "r", encoding="utf-8") as f:
+                data = json.load(f)
+
+        if isinstance(data, dict):
+            downloaded_at = data.get("metadata", {}).get("downloaded_at", 0)
+            age_hours = (time.time() - downloaded_at) / 3600 if downloaded_at else 1e9
+            if age_hours < max_age_hours and isinstance(data.get("tickers"), dict):
+                ticker_count = len(data.get("tickers", {}))
+                logger.info(f"Loaded {ticker_count} tickers from local cache (age: {age_hours:.1f} hours)")
+                return data["tickers"]
+
+        # 3) Missing or stale everywhere - download fresh data and persist
+        # Use a coarse lock so concurrent reruns don't trigger multiple bulk downloads.
+        lock = FileLock(TICKER_MASTER_LOCK_PATH)
+        try:
+            lock.acquire(timeout=TICKER_MASTER_LOCK_TIMEOUT_S)
+        except Timeout:
+            # Another refresh is in progress; try Supabase/local one more time after a short pause.
+            time.sleep(1.0)
+            sb_data = _load_ticker_master_from_supabase()
+            if isinstance(sb_data, dict) and isinstance(sb_data.get("tickers"), dict):
+                return sb_data["tickers"]
+            if os.path.exists(TICKER_MASTER_FILE):
+                with open(TICKER_MASTER_FILE, "r", encoding="utf-8") as f:
+                    data2 = json.load(f)
+                if isinstance(data2, dict) and isinstance(data2.get("tickers"), dict):
+                    return data2["tickers"]
+            # Fall through and refresh anyway
+            lock.acquire(timeout=30)
+
+        try:
+            # Re-check caches *after* acquiring lock (double-checked locking)
+            sb_data = _load_ticker_master_from_supabase()
+            if isinstance(sb_data, dict):
+                downloaded_at = sb_data.get("metadata", {}).get("downloaded_at", 0)
+                age_hours = (time.time() - downloaded_at) / 3600 if downloaded_at else 1e9
+                if age_hours < max_age_hours and isinstance(sb_data.get("tickers"), dict):
+                    ticker_count = len(sb_data.get("tickers", {}))
+                    logger.info(f"Loaded {ticker_count} tickers from Supabase cache (age: {age_hours:.1f} hours)")
+                    return sb_data["tickers"]
+
+            if os.path.exists(TICKER_MASTER_FILE):
+                with open(TICKER_MASTER_FILE, "r", encoding="utf-8") as f:
+                    data3 = json.load(f)
+                if isinstance(data3, dict):
+                    downloaded_at = data3.get("metadata", {}).get("downloaded_at", 0)
+                    age_hours = (time.time() - downloaded_at) / 3600 if downloaded_at else 1e9
+                    if age_hours < max_age_hours and isinstance(data3.get("tickers"), dict):
+                        ticker_count = len(data3.get("tickers", {}))
+                        logger.info(f"Loaded {ticker_count} tickers from local cache (age: {age_hours:.1f} hours)")
+                        return data3["tickers"]
+
+            logger.info("Ticker master list missing or stale, downloading fresh data...")
+            fresh_tickers = download_ticker_master_list()  # writes local file too
+        finally:
+            try:
+                lock.release()
+            except Exception:
+                pass
+
+        # Also persist to Supabase if we can reconstruct the full JSON with metadata
+        try:
+            if os.path.exists(TICKER_MASTER_FILE):
+                with open(TICKER_MASTER_FILE, "r", encoding="utf-8") as f:
+                    fresh_full = json.load(f)
+                if isinstance(fresh_full, dict) and fresh_full.get("tickers"):
+                    _save_ticker_master_to_supabase(fresh_full)
+        except Exception:
+            pass
+
+        return fresh_tickers if fresh_tickers else {}
 
     except Exception as e:
         logger.error(f"Failed to get ticker master list: {str(e)}")
-        # Try one more time to download
         fresh_data = download_ticker_master_list()
         return fresh_data if fresh_data else {}
 
