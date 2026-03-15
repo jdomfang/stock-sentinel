@@ -175,10 +175,16 @@ def search_x_tweets(query: str, max_results: int = 100, timeframe: str = "24h") 
         last_meta: Dict[str, Any] = {}
         next_token = None
 
+        import time
+        t0 = time.time()
+        stop_reason: str | None = None
+        pages_fetched = 0
+
         # If caller only asked for <=100 results, do a single request.
         pages_to_fetch = 1 if target_total <= per_page else max_pages
 
         for page in range(1, pages_to_fetch + 1):
+            pages_fetched = page
             if next_token:
                 params["next_token"] = next_token
             else:
@@ -213,19 +219,34 @@ def search_x_tweets(query: str, max_results: int = 100, timeframe: str = "24h") 
             )
 
             if not next_token:
+                stop_reason = "no_next_token"
                 logger.info("✅ X pagination finished at page=%s (no next_token)", page)
                 break
 
             if target_total and len(all_tweets) >= target_total:
+                stop_reason = "hit_target_total"
                 logger.info("🛑 X pagination stop at page=%s (hit target_total=%s)", page, target_total)
                 break
 
             if page >= max_pages:
+                stop_reason = "hit_max_pages"
                 logger.info("🛑 X pagination stop at page=%s (hit max_pages=%s)", page, max_pages)
                 break
 
         # Trim to requested size (if max_results was set > 0)
         out = all_tweets[:target_total] if target_total else all_tweets
+
+        # Final summary log for analytics
+        elapsed_s = time.time() - t0
+        if stop_reason is None:
+            stop_reason = "single_page" if pages_to_fetch == 1 else "exhausted_pages"
+        logger.info(
+            "📈 X pagination summary pages=%s total=%s elapsed_s=%.2f stop_reason=%s",
+            pages_fetched,
+            len(out),
+            elapsed_s,
+            stop_reason,
+        )
 
         return {
             "success": True,

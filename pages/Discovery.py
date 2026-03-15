@@ -479,8 +479,9 @@ with _main:
             index=0,
         )
 
-    # Keep the existing behavior (max_results=100) as a code-only setting
-    max_results = 100
+    # Code-only setting (X API supports 100 per request; pagination will fetch more)
+    # Keep cap aligned with deep analysis helper (max_pages=5 => ~500 tweets)
+    max_results = 500
 
     with ctrl_right:
         st.markdown("<div style='height: 1.65rem;'></div>", unsafe_allow_html=True)
@@ -533,38 +534,23 @@ if scan_clicked:
         sector_terms = sector_keywords.get(sector.lower(), sector)
         query = f"({sector} OR {sector_terms}) stock (bullish OR opportunity OR catalyst OR growth OR earnings) -bearish lang:en -is:retweet"
         
-        # API endpoint
-        url = "https://api.twitter.com/2/tweets/search/recent"
-        
-        # Headers
-        headers = {
-            "Authorization": f"Bearer {x_bearer_token}"
-        }
-        
-        # Parameters
-        params = {
-            "query": query,
-            "max_results": max_results,
-            "tweet.fields": "text,created_at,public_metrics"
-        }
-        
         logger.info(f"🔍 Starting X search for sector: {sector}")
         logger.info(f"📝 Search query: {query}")
         logger.info(f"📊 Max results requested: {max_results}")
 
-        # Show loading spinner
+        # Use shared X search helper (supports pagination via meta.next_token)
+        from utils.deep_analysis import search_x_tweets
+
         with st.spinner("Searching X for emerging stocks..."):
-            # Make API request
-            response = requests.get(url, headers=headers, params=params)
+            result = search_x_tweets(query=query, max_results=max_results, timeframe="24h")
 
-        logger.info(f"📡 X API response status: {response.status_code}")
-
-        # Handle different response codes
-        if response.status_code == 200:
-            # Success - display results
-            data = response.json()
-            tweets = data.get('data', [])
-            logger.info(f"📄 Raw tweets from X API: {len(tweets)}")
+        if not result.get("success"):
+            err = result.get("error") or "X API request failed"
+            st.error(f"❌ X API error: {err}")
+            tweets = []
+        else:
+            tweets = result.get("tweets") or []
+            logger.info(f"📄 Raw tweets from X API (after pagination): {len(tweets)}")
 
             # Filter tweets for sector relevance
             sector_relevant_tweets = []
@@ -764,19 +750,7 @@ if scan_clicked:
             else:
                 st.warning("No tweets found matching your search criteria.")
 
-        elif response.status_code == 401:
-            # Unauthorized
-            st.error("❌ Authentication failed (401): Invalid X Bearer Token. Please check your credentials in .streamlit/secrets.toml")
-
-        elif response.status_code == 429:
-            # Rate limit exceeded
-            st.error("⚠️ Rate limit exceeded (429): Too many requests. Please wait a few minutes before trying again.")
-            st.info("X API has rate limits. Consider reducing the frequency of requests.")
-
-        else:
-            # Other errors
-            # Hide raw provider errors from users
-            st.error("Something went wrong. Please try again later.")
+        # Note: detailed pagination + stop reasons are logged by utils.deep_analysis.search_x_tweets
 
     except KeyError:
         st.error("❌ Missing X_BEARER_TOKEN in .streamlit/secrets.toml")
