@@ -531,8 +531,29 @@ if scan_clicked:
             'communication': 'communication OR telecom OR media OR entertainment OR broadcasting OR wireless'
         }
 
-        sector_terms = sector_keywords.get(sector.lower(), sector)
-        query = f"({sector} OR {sector_terms}) stock (bullish OR opportunity OR catalyst OR growth OR earnings) -bearish lang:en -is:retweet"
+        sector_key = sector.lower()
+        sector_terms = sector_keywords.get(sector_key, sector)
+
+        # Broader, sector-style Materials query (avoid forcing specific "signal words" like bullish/catalyst).
+        # We keep an investing-intent clause so we don't pull generic discussion.
+        if sector_key == "materials":
+            materials_topic_v2 = (
+                '"materials sector" OR "basic materials" OR "materials stocks" '
+                'OR XLB OR VAW '
+                'OR mining OR miner OR miners OR "metals and mining" OR metals '
+                'OR chemicals OR chemical OR "specialty chemicals" OR "commodity chemicals" '
+                'OR fertilizer OR potash OR phosphate OR ammonia OR urea '
+                'OR steel OR cement OR concrete OR aggregates OR asphalt OR "construction materials" '
+                'OR copper OR gold OR silver OR aluminum OR nickel OR zinc OR lithium '
+                'OR "iron ore" OR "rare earth" OR REE OR platinum OR palladium '
+                'OR paper OR pulp OR packaging OR containerboard '
+                'OR lumber OR timber'
+            )
+            query = f"({materials_topic_v2}) ($ OR stock OR stocks OR shares) lang:en -is:retweet"
+            # Reuse the expanded topic terms for the post-fetch relevance filter below.
+            sector_terms = materials_topic_v2
+        else:
+            query = f"({sector} OR {sector_terms}) stock (bullish OR opportunity OR catalyst OR growth OR earnings) -bearish lang:en -is:retweet"
         
         logger.info(f"🔍 Starting X search for sector: {sector}")
         logger.info(f"📝 Search query: {query}")
