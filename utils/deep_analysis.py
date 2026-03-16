@@ -447,46 +447,46 @@ def _engagement_filter(tweets: List[Dict[str, Any]], min_likes: int = 10, min_re
 
 
 def run_deep_analysis(ticker: str, sector: str) -> Dict[str, Dict[str, Any]]:
-    """Deep analyze with 4 X API calls, then derive 8 prompt outputs locally."""
+    """Deep analyze with 2 X API calls, then derive 8 prompt outputs locally.
+
+    Design goals:
+    - Keep X API usage low (cost control).
+    - Fetch a large ticker corpus once (paginated), then scrub locally into buckets.
+    - Fetch a smaller influencer corpus (from: list) for that dedicated bucket.
+    """
+
+    t = (ticker or "").strip().upper()
+    s = (sector or "").strip().lower()
 
     # ---- Call definitions (fixed defaults per your request) ----
-    core_query = (
-        f"{ticker} (stock OR shares OR price OR chart OR earnings OR news OR catalyst OR bullish OR bearish OR risk OR watchlist OR trading OR options OR #FinTwit) "
-        f"lang:en -is:retweet"
+    # Ticker corpus: broad, evidence-rich, paginated up to ~500 (max_pages=5 in search_x_tweets).
+    ticker_query = (
+        f"(${t} OR {t}) (stock OR stocks OR shares OR price OR chart OR earnings OR news OR catalyst "
+        f"OR bullish OR bearish OR risk OR watchlist OR trading OR options OR #FinTwit) lang:en -is:retweet"
     )
-    trends_query = f"{sector} (emerging OR trend OR gaining OR traction OR rotation OR narrative) lang:en -is:retweet"
-    momentum_query = f"({ticker} OR {sector}) (viral OR trending OR momentum OR breakout OR squeeze) lang:en -is:retweet"
 
-    # Cap influencers to keep the `from:` query under X query length limits.
+    # Influencer corpus: curated author list (kept under query-length limits by helper).
     influencer_usernames = _load_influencer_usernames(limit=12)
-    influencer_query = (
-        _build_influencer_query(influencer_usernames, ticker, sector)
-        if influencer_usernames
-        else None
-    )
+    influencer_query = _build_influencer_query(influencer_usernames, t, s) if influencer_usernames else None
 
-    # ---- Run the 4 calls in parallel ----
-    def _fetch(name: str, query: str, timeframe: str) -> tuple:
-        res = search_x_tweets(query=query, timeframe=timeframe, max_results=100)
+    def _fetch(name: str, query: str, timeframe: str, max_results: int) -> tuple:
+        res = search_x_tweets(query=query, timeframe=timeframe, max_results=max_results)
         return name, res
 
     corpuses: Dict[str, List[Dict[str, Any]]] = {
-        "core": [],
-        "trends": [],
-        "momentum": [],
+        "ticker": [],
         "influencers": [],
     }
-
     errors: Dict[str, str] = {}
 
-    with ThreadPoolExecutor(max_workers=4) as ex:
-        futures = [
-            ex.submit(_fetch, "core", core_query, "48h"),
-            ex.submit(_fetch, "trends", trends_query, "24h"),
-            ex.submit(_fetch, "momentum", momentum_query, "24h"),
-        ]
+    logger.info("🧪 Deep Analyze: fetching corpora (2 calls)")
+    logger.info("   • ticker_corpus: timeframe=48h max_results=500")
+    logger.info("   • influencer_corpus: timeframe=72h max_results=100")
+
+    with ThreadPoolExecutor(max_workers=2) as ex:
+        futures = [ex.submit(_fetch, "ticker", ticker_query, "48h", 500)]
         if influencer_query:
-            futures.append(ex.submit(_fetch, "influencers", influencer_query, "72h"))
+            futures.append(ex.submit(_fetch, "influencers", influencer_query, "72h", 100))
 
         for fut in as_completed(futures):
             name, res = fut.result()
@@ -496,11 +496,10 @@ def run_deep_analysis(ticker: str, sector: str) -> Dict[str, Dict[str, Any]]:
                 corpuses[name] = []
                 errors[name] = res.get("error", "Unknown error")
 
-    # ---- Build buckets for the 8 prompts ----
-    core = corpuses["core"]
-    trends = corpuses["trends"]
-    momentum = corpuses["momentum"]
+    core = corpuses["ticker"]
     influencers = corpuses["influencers"]
+
+    logger.info("🧾 Deep Analyze corpora summary: ticker=%s influencer=%s", len(core), len(influencers))
 
     catalyst_keywords = [
         "breaking",
@@ -550,11 +549,15 @@ def run_deep_analysis(ticker: str, sector: str) -> Dict[str, Dict[str, Any]]:
         "options",
     ]
 
+    # Local-scrubbed buckets from the ticker corpus (core) + influencer corpus.
+    narrative_keywords = ["emerging", "trend", "trending", "gaining", "traction", "rotation", "narrative", "macro", "cycle", "tailwind", "headwind"]
+    momentum_keywords = ["viral", "trending", "momentum", "breakout", "squeeze", "runner", "rip", "ripping"]
+
     buckets: Dict[str, List[Dict[str, Any]]] = {
         "Real-Time Market Sentiment": core,
-        "Sector Narrative & Trends": trends,
+        "Sector Narrative & Trends": _keyword_bucket(core, narrative_keywords),
         "Track Smart Money and Influencer Moves": influencers,
-        "Momentum (High Engagement)": _engagement_filter(momentum, min_likes=10, min_retweets=5),
+        "Momentum (High Engagement)": _engagement_filter(_keyword_bucket(core, momentum_keywords), min_likes=10, min_retweets=5),
         "Monitor Breaking News and Catalysts": _keyword_bucket(core, catalyst_keywords),
         "Gauge Retail vs. Institutional Sentiment": _keyword_bucket(core, retail_keywords),
         "Detect Early Warning Signs and Red Flags": _keyword_bucket(core, risk_keywords),
@@ -567,7 +570,7 @@ def run_deep_analysis(ticker: str, sector: str) -> Dict[str, Dict[str, Any]]:
     for prompt_name in ANALYSIS_PROMPTS.keys():
         tweets = buckets.get(prompt_name, [])
 
-        # If the underlying corpus call failed, surface that as an error insight.
+        # If the underlying influencer corpus call is unavailable, surface that as an error insight.
         if prompt_name == "Track Smart Money and Influencer Moves" and not influencer_query:
             results[prompt_name] = {
                 "sentiment_score": 0.0,
@@ -580,32 +583,32 @@ def run_deep_analysis(ticker: str, sector: str) -> Dict[str, Dict[str, Any]]:
             continue
 
         # Add helpful error context if that corpus failed
-        if prompt_name == "Real-Time Market Sentiment" and "core" in errors:
+        if prompt_name == "Real-Time Market Sentiment" and "ticker" in errors:
             results[prompt_name] = {
                 "sentiment_score": 0.0,
                 "overall_sentiment": "error",
                 "key_themes": [],
-                "insights": f"Search failed: {errors['core']}",
+                "insights": f"Search failed: {errors['ticker']}",
                 "sample_tweets": [],
                 "mention_count": 0,
             }
             continue
-        if prompt_name == "Sector Narrative & Trends" and "trends" in errors:
+        if prompt_name == "Sector Narrative & Trends" and "ticker" in errors:
             results[prompt_name] = {
                 "sentiment_score": 0.0,
                 "overall_sentiment": "error",
                 "key_themes": [],
-                "insights": f"Search failed: {errors['trends']}",
+                "insights": f"Search failed: {errors['ticker']}",
                 "sample_tweets": [],
                 "mention_count": 0,
             }
             continue
-        if prompt_name == "Momentum (High Engagement)" and "momentum" in errors:
+        if prompt_name == "Momentum (High Engagement)" and "ticker" in errors:
             results[prompt_name] = {
                 "sentiment_score": 0.0,
                 "overall_sentiment": "error",
                 "key_themes": [],
-                "insights": f"Search failed: {errors['momentum']}",
+                "insights": f"Search failed: {errors['ticker']}",
                 "sample_tweets": [],
                 "mention_count": 0,
             }
