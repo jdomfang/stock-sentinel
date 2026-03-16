@@ -517,7 +517,7 @@ if scan_clicked:
         # Note: Advanced operators like min_faves, filter:, and since: require Basic tier or higher
         # Using only basic operators: Boolean, lang, and -is:retweet for Free tier
 
-        # Add sector-specific keywords to improve relevance
+        # Add sector-specific keywords to improve relevance (legacy v1).
         sector_keywords = {
             'tech': 'technology OR software OR AI OR chip OR semiconductor OR cloud OR internet',
             'healthcare': 'healthcare OR medical OR pharma OR biotechnology OR drug OR clinical OR FDA',
@@ -531,13 +531,10 @@ if scan_clicked:
             'communication': 'communication OR telecom OR media OR entertainment OR broadcasting OR wireless'
         }
 
-        sector_key = sector.lower()
-        sector_terms = sector_keywords.get(sector_key, sector)
-
-        # Broader, sector-style Materials query (avoid forcing specific "signal words" like bullish/catalyst).
-        # We keep an investing-intent clause so we don't pull generic discussion.
-        if sector_key == "materials":
-            materials_topic_v2 = (
+        # v2 sector topic blocks: broader retrieval + skip fragile post-fetch substring filtering.
+        INVEST_INTENT = "($ OR stock OR stocks OR shares)"
+        SECTOR_TOPIC_V2 = {
+            "materials": (
                 '"materials sector" OR "basic materials" OR "materials stocks" '
                 'OR XLB OR VAW '
                 'OR mining OR miner OR miners OR "metals and mining" OR metals '
@@ -548,14 +545,100 @@ if scan_clicked:
                 'OR "iron ore" OR "rare earth" OR REE OR platinum OR palladium '
                 'OR paper OR pulp OR packaging OR containerboard '
                 'OR lumber OR timber'
-            )
-            query = f"({materials_topic_v2}) ($ OR stock OR stocks OR shares) lang:en -is:retweet"
-            # Reuse the expanded topic terms for the post-fetch relevance filter below.
-            sector_terms = materials_topic_v2
+            ),
+            "tech": (
+                '"technology sector" OR "tech sector" OR "tech stocks" OR "software stocks" '
+                'OR software OR SaaS OR "cloud computing" OR cloud OR "data center" OR "datacenter" '
+                'OR AI OR "artificial intelligence" OR "machine learning" OR ML '
+                'OR semiconductor OR semiconductors OR chip OR chips OR GPU OR CPUs OR "chipmaker" '
+                'OR cybersecurity OR "cyber security" OR infosec OR "zero trust" '
+                'OR "IT spending" OR "enterprise software" '
+                'OR XLK OR SMH OR HACK OR CLOU'
+            ),
+            "healthcare": (
+                '"healthcare sector" OR "health care sector" OR "healthcare stocks" OR "biotech stocks" '
+                'OR healthcare OR "health care" OR pharma OR pharmaceutical OR biotech OR biotechnology '
+                'OR "drug approval" OR FDA OR "clinical trial" OR "phase 1" OR "phase 2" OR "phase 3" '
+                'OR "medical device" OR medtech OR "gene therapy" OR "cell therapy" '
+                'OR hospital OR hospitals OR insurer OR insurers OR "managed care" '
+                'OR XLV OR XBI OR IBB'
+            ),
+            "energy": (
+                '"energy sector" OR "energy stocks" OR oil OR crude OR WTI OR brent '
+                'OR gas OR "natural gas" OR LNG OR "liquefied natural gas" '
+                'OR refinery OR refining OR "oilfield services" OR "rig count" OR shale OR "E&P" '
+                'OR pipeline OR pipelines OR midstream '
+                'OR OPEC OR "production cut" '
+                'OR renewable OR renewables OR solar OR wind OR "clean energy" '
+                'OR XLE OR XOP OR OIH OR TAN OR ICLN'
+            ),
+            "finance": (
+                '"financial sector" OR "finance sector" OR "financial stocks" OR "bank stocks" '
+                'OR finance OR financial OR bank OR banks OR banking '
+                'OR "interest rates" OR yield OR yields OR "yield curve" '
+                'OR NIM OR "net interest margin" OR "loan growth" OR credit OR "credit quality" '
+                'OR "investment bank" OR broker OR brokerage OR "asset manager" OR "wealth management" '
+                'OR fintech OR "payment" OR payments OR "credit card" '
+                'OR XLF OR KRE OR KBE'
+            ),
+            "consumer": (
+                '"consumer sector" OR "consumer stocks" OR "retail stocks" '
+                'OR consumer OR retail OR "e-commerce" OR ecommerce OR "online shopping" '
+                'OR discretionary OR "consumer discretionary" '
+                'OR staples OR "consumer staples" '
+                'OR apparel OR "foot traffic" OR "same-store sales" OR SSS '
+                'OR restaurant OR restaurants OR travel OR airline OR airlines OR cruise OR cruises '
+                'OR auto OR autos OR "EV" OR "electric vehicle" '
+                'OR grocery OR groceries OR beverage OR beverages '
+                'OR XLY OR XLP'
+            ),
+            "utilities": (
+                '"utilities sector" OR "utilities stocks" '
+                'OR utilities OR utility OR "electric utility" OR "power grid" OR grid '
+                'OR "rate case" OR "regulated utility" OR "regulated utilities" '
+                'OR transmission OR distribution '
+                'OR "power demand" OR "electric demand" '
+                'OR XLU'
+            ),
+            "real estate": (
+                '"real estate sector" OR "real estate stocks" OR REIT OR REITs '
+                'OR "commercial real estate" OR CRE OR "office" OR "industrial REIT" '
+                'OR multifamily OR apartments OR "single family rental" '
+                'OR "cap rate" OR "cap rates" OR refinancing OR "maturity wall" '
+                'OR "mortgage rates" OR "housing market" '
+                'OR XLRE OR VNQ'
+            ),
+            "industrials": (
+                '"industrials sector" OR "industrial sector" OR "industrials stocks" OR "industrial stocks" '
+                'OR industrial OR industrials OR manufacturing OR factory OR factories '
+                'OR aerospace OR "aerospace and defense" OR defense OR "defense stocks" '
+                'OR machinery OR "heavy equipment" OR logistics OR freight OR shipping '
+                'OR "supply chain" OR "backlog" OR "bookings" OR "orders" '
+                'OR PMI OR "ISM" '
+                'OR XLI OR ITA'
+            ),
+            "communication": (
+                '"communication services" OR "communications sector" OR "telecom sector" OR "media stocks" '
+                'OR communication OR communications OR telecom OR wireless OR 5G OR broadband '
+                'OR streaming OR "ad revenue" OR advertising OR "ad spend" '
+                'OR media OR entertainment '
+                'OR "social media" OR "online advertising" '
+                'OR XLC'
+            ),
+        }
+
+        sector_key = sector.lower()
+        use_v2 = sector_key in SECTOR_TOPIC_V2
+
+        if use_v2:
+            query = f"({SECTOR_TOPIC_V2[sector_key]}) {INVEST_INTENT} lang:en -is:retweet"
         else:
+            sector_terms = sector_keywords.get(sector_key, sector)
             query = f"({sector} OR {sector_terms}) stock (bullish OR opportunity OR catalyst OR growth OR earnings) -bearish lang:en -is:retweet"
         
         logger.info(f"🔍 Starting X search for sector: {sector}")
+        logger.info(f"🧠 Using query mode: {'v2' if use_v2 else 'v1'}")
+        logger.info(f"🧹 Post-filter enabled: {not use_v2}")
         logger.info(f"📝 Search query: {query}")
         logger.info(f"📊 Max results requested: {max_results}")
 
@@ -574,10 +657,10 @@ if scan_clicked:
             logger.info(f"📄 Raw tweets from X API (after pagination): {len(tweets)}")
 
             # Filter tweets for sector relevance.
-            # NOTE: For Materials we skip this second-pass filter because the query already encodes
-            # the sector topic set (v2) and the naive substring logic can accidentally drop good tweets
-            # (e.g., quoted phrases like "iron ore").
-            if sector_key != "materials":
+            # For v2 sector queries we skip this second-pass filter because:
+            # - the query itself already encodes the sector topic set, and
+            # - this naive substring logic can accidentally drop good tweets (quoted phrases, multiword terms).
+            if not use_v2:
                 sector_relevant_tweets = []
                 for tweet in tweets:
                     text = tweet.get('text', '').lower()
