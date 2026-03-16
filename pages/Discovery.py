@@ -639,232 +639,220 @@ if scan_clicked:
         from utils.deep_analysis import search_x_tweets
 
         with st.spinner("Searching X for emerging stocks..."):
-            # If we have multiple lanes, split the requested max_results across them.
-            per_lane = max(50, int(max_results / max(1, len(queries))))
-            combined = []
-            for q in queries:
-                result = search_x_tweets(query=q, max_results=per_lane, timeframe="24h")
-                if not result.get("success"):
-                    err = result.get("error") or "X API request failed"
-                    st.error(f"❌ X API error: {err}")
-                    continue
-                combined.extend(result.get("tweets") or [])
+            result = search_x_tweets(query=query, max_results=max_results, timeframe="24h")
 
-        # Dedupe combined tweets by id
-        tweets_by_id = {}
-        for t in combined:
-            tid = t.get("id") or t.get("tweet_id")
-            if tid and tid not in tweets_by_id:
-                tweets_by_id[tid] = t
-        tweets = list(tweets_by_id.values())
+        if not result.get("success"):
+            err = result.get("error") or "X API request failed"
+            st.error(f"❌ X API error: {err}")
+            tweets = []
+        else:
+            tweets = result.get("tweets") or []
+
         logger.info(f"📄 Raw tweets from X API (after pagination): {len(tweets)}")
 
         if not tweets:
             st.warning("No posts returned from X for this query.")
-            tweets = []
+            st.stop()
 
-            # Filter tweets for sector relevance.
-            # For v2 sector queries we skip this second-pass filter because:
-            # - the query itself already encodes the sector topic set, and
-            # - this naive substring logic can accidentally drop good tweets (quoted phrases, multiword terms).
-            if not use_v2:
-                sector_relevant_tweets = []
-                for tweet in tweets:
-                    text = tweet.get('text', '').lower()
-                    # Check if tweet contains sector-specific keywords
-                    if any(keyword.lower() in text for keyword in sector_terms.split(' OR ')) or sector.lower() in text:
-                        sector_relevant_tweets.append(tweet)
+        # Filter tweets for sector relevance.
+        # For v2 sector queries we skip this second-pass filter because:
+        # - the query itself already encodes the sector topic set, and
+        # - this naive substring logic can accidentally drop good tweets (quoted phrases, multiword terms).
+        if not use_v2:
+            sector_relevant_tweets = []
+            for tweet in tweets:
+                text = tweet.get('text', '').lower()
+                # Check if tweet contains sector-specific keywords
+                if any(keyword.lower() in text for keyword in sector_terms.split(' OR ')) or sector.lower() in text:
+                    sector_relevant_tweets.append(tweet)
 
-                tweets = sector_relevant_tweets
+            tweets = sector_relevant_tweets
 
-            logger.info(f"🎯 Sector-relevant tweets after filtering: {len(tweets)}")
-            st.success(f"✅ Found {len(tweets)} sector-relevant posts!")
-            
-            # Process tweets for ticker extraction and sentiment analysis
-            if tweets:
-                with st.spinner("Analyzing tickers and sentiment..."):
-                    # Aggregate data by ticker
-                    ticker_data = defaultdict(lambda: {
-                        'mentions': 0,
-                        'sentiment_scores': [],
-                        'sentiments': [],
-                        'sample_tweets': []
+        logger.info(f"🎯 Sector-relevant tweets after filtering: {len(tweets)}")
+        st.success(f"✅ Found {len(tweets)} sector-relevant posts!")
+
+        # Process tweets for ticker extraction and sentiment analysis
+        with st.spinner("Analyzing tickers and sentiment..."):
+            # Aggregate data by ticker
+            ticker_data = defaultdict(lambda: {
+                'mentions': 0,
+                'sentiment_scores': [],
+                'sentiments': [],
+                'sample_tweets': []
+            })
+                    
+            # Process each tweet
+            for tweet in tweets:
+                text = tweet.get('text', '')
+                        
+                # Extract tickers
+                tickers = extract_tickers(text)
+                        
+                # Analyze sentiment
+                sentiment_result = analyze_sentiment(text)
+                        
+                # Aggregate by ticker
+                for ticker in tickers:
+                    ticker_data[ticker]['mentions'] += 1
+                    # Store the actual score and label for debugging
+                    ticker_data[ticker]['sentiment_scores'].append(sentiment_result['score'])
+                    ticker_data[ticker]['sentiments'].append(sentiment_result['sentiment'])
+                    # Also store raw label for verification
+                    if 'raw_labels' not in ticker_data[ticker]:
+                        ticker_data[ticker]['raw_labels'] = []
+                    ticker_data[ticker]['raw_labels'].append(f"{sentiment_result['label']}:{sentiment_result['score']:.3f}")
+                            
+                    # Keep up to 3 sample tweets
+                    if len(ticker_data[ticker]['sample_tweets']) < 3:
+                        # Truncate long tweets
+                        short_text = text[:150] + "..." if len(text) > 150 else text
+                        ticker_data[ticker]['sample_tweets'].append(short_text)
+                    
+            # Convert to DataFrame
+            if ticker_data:
+                rows = []
+                for ticker, info in ticker_data.items():
+                    avg_sentiment = sum(info['sentiment_scores']) / len(info['sentiment_scores'])
+                    # Determine overall sentiment
+                    sentiment_counts = {}
+                    for s in info['sentiments']:
+                        sentiment_counts[s] = sentiment_counts.get(s, 0) + 1
+                    overall_sentiment = max(sentiment_counts, key=sentiment_counts.get)
+                            
+                    rows.append({
+                        'Ticker': ticker,
+                        'Mentions': info['mentions'],
+                        'Avg Sentiment Score': round(avg_sentiment, 3),
+                        'Overall Sentiment': overall_sentiment,
+                        'Sample Tweets': ' | '.join(info['sample_tweets'])
                     })
-                    
-                    # Process each tweet
-                    for tweet in tweets:
-                        text = tweet.get('text', '')
                         
-                        # Extract tickers
-                        tickers = extract_tickers(text)
+                # Sort by mentions (descending)
+                df = pd.DataFrame(rows).sort_values('Mentions', ascending=False)
+
+                logger.info(f"📊 Ticker analysis complete:")
+                logger.info(f"   • Total unique tickers found: {len(df)}")
+                logger.info(f"   • Top 5 by mentions: {df.head(5)[['Ticker', 'Mentions', 'Avg Sentiment Score', 'Overall Sentiment']].to_dict('records')}")
+                logger.info(f"   • Top tickers for validation: {df.head(10)['Ticker'].tolist()}")
+
+                # Load local ticker database for fast validation
+                st.info("📈 Validating tickers...")
+
+                # Load comprehensive ticker database
+                ticker_master_list = get_ticker_master_list()
+
+                if not ticker_master_list:
+                    st.error("❌ Could not load ticker database. Please check the data directory.")
+                else:
+                    top_tickers = df.head(10)['Ticker'].tolist()  # Check top 10
+
+                    # Add placeholder columns
+                    df['Valid'] = False
+                    df['Company Name'] = 'N/A'
+
+                    validated_count = 0
+                    validation_errors = []
+
+                    logger.info(f"🔍 Starting validation of top {len(top_tickers)} tickers for sector '{sector}'")
+
+                    with st.spinner(f"Validating up to {len(top_tickers)} top tickers..."):
+                        for idx, row in df.iterrows():
+                            ticker = row['Ticker']
+
+                            # Only process top tickers to avoid rate limits
+                            if ticker not in top_tickers:
+                                continue
+
+                            logger.info(f"🔎 Validating ticker: {ticker} (mentions: {row['Mentions']}, sentiment: {row['Avg Sentiment Score']:.3f})")
+
+                            # Check if ticker exists in our local database (no API call needed!)
+                            ticker_upper = ticker.upper()
+                            if ticker_upper in ticker_master_list:
+                                ticker_info = ticker_master_list[ticker_upper]
+
+                                # Check if ticker sector matches selected sector
+                                ticker_sector = ticker_info.get('sector', '').lower() if ticker_info.get('sector') else ''
+
+                                # Map Polygon sectors to our UI sectors for comparison
+                                sector_mapping = {
+                                    'technology': 'tech',
+                                    'healthcare': 'healthcare',
+                                    'energy': 'energy',
+                                    'financial services': 'finance',
+                                    'consumer cyclical': 'consumer',
+                                    'utilities': 'utilities',
+                                    'real estate': 'real estate',
+                                    'industrials': 'industrials',
+                                    'basic materials': 'materials',
+                                    'communication services': 'communication'
+                                }
+
+                                mapped_sector = sector_mapping.get(ticker_sector, ticker_sector)
+
+                                # Allow tickers to pass validation if sector is unknown (empty)
+                                # Since sector filtering happens at tweet search level, we only reject
+                                # when sector explicitly doesn't match
+                                sector_matches = (mapped_sector == sector.lower()) or (mapped_sector == "")
+
+                                if sector_matches:
+                                    # Sector matches or is unknown - mark as valid and get company info from local data
+                                    df.at[idx, 'Valid'] = True
+                                    df.at[idx, 'Company Name'] = ticker_info.get('name', ticker)
+                                    validated_count += 1
+                                    if mapped_sector == "":
+                                        logger.info(f"✅ {ticker}: VALID - {ticker_info.get('name', ticker)} (sector: unknown)")
+                                    else:
+                                        logger.info(f"✅ {ticker}: VALID - {ticker_info.get('name', ticker)} (sector: {mapped_sector})")
+
+                                    # Price will be shown in Deep Analyze instead
+                                    pass
+                # Filter to show only validated tickers (with financial data)
+                df_valid = df[df['Valid'] == True].copy()
+                df_valid = df_valid.drop(columns=['Valid'])
+
+                # Also show unvalidated tickers separately
+                df_unvalidated = df[df['Valid'] == False].copy()
+                df_unvalidated = df_unvalidated.drop(columns=['Valid', 'Company Name'])
+
+                st.session_state.df_valid = df_valid
+                st.session_state.df_unvalidated = df_unvalidated
+                st.session_state.selected_sector = sector
+                st.session_state.selected_ticker = None
+                st.session_state.deep_analysis_results = None
                         
-                        # Analyze sentiment
-                        sentiment_result = analyze_sentiment(text)
+                # Show unvalidated tickers in expander - HIDDEN FROM UI
+                # if len(df_unvalidated) > 0:
+                #     with st.expander(f"⚠️ Other Mentions ({len(df_unvalidated)}) - May include non-stock terms"):
+                #         st.dataframe(
+                #             df_unvalidated,
+                #             column_config={
+                #                 "Ticker": st.column_config.TextColumn("Ticker", width="small"),
+                #                 "Mentions": st.column_config.NumberColumn("Mentions", width="small"),
+                #                 "Avg Sentiment Score": st.column_config.NumberColumn(
+                #                     "Avg Sentiment Score",
+                #                     format="%.3f",
+                #                     width="small"
+                #                 ),
+                #                 "Overall Sentiment": st.column_config.TextColumn("Overall Sentiment", width="small"),
+                #                 "Sample Tweets": st.column_config.TextColumn("Sample Tweets", width="large")
+                #             },
+                #             hide_index=True,
+                #             use_container_width=True
+                #         )
+                #         st.caption("These items couldn't be validated as stocks (may be abbreviations, news orgs, etc.)")
                         
-                        # Aggregate by ticker
-                        for ticker in tickers:
-                            ticker_data[ticker]['mentions'] += 1
-                            # Store the actual score and label for debugging
-                            ticker_data[ticker]['sentiment_scores'].append(sentiment_result['score'])
-                            ticker_data[ticker]['sentiments'].append(sentiment_result['sentiment'])
-                            # Also store raw label for verification
-                            if 'raw_labels' not in ticker_data[ticker]:
-                                ticker_data[ticker]['raw_labels'] = []
-                            ticker_data[ticker]['raw_labels'].append(f"{sentiment_result['label']}:{sentiment_result['score']:.3f}")
-                            
-                            # Keep up to 3 sample tweets
-                            if len(ticker_data[ticker]['sample_tweets']) < 3:
-                                # Truncate long tweets
-                                short_text = text[:150] + "..." if len(text) > 150 else text
-                                ticker_data[ticker]['sample_tweets'].append(short_text)
-                    
-                    # Convert to DataFrame
-                    if ticker_data:
-                        rows = []
-                        for ticker, info in ticker_data.items():
-                            avg_sentiment = sum(info['sentiment_scores']) / len(info['sentiment_scores'])
-                            # Determine overall sentiment
-                            sentiment_counts = {}
-                            for s in info['sentiments']:
-                                sentiment_counts[s] = sentiment_counts.get(s, 0) + 1
-                            overall_sentiment = max(sentiment_counts, key=sentiment_counts.get)
-                            
-                            rows.append({
-                                'Ticker': ticker,
-                                'Mentions': info['mentions'],
-                                'Avg Sentiment Score': round(avg_sentiment, 3),
-                                'Overall Sentiment': overall_sentiment,
-                                'Sample Tweets': ' | '.join(info['sample_tweets'])
-                            })
-                        
-                        # Sort by mentions (descending)
-                        df = pd.DataFrame(rows).sort_values('Mentions', ascending=False)
-
-                        logger.info(f"📊 Ticker analysis complete:")
-                        logger.info(f"   • Total unique tickers found: {len(df)}")
-                        logger.info(f"   • Top 5 by mentions: {df.head(5)[['Ticker', 'Mentions', 'Avg Sentiment Score', 'Overall Sentiment']].to_dict('records')}")
-                        logger.info(f"   • Top tickers for validation: {df.head(10)['Ticker'].tolist()}")
-
-                        # Load local ticker database for fast validation
-                        st.info("📈 Validating tickers...")
-
-                        # Load comprehensive ticker database
-                        ticker_master_list = get_ticker_master_list()
-
-                        if not ticker_master_list:
-                            st.error("❌ Could not load ticker database. Please check the data directory.")
-                        else:
-                            top_tickers = df.head(10)['Ticker'].tolist()  # Check top 10
-
-                            # Add placeholder columns
-                            df['Valid'] = False
-                            df['Company Name'] = 'N/A'
-
-                            validated_count = 0
-                            validation_errors = []
-
-                            logger.info(f"🔍 Starting validation of top {len(top_tickers)} tickers for sector '{sector}'")
-
-                            with st.spinner(f"Validating up to {len(top_tickers)} top tickers..."):
-                                for idx, row in df.iterrows():
-                                    ticker = row['Ticker']
-
-                                    # Only process top tickers to avoid rate limits
-                                    if ticker not in top_tickers:
-                                        continue
-
-                                    logger.info(f"🔎 Validating ticker: {ticker} (mentions: {row['Mentions']}, sentiment: {row['Avg Sentiment Score']:.3f})")
-
-                                    # Check if ticker exists in our local database (no API call needed!)
-                                    ticker_upper = ticker.upper()
-                                    if ticker_upper in ticker_master_list:
-                                        ticker_info = ticker_master_list[ticker_upper]
-
-                                        # Check if ticker sector matches selected sector
-                                        ticker_sector = ticker_info.get('sector', '').lower() if ticker_info.get('sector') else ''
-
-                                        # Map Polygon sectors to our UI sectors for comparison
-                                        sector_mapping = {
-                                            'technology': 'tech',
-                                            'healthcare': 'healthcare',
-                                            'energy': 'energy',
-                                            'financial services': 'finance',
-                                            'consumer cyclical': 'consumer',
-                                            'utilities': 'utilities',
-                                            'real estate': 'real estate',
-                                            'industrials': 'industrials',
-                                            'basic materials': 'materials',
-                                            'communication services': 'communication'
-                                        }
-
-                                        mapped_sector = sector_mapping.get(ticker_sector, ticker_sector)
-
-                                        # Allow tickers to pass validation if sector is unknown (empty)
-                                        # Since sector filtering happens at tweet search level, we only reject
-                                        # when sector explicitly doesn't match
-                                        sector_matches = (mapped_sector == sector.lower()) or (mapped_sector == "")
-
-                                        if sector_matches:
-                                            # Sector matches or is unknown - mark as valid and get company info from local data
-                                            df.at[idx, 'Valid'] = True
-                                            df.at[idx, 'Company Name'] = ticker_info.get('name', ticker)
-                                            validated_count += 1
-                                            if mapped_sector == "":
-                                                logger.info(f"✅ {ticker}: VALID - {ticker_info.get('name', ticker)} (sector: unknown)")
-                                            else:
-                                                logger.info(f"✅ {ticker}: VALID - {ticker_info.get('name', ticker)} (sector: {mapped_sector})")
-
-                                            # Price will be shown in Deep Analyze instead
-                                            pass
-                        # Filter to show only validated tickers (with financial data)
-                        df_valid = df[df['Valid'] == True].copy()
-                        df_valid = df_valid.drop(columns=['Valid'])
-
-                        # Also show unvalidated tickers separately
-                        df_unvalidated = df[df['Valid'] == False].copy()
-                        df_unvalidated = df_unvalidated.drop(columns=['Valid', 'Company Name'])
-
-                        st.session_state.df_valid = df_valid
-                        st.session_state.df_unvalidated = df_unvalidated
-                        st.session_state.selected_sector = sector
-                        st.session_state.selected_ticker = None
-                        st.session_state.deep_analysis_results = None
-                        
-                        # Show unvalidated tickers in expander - HIDDEN FROM UI
-                        # if len(df_unvalidated) > 0:
-                        #     with st.expander(f"⚠️ Other Mentions ({len(df_unvalidated)}) - May include non-stock terms"):
-                        #         st.dataframe(
-                        #             df_unvalidated,
-                        #             column_config={
-                        #                 "Ticker": st.column_config.TextColumn("Ticker", width="small"),
-                        #                 "Mentions": st.column_config.NumberColumn("Mentions", width="small"),
-                        #                 "Avg Sentiment Score": st.column_config.NumberColumn(
-                        #                     "Avg Sentiment Score",
-                        #                     format="%.3f",
-                        #                     width="small"
-                        #                 ),
-                        #                 "Overall Sentiment": st.column_config.TextColumn("Overall Sentiment", width="small"),
-                        #                 "Sample Tweets": st.column_config.TextColumn("Sample Tweets", width="large")
-                        #             },
-                        #             hide_index=True,
-                        #             use_container_width=True
-                        #         )
-                        #         st.caption("These items couldn't be validated as stocks (may be abbreviations, news orgs, etc.)")
-                        
-                        # Show validation errors if any - HIDDEN FROM UI
-                        # if validation_errors:
-                        #     with st.expander("🔍 Validation Details"):
-                        #         st.caption("Why some tickers couldn't be validated:")
-                        #         for error in validation_errors:
-                        #             st.text(f"• {error}")
-                    else:
-                        st.warning("⚠️ No stock tickers found in the tweets. Try a different search query.")
+                # Show validation errors if any - HIDDEN FROM UI
+                # if validation_errors:
+                #     with st.expander("🔍 Validation Details"):
+                #         st.caption("Why some tickers couldn't be validated:")
+                #         for error in validation_errors:
+                #             st.text(f"• {error}")
+            else:
+                st.warning("⚠️ No stock tickers found in the tweets. Try a different search query.")
                 
                 # Show raw data in expander - HIDDEN FROM UI
                 # with st.expander("📄 View Raw API Response"):
                 #     st.json(data)
-            else:
-                st.warning("No tweets found matching your search criteria.")
 
         # Note: detailed pagination + stop reasons are logged by utils.deep_analysis.search_x_tweets
 
