@@ -637,12 +637,38 @@ if scan_clicked:
         sector_key = sector.lower()
         use_v2 = sector_key in SECTOR_TOPIC_V2
 
+        def _topic_to_lanes(topic_str: str, max_query_chars: int = 480) -> list[str]:
+            """Split a long OR-joined topic string into multiple lanes that stay under X query limits."""
+            # Each lane becomes: f"({lane}) {INVEST_INTENT} lang:en -is:retweet"
+            overhead = len(f"() {INVEST_INTENT} lang:en -is:retweet")
+            budget = max(50, max_query_chars - overhead)
+
+            parts = [p.strip() for p in topic_str.split(" OR ") if p.strip()]
+            lanes: list[str] = []
+            cur: list[str] = []
+            cur_len = 0
+            for part in parts:
+                add_len = len(part) + (4 if cur else 0)  # " OR "
+                if cur and (cur_len + add_len) > budget:
+                    lanes.append(" OR ".join(cur))
+                    cur = [part]
+                    cur_len = len(part)
+                else:
+                    cur.append(part)
+                    cur_len += add_len
+            if cur:
+                lanes.append(" OR ".join(cur))
+            return lanes
+
         if use_v2:
             topic = SECTOR_TOPIC_V2[sector_key]
             if isinstance(topic, (list, tuple)):
-                queries = [f"({t}) {INVEST_INTENT} lang:en -is:retweet" for t in topic]
+                lanes = list(topic)
             else:
-                queries = [f"({topic}) {INVEST_INTENT} lang:en -is:retweet"]
+                # Auto-split long topic blocks into multiple lanes to avoid X query length limits.
+                lanes = _topic_to_lanes(topic)
+
+            queries = [f"({t}) {INVEST_INTENT} lang:en -is:retweet" for t in lanes]
         else:
             sector_terms = sector_keywords.get(sector_key, sector)
             queries = [f"({sector} OR {sector_terms}) stock (bullish OR opportunity OR catalyst OR growth OR earnings) -bearish lang:en -is:retweet"]
