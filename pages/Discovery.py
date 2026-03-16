@@ -532,20 +532,27 @@ if scan_clicked:
         }
 
         # v2 sector topic blocks: broader retrieval + skip fragile post-fetch substring filtering.
+        # NOTE: X search has a query length limit; for broader sectors we use multiple "lanes" (queries)
+        # and then union + dedupe results.
         INVEST_INTENT = "($ OR stock OR stocks OR shares)"
         SECTOR_TOPIC_V2 = {
-            "materials": (
-                '"materials sector" OR "basic materials" OR "materials stocks" '
-                'OR XLB OR VAW '
-                'OR mining OR miner OR miners OR "metals and mining" OR metals '
-                'OR chemicals OR chemical OR "specialty chemicals" OR "commodity chemicals" '
-                'OR fertilizer OR potash OR phosphate OR ammonia OR urea '
-                'OR steel OR cement OR concrete OR aggregates OR asphalt OR "construction materials" '
-                'OR copper OR gold OR silver OR aluminum OR nickel OR zinc OR lithium '
-                'OR "iron ore" OR "rare earth" OR REE OR platinum OR palladium '
-                'OR paper OR pulp OR packaging OR containerboard '
-                'OR lumber OR timber'
-            ),
+            # Materials v2 (split into lanes to stay under X query length limits)
+            "materials": [
+                (
+                    '"materials sector" OR "basic materials" OR "materials stocks" OR XLB OR VAW '
+                    'OR mining OR miner OR miners OR "metals and mining" OR metals '
+                    'OR copper OR gold OR silver OR aluminum OR nickel OR zinc OR lithium '
+                    'OR "iron ore" OR "rare earth" OR REE OR platinum OR palladium'
+                ),
+                (
+                    'chemicals OR chemical OR "specialty chemicals" OR "commodity chemicals" '
+                    'OR fertilizer OR potash OR phosphate OR ammonia OR urea'
+                ),
+                (
+                    'steel OR cement OR concrete OR aggregates OR asphalt OR "construction materials" '
+                    'OR paper OR pulp OR packaging OR containerboard OR lumber OR timber'
+                ),
+            ],
             "tech": (
                 '"technology sector" OR "tech sector" OR "tech stocks" OR "software stocks" '
                 'OR software OR SaaS OR "cloud computing" OR cloud OR "data center" OR "datacenter" '
@@ -631,30 +638,53 @@ if scan_clicked:
         use_v2 = sector_key in SECTOR_TOPIC_V2
 
         if use_v2:
-            query = f"({SECTOR_TOPIC_V2[sector_key]}) {INVEST_INTENT} lang:en -is:retweet"
+            topic = SECTOR_TOPIC_V2[sector_key]
+            if isinstance(topic, (list, tuple)):
+                queries = [f"({t}) {INVEST_INTENT} lang:en -is:retweet" for t in topic]
+            else:
+                queries = [f"({topic}) {INVEST_INTENT} lang:en -is:retweet"]
         else:
             sector_terms = sector_keywords.get(sector_key, sector)
-            query = f"({sector} OR {sector_terms}) stock (bullish OR opportunity OR catalyst OR growth OR earnings) -bearish lang:en -is:retweet"
+            queries = [f"({sector} OR {sector_terms}) stock (bullish OR opportunity OR catalyst OR growth OR earnings) -bearish lang:en -is:retweet"]
         
         logger.info(f"🔍 Starting X search for sector: {sector}")
         logger.info(f"🧠 Using query mode: {'v2' if use_v2 else 'v1'}")
         logger.info(f"🧹 Post-filter enabled: {not use_v2}")
-        logger.info(f"📝 Search query: {query}")
+        if len(queries) == 1:
+            logger.info(f"📝 Search query: {queries[0]}")
+        else:
+            logger.info(f"📝 Search queries (lanes): {len(queries)}")
+            for i, q in enumerate(queries, start=1):
+                logger.info(f"   • lane {i}: {q}")
         logger.info(f"📊 Max results requested: {max_results}")
 
         # Use shared X search helper (supports pagination via meta.next_token)
         from utils.deep_analysis import search_x_tweets
 
         with st.spinner("Searching X for emerging stocks..."):
-            result = search_x_tweets(query=query, max_results=max_results, timeframe="24h")
+            # If we have multiple lanes, split the requested max_results across them.
+            per_lane = max(50, int(max_results / max(1, len(queries))))
+            combined = []
+            for q in queries:
+                result = search_x_tweets(query=q, max_results=per_lane, timeframe="24h")
+                if not result.get("success"):
+                    err = result.get("error") or "X API request failed"
+                    st.error(f"❌ X API error: {err}")
+                    continue
+                combined.extend(result.get("tweets") or [])
 
-        if not result.get("success"):
-            err = result.get("error") or "X API request failed"
-            st.error(f"❌ X API error: {err}")
+        # Dedupe combined tweets by id
+        tweets_by_id = {}
+        for t in combined:
+            tid = t.get("id") or t.get("tweet_id")
+            if tid and tid not in tweets_by_id:
+                tweets_by_id[tid] = t
+        tweets = list(tweets_by_id.values())
+        logger.info(f"📄 Raw tweets from X API (after pagination): {len(tweets)}")
+
+        if not tweets:
+            st.warning("No posts returned from X for this query.")
             tweets = []
-        else:
-            tweets = result.get("tweets") or []
-            logger.info(f"📄 Raw tweets from X API (after pagination): {len(tweets)}")
 
             # Filter tweets for sector relevance.
             # For v2 sector queries we skip this second-pass filter because:
