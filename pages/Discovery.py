@@ -532,34 +532,21 @@ if scan_clicked:
         }
 
         # v2 sector topic blocks: broader retrieval + skip fragile post-fetch substring filtering.
-        # NOTE: X search has a query length limit; for broader sectors we use multiple "lanes" (queries)
-        # and then union + dedupe results.
-        INVEST_INTENT = "($ OR stock OR stocks OR shares)"
+        # Keep each topic list short enough to stay under X query length limits (single request).
+        # NOTE: A bare "$" token can trigger X query parse errors (400). Keep intent simple.
+        INVEST_INTENT = "(stock OR stocks OR shares)"
         SECTOR_TOPIC_V2 = {
-            # Materials v2 (split into lanes to stay under X query length limits)
-            "materials": [
-                (
-                    '"materials sector" OR "basic materials" OR "materials stocks" OR XLB OR VAW '
-                    'OR mining OR miner OR miners OR "metals and mining" OR metals '
-                    'OR copper OR gold OR silver OR aluminum OR nickel OR zinc OR lithium '
-                    'OR "iron ore" OR "rare earth" OR REE OR platinum OR palladium'
-                ),
-                (
-                    'chemicals OR chemical OR "specialty chemicals" OR "commodity chemicals" '
-                    'OR fertilizer OR potash OR phosphate OR ammonia OR urea'
-                ),
-                (
-                    'steel OR cement OR concrete OR aggregates OR asphalt OR "construction materials" '
-                    'OR paper OR pulp OR packaging OR containerboard OR lumber OR timber'
-                ),
-            ],
+            "materials": (
+                '"materials sector" OR "basic materials" OR "materials stocks" OR XLB '
+                'OR mining OR metals OR chemicals OR fertilizer '
+                'OR steel OR cement OR copper OR gold OR "iron ore"'
+            ),
             "tech": (
                 '"technology sector" OR "tech sector" OR "tech stocks" OR "software stocks" '
-                'OR software OR SaaS OR "cloud computing" OR cloud OR "data center" OR "datacenter" '
+                'OR software OR SaaS OR "cloud computing" OR cloud OR "data center" '
                 'OR AI OR "artificial intelligence" OR "machine learning" OR ML '
-                'OR semiconductor OR semiconductors OR chip OR chips OR GPU OR CPUs OR "chipmaker" '
-                'OR cybersecurity OR "cyber security" OR infosec OR "zero trust" '
-                'OR "IT spending" OR "enterprise software" '
+                'OR semiconductor OR semiconductors OR chip OR chips OR GPU '
+                'OR cybersecurity OR "zero trust" '
                 'OR XLK OR SMH OR HACK OR CLOU'
             ),
             "healthcare": (
@@ -582,21 +569,20 @@ if scan_clicked:
             "finance": (
                 '"financial sector" OR "finance sector" OR "financial stocks" OR "bank stocks" '
                 'OR finance OR financial OR bank OR banks OR banking '
-                'OR "interest rates" OR yield OR yields OR "yield curve" '
+                'OR "interest rates" OR yield OR "yield curve" '
                 'OR NIM OR "net interest margin" OR "loan growth" OR credit OR "credit quality" '
-                'OR "investment bank" OR broker OR brokerage OR "asset manager" OR "wealth management" '
-                'OR fintech OR "payment" OR payments OR "credit card" '
+                'OR brokerage OR "asset manager" '
+                'OR fintech OR payments '
                 'OR XLF OR KRE OR KBE'
             ),
             "consumer": (
-                '"consumer sector" OR "consumer stocks" OR "retail stocks" '
-                'OR consumer OR retail OR "e-commerce" OR ecommerce OR "online shopping" '
+                '"consumer sector" OR "consumer stocks" '
+                'OR consumer OR retail OR "e-commerce" OR ecommerce '
                 'OR discretionary OR "consumer discretionary" '
                 'OR staples OR "consumer staples" '
-                'OR apparel OR "foot traffic" OR "same-store sales" OR SSS '
-                'OR restaurant OR restaurants OR travel OR airline OR airlines OR cruise OR cruises '
-                'OR auto OR autos OR "EV" OR "electric vehicle" '
-                'OR grocery OR groceries OR beverage OR beverages '
+                'OR restaurants OR travel OR airlines OR cruise '
+                'OR autos OR "EV" OR "electric vehicle" '
+                'OR grocery OR beverage '
                 'OR XLY OR XLP'
             ),
             "utilities": (
@@ -637,51 +623,16 @@ if scan_clicked:
         sector_key = sector.lower()
         use_v2 = sector_key in SECTOR_TOPIC_V2
 
-        def _topic_to_lanes(topic_str: str, max_query_chars: int = 480) -> list[str]:
-            """Split a long OR-joined topic string into multiple lanes that stay under X query limits."""
-            # Each lane becomes: f"({lane}) {INVEST_INTENT} lang:en -is:retweet"
-            overhead = len(f"() {INVEST_INTENT} lang:en -is:retweet")
-            budget = max(50, max_query_chars - overhead)
-
-            parts = [p.strip() for p in topic_str.split(" OR ") if p.strip()]
-            lanes: list[str] = []
-            cur: list[str] = []
-            cur_len = 0
-            for part in parts:
-                add_len = len(part) + (4 if cur else 0)  # " OR "
-                if cur and (cur_len + add_len) > budget:
-                    lanes.append(" OR ".join(cur))
-                    cur = [part]
-                    cur_len = len(part)
-                else:
-                    cur.append(part)
-                    cur_len += add_len
-            if cur:
-                lanes.append(" OR ".join(cur))
-            return lanes
-
         if use_v2:
-            topic = SECTOR_TOPIC_V2[sector_key]
-            if isinstance(topic, (list, tuple)):
-                lanes = list(topic)
-            else:
-                # Auto-split long topic blocks into multiple lanes to avoid X query length limits.
-                lanes = _topic_to_lanes(topic)
-
-            queries = [f"({t}) {INVEST_INTENT} lang:en -is:retweet" for t in lanes]
+            query = f"({SECTOR_TOPIC_V2[sector_key]}) {INVEST_INTENT} lang:en -is:retweet"
         else:
             sector_terms = sector_keywords.get(sector_key, sector)
-            queries = [f"({sector} OR {sector_terms}) stock (bullish OR opportunity OR catalyst OR growth OR earnings) -bearish lang:en -is:retweet"]
+            query = f"({sector} OR {sector_terms}) stock (bullish OR opportunity OR catalyst OR growth OR earnings) -bearish lang:en -is:retweet"
         
         logger.info(f"🔍 Starting X search for sector: {sector}")
         logger.info(f"🧠 Using query mode: {'v2' if use_v2 else 'v1'}")
         logger.info(f"🧹 Post-filter enabled: {not use_v2}")
-        if len(queries) == 1:
-            logger.info(f"📝 Search query: {queries[0]}")
-        else:
-            logger.info(f"📝 Search queries (lanes): {len(queries)}")
-            for i, q in enumerate(queries, start=1):
-                logger.info(f"   • lane {i}: {q}")
+        logger.info(f"📝 Search query: {query}")
         logger.info(f"📊 Max results requested: {max_results}")
 
         # Use shared X search helper (supports pagination via meta.next_token)
