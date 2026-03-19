@@ -98,10 +98,23 @@ def main() -> None:
     total_out = 0
 
     offset = 0
+    prev_fingerprint = None
+
     while True:
         rows = fetch_nasdaq_page(limit=limit, offset=offset)
         if not rows:
             break
+
+        # Some Nasdaq API deployments ignore offset/limit and return the full set each time.
+        # Detect that and stop to avoid infinite looping.
+        fingerprint = None
+        if rows:
+            first_sym = (rows[0].get("symbol") or "")
+            fingerprint = f"n={len(rows)}|first={first_sym}"
+        if prev_fingerprint is not None and fingerprint == prev_fingerprint:
+            print(f"Pagination appears ignored by Nasdaq API (fingerprint={fingerprint}). Stopping.")
+            break
+        prev_fingerprint = fingerprint
 
         total_in += len(rows)
 
