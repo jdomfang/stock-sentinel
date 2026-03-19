@@ -132,14 +132,18 @@ def _build_influencer_query(usernames: List[str], ticker: str, sector: str) -> s
 
 # ---- X API search ----
 
-def search_x_tweets(query: str, max_results: int = 100, timeframe: str = "24h") -> Dict[str, Any]:
-    """Search X (Twitter) Recent Search for tweets matching the query.
+def search_x_tweets_page(
+    query: str,
+    max_results: int = 100,
+    timeframe: str = "24h",
+    next_token: str | None = None,
+) -> Dict[str, Any]:
+    """Fetch a *single* page from X Recent Search.
 
-    Pagination notes:
-    - X Recent Search supports up to 100 results per request.
-    - If `max_results` > 100, we paginate using `meta.next_token` until we reach
-      `max_results` or a safety cap.
-    - Default behavior (max_results=100) remains a single call.
+    - `max_results` is clamped to [10, 100] per X API requirements.
+    - Pass `next_token` from the prior call to fetch the next page.
+
+    Returns: {success, tweets, next_token}
     """
     try:
         import os
@@ -156,20 +160,55 @@ def search_x_tweets(query: str, max_results: int = 100, timeframe: str = "24h") 
         url = "https://api.twitter.com/2/tweets/search/recent"
         headers = {"Authorization": f"Bearer {x_bearer_token}"}
 
-        # X API: max_results must be between 10 and 100 per request.
         per_page = 100
-        target_total = max(0, int(max_results))
+        n = min(max(int(max_results or per_page), 10), per_page)
         params = {
             "query": query,
-            "max_results": min(max(target_total or 100, 10), per_page),
+            "max_results": n,
             "tweet.fields": "text,created_at,public_metrics,author_id",
         }
         if since_date:
             params["start_time"] = since_date
+        if next_token:
+            params["next_token"] = next_token
 
-        # Safety cap: even if X has more, do not paginate forever.
-        # With per_page=100, max_pages=5 caps this call at ~500 tweets.
-        max_pages = 5
+        response = requests.get(url, headers=headers, params=params, timeout=30)
+
+        if response.status_code != 200:
+            logger.info("📡 X API response status: %s", response.status_code)
+            return {"success": False, "error": f"API Error {response.status_code}", "tweets": []}
+
+        data = response.json() or {}
+        tweets = data.get("data", []) or []
+        meta = data.get("meta", {}) or {}
+        out_next_token = meta.get("next_token")
+
+        logger.info(
+            "📄 X page got=%s has_next=%s",
+            len(tweets),
+            bool(out_next_token),
+        )
+
+        return {"success": True, "tweets": tweets, "next_token": out_next_token, "meta": meta}
+
+    except Exception:
+        return {"success": False, "error": "Request failed", "tweets": []}
+
+
+def search_x_tweets(query: str, max_results: int = 100, timeframe: str = "24h") -> Dict[str, Any]:
+    """Search X (Twitter) Recent Search for tweets matching the query.
+
+    Pagination notes:
+    - X Recent Search supports up to 100 results per request.
+    - If `max_results` > 100, we paginate using `meta.next_token` until we reach
+      `max_results` or a safety cap.
+    """
+    try:
+        # Safety cap for this app: never fetch more than ~300 tweets.
+        per_page = 100
+        safety_cap_total = 300
+        target_total = max(0, int(max_results))
+        target_total = min(target_total or per_page, safety_cap_total)
 
         all_tweets: List[Dict[str, Any]] = []
         last_meta: Dict[str, Any] = {}
@@ -180,66 +219,37 @@ def search_x_tweets(query: str, max_results: int = 100, timeframe: str = "24h") 
         stop_reason: str | None = None
         pages_fetched = 0
 
-        # If caller only asked for <=100 results, do a single request.
-        pages_to_fetch = 1 if target_total <= per_page else max_pages
-
-        for page in range(1, pages_to_fetch + 1):
+        max_pages = (target_total + per_page - 1) // per_page  # 1..3
+        for page in range(1, max_pages + 1):
             pages_fetched = page
-            if next_token:
-                params["next_token"] = next_token
-            else:
-                params.pop("next_token", None)
+            res = search_x_tweets_page(
+                query=query,
+                max_results=min(per_page, target_total - len(all_tweets)),
+                timeframe=timeframe,
+                next_token=next_token,
+            )
+            if not res.get("success"):
+                return {"success": False, "error": res.get("error") or "X API request failed", "tweets": []}
 
-            response = requests.get(url, headers=headers, params=params, timeout=30)
-
-            if response.status_code != 200:
-                # Never leak raw provider response text to the UI.
-                logger.info("📡 X API response status: %s", response.status_code)
-                return {
-                    "success": False,
-                    "error": f"API Error {response.status_code}",
-                    "tweets": [],
-                }
-
-            data = response.json() or {}
-            tweets = data.get("data", []) or []
-            meta = data.get("meta", {}) or {}
-            last_meta = meta
+            tweets = res.get("tweets") or []
+            next_token = res.get("next_token")
+            last_meta = res.get("meta") or {}
 
             all_tweets.extend(tweets)
-            next_token = meta.get("next_token")
-
-            # Log pagination state before stop/continue decisions.
-            logger.info(
-                "📄 X page=%s got=%s total=%s has_next=%s",
-                page,
-                len(tweets),
-                len(all_tweets),
-                bool(next_token),
-            )
 
             if not next_token:
                 stop_reason = "no_next_token"
-                logger.info("✅ X pagination finished at page=%s (no next_token)", page)
                 break
 
-            if target_total and len(all_tweets) >= target_total:
+            if len(all_tweets) >= target_total:
                 stop_reason = "hit_target_total"
-                logger.info("🛑 X pagination stop at page=%s (hit target_total=%s)", page, target_total)
                 break
 
-            if page >= max_pages:
-                stop_reason = "hit_max_pages"
-                logger.info("🛑 X pagination stop at page=%s (hit max_pages=%s)", page, max_pages)
-                break
+        out = all_tweets[:target_total]
 
-        # Trim to requested size (if max_results was set > 0)
-        out = all_tweets[:target_total] if target_total else all_tweets
-
-        # Final summary log for analytics
         elapsed_s = time.time() - t0
         if stop_reason is None:
-            stop_reason = "single_page" if pages_to_fetch == 1 else "exhausted_pages"
+            stop_reason = "single_page" if pages_fetched == 1 else "exhausted_pages"
         logger.info(
             "📈 X pagination summary pages=%s total=%s elapsed_s=%.2f stop_reason=%s",
             pages_fetched,
@@ -248,19 +258,10 @@ def search_x_tweets(query: str, max_results: int = 100, timeframe: str = "24h") 
             stop_reason,
         )
 
-        return {
-            "success": True,
-            "tweets": out,
-            "meta": last_meta,
-        }
+        return {"success": True, "tweets": out, "meta": last_meta}
 
     except Exception:
-        # Keep internal error generic; full trace should be logged by callers.
-        return {
-            "success": False,
-            "error": "Request failed",
-            "tweets": [],
-        }
+        return {"success": False, "error": "Request failed", "tweets": []}
 
 
 # ---- Bucketing + analysis ----
