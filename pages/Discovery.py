@@ -659,20 +659,23 @@ if scan_clicked:
             st.stop()
 
         # Nasdaq sector strings (stored in Supabase) for strict matching.
-        # We keep the UI's compact sector keys for the X query logic, then map to Nasdaq sectors here.
-        ui_to_nasdaq_sector = {
-            "tech": "Technology",
-            "healthcare": "Health Care",
-            "energy": "Energy",
-            "finance": "Finance",
-            "consumer": "Consumer Discretionary",
-            "utilities": "Utilities",
-            "real estate": "Real Estate",
-            "industrials": "Industrials",
-            "materials": "Materials",
-            "communication": "Communication Services",
+        # Keep UI sector keys unchanged; map them to the exact sector strings present in ticker_master.
+        ui_to_nasdaq_sectors = {
+            "tech": {"Technology"},
+            "healthcare": {"Health Care"},
+            "energy": {"Energy"},
+            "finance": {"Finance"},
+            # UI has a single "consumer" bucket; Nasdaq splits this into two sectors.
+            "consumer": {"Consumer Discretionary", "Consumer Staples"},
+            "utilities": {"Utilities"},
+            "real estate": {"Real Estate"},
+            "industrials": {"Industrials"},
+            # Nasdaq uses "Basic Materials" (not "Materials")
+            "materials": {"Basic Materials"},
+            # Nasdaq dataset we ingested uses "Telecommunications" (not "Communication Services")
+            "communication": {"Telecommunications"},
         }
-        selected_nasdaq_sector = ui_to_nasdaq_sector.get((sector or "").lower())
+        selected_nasdaq_sectors = ui_to_nasdaq_sectors.get((sector or "").lower(), set())
 
         # Aggregate data by ticker (incremental across pages)
         ticker_data = defaultdict(lambda: {
@@ -721,12 +724,12 @@ if scan_clicked:
 
                 ticker_info = ticker_master_list[t_up]
                 ticker_sector = (ticker_info.get('sector') or '').strip()
-                if not selected_nasdaq_sector:
+                if not selected_nasdaq_sectors:
                     # If we can't map the UI sector to a Nasdaq sector string, be strict and reject.
                     continue
 
-                # Strict match: only accept if the Nasdaq sector matches exactly.
-                if ticker_sector != selected_nasdaq_sector:
+                # Strict match: only accept if the Nasdaq sector matches one of the mapped sectors.
+                if ticker_sector not in selected_nasdaq_sectors:
                     continue
 
                 validated_set.add(ticker)
