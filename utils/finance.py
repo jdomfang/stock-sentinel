@@ -9,7 +9,7 @@ import requests
 from polygon import RESTClient
 
 # --- Price cache (Supabase stock_prices) helpers ---
-from utils.supabase_client import get_admin_client
+from utils.supabase_client import get_admin_client, get_client
 import numpy as np
 import logging
 import time
