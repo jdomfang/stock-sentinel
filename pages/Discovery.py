@@ -1,10 +1,17 @@
 import streamlit as st
 import streamlit.components.v1 as components
+
+# Ensure project root is on sys.path (avoids collisions with any installed `utils` package on Streamlit Cloud)
+from pathlib import Path
+import sys
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+
 import requests
 import json
 import pandas as pd
 from collections import defaultdict
 import logging
+
 from utils.navigation import render_sidebar_navigation, render_top_nav
 from utils.ui import apply_theme, close_page
 from utils.sentiment import extract_tickers, analyze_sentiment
