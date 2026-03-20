@@ -6,6 +6,7 @@ from typing import Dict, List, Any
 from pathlib import Path
 import json
 import logging
+import hashlib
 
 from utils.sentiment import analyze_sentiment, load_sentiment_pipeline, score_finbert_output
 
@@ -448,54 +449,256 @@ def _engagement_filter(tweets: List[Dict[str, Any]], min_likes: int = 10, min_re
 
 
 def run_deep_analysis(ticker: str, sector: str) -> Dict[str, Dict[str, Any]]:
-    """Deep analyze with 2 X API calls, then derive 8 prompt outputs locally.
+    """Deep analyze with low X API usage and early-stop + caching.
 
-    Design goals:
-    - Keep X API usage low (cost control).
-    - Fetch a large ticker corpus once (paginated), then scrub locally into buckets.
-    - Fetch a smaller influencer corpus (from: list) for that dedicated bucket.
+    Changes vs original:
+    - Discovery-style pagination: fetch page 1, check "good enough", then stop early.
+    - Safety cap: 300 tweets max for ticker corpus.
+    - Caching: session + disk TTL to avoid repeat paid calls.
+
+    NOTE: We still present 8 prompts, but we only make 2 X corpora fetches:
+    - ticker corpus (paginated, early-stop)
+    - influencer corpus (single call)
     """
 
     t = (ticker or "").strip().upper()
     s = (sector or "").strip().lower()
 
-    # ---- Call definitions (fixed defaults per your request) ----
-    # Ticker corpus: broad, evidence-rich, paginated up to ~500 (max_pages=5 in search_x_tweets).
+    # ---- Cache helpers (session + disk) ----
+    import os
+    import time
+
+    CACHE_VERSION = "v3"  # bump to invalidate old cached schemas/logic
+    CACHE_TTL_S = 45 * 60
+
+    def _cache_key() -> str:
+        return f"deep_analysis:{CACHE_VERSION}:{t}:{s}:48h"
+
+    def _cache_dir() -> Path:
+        root = Path(__file__).resolve().parents[1]
+        d = root / "data" / "cache" / "deep_analysis"
+        d.mkdir(parents=True, exist_ok=True)
+        return d
+
+    def _cache_path() -> Path:
+        safe_t = "".join(ch for ch in t if ch.isalnum() or ch in ("-", "_")) or "TICKER"
+        return _cache_dir() / f"{safe_t}_{CACHE_VERSION}.json"
+
+    def _cache_get() -> Dict[str, Dict[str, Any]] | None:
+        key = _cache_key()
+        # session cache
+        try:
+            if key in st.session_state:
+                blob = st.session_state.get(key) or {}
+                ts = float(blob.get("ts", 0))
+                if ts and (time.time() - ts) <= CACHE_TTL_S:
+                    return blob.get("results")
+        except Exception:
+            pass
+
+        # disk cache
+        try:
+            p = _cache_path()
+            if not p.exists():
+                return None
+            blob = json.loads(p.read_text(encoding="utf-8"))
+            ts = float(blob.get("ts", 0))
+            if not ts or (time.time() - ts) > CACHE_TTL_S:
+                return None
+            if blob.get("ticker") != t or blob.get("sector") != s:
+                return None
+            return blob.get("results")
+        except Exception:
+            return None
+
+    def _cache_set(results: Dict[str, Dict[str, Any]]) -> None:
+        key = _cache_key()
+        blob = {
+            "ts": time.time(),
+            "ticker": t,
+            "sector": s,
+            "cache_version": CACHE_VERSION,
+            "results": results,
+        }
+        try:
+            st.session_state[key] = blob
+        except Exception:
+            pass
+        try:
+            _cache_path().write_text(json.dumps(blob), encoding="utf-8")
+        except Exception:
+            pass
+
+    cached = _cache_get()
+    if cached:
+        logger.info("🧠 Deep Analyze cache hit: %s", _cache_key())
+        return cached
+
+    # ---- Call definitions ----
     ticker_query = (
         f"(${t} OR {t}) (stock OR stocks OR shares OR price OR chart OR earnings OR news OR catalyst "
         f"OR bullish OR bearish OR risk OR watchlist OR trading OR options OR #FinTwit) lang:en -is:retweet"
     )
 
-    # Influencer corpus: curated author list (kept under query-length limits by helper).
     influencer_usernames = _load_influencer_usernames(limit=12)
     influencer_query = _build_influencer_query(influencer_usernames, t, s) if influencer_usernames else None
 
-    def _fetch(name: str, query: str, timeframe: str, max_results: int) -> tuple:
-        res = search_x_tweets(query=query, timeframe=timeframe, max_results=max_results)
-        return name, res
-
-    corpuses: Dict[str, List[Dict[str, Any]]] = {
-        "ticker": [],
-        "influencers": [],
-    }
+    corpuses: Dict[str, List[Dict[str, Any]]] = {"ticker": [], "influencers": []}
     errors: Dict[str, str] = {}
 
-    logger.info("🧪 Deep Analyze: fetching corpora (2 calls)")
-    logger.info("   • ticker_corpus: timeframe=48h max_results=500")
+    # ---- Fetch influencer corpus (single call) in parallel with ticker pagination ----
+    def _fetch_influencers() -> Dict[str, Any]:
+        if not influencer_query:
+            return {"success": True, "tweets": []}
+        return search_x_tweets(query=influencer_query, timeframe="72h", max_results=100)
+
+    logger.info("🧪 Deep Analyze: fetching corpora (ticker paginated + influencers)")
+    logger.info("   • ticker_corpus: timeframe=48h per_page=100 safety_cap=300 (early-stop enabled)")
     logger.info("   • influencer_corpus: timeframe=72h max_results=100")
 
+    infl_future = None
     with ThreadPoolExecutor(max_workers=2) as ex:
-        futures = [ex.submit(_fetch, "ticker", ticker_query, "48h", 500)]
-        if influencer_query:
-            futures.append(ex.submit(_fetch, "influencers", influencer_query, "72h", 100))
+        infl_future = ex.submit(_fetch_influencers)
 
-        for fut in as_completed(futures):
-            name, res = fut.result()
-            if res.get("success"):
-                corpuses[name] = res.get("tweets", []) or []
-            else:
-                corpuses[name] = []
-                errors[name] = res.get("error", "Unknown error")
+        # ---- Ticker corpus pagination (Discovery-style) ----
+        SAFETY_CAP_TWEETS = 300
+        PER_PAGE = 100
+        next_token = None
+        pages = 0
+        core: List[Dict[str, Any]] = []
+
+        # Early-stop thresholds (page-1 gate)
+        GOOD_ENOUGH_MIN_MENTIONS = 20
+        GOOD_ENOUGH_MIN_ABS_SENT = 0.12
+        GOOD_ENOUGH_MAX_RED_FLAG_RATE = 0.25
+        GOOD_ENOUGH_MIN_MOMENTUM = 3
+        GOOD_ENOUGH_MIN_INTENT = 5
+
+        def _is_good_enough(analysis_results: Dict[str, Dict[str, Any]]) -> bool:
+            # Use the same recommendation inputs: unique ids, avg sentiment, red flags, and trade-ish evidence.
+            summary = generate_ai_summary(analysis_results)
+
+            # Extract unique mentions and red flags from the same loop generate_ai_summary uses
+            # (avoid recomputing everything here; we can read back from analysis_results)
+            unique_ids = set()
+            for _, r in (analysis_results or {}).items():
+                for tid in (r.get("tweet_ids") or []):
+                    unique_ids.add(tid)
+            total_mentions = len(unique_ids)
+
+            red = analysis_results.get("Detect Early Warning Signs and Red Flags", {}) or {}
+            red_mentions = int(red.get("mention_count", 0) or 0)
+            red_flag_rate = (red_mentions / total_mentions) if total_mentions else 1.0
+
+            mom = analysis_results.get("Momentum (High Engagement)", {}) or {}
+            intent = analysis_results.get("Trading Intent / Watchlist Signals", {}) or {}
+            mom_n = int(mom.get("mention_count", 0) or 0)
+            intent_n = int(intent.get("mention_count", 0) or 0)
+
+            return (
+                total_mentions >= GOOD_ENOUGH_MIN_MENTIONS
+                and abs(float(summary.get("avg_sentiment", 0.0))) >= GOOD_ENOUGH_MIN_ABS_SENT
+                and red_flag_rate <= GOOD_ENOUGH_MAX_RED_FLAG_RATE
+                and (mom_n >= GOOD_ENOUGH_MIN_MOMENTUM or intent_n >= GOOD_ENOUGH_MIN_INTENT)
+            )
+
+        # For gating, analyze only the buckets that matter for "good enough".
+        gating_prompts = [
+            "Real-Time Market Sentiment",
+            "Detect Early Warning Signs and Red Flags",
+            "Momentum (High Engagement)",
+            "Trading Intent / Watchlist Signals",
+        ]
+
+        while len(core) < SAFETY_CAP_TWEETS:
+            pages += 1
+            remaining = SAFETY_CAP_TWEETS - len(core)
+            res = search_x_tweets_page(
+                query=ticker_query,
+                max_results=min(PER_PAGE, remaining),
+                timeframe="48h",
+                next_token=next_token,
+            )
+            if not res.get("success"):
+                errors["ticker"] = res.get("error") or "X API request failed"
+                break
+
+            page_tweets = res.get("tweets") or []
+            next_token = res.get("next_token")
+
+            if not page_tweets:
+                break
+
+            core.extend(page_tweets)
+
+            # Page-1 (and later) gate: if we already have enough evidence, stop early.
+            # Build minimal buckets from current core, then run minimal analysis.
+            buckets_for_gate: Dict[str, List[Dict[str, Any]]] = {}
+
+            # Reuse the same keyword lists as the full run (defined below), but keep it local here.
+            risk_keywords = [
+                "risk",
+                "warning",
+                "concern",
+                "red flag",
+                "dilution",
+                "offering",
+                "bankruptcy",
+                "delisting",
+                "investigation",
+                "fraud",
+                "lawsuit",
+            ]
+            momentum_keywords = ["viral", "trending", "momentum", "breakout", "squeeze", "runner", "rip", "ripping"]
+            watchlist_keywords = [
+                "watchlist",
+                "setup",
+                "breakout",
+                "entry",
+                "support",
+                "resistance",
+                "levels",
+                "trade",
+                "trading",
+                "swing",
+                "scalp",
+                "calls",
+                "puts",
+                "options",
+            ]
+
+            buckets_for_gate["Real-Time Market Sentiment"] = core
+            buckets_for_gate["Detect Early Warning Signs and Red Flags"] = _keyword_bucket(core, risk_keywords)
+            buckets_for_gate["Momentum (High Engagement)"] = _engagement_filter(_keyword_bucket(core, momentum_keywords), min_likes=10, min_retweets=5)
+            buckets_for_gate["Trading Intent / Watchlist Signals"] = _keyword_bucket(core, watchlist_keywords)
+
+            gating_results: Dict[str, Dict[str, Any]] = {}
+            for pn in gating_prompts:
+                gating_results[pn] = analyze_tweets_for_prompt(buckets_for_gate.get(pn, []), pn, ticker)
+
+            logger.info(
+                "📄 Deep Analyze pagination pages=%s core=%s has_next=%s",
+                pages,
+                len(core),
+                bool(next_token),
+            )
+
+            if _is_good_enough(gating_results):
+                logger.info("✅ Deep Analyze early-stop: page gate met (pages=%s, tweets=%s)", pages, len(core))
+                break
+
+            if not next_token:
+                break
+
+        corpuses["ticker"] = core
+
+        # Influencers
+        infl_res = infl_future.result() if infl_future else {"success": True, "tweets": []}
+        if infl_res.get("success"):
+            corpuses["influencers"] = infl_res.get("tweets", []) or []
+        else:
+            corpuses["influencers"] = []
+            errors["influencers"] = infl_res.get("error", "Unknown error")
 
     core = corpuses["ticker"]
     influencers = corpuses["influencers"]
@@ -627,24 +830,42 @@ def run_deep_analysis(ticker: str, sector: str) -> Dict[str, Dict[str, Any]]:
 
         results[prompt_name] = analyze_tweets_for_prompt(tweets, prompt_name, ticker)
 
+    # Cache the final derived results (so future runs can re-render without new X calls)
+    try:
+        _cache_set(results)
+    except Exception:
+        pass
+
     return results
 
 
 def generate_ai_summary(analysis_results: Dict[str, Dict]) -> Dict[str, Any]:
-    """Generate a single AI-powered recommendation with rationale."""
+    """Generate a Buy/Watch/Avoid recommendation from analysis_results (no extra AI calls).
+
+    Key principles:
+    - Prefer deduped evidence (unique tweet ids) over "how many prompts are bullish".
+    - Use risk concentration (red_flag_rate) to avoid bullish calls during risk-heavy chatter.
+    - Downweight mixed/unstable reads via a simple disagreement proxy.
+    """
+
     total_weighted_sentiment = 0.0
     total_weight = 0
-    bullish_count = 0
-    bearish_count = 0
-    neutral_count = 0
-    error_count = 0
-    # Dedupe across prompts to avoid "confidence inflation" when the same tweets appear in multiple buckets.
-    unique_ids = set()
+
+    bullish_prompts = 0
+    bearish_prompts = 0
+    neutral_prompts = 0
+    error_prompts = 0
+
+    # Dedupe across prompts to avoid confidence inflation.
+    unique_ids: set[str] = set()
 
     red_flag_sentiment = 0.0
     red_flag_mentions = 0
 
-    for prompt_name, result in analysis_results.items():
+    # For a simple disagreement proxy
+    prompt_sentiments: List[float] = []
+
+    for prompt_name, result in (analysis_results or {}).items():
         tweet_ids = result.get("tweet_ids", []) or []
         unique_mentions = 0
         for tid in tweet_ids:
@@ -652,99 +873,119 @@ def generate_ai_summary(analysis_results: Dict[str, Dict]) -> Dict[str, Any]:
                 unique_ids.add(tid)
                 unique_mentions += 1
 
-        sentiment = result.get("sentiment_score", 0.0)
-        overall = result.get("overall_sentiment", "neutral")
+        sentiment = float(result.get("sentiment_score", 0.0) or 0.0)
+        overall = (result.get("overall_sentiment") or "neutral").lower()
 
         weight = max(unique_mentions, 1)
         total_weighted_sentiment += sentiment * weight
         total_weight += weight
 
         if overall == "bullish":
-            bullish_count += 1
+            bullish_prompts += 1
         elif overall == "bearish":
-            bearish_count += 1
+            bearish_prompts += 1
         elif overall == "neutral":
-            neutral_count += 1
+            neutral_prompts += 1
         else:
-            error_count += 1
+            error_prompts += 1
+
+        # Only count prompt sentiment in disagreement if it has some evidence.
+        if int(result.get("mention_count", 0) or 0) > 0 and overall != "error":
+            prompt_sentiments.append(sentiment)
 
         if "Red Flags" in prompt_name:
             red_flag_sentiment = sentiment
             red_flag_mentions = unique_mentions
 
     total_mentions = len(unique_ids)
-    avg_sentiment = total_weighted_sentiment / total_weight if total_weight else 0.0
+    avg_sentiment = (total_weighted_sentiment / total_weight) if total_weight else 0.0
 
-    # Sanity guard: avoid strong calls on thin evidence
+    red_flag_rate = (red_flag_mentions / total_mentions) if total_mentions else 1.0
+
+    # Disagreement proxy: range across prompt-level signed sentiments
+    if prompt_sentiments:
+        disagreement = max(prompt_sentiments) - min(prompt_sentiments)
+    else:
+        disagreement = 0.0
+
+    # ---- Recommendation rules ----
+    # Thin evidence => Watch
     if total_mentions < 8:
         recommendation = "Watch"
-    elif avg_sentiment >= 0.25 and bullish_count >= 5 and red_flag_sentiment > -0.1:
-        recommendation = "Buy"
-    elif avg_sentiment <= -0.1 or bearish_count >= 4 or red_flag_sentiment < -0.2:
+    # Risk-heavy chatter => Avoid
+    elif red_flag_rate >= 0.35 or red_flag_sentiment <= -0.2:
         recommendation = "Avoid"
+    # Strong bearish tilt => Avoid
+    elif avg_sentiment <= -0.12:
+        recommendation = "Avoid"
+    # Strong bullish tilt, not risk-heavy, not wildly mixed => Buy
+    elif avg_sentiment >= 0.22 and red_flag_rate <= 0.20 and disagreement <= 0.55 and total_mentions >= 20:
+        recommendation = "Buy"
     else:
         recommendation = "Watch"
 
-    # Sanity guard: if evidence is thin, force low confidence.
+    # ---- Confidence rules ----
+    # Evidence + strength, penalized by risk + disagreement.
     if total_mentions < 8:
         confidence = "Low"
-    elif abs(avg_sentiment) >= 0.35 and total_mentions >= 30:
-        confidence = "High"
-    elif abs(avg_sentiment) >= 0.2 or total_mentions >= 15:
-        confidence = "Moderate"
     else:
-        confidence = "Low"
+        base = 0
+        if total_mentions >= 40:
+            base += 2
+        elif total_mentions >= 20:
+            base += 1
 
-    # Build comprehensive rationale with critical insights
-    rationale = []
-    
-    # 1. Consensus breakdown
-    consensus_text = f"{bullish_count} bullish, {bearish_count} bearish, {neutral_count} neutral"
-    if bullish_count + bearish_count == 0:
-        consensus_level = "No clear consensus"
-    elif max(bullish_count, bearish_count) == 0:
-        consensus_level = "Neutral consensus"
-    elif max(bullish_count, bearish_count) / max(bullish_count + bearish_count, 1) >= 0.67:
-        consensus_level = "Strong consensus"
-    else:
-        consensus_level = "Mixed signals"
-    
-    rationale.append(f"{consensus_text} ({consensus_level})")
-    
-    # 2. Sentiment strength
-    if abs(avg_sentiment) >= 0.3:
-        sentiment_level = "Strong"
-    elif abs(avg_sentiment) >= 0.15:
-        sentiment_level = "Moderate"
-    else:
-        sentiment_level = "Weak"
-    
-    rationale.append(f"Sentiment: {sentiment_level} {'bullish' if avg_sentiment > 0 else 'bearish' if avg_sentiment < 0 else 'neutral'} ({avg_sentiment:.3f})")
-    
-    # 3. Evidence quality
-    if total_mentions >= 50:
-        evidence_text = f"Strong evidence base ({total_mentions} unique mentions)"
-    elif total_mentions >= 20:
-        evidence_text = f"Moderate evidence ({total_mentions} unique mentions)"
-    else:
-        evidence_text = f"Limited evidence ({total_mentions} mentions)"
-    
-    rationale.append(evidence_text)
-    
-    # 4. Red flags
-    if red_flag_mentions > 0:
-        if red_flag_sentiment < -0.2:
-            rationale.append("⚠️ Strong risk signals detected - caution advised")
-        elif red_flag_sentiment < -0.05:
-            rationale.append("⚠️ Moderate risk signals present")
+        if abs(avg_sentiment) >= 0.25:
+            base += 2
+        elif abs(avg_sentiment) >= 0.15:
+            base += 1
+
+        if red_flag_rate >= 0.25:
+            base -= 1
+        if disagreement >= 0.65:
+            base -= 1
+
+        if base >= 3:
+            confidence = "High"
+        elif base >= 1:
+            confidence = "Moderate"
         else:
-            rationale.append("✓ Red-flag analysis shows limited concerns")
-    
-    # 5. Momentum
-    if bullish_count - bearish_count >= 3:
-        rationale.append("✓ Bullish momentum outweighs bearish pressure")
-    elif bearish_count - bullish_count >= 3:
-        rationale.append("✗ Bearish momentum outweighs bullish pressure")
+            confidence = "Low"
+
+    # ---- Rationale (brief, stable) ----
+    rationale: List[str] = []
+
+    rationale.append(f"Prompts: {bullish_prompts} bullish, {bearish_prompts} bearish, {neutral_prompts} neutral")
+
+    # Strength
+    if abs(avg_sentiment) >= 0.30:
+        strength = "Strong"
+    elif abs(avg_sentiment) >= 0.15:
+        strength = "Moderate"
+    else:
+        strength = "Weak"
+    rationale.append(
+        f"Sentiment: {strength} {'bullish' if avg_sentiment > 0 else 'bearish' if avg_sentiment < 0 else 'neutral'} ({avg_sentiment:.3f})"
+    )
+
+    # Evidence
+    if total_mentions >= 50:
+        rationale.append(f"Evidence: strong ({total_mentions} unique mentions)")
+    elif total_mentions >= 20:
+        rationale.append(f"Evidence: moderate ({total_mentions} unique mentions)")
+    else:
+        rationale.append(f"Evidence: limited ({total_mentions} unique mentions)")
+
+    # Risk
+    rationale.append(f"Risk: red-flag rate {red_flag_rate:.0%}")
+
+    # Consistency
+    if disagreement >= 0.65:
+        rationale.append("Signals: mixed (high disagreement)")
+    elif disagreement >= 0.40:
+        rationale.append("Signals: somewhat mixed")
+    else:
+        rationale.append("Signals: consistent")
 
     return {
         "recommendation": recommendation,
