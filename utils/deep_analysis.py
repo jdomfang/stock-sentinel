@@ -610,9 +610,77 @@ def run_deep_analysis(ticker: str, sector: str) -> Dict[str, Dict[str, Any]]:
             "Trading Intent / Watchlist Signals",
         ]
 
+        # Reuse the same keyword lists as the full run (defined below), but keep local copies here.
+        # These are used for cheap (non-FinBERT) gating.
+        risk_keywords_gate = [
+            "risk",
+            "warning",
+            "concern",
+            "red flag",
+            "dilution",
+            "offering",
+            "bankruptcy",
+            "delisting",
+            "investigation",
+            "fraud",
+            "lawsuit",
+        ]
+        momentum_keywords_gate = ["viral", "trending", "momentum", "breakout", "squeeze", "runner", "rip", "ripping"]
+        watchlist_keywords_gate = [
+            "watchlist",
+            "setup",
+            "breakout",
+            "entry",
+            "support",
+            "resistance",
+            "levels",
+            "trade",
+            "trading",
+            "swing",
+            "scalp",
+            "calls",
+            "puts",
+            "options",
+        ]
+
+        def _cheap_good_enough(core_tweets: List[Dict[str, Any]]) -> bool:
+            """Cheap gate used after page 1: no FinBERT, just evidence + bucket coverage."""
+            n_core = len(core_tweets)
+            if n_core < 120:
+                return False
+
+            # How many tweets actually mention the ticker token?
+            mention_n = 0
+            for tw in core_tweets:
+                if _mentions_ticker((tw.get("text") or ""), t):
+                    mention_n += 1
+            if mention_n < 40:
+                return False
+
+            risk_n = len(_keyword_bucket(core_tweets, risk_keywords_gate))
+            intent_n = len(_keyword_bucket(core_tweets, watchlist_keywords_gate))
+            mom_n = len(_engagement_filter(_keyword_bucket(core_tweets, momentum_keywords_gate), min_likes=10, min_retweets=5))
+
+            # Require at least one "trade-ish" bucket to have content.
+            if not (intent_n >= 15 or mom_n >= 5):
+                return False
+
+            # Avoid stopping early if risk chatter dominates.
+            risk_rate = risk_n / max(1, n_core)
+            if risk_rate >= 0.35:
+                return False
+
+            return True
+
         while len(core) < SAFETY_CAP_TWEETS:
             pages += 1
             remaining = SAFETY_CAP_TWEETS - len(core)
+
+            # X recent search enforces max_results in [10, 100]. If we're under 10 remaining,
+            # we stop to avoid overshooting the safety cap.
+            if remaining < 10:
+                break
+
             res = search_x_tweets_page(
                 query=ticker_query,
                 max_results=min(PER_PAGE, remaining),
@@ -631,51 +699,6 @@ def run_deep_analysis(ticker: str, sector: str) -> Dict[str, Dict[str, Any]]:
 
             core.extend(page_tweets)
 
-            # Page-1 (and later) gate: if we already have enough evidence, stop early.
-            # Build minimal buckets from current core, then run minimal analysis.
-            buckets_for_gate: Dict[str, List[Dict[str, Any]]] = {}
-
-            # Reuse the same keyword lists as the full run (defined below), but keep it local here.
-            risk_keywords = [
-                "risk",
-                "warning",
-                "concern",
-                "red flag",
-                "dilution",
-                "offering",
-                "bankruptcy",
-                "delisting",
-                "investigation",
-                "fraud",
-                "lawsuit",
-            ]
-            momentum_keywords = ["viral", "trending", "momentum", "breakout", "squeeze", "runner", "rip", "ripping"]
-            watchlist_keywords = [
-                "watchlist",
-                "setup",
-                "breakout",
-                "entry",
-                "support",
-                "resistance",
-                "levels",
-                "trade",
-                "trading",
-                "swing",
-                "scalp",
-                "calls",
-                "puts",
-                "options",
-            ]
-
-            buckets_for_gate["Real-Time Market Sentiment"] = core
-            buckets_for_gate["Detect Early Warning Signs and Red Flags"] = _keyword_bucket(core, risk_keywords)
-            buckets_for_gate["Momentum (High Engagement)"] = _engagement_filter(_keyword_bucket(core, momentum_keywords), min_likes=10, min_retweets=5)
-            buckets_for_gate["Trading Intent / Watchlist Signals"] = _keyword_bucket(core, watchlist_keywords)
-
-            gating_results: Dict[str, Dict[str, Any]] = {}
-            for pn in gating_prompts:
-                gating_results[pn] = analyze_tweets_for_prompt(buckets_for_gate.get(pn, []), pn, ticker)
-
             logger.info(
                 "📄 Deep Analyze pagination pages=%s core=%s has_next=%s",
                 pages,
@@ -683,9 +706,30 @@ def run_deep_analysis(ticker: str, sector: str) -> Dict[str, Dict[str, Any]]:
                 bool(next_token),
             )
 
-            if _is_good_enough(gating_results):
-                logger.info("✅ Deep Analyze early-stop: page gate met (pages=%s, tweets=%s)", pages, len(core))
-                break
+            # Page 1: allow a sentiment-aware gate (FinBERT runs once here).
+            # After page 1: ONLY use cheap gating (no FinBERT) to avoid repeated inference.
+            if pages == 1:
+                buckets_for_gate: Dict[str, List[Dict[str, Any]]] = {}
+                buckets_for_gate["Real-Time Market Sentiment"] = core
+                buckets_for_gate["Detect Early Warning Signs and Red Flags"] = _keyword_bucket(core, risk_keywords_gate)
+                buckets_for_gate["Momentum (High Engagement)"] = _engagement_filter(
+                    _keyword_bucket(core, momentum_keywords_gate),
+                    min_likes=10,
+                    min_retweets=5,
+                )
+                buckets_for_gate["Trading Intent / Watchlist Signals"] = _keyword_bucket(core, watchlist_keywords_gate)
+
+                gating_results: Dict[str, Dict[str, Any]] = {}
+                for pn in gating_prompts:
+                    gating_results[pn] = analyze_tweets_for_prompt(buckets_for_gate.get(pn, []), pn, ticker)
+
+                if _is_good_enough(gating_results):
+                    logger.info("✅ Deep Analyze early-stop: page-1 sentiment gate met (tweets=%s)", len(core))
+                    break
+            else:
+                if _cheap_good_enough(core):
+                    logger.info("✅ Deep Analyze early-stop: cheap gate met (pages=%s tweets=%s)", pages, len(core))
+                    break
 
             if not next_token:
                 break
