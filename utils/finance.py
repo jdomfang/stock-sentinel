@@ -800,8 +800,8 @@ def fetch_and_cache_last_close_prices(tickers: list[str]) -> dict[str, float]:
     start = end - timedelta(days=10)
 
     for t in tickers_u:
-        # small pacing to reduce burstiness
-        time.sleep(0.25)
+        # Pacing to reduce burstiness (avoid Polygon 429s during Discovery scans)
+        time.sleep(1.0)
 
         url = f"https://api.polygon.io/v2/aggs/ticker/{t}/range/1/day/{start.isoformat()}/{end.isoformat()}"
         params = {
