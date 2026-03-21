@@ -494,45 +494,7 @@ with cap2:
 st.markdown('</div>', unsafe_allow_html=True)  # .cap-grid
 st.markdown("<div style='height: 1.25rem;'></div>", unsafe_allow_html=True)
 
-# How it works (polished cards)
-st.markdown('<div class="section-title">How it works</div>', unsafe_allow_html=True)
-
-# Wrapper div lets us apply responsive wrap rules to Streamlit columns
-st.markdown('<div class="how-grid">', unsafe_allow_html=True)
-
-h1, h2, h3 = st.columns(3)
-with h1:
-    st.markdown(
-        """
-        <div class="how-card">
-          <div class="how-head"><div class="how-step">1</div><div class="how-title">Scan social chatter</div></div>
-          <p class="how-desc">Pick a sector and we identify <b>US stocks</b> gaining unusual attention—fast.</p>
-        </div>
-        """,
-        unsafe_allow_html=True,
-    )
-with h2:
-    st.markdown(
-        """
-        <div class="how-card">
-          <div class="how-head"><div class="how-step">2</div><div class="how-title">AI sentiment signal</div></div>
-          <p class="how-desc">We summarize the tone and confidence so you can triage what’s worth a closer look.</p>
-        </div>
-        """,
-        unsafe_allow_html=True,
-    )
-with h3:
-    st.markdown(
-        """
-        <div class="how-card">
-          <div class="how-head"><div class="how-step">3</div><div class="how-title">Deep Analyze guidance</div></div>
-          <p class="how-desc">Get a Buy / Watch / Avoid recommendation with key drivers and risk notes.</p>
-        </div>
-        """,
-        unsafe_allow_html=True,
-    )
-
-st.markdown('</div>', unsafe_allow_html=True)  # .how-grid
+# (Removed) How it works section — per request
 
 st.markdown("<div style='height: 1.25rem;'></div>", unsafe_allow_html=True)
 
