@@ -98,7 +98,7 @@ st.markdown(
     }
 
     .discovery-wrapper {
-      max-width: 1240px;
+      max-width: 1100px; /* match Option B container */
       margin: 0 auto;
       padding: 0 1rem;
     }
@@ -458,10 +458,19 @@ with cap1:
     )
     cta_a, cta_b = st.columns([1, 1])
     with cta_a:
-        if st.button("Start Market Scan", type="primary", key="home_cap_scan"):
+        if st.button(
+            "Start Market Scan",
+            type="primary",
+            key="home_cap_scan",
+            use_container_width=True,
+        ):
             st.switch_page("pages/Discovery.py" if is_logged_in() else "pages/Auth.py")
     with cta_b:
-        if st.button("View demo results", key="home_cap_demo"):
+        if st.button(
+            "View demo results",
+            key="home_cap_demo",
+            use_container_width=True,
+        ):
             st.session_state["_scroll_demo"] = True
             st.experimental_rerun()
 
@@ -483,11 +492,19 @@ with cap2:
     )
 
     ticker_prefill = st.session_state.get("home_analyze_ticker", "TSLA")
-    analyze_ticker = st.text_input("Ticker", value=ticker_prefill, key="home_analyze_ticker")
 
-    if st.button("Analyze", type="primary", key="home_cap_analyze"):
-        st.session_state["prefill_deep_ticker"] = (analyze_ticker or "").strip().upper()
-        st.switch_page("pages/Deep_Analysis.py" if is_logged_in() else "pages/Auth.py")
+    in_col, btn_col = st.columns([2, 1])
+    with in_col:
+        analyze_ticker = st.text_input("Ticker", value=ticker_prefill, key="home_analyze_ticker")
+    with btn_col:
+        if st.button(
+            "Analyze",
+            type="primary",
+            key="home_cap_analyze",
+            use_container_width=True,
+        ):
+            st.session_state["prefill_deep_ticker"] = (analyze_ticker or "").strip().upper()
+            st.switch_page("pages/Deep_Analysis.py" if is_logged_in() else "pages/Auth.py")
 
     st.markdown('<div class="cap-hint">Best when you already have a ticker in mind.</div></div>', unsafe_allow_html=True)
 

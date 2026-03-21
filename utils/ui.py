@@ -63,14 +63,17 @@ def apply_theme() -> None:
         }
 
         div[data-testid="stMainBlockContainer"] {
-          max-width: 100%;
+          /* Global container: match Option B tighter layout */
+          max-width: 1100px;
+          margin: 0 auto;
           padding-left: 2rem;
           padding-right: 2rem;
           padding-top: 0rem;
         }
 
         .clawd-app-wrapper {
-          max-width: 1400px;
+          /* Keep wrapper aligned with global main container */
+          max-width: 1100px;
           margin: 0 auto;
           padding: 0 1rem;
         }
