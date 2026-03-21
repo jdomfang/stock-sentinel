@@ -246,6 +246,44 @@ st.markdown(
       padding: 16px;
     }
 
+    /* Capability cards (Option B layout) */
+    .cap-header {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 10px;
+      margin-bottom: 10px;
+    }
+    .cap-title {
+      font-weight: 800;
+      font-size: 1.00rem; /* keep close to existing sizing */
+      margin: 0;
+      color: rgba(229,231,235,.98);
+    }
+    .cap-desc {
+      margin: 6px 0 0 0;
+      color: rgba(229,231,235,.78);
+      font-size: 0.94rem;
+      line-height: 1.45;
+      max-width: 46ch;
+    }
+    .cap-badge {
+      font-size: 0.72rem;
+      padding: 0.30rem 0.55rem;
+      border-radius: 999px;
+      border: 1px solid rgba(56,189,248,.30);
+      color: rgba(229,231,235,.92);
+      background: rgba(56,189,248,.10);
+      font-weight: 700;
+      flex: 0 0 auto;
+      margin-top: 2px;
+    }
+    .cap-hint {
+      margin-top: 10px;
+      color: rgba(229,231,235,.62);
+      font-size: 0.86rem;
+    }
+
     /* Metrics row tweaks */
     [data-testid="stMetric"] {
       border: 1px solid var(--border);
@@ -305,6 +343,7 @@ st.markdown(
 
     /* Allow our wrapped sections to reflow instead of cramming columns */
     .how-grid [data-testid="stHorizontalBlock"],
+    .cap-grid [data-testid="stHorizontalBlock"],
     .demo-header [data-testid="stHorizontalBlock"],
     .ticker-row [data-testid="stHorizontalBlock"] {
       flex-wrap: wrap !important;
@@ -313,6 +352,7 @@ st.markdown(
 
     /* Give Streamlit columns a sane min width so they wrap to 2-up / 1-up naturally */
     .how-grid [data-testid="column"],
+    .cap-grid [data-testid="column"],
     .demo-header [data-testid="column"],
     .ticker-row [data-testid="column"] {
       flex: 1 1 260px !important;
@@ -327,6 +367,7 @@ st.markdown(
       }
 
       .how-grid [data-testid="column"],
+      .cap-grid [data-testid="column"],
       .demo-header [data-testid="column"],
       .ticker-row [data-testid="column"] {
         flex: 1 1 100% !important;
@@ -395,6 +436,64 @@ st.markdown(
     unsafe_allow_html=True,
 )
 
+# --- Option B capability cards (two primary capabilities, side-by-side) ---
+st.markdown('<div class="cap-grid">', unsafe_allow_html=True)
+cap1, cap2 = st.columns(2)
+
+from utils.auth import is_logged_in
+
+with cap1:
+    st.markdown(
+        """
+        <div class="card">
+          <div class="cap-header">
+            <div>
+              <div class="cap-title">Market Scan</div>
+              <p class="cap-desc">Find US tickers gaining unusual attention, then shortlist the best candidates.</p>
+            </div>
+            <div class="cap-badge">Mode 1</div>
+          </div>
+        """,
+        unsafe_allow_html=True,
+    )
+    cta_a, cta_b = st.columns([1, 1])
+    with cta_a:
+        if st.button("Start Market Scan", type="primary", key="home_cap_scan"):
+            st.switch_page("pages/Discovery.py" if is_logged_in() else "pages/Auth.py")
+    with cta_b:
+        if st.button("View demo results", key="home_cap_demo"):
+            st.session_state["_scroll_demo"] = True
+            st.experimental_rerun()
+
+    st.markdown('<div class="cap-hint">Best when you don’t have a ticker yet.</div></div>', unsafe_allow_html=True)
+
+with cap2:
+    st.markdown(
+        """
+        <div class="card">
+          <div class="cap-header">
+            <div>
+              <div class="cap-title">Analyze a Stock</div>
+              <p class="cap-desc">Enter a ticker and get a clear signal (Buy/Watch/Avoid) with drivers and risk notes.</p>
+            </div>
+            <div class="cap-badge">Mode 2</div>
+          </div>
+        """,
+        unsafe_allow_html=True,
+    )
+
+    ticker_prefill = st.session_state.get("home_analyze_ticker", "TSLA")
+    analyze_ticker = st.text_input("Ticker", value=ticker_prefill, key="home_analyze_ticker")
+
+    if st.button("Analyze", type="primary", key="home_cap_analyze"):
+        st.session_state["prefill_deep_ticker"] = (analyze_ticker or "").strip().upper()
+        st.switch_page("pages/Deep_Analysis.py" if is_logged_in() else "pages/Auth.py")
+
+    st.markdown('<div class="cap-hint">Best when you already have a ticker in mind.</div></div>', unsafe_allow_html=True)
+
+st.markdown('</div>', unsafe_allow_html=True)  # .cap-grid
+st.markdown("<div style='height: 1.25rem;'></div>", unsafe_allow_html=True)
+
 # How it works (polished cards)
 st.markdown('<div class="section-title">How it works</div>', unsafe_allow_html=True)
 
@@ -438,6 +537,20 @@ st.markdown('</div>', unsafe_allow_html=True)  # .how-grid
 st.markdown("<div style='height: 1.25rem;'></div>", unsafe_allow_html=True)
 
 # Demo scan output (match the post-scan layout from Discovery)
+st.markdown('<div id="demo-scan"></div>', unsafe_allow_html=True)
+
+# If user clicked "View demo results" in the capability card, scroll here.
+if st.session_state.pop("_scroll_demo", False):
+    components.html(
+        """
+        <script>
+          const el = window.parent.document.getElementById('demo-scan');
+          if (el) el.scrollIntoView({behavior: 'smooth', block: 'start'});
+        </script>
+        """,
+        height=0,
+    )
+
 df_demo = _load_demo_scan()
 if df_demo.empty:
     st.info("No demo data found yet. You can generate it via scripts/record_demo.py")

@@ -34,9 +34,11 @@ open_page(
 
 st.subheader("Stock Analysis")
 
+ticker_default = (st.session_state.pop("prefill_deep_ticker", None) or "NVDA").strip() or "NVDA"
+
 ticker = st.text_input(
     "Stock Ticker",
-    "NVDA",
+    ticker_default,
     help="Enter stock ticker symbol (e.g., NVDA, AAPL, TSLA)",
 )
 
