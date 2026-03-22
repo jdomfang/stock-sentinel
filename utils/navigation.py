@@ -127,8 +127,9 @@ def render_top_nav() -> None:
         .clawd-topnav .clawd-auth {
           display: flex;
           justify-content: flex-end;
-          align-items: center;
+          align-items: center !important;
           width: 100%;
+          min-height: 32px;
         }
 
         /* Keep Home and auth visually adjacent like the mockup */
@@ -423,5 +424,8 @@ def render_top_nav() -> None:
         # JS: hide the sentinel "Services" row in the dropdown menu (so menu shows only real destinations)
 
     # JS: force selectbox placeholder/value readable + keep dropdown themed (the earlier working approach)
+
+    # No extra spacer after nav (prevents big gap before the hero)
+orking approach)
 
     # No extra spacer after nav (prevents big gap before the hero)
