@@ -89,18 +89,19 @@ st.markdown(
     <style>
     /* Home page styling; global theme comes from utils.ui.apply_theme() */
 
-    /* Main container spacing (fluid on mobile/tablet) */
+    /* Main container: match v3 mockup container */
     div[data-testid="stMainBlockContainer"] {
-      max-width: 100%;
-      padding-left: clamp(16px, 4vw, 32px);
-      padding-right: clamp(16px, 4vw, 32px);
+      max-width: 1100px;
+      margin: 0 auto;
+      padding-left: clamp(16px, 4vw, 28px);
+      padding-right: clamp(16px, 4vw, 28px);
       padding-top: 0.25rem;
     }
 
     .discovery-wrapper {
-      max-width: 1100px; /* match Option B container */
+      max-width: 1100px;
       margin: 0 auto;
-      padding: 0 1rem;
+      padding: 0;
     }
 
     /* Section titles */
@@ -246,17 +247,25 @@ st.markdown(
       padding: 16px;
     }
 
-    /* Capability cards (v3 mockup layout) */
-    .card {
-      display: flex !important;
-      flex-direction: column !important;
-    }
-    .cap-header {
+    /* Capability cards: style Streamlit containers directly (widgets must live inside them) */
+    .st-key-home_card_scan,
+    .st-key-home_card_analyze {
+      border: 1px solid rgba(148,163,184,0.18);
+      background: linear-gradient(180deg, rgba(15,23,42,.92), rgba(15,23,42,.72));
+      border-radius: 16px;
+      padding: 18px;
+      box-shadow: 0 10px 28px rgba(0,0,0,.35);
+      height: 100%;
       display: flex;
-      align-items: flex-start;
-      gap: 10px;
-      margin-bottom: 10px;
+      flex-direction: column;
     }
+
+    .st-key-home_card_scan_actions,
+    .st-key-home_card_analyze_actions {
+      margin-top: auto;
+      padding-top: 14px;
+    }
+
     .cap-title {
       font-weight: 800;
       font-size: 1.00rem;
@@ -269,10 +278,6 @@ st.markdown(
       font-size: 0.94rem;
       line-height: 1.45;
       max-width: 46ch;
-    }
-    /* Push the input+button row to the bottom of each card */
-    .cap-grid [data-testid="column"] > div:last-child {
-      margin-top: auto;
     }
 
     /* Metrics row tweaks */
@@ -411,7 +416,6 @@ components.html(
     height=0,
 )
 
-st.markdown('<div class="clawd-app-wrapper discovery-wrapper">', unsafe_allow_html=True)
 
 # --- Hero: same structure as Discovery; wording swapped for Home ---
 st.markdown(
@@ -430,69 +434,80 @@ st.markdown(
 # --- Capability cards (v3 mockup layout) ---
 from utils.auth import is_logged_in
 
-st.markdown('<div class="cap-grid">', unsafe_allow_html=True)
-cap1, cap2 = st.columns(2)
+with st.container(key="home_cap_grid"):
+    cap1, cap2 = st.columns(2)
 
-with cap1:
-    st.markdown(
-        """
-        <div class="card">
-          <div class="cap-header">
-            <div>
-              <div class="cap-title">Market Scan</div>
-              <p class="cap-desc">Pick a sector and we identify US stocks gaining unusual social media attention.</p>
-            </div>
-          </div>
-        """,
-        unsafe_allow_html=True,
-    )
-    sel_col, btn_col = st.columns([2, 1])
-    with sel_col:
-        home_sector = st.selectbox(
-            "Sector",
-            options=[
-                "tech", "healthcare", "energy", "finance", "consumer",
-                "utilities", "real estate", "industrials", "materials", "communication",
-            ],
-            index=0,
-            key="home_sector",
-            label_visibility="collapsed",
-        )
-    with btn_col:
-        if st.button("Sentinel Scan", type="primary", key="home_cap_scan", use_container_width=True):
-            st.session_state["selected_sector"] = home_sector
-            st.switch_page("pages/Discovery.py" if is_logged_in() else "pages/Auth.py")
-    st.markdown('</div>', unsafe_allow_html=True)
+    with cap1:
+        with st.container(key="home_card_scan"):
+            st.markdown(
+                """
+                <div class="cap-title">Market Scan</div>
+                <p class="cap-desc">Pick a sector and we identify US stocks gaining unusual social media attention.</p>
+                """,
+                unsafe_allow_html=True,
+            )
 
-with cap2:
-    st.markdown(
-        """
-        <div class="card">
-          <div class="cap-header">
-            <div>
-              <div class="cap-title">Analyze a Stock</div>
-              <p class="cap-desc">Enter a ticker and get a clear signal (Buy/Watch/Avoid) with catalysts, risks, and growth projections.</p>
-            </div>
-          </div>
-        """,
-        unsafe_allow_html=True,
-    )
-    in_col, btn_col = st.columns([2, 1])
-    with in_col:
-        analyze_ticker = st.text_input(
-            "Ticker",
-            value=st.session_state.get("home_analyze_ticker", ""),
-            placeholder="Ticker — e.g. TSLA",
-            key="home_analyze_ticker",
-            label_visibility="collapsed",
-        )
-    with btn_col:
-        if st.button("Analyze", type="primary", key="home_cap_analyze", use_container_width=True):
-            st.session_state["prefill_deep_ticker"] = (analyze_ticker or "").strip().upper()
-            st.switch_page("pages/Deep_Analysis.py" if is_logged_in() else "pages/Auth.py")
-    st.markdown('</div>', unsafe_allow_html=True)
+            with st.container(key="home_card_scan_actions"):
+                sel_col, btn_col = st.columns([2, 1])
+                with sel_col:
+                    home_sector = st.selectbox(
+                        "Sector",
+                        options=[
+                            "tech",
+                            "healthcare",
+                            "energy",
+                            "finance",
+                            "consumer",
+                            "utilities",
+                            "real estate",
+                            "industrials",
+                            "materials",
+                            "communication",
+                        ],
+                        index=0,
+                        key="home_sector",
+                        label_visibility="collapsed",
+                    )
+                with btn_col:
+                    if st.button(
+                        "Sentinel Scan",
+                        type="primary",
+                        key="home_cap_scan",
+                        use_container_width=True,
+                    ):
+                        st.session_state["selected_sector"] = home_sector
+                        st.switch_page("pages/Discovery.py" if is_logged_in() else "pages/Auth.py")
 
-st.markdown('</div>', unsafe_allow_html=True)  # .cap-grid
+    with cap2:
+        with st.container(key="home_card_analyze"):
+            st.markdown(
+                """
+                <div class="cap-title">Analyze a Stock</div>
+                <p class="cap-desc">Enter a ticker and get a clear signal (Buy/Watch/Avoid) with catalysts, risks, and growth projections.</p>
+                """,
+                unsafe_allow_html=True,
+            )
+
+            with st.container(key="home_card_analyze_actions"):
+                in_col, btn_col = st.columns([2, 1])
+                with in_col:
+                    analyze_ticker = st.text_input(
+                        "Ticker",
+                        value=st.session_state.get("home_analyze_ticker", ""),
+                        placeholder="Ticker — e.g. TSLA",
+                        key="home_analyze_ticker",
+                        label_visibility="collapsed",
+                    )
+                with btn_col:
+                    if st.button(
+                        "Analyze",
+                        type="primary",
+                        key="home_cap_analyze",
+                        use_container_width=True,
+                    ):
+                        st.session_state["prefill_deep_ticker"] = (analyze_ticker or "").strip().upper()
+                        st.switch_page("pages/Deep_Analysis.py" if is_logged_in() else "pages/Auth.py")
+
 st.markdown("<div style='height: 1.25rem;'></div>", unsafe_allow_html=True)
 
 # (Removed) How it works section - per request

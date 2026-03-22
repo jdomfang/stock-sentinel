@@ -155,8 +155,7 @@ def render_top_nav() -> None:
         }
 
         /* Ensure wrapper doesn't contribute a hairline outline */
-        .st-key-nav_discover [data-testid="stButton"],
-        .st-key-nav_deep [data-testid="stButton"] {
+        .st-key-nav_home [data-testid="stButton"] {
           /* preserve box model without visible outline */
           border: 1px solid rgba(0,0,0,0) !important;
           outline: 0 !important;
@@ -309,11 +308,11 @@ def render_top_nav() -> None:
             return int(data.get("scan_credits") or 0), int(data.get("deep_credits") or 0)
 
         if is_logged_in():
-            spacer_col, credits_col, admin_col, gap_col, auth_col = st.columns(
-                [7.5, 1.15, 0.55, 0.10, 0.70]
+            spacer_col, credits_col, admin_col, home_col, gap_col, auth_col = st.columns(
+                [6.8, 1.15, 0.55, 0.55, 0.10, 0.70]
             )
         else:
-            spacer_col, gap_col, auth_col = st.columns([9.0, 0.12, 0.75])
+            spacer_col, home_col, gap_col, auth_col = st.columns([8.2, 0.55, 0.12, 0.75])
 
         with spacer_col:
             st.markdown("")
@@ -365,6 +364,13 @@ def render_top_nav() -> None:
                 if user_email.lower().strip() == admin_email and admin_email:
                     if st.button("🛠️", use_container_width=True, help="Admin Dashboard"):
                         st.switch_page("pages/Admin.py")
+
+        # Home link (right before auth)
+        with home_col:
+            st.markdown('<div class="clawd-navlink">', unsafe_allow_html=True)
+            if st.button("Home", use_container_width=False, key="nav_home"):
+                st.switch_page("pages/Home.py")
+            st.markdown('</div>', unsafe_allow_html=True)
 
         # Auth button (right-most)
         with auth_col:
