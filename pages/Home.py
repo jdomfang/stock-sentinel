@@ -185,17 +185,8 @@ st.markdown(
 
     /* Hero (no box) */
     .hero {
-      /* Let the eyebrow align with the top nav row like the mockup */
-      margin: -1.05rem 0 18px 0;
+      margin: 0 0 18px 0;
       padding: 0 2px 2px 2px;
-    }
-    .hero-eyebrow {
-      color: rgba(56,189,248,.95);
-      font-weight: 750;
-      letter-spacing: 0.06em;
-      text-transform: uppercase;
-      font-size: 0.78rem;
-      margin-bottom: 6px;
     }
     .hero-title {
       font-size: clamp(28px, 3.0vw, 2.05rem);
@@ -421,7 +412,6 @@ components.html(
 st.markdown(
     """
     <div class="hero">
-      <div class="hero-eyebrow">Stock Sentinel</div>
       <div class="hero-title">Finding short-term opportunities shouldn't feel like a full-time job.</div>
       <div class="hero-subtitle">We turn noise into signals by analyzing social media sentiment and using market data to validate real momentum.</div>
 

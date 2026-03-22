@@ -89,14 +89,32 @@ def render_top_nav() -> None:
           width: fit-content !important;
         }
 
-        /* Reduce extra vertical whitespace under the nav row */
+        /* Top header should be a real shared row, not two overlapped bands */
         .clawd-topnav {
-          margin-bottom: 0.15rem;
+          margin-top: 0 !important;
+          margin-bottom: 0.35rem !important;
+          padding: 0 !important;
         }
 
-        /* Keep Market Scan + Analyze a Stock closer together */
         .clawd-topnav [data-testid="stHorizontalBlock"] {
           gap: 0.20rem !important;
+          align-items: center !important;
+        }
+
+        .clawd-topnav .clawd-brand {
+          display: flex;
+          align-items: center;
+          justify-content: flex-start;
+          width: 100%;
+        }
+        .clawd-topnav .clawd-brandtext {
+          color: rgba(56,189,248,.95);
+          font-weight: 750;
+          letter-spacing: 0.06em;
+          text-transform: uppercase;
+          font-size: 0.78rem;
+          line-height: 1;
+          white-space: nowrap;
         }
 
         /* Responsive nav note:
@@ -112,9 +130,9 @@ def render_top_nav() -> None:
           width: 100%;
         }
 
-        /* Create a slightly larger gap between the nav links and the CTA */
+        /* Keep Home and auth visually adjacent like the mockup */
         .clawd-topnav .clawd-auth {
-          margin-left: 0.55rem;
+          margin-left: 0.08rem;
         }
 
         /* Top-nav link buttons (Market Scan / Analyze a Stock):
@@ -262,18 +280,6 @@ def render_top_nav() -> None:
           }
         }
 
-        /* Tighten spacing between columns inside the nav row + vertically align controls */
-        .clawd-topnav [data-testid="stHorizontalBlock"] {
-          gap: 0.06rem;
-          align-items: center !important;
-        }
-        
-        /* Keep nav and hero on the same visual top line without giant overlap hacks */
-        .clawd-topnav {
-          margin-top: -0.35rem !important;
-          margin-bottom: -1.15rem !important;
-          padding-bottom: 0 !important;
-        }
         
         /* (Services is a nav-link dropdown) */
         
@@ -328,11 +334,14 @@ def render_top_nav() -> None:
             return int(data.get("scan_credits") or 0), int(data.get("deep_credits") or 0)
 
         if is_logged_in():
-            spacer_col, credits_col, admin_col, home_col, gap_col, auth_col = st.columns(
-                [6.72, 1.15, 0.55, 0.62, 0.03, 0.93]
+            brand_col, spacer_col, credits_col, admin_col, home_col, gap_col, auth_col = st.columns(
+                [1.45, 5.27, 1.15, 0.55, 0.58, 0.02, 0.98]
             )
         else:
-            spacer_col, home_col, gap_col, auth_col = st.columns([8.06, 0.62, 0.03, 0.93])
+            brand_col, spacer_col, home_col, gap_col, auth_col = st.columns([1.45, 6.97, 0.58, 0.02, 0.98])
+
+        with brand_col:
+            st.markdown('<div class="clawd-brand"><div class="clawd-brandtext">Stock Sentinel</div></div>', unsafe_allow_html=True)
 
         with spacer_col:
             st.markdown("")
