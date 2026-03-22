@@ -52,13 +52,17 @@ def apply_theme() -> None:
           color: var(--text);
         }
 
-        /* Hide the top-left sidebar toggle */
+        /* Hide Streamlit chrome so the app matches the mockup */
         [data-testid="collapsedControl"],
         button[title="Open sidebar"],
         button[title="Close sidebar"],
         [data-testid="stSidebarCollapsedControl"],
         [data-testid="stSidebarNavCollapseButton"],
-        [data-testid="stSidebarNavExpandButton"] {
+        [data-testid="stSidebarNavExpandButton"],
+        [data-testid="stHeader"],
+        [data-testid="stToolbar"],
+        .stAppToolbar,
+        header[data-testid="stHeader"] {
           display: none !important;
         }
 

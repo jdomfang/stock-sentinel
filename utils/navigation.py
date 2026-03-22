@@ -92,8 +92,8 @@ def render_top_nav() -> None:
 
         /* Top header should be a real shared row, not two overlapped bands */
         .clawd-topnav {
-          margin-top: 0 !important;
-          margin-bottom: 0.35rem !important;
+          margin-top: -0.18rem !important;
+          margin-bottom: 0.22rem !important;
           padding: 0 !important;
         }
 
@@ -340,10 +340,10 @@ def render_top_nav() -> None:
 
         if is_logged_in():
             brand_col, spacer_col, credits_col, admin_col, home_col, gap_col, auth_col = st.columns(
-                [1.45, 5.27, 1.15, 0.55, 0.58, 0.02, 0.98]
+                [1.45, 5.36, 1.15, 0.55, 0.50, 0.01, 0.98]
             )
         else:
-            brand_col, spacer_col, home_col, gap_col, auth_col = st.columns([1.45, 6.97, 0.58, 0.02, 0.98])
+            brand_col, spacer_col, home_col, gap_col, auth_col = st.columns([1.45, 7.06, 0.50, 0.01, 0.98])
 
         with brand_col:
             st.markdown('<div class="clawd-brand"><div class="clawd-brandtext">STOCK SENTINEL</div></div>', unsafe_allow_html=True)
