@@ -154,12 +154,35 @@ def render_top_nav() -> None:
           box-shadow: none !important;
         }
 
-        /* Ensure wrapper doesn't contribute a hairline outline */
-        .st-key-nav_home [data-testid="stButton"] {
-          /* preserve box model without visible outline */
+        /* Home nav link: match the mockup-style text link next to auth */
+        .st-key-nav_home [data-testid="stButton"] > button {
+          background: transparent !important;
+          background-color: transparent !important;
           border: 1px solid rgba(0,0,0,0) !important;
           outline: 0 !important;
+          box-shadow: none !important;
+          padding: 0.10rem 0.10rem !important;
+          min-height: 32px !important;
+          color: rgba(229,231,235,.92) !important;
+          font-weight: 750 !important;
+          font-size: 0.86rem !important;
+          letter-spacing: -0.01em;
+          white-space: nowrap !important;
+          width: fit-content !important;
+          min-width: auto !important;
+        }
+        .st-key-nav_home [data-testid="stButton"] > button:hover {
           background: transparent !important;
+          background-color: transparent !important;
+          border-color: transparent !important;
+          text-decoration: underline;
+          text-underline-offset: 4px;
+          text-decoration-color: rgba(56,189,248,.55);
+        }
+        .st-key-nav_home [data-testid="stButton"] > button:focus,
+        .st-key-nav_home [data-testid="stButton"] > button:focus-visible {
+          outline: 0 !important;
+          border-color: transparent !important;
           box-shadow: none !important;
         }
         .clawd-topnav .clawd-navlink [data-testid="stButton"] > button:hover {
@@ -309,10 +332,10 @@ def render_top_nav() -> None:
 
         if is_logged_in():
             spacer_col, credits_col, admin_col, home_col, gap_col, auth_col = st.columns(
-                [6.8, 1.15, 0.55, 0.55, 0.10, 0.70]
+                [6.55, 1.15, 0.55, 0.70, 0.08, 0.95]
             )
         else:
-            spacer_col, home_col, gap_col, auth_col = st.columns([8.2, 0.55, 0.12, 0.75])
+            spacer_col, home_col, gap_col, auth_col = st.columns([7.9, 0.70, 0.08, 0.95])
 
         with spacer_col:
             st.markdown("")
