@@ -426,6 +426,3 @@ def render_top_nav() -> None:
     # JS: force selectbox placeholder/value readable + keep dropdown themed (the earlier working approach)
 
     # No extra spacer after nav (prevents big gap before the hero)
-orking approach)
-
-    # No extra spacer after nav (prevents big gap before the hero)
