@@ -185,7 +185,7 @@ st.markdown(
 
     /* Hero (no box) */
     .hero {
-      margin: 0 0 18px 0;
+      margin: -3.95rem 0 18px 0;
       padding: 0 2px 2px 2px;
     }
     .hero-title {
