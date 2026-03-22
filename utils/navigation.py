@@ -81,12 +81,13 @@ def render_top_nav() -> None:
         .clawd-topnav button[data-testid="stBaseButton-primary"],
         .clawd-topnav .stButton > button[kind="primary"] {
           min-height: 32px !important;
-          padding: 0.16rem 0.52rem !important;
+          padding: 0.10rem 0.52rem !important;
           font-size: 0.80rem !important;
           font-weight: 750 !important;
           border-radius: 999px !important;
           box-shadow: 0 10px 24px rgba(0,0,0,.18);
           width: fit-content !important;
+          line-height: 1 !important;
         }
 
         /* Top header should be a real shared row, not two overlapped bands */
@@ -223,6 +224,10 @@ def render_top_nav() -> None:
         .clawd-topnav .clawd-navlink [data-testid="stButton"] > button {
           border-radius: 10px !important;
           border: none !important;
+          min-height: 32px !important;
+          line-height: 1 !important;
+          padding-top: 0.10rem !important;
+          padding-bottom: 0.10rem !important;
         }
 
         /* Services dropdown (native Streamlit selectbox) — tighten empty space before caret */
@@ -341,7 +346,7 @@ def render_top_nav() -> None:
             brand_col, spacer_col, home_col, gap_col, auth_col = st.columns([1.45, 6.97, 0.58, 0.02, 0.98])
 
         with brand_col:
-            st.markdown('<div class="clawd-brand"><div class="clawd-brandtext">Stock Sentinel</div></div>', unsafe_allow_html=True)
+            st.markdown('<div class="clawd-brand"><div class="clawd-brandtext">STOCK SENTINEL</div></div>', unsafe_allow_html=True)
 
         with spacer_col:
             st.markdown("")
