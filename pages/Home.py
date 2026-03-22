@@ -200,7 +200,7 @@ st.markdown(
       color: var(--muted);
       font-size: clamp(15px, 1.35vw, 1.05rem);
       line-height: 1.45;
-      margin: 0 0 8px 0;
+      margin: 0 0 0 0;
       max-width: 760px;
     }
     .hero-chips {
