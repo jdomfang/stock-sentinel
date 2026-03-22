@@ -117,7 +117,7 @@ def render_top_nav() -> None:
           font-size: 0.78rem;
           line-height: 32px;
           white-space: nowrap;
-          margin: 48px 0 0 0;
+          margin: 60px 0 0 0;
           display: inline-block;
         }
 
