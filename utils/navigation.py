@@ -110,7 +110,7 @@ def render_top_nav() -> None:
           min-height: 32px;
         }
         .clawd-topnav .clawd-brandtext {
-          color: rgba(56,189,248,.95);
+          color: rgba(14,116,144,.95);
           font-weight: 750;
           letter-spacing: 0.06em;
           text-transform: uppercase;
