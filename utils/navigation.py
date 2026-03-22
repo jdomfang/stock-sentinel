@@ -110,7 +110,8 @@ def render_top_nav() -> None:
           min-height: 32px;
         }
         .clawd-topnav .clawd-brandtext {
-          color: rgba(14,116,144,.95);
+          color: rgba(56,189,248,.95) !important;
+          -webkit-text-fill-color: rgba(56,189,248,.95) !important;
           font-weight: 750;
           letter-spacing: 0.06em;
           text-transform: uppercase;
@@ -350,7 +351,7 @@ def render_top_nav() -> None:
             brand_col, spacer_col, home_col, gap_col, auth_col = st.columns([1.45, 7.09, 0.46, 0.01, 0.99])
 
         with brand_col:
-            st.markdown('<div class="clawd-brand"><div class="clawd-brandtext" style="position: relative; top: 18px;">STOCK SENTINEL</div></div>', unsafe_allow_html=True)
+            st.markdown('<div class="clawd-brand"><div class="clawd-brandtext" style="position: relative; top: 18px; color: rgba(56,189,248,.95) !important; -webkit-text-fill-color: rgba(56,189,248,.95) !important;">STOCK SENTINEL</div></div>', unsafe_allow_html=True)
 
         with spacer_col:
             st.markdown("")
