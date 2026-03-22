@@ -300,6 +300,26 @@ st.markdown(
       color: var(--text) !important;
     }
 
+    /* Sector dropdown menu readability */
+    ul[data-testid="stSelectboxVirtualDropdown"] {
+      background: #0F172A !important;
+      color: #E5E7EB !important;
+      border: 1px solid rgba(148,163,184,0.18) !important;
+    }
+    ul[data-testid="stSelectboxVirtualDropdown"] li,
+    ul[data-testid="stSelectboxVirtualDropdown"] li *,
+    ul[data-testid="stSelectboxVirtualDropdown"] [role="option"],
+    ul[data-testid="stSelectboxVirtualDropdown"] [role="option"] * {
+      color: #E5E7EB !important;
+      -webkit-text-fill-color: #E5E7EB !important;
+      opacity: 1 !important;
+    }
+    ul[data-testid="stSelectboxVirtualDropdown"] li[aria-selected="true"],
+    ul[data-testid="stSelectboxVirtualDropdown"] [role="option"][aria-selected="true"] {
+      background: rgba(56,189,248,.16) !important;
+      color: #F8FAFC !important;
+    }
+
     /* Buttons */
     .stButton > button {
       border-radius: 12px;
