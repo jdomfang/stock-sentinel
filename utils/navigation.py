@@ -350,7 +350,7 @@ def render_top_nav() -> None:
             brand_col, spacer_col, home_col, gap_col, auth_col = st.columns([1.45, 7.09, 0.46, 0.01, 0.99])
 
         with brand_col:
-            st.markdown('<div class="clawd-brand"><div class="clawd-brandtext">STOCK SENTINEL</div></div>', unsafe_allow_html=True)
+            st.markdown('<div class="clawd-brand"><div class="clawd-brandtext" style="position: relative; top: 18px;">STOCK SENTINEL</div></div>', unsafe_allow_html=True)
 
         with spacer_col:
             st.markdown("")
