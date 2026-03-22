@@ -193,15 +193,15 @@ st.markdown(
       font-weight: 850;
       letter-spacing: -0.035em;
       line-height: 1.08;
-      margin: 0 0 10px 0;
-      max-width: 760px;
+      margin: 0 0 8px 0;
+      max-width: 880px;
     }
     .hero-subtitle {
       color: var(--muted);
       font-size: clamp(15px, 1.35vw, 1.05rem);
-      line-height: 1.5;
-      margin: 0 0 12px 0;
-      max-width: 980px;
+      line-height: 1.45;
+      margin: 0 0 8px 0;
+      max-width: 760px;
     }
     .hero-chips {
       display: flex;
@@ -638,5 +638,8 @@ with cta:
         st.switch_page("pages/Discovery.py" if is_logged_in() else "pages/Auth.py")
     # Helper text should be directly below the button
     st.caption("Includes $5.00 in free credits to get started.")
+
+close_page()
+arted.")
 
 close_page()
