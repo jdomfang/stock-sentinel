@@ -108,7 +108,6 @@ def render_top_nav() -> None:
           justify-content: flex-start;
           width: 100%;
           min-height: 32px;
-          padding-top: 18px;
         }
         .clawd-topnav .clawd-brandtext {
           color: rgba(56,189,248,.95);
@@ -118,7 +117,7 @@ def render_top_nav() -> None:
           font-size: 0.78rem;
           line-height: 32px;
           white-space: nowrap;
-          margin: 0;
+          margin: 18px 0 0 0;
           display: inline-block;
         }
 
