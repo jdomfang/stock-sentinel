@@ -104,9 +104,11 @@ def render_top_nav() -> None:
 
         .clawd-topnav .clawd-brand {
           display: flex;
-          align-items: center;
+          align-items: center !important;
           justify-content: flex-start;
           width: 100%;
+          min-height: 32px;
+          padding-top: 18px;
         }
         .clawd-topnav .clawd-brandtext {
           color: rgba(56,189,248,.95);
@@ -114,8 +116,10 @@ def render_top_nav() -> None:
           letter-spacing: 0.06em;
           text-transform: uppercase;
           font-size: 0.78rem;
-          line-height: 1;
+          line-height: 32px;
           white-space: nowrap;
+          margin: 0;
+          display: inline-block;
         }
 
         /* Responsive nav note:
