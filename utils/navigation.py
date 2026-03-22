@@ -133,7 +133,7 @@ def render_top_nav() -> None:
 
         /* Keep Home and auth visually adjacent like the mockup */
         .clawd-topnav .clawd-auth {
-          margin-left: 0.08rem;
+          margin-left: 0.00rem;
         }
 
         /* Top-nav link buttons (Market Scan / Analyze a Stock):
@@ -343,7 +343,7 @@ def render_top_nav() -> None:
                 [1.45, 5.36, 1.15, 0.55, 0.50, 0.01, 0.98]
             )
         else:
-            brand_col, spacer_col, home_col, gap_col, auth_col = st.columns([1.45, 7.06, 0.50, 0.01, 0.98])
+            brand_col, spacer_col, home_col, gap_col, auth_col = st.columns([1.45, 7.10, 0.46, 0.00, 0.99])
 
         with brand_col:
             st.markdown('<div class="clawd-brand"><div class="clawd-brandtext">STOCK SENTINEL</div></div>', unsafe_allow_html=True)
