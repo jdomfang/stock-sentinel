@@ -92,7 +92,7 @@ def render_top_nav() -> None:
 
         /* Top header should be a real shared row, not two overlapped bands */
         .clawd-topnav {
-          margin-top: -0.18rem !important;
+          margin-top: -1.55rem !important;
           margin-bottom: 0.22rem !important;
           padding: 0 !important;
         }

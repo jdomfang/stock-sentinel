@@ -52,6 +52,13 @@ def apply_theme() -> None:
           color: var(--text);
         }
 
+        [data-testid="stMain"],
+        .stMain,
+        section[data-testid="stMain"] {
+          padding-top: 0 !important;
+          margin-top: 0 !important;
+        }
+
         /* Hide Streamlit chrome so the app matches the mockup */
         [data-testid="collapsedControl"],
         button[title="Open sidebar"],
