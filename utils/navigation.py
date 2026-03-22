@@ -264,17 +264,14 @@ def render_top_nav() -> None:
 
         /* Tighten spacing between columns inside the nav row + vertically align controls */
         .clawd-topnav [data-testid="stHorizontalBlock"] {
-          gap: 0.12rem;
+          gap: 0.06rem;
           align-items: center !important;
         }
         
-        /* Reduce vertical margin below nav to close gap with hero */
+        /* Keep nav and hero on the same visual top line without giant overlap hacks */
         .clawd-topnav {
-          /* Pull the whole nav row closer to the top */
-          margin-top: -0.6rem !important;
-
-          /* Pull the page content up under the nav */
-          margin-bottom: -4.0rem !important;
+          margin-top: -0.35rem !important;
+          margin-bottom: -1.15rem !important;
           padding-bottom: 0 !important;
         }
         
@@ -332,10 +329,10 @@ def render_top_nav() -> None:
 
         if is_logged_in():
             spacer_col, credits_col, admin_col, home_col, gap_col, auth_col = st.columns(
-                [6.55, 1.15, 0.55, 0.70, 0.08, 0.95]
+                [6.72, 1.15, 0.55, 0.62, 0.03, 0.93]
             )
         else:
-            spacer_col, home_col, gap_col, auth_col = st.columns([7.9, 0.70, 0.08, 0.95])
+            spacer_col, home_col, gap_col, auth_col = st.columns([8.06, 0.62, 0.03, 0.93])
 
         with spacer_col:
             st.markdown("")

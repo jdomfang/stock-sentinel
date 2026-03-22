@@ -185,9 +185,9 @@ st.markdown(
 
     /* Hero (no box) */
     .hero {
-      /* Desktop: pull hero up closer to the top nav */
-      margin: -5.65rem 0 18px 0;
-      padding: 8px 2px 2px 2px;
+      /* Let the eyebrow align with the top nav row like the mockup */
+      margin: -1.05rem 0 18px 0;
+      padding: 0 2px 2px 2px;
     }
     .hero-eyebrow {
       color: rgba(56,189,248,.95);
