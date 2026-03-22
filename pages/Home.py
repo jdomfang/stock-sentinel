@@ -246,17 +246,20 @@ st.markdown(
       padding: 16px;
     }
 
-    /* Capability cards (Option B layout) */
+    /* Capability cards (v3 mockup layout) */
+    .card {
+      display: flex !important;
+      flex-direction: column !important;
+    }
     .cap-header {
       display: flex;
       align-items: flex-start;
-      justify-content: space-between;
       gap: 10px;
       margin-bottom: 10px;
     }
     .cap-title {
       font-weight: 800;
-      font-size: 1.00rem; /* keep close to existing sizing */
+      font-size: 1.00rem;
       margin: 0;
       color: rgba(229,231,235,.98);
     }
@@ -267,21 +270,9 @@ st.markdown(
       line-height: 1.45;
       max-width: 46ch;
     }
-    .cap-badge {
-      font-size: 0.72rem;
-      padding: 0.30rem 0.55rem;
-      border-radius: 999px;
-      border: 1px solid rgba(56,189,248,.30);
-      color: rgba(229,231,235,.92);
-      background: rgba(56,189,248,.10);
-      font-weight: 700;
-      flex: 0 0 auto;
-      margin-top: 2px;
-    }
-    .cap-hint {
-      margin-top: 10px;
-      color: rgba(229,231,235,.62);
-      font-size: 0.86rem;
+    /* Push the input+button row to the bottom of each card */
+    .cap-grid [data-testid="column"] > div:last-child {
+      margin-top: auto;
     }
 
     /* Metrics row tweaks */
@@ -427,7 +418,7 @@ st.markdown(
     """
     <div class="hero">
       <div class="hero-eyebrow">Stock Sentinel</div>
-      <div class="hero-title">Finding short‑term opportunities shouldn’t feel like a full‑time job.</div>
+      <div class="hero-title">Finding short-term opportunities shouldn't feel like a full-time job.</div>
       <div class="hero-subtitle">We turn noise into signals by analyzing social media sentiment and using market data to validate real momentum.</div>
 
       <!-- chips + disclaimer removed on request -->
@@ -436,11 +427,11 @@ st.markdown(
     unsafe_allow_html=True,
 )
 
-# --- Option B capability cards (two primary capabilities, side-by-side) ---
+# --- Capability cards (v3 mockup layout) ---
+from utils.auth import is_logged_in
+
 st.markdown('<div class="cap-grid">', unsafe_allow_html=True)
 cap1, cap2 = st.columns(2)
-
-from utils.auth import is_logged_in
 
 with cap1:
     st.markdown(
@@ -449,32 +440,29 @@ with cap1:
           <div class="cap-header">
             <div>
               <div class="cap-title">Market Scan</div>
-              <p class="cap-desc">Find US tickers gaining unusual attention, then shortlist the best candidates.</p>
+              <p class="cap-desc">Pick a sector and we identify US stocks gaining unusual social media attention.</p>
             </div>
-            <div class="cap-badge">Mode 1</div>
           </div>
         """,
         unsafe_allow_html=True,
     )
-    cta_a, cta_b = st.columns([1, 1])
-    with cta_a:
-        if st.button(
-            "Start Market Scan",
-            type="primary",
-            key="home_cap_scan",
-            use_container_width=True,
-        ):
+    sel_col, btn_col = st.columns([2, 1])
+    with sel_col:
+        home_sector = st.selectbox(
+            "Sector",
+            options=[
+                "tech", "healthcare", "energy", "finance", "consumer",
+                "utilities", "real estate", "industrials", "materials", "communication",
+            ],
+            index=0,
+            key="home_sector",
+            label_visibility="collapsed",
+        )
+    with btn_col:
+        if st.button("Sentinel Scan", type="primary", key="home_cap_scan", use_container_width=True):
+            st.session_state["selected_sector"] = home_sector
             st.switch_page("pages/Discovery.py" if is_logged_in() else "pages/Auth.py")
-    with cta_b:
-        if st.button(
-            "View demo results",
-            key="home_cap_demo",
-            use_container_width=True,
-        ):
-            st.session_state["_scroll_demo"] = True
-            st.experimental_rerun()
-
-    st.markdown('<div class="cap-hint">Best when you don’t have a ticker yet.</div></div>', unsafe_allow_html=True)
+    st.markdown('</div>', unsafe_allow_html=True)
 
 with cap2:
     st.markdown(
@@ -483,35 +471,31 @@ with cap2:
           <div class="cap-header">
             <div>
               <div class="cap-title">Analyze a Stock</div>
-              <p class="cap-desc">Enter a ticker and get a clear signal (Buy/Watch/Avoid) with drivers and risk notes.</p>
+              <p class="cap-desc">Enter a ticker and get a clear signal (Buy/Watch/Avoid) with catalysts, risks, and growth projections.</p>
             </div>
-            <div class="cap-badge">Mode 2</div>
           </div>
         """,
         unsafe_allow_html=True,
     )
-
-    ticker_prefill = st.session_state.get("home_analyze_ticker", "TSLA")
-
     in_col, btn_col = st.columns([2, 1])
     with in_col:
-        analyze_ticker = st.text_input("Ticker", value=ticker_prefill, key="home_analyze_ticker")
+        analyze_ticker = st.text_input(
+            "Ticker",
+            value=st.session_state.get("home_analyze_ticker", ""),
+            placeholder="Ticker — e.g. TSLA",
+            key="home_analyze_ticker",
+            label_visibility="collapsed",
+        )
     with btn_col:
-        if st.button(
-            "Analyze",
-            type="primary",
-            key="home_cap_analyze",
-            use_container_width=True,
-        ):
+        if st.button("Analyze", type="primary", key="home_cap_analyze", use_container_width=True):
             st.session_state["prefill_deep_ticker"] = (analyze_ticker or "").strip().upper()
             st.switch_page("pages/Deep_Analysis.py" if is_logged_in() else "pages/Auth.py")
-
-    st.markdown('<div class="cap-hint">Best when you already have a ticker in mind.</div></div>', unsafe_allow_html=True)
+    st.markdown('</div>', unsafe_allow_html=True)
 
 st.markdown('</div>', unsafe_allow_html=True)  # .cap-grid
 st.markdown("<div style='height: 1.25rem;'></div>", unsafe_allow_html=True)
 
-# (Removed) How it works section — per request
+# (Removed) How it works section - per request
 
 st.markdown("<div style='height: 1.25rem;'></div>", unsafe_allow_html=True)
 
@@ -586,7 +570,7 @@ if demo_results:
     st.subheader("Deep Analyze (demo)")
     st.caption(
         "Deep Analyze turns the data into a clear recommendation (Buy / Watch / Avoid), confidence, "
-        "and the key reasons (catalysts and red flags)—so you can decide whether to take a position or stand aside."
+        "and the key reasons (catalysts and red flags)-so you can decide whether to take a position or stand aside."
     )
 
     ai_summary = generate_ai_summary(demo_results)

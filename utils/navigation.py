@@ -309,13 +309,11 @@ def render_top_nav() -> None:
             return int(data.get("scan_credits") or 0), int(data.get("deep_credits") or 0)
 
         if is_logged_in():
-            # Desktop-friendly widths: give nav links enough room to never overlap.
-            spacer_col, credits_col, admin_col, discover_col, deep_col, gap_col, auth_col = st.columns(
-                [4.9, 1.15, 0.55, 0.95, 1.25, 0.10, 0.70]
+            spacer_col, credits_col, admin_col, gap_col, auth_col = st.columns(
+                [7.5, 1.15, 0.55, 0.10, 0.70]
             )
         else:
-            # Desktop-friendly widths: ensure Market Scan + Analyze a Stock always have room.
-            spacer_col, discover_col, deep_col, gap_col, auth_col = st.columns([6.6, 1.05, 1.35, 0.12, 0.75])
+            spacer_col, gap_col, auth_col = st.columns([9.0, 0.12, 0.75])
 
         with spacer_col:
             st.markdown("")
@@ -368,20 +366,7 @@ def render_top_nav() -> None:
                     if st.button("🛠️", use_container_width=True, help="Admin Dashboard"):
                         st.switch_page("pages/Admin.py")
 
-        # Top-nav links (no dropdown)
-        with discover_col:
-            st.markdown('<div class="clawd-navlink">', unsafe_allow_html=True)
-            if st.button("Market Scan", use_container_width=False, key="nav_discover"):
-                st.switch_page("pages/Discovery.py" if is_logged_in() else "pages/Auth.py")
-            st.markdown('</div>', unsafe_allow_html=True)
-
-        with deep_col:
-            st.markdown('<div class="clawd-navlink">', unsafe_allow_html=True)
-            if st.button("Analyze a Stock", use_container_width=False, key="nav_deep"):
-                st.switch_page("pages/Deep_Analysis.py" if is_logged_in() else "pages/Auth.py")
-            st.markdown('</div>', unsafe_allow_html=True)
-
-        # Auth button (right-most)        # Auth button (right-most)
+        # Auth button (right-most)
         with auth_col:
             st.markdown('<div class="clawd-auth">', unsafe_allow_html=True)
             if is_logged_in():
