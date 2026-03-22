@@ -640,6 +640,3 @@ with cta:
     st.caption("Includes $5.00 in free credits to get started.")
 
 close_page()
-arted.")
-
-close_page()
