@@ -189,11 +189,12 @@ st.markdown(
       padding: 0 2px 2px 2px;
     }
     .hero-title {
-      font-size: clamp(28px, 3.0vw, 2.05rem);
+      font-size: clamp(42px, 5.1vw, 3.55rem);
       font-weight: 850;
-      letter-spacing: -0.03em;
-      line-height: 1.1;
+      letter-spacing: -0.035em;
+      line-height: 1.08;
       margin: 0 0 10px 0;
+      max-width: 760px;
     }
     .hero-subtitle {
       color: var(--muted);
