@@ -89,6 +89,15 @@ st.markdown(
     <style>
     /* Home page styling; global theme comes from utils.ui.apply_theme() */
 
+    /* Keep the header brand in the same blue family as the current primary button */
+    .clawd-topnav .clawd-brandtext,
+    .clawd-topnav .clawd-brandtext *,
+    .clawd-brand .clawd-brandtext,
+    .clawd-brand .clawd-brandtext * {
+      color: rgba(56,189,248,.95) !important;
+      -webkit-text-fill-color: rgba(56,189,248,.95) !important;
+    }
+
     /* Main container: match v3 mockup container */
     div[data-testid="stMainBlockContainer"] {
       max-width: 1100px;

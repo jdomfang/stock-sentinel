@@ -351,7 +351,7 @@ def render_top_nav() -> None:
             brand_col, spacer_col, home_col, gap_col, auth_col = st.columns([1.45, 7.09, 0.46, 0.01, 0.99])
 
         with brand_col:
-            st.markdown('<div class="clawd-brand"><div class="clawd-brandtext" style="position: relative; top: 18px; color: rgba(56,189,248,.95) !important; -webkit-text-fill-color: rgba(56,189,248,.95) !important;"><span style="color: rgba(56,189,248,.95) !important; -webkit-text-fill-color: rgba(56,189,248,.95) !important;">STOCK SENTINEL</span></div></div>', unsafe_allow_html=True)
+            st.markdown('<div class="clawd-brand"><div class="clawd-brandtext" style="position: relative; top: 18px;"><span>STOCK SENTINEL</span></div></div>', unsafe_allow_html=True)
 
         with spacer_col:
             st.markdown("")
