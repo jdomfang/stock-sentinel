@@ -256,6 +256,12 @@ st.markdown(
 
     .st-key-home_cap_grid [data-testid="column"] {
       min-width: 0 !important;
+      display: flex !important;
+      align-self: stretch !important;
+    }
+
+    .st-key-home_cap_grid [data-testid="column"] > div {
+      width: 100% !important;
     }
 
     .st-key-home_card_scan,
@@ -265,7 +271,8 @@ st.markdown(
       border-radius: 16px;
       padding: 15px 15px 13px 15px;
       box-shadow: 0 10px 28px rgba(0,0,0,.35);
-      min-height: 156px;
+      min-height: 168px;
+      width: 100%;
       height: 100%;
       display: flex;
       flex-direction: column;
