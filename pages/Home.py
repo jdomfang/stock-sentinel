@@ -282,9 +282,10 @@ st.markdown(
     .st-key-home_card_analyze_actions {
       margin-top: 0;
       padding-top: 12px;
-      align-self: end;
-      width: calc(100% - 30px) !important;
-      max-width: calc(100% - 30px) !important;
+      align-self: stretch;
+      justify-self: stretch;
+      width: 100% !important;
+      max-width: 100% !important;
       overflow: hidden !important;
     }
 
