@@ -274,14 +274,15 @@ st.markdown(
       min-height: 180px;
       width: 100%;
       height: 180px;
-      display: flex;
-      flex-direction: column;
+      display: grid;
+      grid-template-rows: 1fr auto;
     }
 
     .st-key-home_card_scan_actions,
     .st-key-home_card_analyze_actions {
-      margin-top: auto;
+      margin-top: 0;
       padding-top: 12px;
+      align-self: end;
     }
 
     .cap-title {
