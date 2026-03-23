@@ -263,6 +263,18 @@ st.markdown(
       flex-direction: column;
     }
 
+    .st-key-home_cap_grid [data-testid="stHorizontalBlock"] {
+      gap: 10px !important;
+      justify-content: flex-start !important;
+      align-items: stretch !important;
+    }
+
+    .st-key-home_cap_grid [data-testid="column"] {
+      flex: 0 1 340px !important;
+      max-width: 340px !important;
+      min-width: 300px !important;
+    }
+
     .st-key-home_card_scan_actions,
     .st-key-home_card_analyze_actions {
       margin-top: auto;
