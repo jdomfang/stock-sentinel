@@ -271,9 +271,9 @@ st.markdown(
       border-radius: 16px;
       padding: 15px 15px 13px 15px;
       box-shadow: 0 10px 28px rgba(0,0,0,.35);
-      min-height: 168px;
+      min-height: 180px;
       width: 100%;
-      height: 100%;
+      height: 180px;
       display: flex;
       flex-direction: column;
     }
