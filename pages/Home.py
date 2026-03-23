@@ -283,6 +283,9 @@ st.markdown(
       margin-top: 0;
       padding-top: 12px;
       align-self: end;
+      width: 100% !important;
+      max-width: 100% !important;
+      overflow: hidden !important;
     }
 
     .cap-title {
@@ -304,6 +307,9 @@ st.markdown(
       gap: 10px !important;
       align-items: center !important;
       flex-wrap: nowrap !important;
+      width: 100% !important;
+      max-width: 100% !important;
+      box-sizing: border-box !important;
     }
 
     .st-key-home_card_scan_actions [data-testid="column"],
@@ -392,8 +398,9 @@ st.markdown(
     .st-key-home_card_analyze .stButton > button {
       border-radius: 12px !important;
       min-height: 38px !important;
-      padding: 0.22rem 0.60rem !important;
-      font-size: 0.82rem !important;
+      padding: 0.22rem 0.52rem !important;
+      font-size: 0.80rem !important;
+      max-width: 100% !important;
     }
 
     /* Hide Streamlit "Made with" footer */
@@ -514,7 +521,7 @@ with st.container(key="home_cap_grid"):
             )
 
             with st.container(key="home_card_scan_actions"):
-                sel_col, btn_col = st.columns([1.35, 1.0])
+                sel_col, btn_col = st.columns([1.55, 0.85])
                 with sel_col:
                     home_sector = st.selectbox(
                         "Sector",
@@ -555,7 +562,7 @@ with st.container(key="home_cap_grid"):
             )
 
             with st.container(key="home_card_analyze_actions"):
-                in_col, btn_col = st.columns([1.35, 1.0])
+                in_col, btn_col = st.columns([1.55, 0.85])
                 with in_col:
                     analyze_ticker = st.text_input(
                         "Ticker",
