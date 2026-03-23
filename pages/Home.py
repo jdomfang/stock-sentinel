@@ -509,7 +509,7 @@ st.markdown(
 from utils.auth import is_logged_in
 
 with st.container(key="home_cap_grid"):
-    cap1, cap2, _cap_spacer = st.columns([1.0, 1.0, 2.4])
+    cap1, cap2 = st.columns(2)
 
     with cap1:
         with st.container(key="home_card_scan"):
