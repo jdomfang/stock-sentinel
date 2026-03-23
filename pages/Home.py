@@ -284,8 +284,8 @@ st.markdown(
       padding-top: 12px;
       align-self: stretch;
       justify-self: stretch;
-      width: 100% !important;
-      max-width: 100% !important;
+      width: calc(100% - 30px) !important;
+      max-width: calc(100% - 30px) !important;
       overflow: hidden !important;
     }
 
