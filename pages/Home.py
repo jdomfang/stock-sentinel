@@ -253,11 +253,9 @@ st.markdown(
     .st-key-home_card_analyze {
       border: 1px solid rgba(148,163,184,0.18);
       background: linear-gradient(180deg, rgba(15,23,42,.92), rgba(15,23,42,.72));
-      border-radius: 15px;
-      padding: 12px 13px 10px 13px;
-      box-shadow: 0 12px 24px rgba(0,0,0,.28);
-      min-height: 138px;
-      max-width: 340px;
+      border-radius: 16px;
+      padding: 18px;
+      box-shadow: 0 10px 28px rgba(0,0,0,.35);
       height: 100%;
       display: flex;
       flex-direction: column;
@@ -266,7 +264,7 @@ st.markdown(
     .st-key-home_card_scan_actions,
     .st-key-home_card_analyze_actions {
       margin-top: auto;
-      padding-top: 10px;
+      padding-top: 14px;
     }
 
     .cap-title {
@@ -281,30 +279,6 @@ st.markdown(
       font-size: 0.94rem;
       line-height: 1.45;
       max-width: 46ch;
-    }
-
-    .st-key-home_card_scan_actions [data-testid="stHorizontalBlock"],
-    .st-key-home_card_analyze_actions [data-testid="stHorizontalBlock"] {
-      gap: 8px !important;
-      flex-wrap: nowrap !important;
-      align-items: center !important;
-    }
-
-    .st-key-home_card_scan_actions [data-testid="column"],
-    .st-key-home_card_analyze_actions [data-testid="column"] {
-      min-width: 0 !important;
-    }
-
-    .st-key-home_card_scan_actions [data-testid="column"]:first-child,
-    .st-key-home_card_analyze_actions [data-testid="column"]:first-child {
-      flex: 0 1 138px !important;
-      max-width: 138px !important;
-    }
-
-    .st-key-home_card_scan_actions [data-testid="column"]:last-child,
-    .st-key-home_card_analyze_actions [data-testid="column"]:last-child {
-      flex: 0 0 112px !important;
-      max-width: 112px !important;
     }
 
     /* Metrics row tweaks */
@@ -324,14 +298,6 @@ st.markdown(
       background-color: rgba(2,6,23,.55) !important;
       border-color: var(--border) !important;
       color: var(--text) !important;
-      border-radius: 11px !important;
-      min-height: 36px !important;
-    }
-
-    .st-key-home_card_scan [data-baseweb="select"] > div,
-    .st-key-home_card_analyze [data-baseweb="input"] > div {
-      padding-left: 10px !important;
-      padding-right: 10px !important;
     }
 
     /* Sector dropdown menu readability */
@@ -382,14 +348,6 @@ st.markdown(
       padding: 0.25rem 0.65rem !important;
       font-size: 0.85rem !important;
       min-height: 34px !important;
-    }
-
-    .st-key-home_card_scan .stButton > button,
-    .st-key-home_card_analyze .stButton > button {
-      border-radius: 11px !important;
-      min-height: 36px !important;
-      padding: 0.20rem 0.55rem !important;
-      font-size: 0.78rem !important;
     }
 
     /* Hide Streamlit "Made with" footer */
@@ -510,7 +468,7 @@ with st.container(key="home_cap_grid"):
             )
 
             with st.container(key="home_card_scan_actions"):
-                sel_col, btn_col = st.columns([1.25, 1.0])
+                sel_col, btn_col = st.columns([2, 1])
                 with sel_col:
                     home_sector = st.selectbox(
                         "Sector",
@@ -551,7 +509,7 @@ with st.container(key="home_cap_grid"):
             )
 
             with st.container(key="home_card_analyze_actions"):
-                in_col, btn_col = st.columns([1.25, 1.0])
+                in_col, btn_col = st.columns([2, 1])
                 with in_col:
                     analyze_ticker = st.text_input(
                         "Ticker",
