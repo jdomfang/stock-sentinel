@@ -248,14 +248,24 @@ st.markdown(
       padding: 16px;
     }
 
-    /* Capability cards: style Streamlit containers directly (widgets must live inside them) */
+    /* Capability cards: controlled-width row like the mock, but with live copy unchanged */
+    .st-key-home_cap_grid [data-testid="stHorizontalBlock"] {
+      gap: 0 !important;
+      align-items: stretch !important;
+    }
+
+    .st-key-home_cap_grid [data-testid="column"] {
+      min-width: 0 !important;
+    }
+
     .st-key-home_card_scan,
     .st-key-home_card_analyze {
       border: 1px solid rgba(148,163,184,0.18);
       background: linear-gradient(180deg, rgba(15,23,42,.92), rgba(15,23,42,.72));
       border-radius: 16px;
-      padding: 18px;
+      padding: 15px 15px 13px 15px;
       box-shadow: 0 10px 28px rgba(0,0,0,.35);
+      min-height: 156px;
       height: 100%;
       display: flex;
       flex-direction: column;
@@ -264,7 +274,7 @@ st.markdown(
     .st-key-home_card_scan_actions,
     .st-key-home_card_analyze_actions {
       margin-top: auto;
-      padding-top: 14px;
+      padding-top: 12px;
     }
 
     .cap-title {
@@ -278,7 +288,19 @@ st.markdown(
       color: rgba(229,231,235,.78);
       font-size: 0.94rem;
       line-height: 1.45;
-      max-width: 46ch;
+      max-width: 40ch;
+    }
+
+    .st-key-home_card_scan_actions [data-testid="stHorizontalBlock"],
+    .st-key-home_card_analyze_actions [data-testid="stHorizontalBlock"] {
+      gap: 10px !important;
+      align-items: center !important;
+      flex-wrap: nowrap !important;
+    }
+
+    .st-key-home_card_scan_actions [data-testid="column"],
+    .st-key-home_card_analyze_actions [data-testid="column"] {
+      min-width: 0 !important;
     }
 
     /* Metrics row tweaks */
@@ -298,6 +320,14 @@ st.markdown(
       background-color: rgba(2,6,23,.55) !important;
       border-color: var(--border) !important;
       color: var(--text) !important;
+    }
+
+    .st-key-home_card_scan [data-baseweb="select"] > div,
+    .st-key-home_card_analyze [data-baseweb="input"] > div {
+      border-radius: 12px !important;
+      min-height: 38px !important;
+      padding-left: 11px !important;
+      padding-right: 11px !important;
     }
 
     /* Sector dropdown menu readability */
@@ -348,6 +378,14 @@ st.markdown(
       padding: 0.25rem 0.65rem !important;
       font-size: 0.85rem !important;
       min-height: 34px !important;
+    }
+
+    .st-key-home_card_scan .stButton > button,
+    .st-key-home_card_analyze .stButton > button {
+      border-radius: 12px !important;
+      min-height: 38px !important;
+      padding: 0.22rem 0.60rem !important;
+      font-size: 0.82rem !important;
     }
 
     /* Hide Streamlit "Made with" footer */
@@ -455,7 +493,7 @@ st.markdown(
 from utils.auth import is_logged_in
 
 with st.container(key="home_cap_grid"):
-    cap1, cap2 = st.columns(2)
+    cap1, cap_gap, cap2, _cap_spacer = st.columns([1.0, 0.045, 1.0, 0.85])
 
     with cap1:
         with st.container(key="home_card_scan"):
@@ -468,7 +506,7 @@ with st.container(key="home_cap_grid"):
             )
 
             with st.container(key="home_card_scan_actions"):
-                sel_col, btn_col = st.columns([2, 1])
+                sel_col, btn_col = st.columns([1.35, 1.0])
                 with sel_col:
                     home_sector = st.selectbox(
                         "Sector",
@@ -509,7 +547,7 @@ with st.container(key="home_cap_grid"):
             )
 
             with st.container(key="home_card_analyze_actions"):
-                in_col, btn_col = st.columns([2, 1])
+                in_col, btn_col = st.columns([1.35, 1.0])
                 with in_col:
                     analyze_ticker = st.text_input(
                         "Ticker",
