@@ -670,26 +670,26 @@ if demo_results:
         """
         <style>
         .home-metrics [data-testid="stMetric"] {
-          padding: 12px 13px !important;
-          border-radius: 14px !important;
-          min-height: 82px !important;
-          background: linear-gradient(180deg, rgba(15,23,42,.90), rgba(15,23,42,.72)) !important;
-          border: 1px solid rgba(148,163,184,0.18) !important;
-          box-shadow: 0 10px 22px rgba(0,0,0,.22) !important;
+          padding: 10px 11px !important;
+          border-radius: 13px !important;
+          min-height: 74px !important;
+          background: linear-gradient(180deg, rgba(15,23,42,.90), rgba(15,23,42,.74)) !important;
+          border: 1px solid rgba(148,163,184,0.17) !important;
+          box-shadow: 0 8px 18px rgba(0,0,0,.20) !important;
         }
         .home-metrics [data-testid="stMetric"] label {
-          font-size: 0.74rem !important;
-          margin-bottom: 5px !important;
+          font-size: 0.71rem !important;
+          margin-bottom: 4px !important;
           white-space: normal !important;
-          line-height: 1.15 !important;
-          letter-spacing: 0.01em;
-          color: rgba(229,231,235,.66) !important;
+          line-height: 1.12 !important;
+          letter-spacing: 0.008em;
+          color: rgba(229,231,235,.64) !important;
         }
         .home-metrics [data-testid="stMetric"] [data-testid="stMetricValue"] {
-          font-size: 1.16rem !important;
-          line-height: 1.08 !important;
+          font-size: 1.05rem !important;
+          line-height: 1.06 !important;
           white-space: nowrap;
-          font-weight: 760 !important;
+          font-weight: 745 !important;
           color: rgba(248,250,252,.98) !important;
         }
         .home-metrics [data-testid="column"]:nth-child(1) [data-testid="stMetric"] {
@@ -710,7 +710,7 @@ if demo_results:
     )
 
     st.markdown('<div class="home-metrics">', unsafe_allow_html=True)
-    m1, m2, m3, _msp = st.columns([1.0, 1.0, 1.0, 2.2])
+    m1, m2, m3, _msp = st.columns([0.92, 0.92, 0.92, 2.7])
     with m1:
         st.metric("Recommendation", ai_summary["recommendation"])
     with m2:
