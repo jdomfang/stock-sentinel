@@ -670,26 +670,35 @@ if demo_results:
         """
         <style>
         .home-metrics [data-testid="stMetric"] {
-          padding: 14px 15px !important;
+          padding: 15px 16px !important;
           border-radius: 14px !important;
-          min-height: 92px !important;
-          background: linear-gradient(180deg, rgba(15,23,42,.88), rgba(15,23,42,.68)) !important;
+          min-height: 96px !important;
+          background: linear-gradient(180deg, rgba(15,23,42,.90), rgba(15,23,42,.70)) !important;
           border: 1px solid rgba(148,163,184,0.18) !important;
-          box-shadow: 0 10px 24px rgba(0,0,0,.22) !important;
+          box-shadow: 0 12px 28px rgba(0,0,0,.24) !important;
         }
         .home-metrics [data-testid="stMetric"] label {
-          font-size: 0.78rem !important;
-          margin-bottom: 6px !important;
+          font-size: 0.77rem !important;
+          margin-bottom: 7px !important;
           white-space: nowrap;
-          letter-spacing: 0.01em;
-          color: rgba(229,231,235,.68) !important;
+          letter-spacing: 0.015em;
+          color: rgba(229,231,235,.66) !important;
         }
         .home-metrics [data-testid="stMetric"] [data-testid="stMetricValue"] {
-          font-size: 1.22rem !important;
-          line-height: 1.08 !important;
+          font-size: 1.28rem !important;
+          line-height: 1.05 !important;
           white-space: nowrap;
-          font-weight: 760 !important;
+          font-weight: 780 !important;
           color: rgba(248,250,252,.98) !important;
+        }
+        .home-metrics [data-testid="column"]:nth-child(1) [data-testid="stMetric"] {
+          border-color: rgba(56,189,248,0.28) !important;
+        }
+        .home-metrics [data-testid="column"]:nth-child(2) [data-testid="stMetric"] {
+          border-color: rgba(125,211,252,0.18) !important;
+        }
+        .home-metrics [data-testid="column"]:nth-child(3) [data-testid="stMetric"] {
+          border-color: rgba(148,163,184,0.24) !important;
         }
         .home-metrics {
           margin-top: 2px;
@@ -700,7 +709,7 @@ if demo_results:
     )
 
     st.markdown('<div class="home-metrics">', unsafe_allow_html=True)
-    m1, m2, m3, _sp = st.columns([1.0, 1.0, 1.0, 5.0])
+    m1, m2, m3, _sp = st.columns([1.12, 1.12, 1.12, 4.7])
     with m1:
         st.metric("Recommendation", ai_summary["recommendation"])
     with m2:
