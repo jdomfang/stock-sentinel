@@ -269,11 +269,11 @@ st.markdown(
       border: 1px solid rgba(148,163,184,0.18);
       background: linear-gradient(180deg, rgba(15,23,42,.92), rgba(15,23,42,.72));
       border-radius: 16px;
-      padding: 15px 15px 13px 15px;
+      padding: 15px 15px 12px 15px;
       box-shadow: 0 10px 28px rgba(0,0,0,.35);
-      min-height: 180px;
+      min-height: 174px;
       width: 100%;
-      height: 180px;
+      height: 174px;
       display: grid;
       grid-template-rows: 1fr auto;
     }
@@ -281,7 +281,7 @@ st.markdown(
     .st-key-home_card_scan_actions,
     .st-key-home_card_analyze_actions {
       margin-top: 0;
-      padding-top: 12px;
+      padding-top: 10px;
       align-self: stretch;
       justify-self: stretch;
       width: calc(100% - 30px) !important;
@@ -305,7 +305,7 @@ st.markdown(
 
     .st-key-home_card_scan_actions [data-testid="stHorizontalBlock"],
     .st-key-home_card_analyze_actions [data-testid="stHorizontalBlock"] {
-      gap: 10px !important;
+      gap: 8px !important;
       align-items: center !important;
       flex-wrap: nowrap !important;
       width: 100% !important;
@@ -343,6 +343,7 @@ st.markdown(
       min-height: 38px !important;
       padding-left: 11px !important;
       padding-right: 11px !important;
+      box-shadow: inset 0 1px 0 rgba(255,255,255,.02) !important;
     }
 
     /* Sector dropdown menu readability */
@@ -399,9 +400,10 @@ st.markdown(
     .st-key-home_card_analyze .stButton > button {
       border-radius: 12px !important;
       min-height: 38px !important;
-      padding: 0.22rem 0.52rem !important;
-      font-size: 0.80rem !important;
+      padding: 0.22rem 0.62rem !important;
+      font-size: 0.81rem !important;
       max-width: 100% !important;
+      box-shadow: 0 8px 20px rgba(14,116,144,.22) !important;
     }
 
     /* Hide Streamlit "Made with" footer */
@@ -522,7 +524,7 @@ with st.container(key="home_cap_grid"):
             )
 
             with st.container(key="home_card_scan_actions"):
-                sel_col, btn_col = st.columns([1.55, 0.85])
+                sel_col, btn_col = st.columns([1.28, 0.92])
                 with sel_col:
                     home_sector = st.selectbox(
                         "Sector",
@@ -563,7 +565,7 @@ with st.container(key="home_cap_grid"):
             )
 
             with st.container(key="home_card_analyze_actions"):
-                in_col, btn_col = st.columns([1.55, 0.85])
+                in_col, btn_col = st.columns([1.18, 0.98])
                 with in_col:
                     analyze_ticker = st.text_input(
                         "Ticker",
