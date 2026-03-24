@@ -661,7 +661,7 @@ if demo_results:
         """
         <style>
         .deep-demo-section {
-          margin-top: -0.45rem;
+          margin-top: -0.62rem;
         }
         .deep-demo-title {
           font-size: 1.32rem;
@@ -674,7 +674,7 @@ if demo_results:
           color: rgba(229,231,235,.72);
           font-size: 0.92rem;
           line-height: 1.42;
-          margin: 0 0 0.4rem 0;
+          margin: 0 0 0.22rem 0;
           max-width: 900px;
         }
         </style>
@@ -725,7 +725,7 @@ if demo_results:
           border-color: rgba(148,163,184,0.24) !important;
         }
         .home-metrics {
-          margin-top: -0.08rem;
+          margin-top: -0.16rem;
         }
         </style>
         """,
@@ -742,7 +742,7 @@ if demo_results:
         st.metric("Weighted Sentiment", f"{ai_summary['avg_sentiment']:.3f}")
     st.markdown('</div>', unsafe_allow_html=True)
 
-    st.markdown("<div style='margin-top:0.18rem;'><b>Rationale:</b></div>", unsafe_allow_html=True)
+    st.markdown("<div style='margin-top:0.06rem;'><b>Rationale:</b></div>", unsafe_allow_html=True)
     # Match Discovery-style rationale bullets
     for line in ai_summary.get("rationale", [])[:2]:
         st.markdown(f"- {line}")
