@@ -652,15 +652,38 @@ else:
 
     # (removed summary line on request)
 
-st.markdown("<div style='height: 1.25rem;'></div>", unsafe_allow_html=True)
+st.markdown("<div style='height: 0.45rem;'></div>", unsafe_allow_html=True)
 
 # Deep Analysis sample (educational, no API calls)
 demo_ticker, demo_sector, demo_results = _load_demo_deep()
 if demo_results:
-    st.subheader("Deep Analyze (demo)")
-    st.caption(
-        "Deep Analyze turns the data into a clear recommendation (Buy / Watch / Avoid), confidence, "
-        "and the key reasons (catalysts and red flags)-so you can decide whether to take a position or stand aside."
+    st.markdown(
+        """
+        <style>
+        .deep-demo-section {
+          margin-top: -0.45rem;
+        }
+        .deep-demo-title {
+          font-size: 1.32rem;
+          font-weight: 700;
+          line-height: 1.15;
+          margin: 0 0 0.18rem 0;
+          color: rgba(248,250,252,.98);
+        }
+        .deep-demo-caption {
+          color: rgba(229,231,235,.72);
+          font-size: 0.92rem;
+          line-height: 1.42;
+          margin: 0 0 0.4rem 0;
+          max-width: 900px;
+        }
+        </style>
+        <div class="deep-demo-section">
+          <div class="deep-demo-title">Deep Analyze (demo)</div>
+          <div class="deep-demo-caption">Deep Analyze turns the data into a clear recommendation (Buy / Watch / Avoid), confidence, and the key reasons (catalysts and red flags)-so you can decide whether to take a position or stand aside.</div>
+        </div>
+        """,
+        unsafe_allow_html=True,
     )
 
     ai_summary = generate_ai_summary(demo_results)
@@ -702,7 +725,7 @@ if demo_results:
           border-color: rgba(148,163,184,0.24) !important;
         }
         .home-metrics {
-          margin-top: 2px;
+          margin-top: -0.08rem;
         }
         </style>
         """,
@@ -719,7 +742,7 @@ if demo_results:
         st.metric("Weighted Sentiment", f"{ai_summary['avg_sentiment']:.3f}")
     st.markdown('</div>', unsafe_allow_html=True)
 
-    st.markdown("**Rationale:**")
+    st.markdown("<div style='margin-top:0.18rem;'><b>Rationale:</b></div>", unsafe_allow_html=True)
     # Match Discovery-style rationale bullets
     for line in ai_summary.get("rationale", [])[:2]:
         st.markdown(f"- {line}")
