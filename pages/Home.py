@@ -118,7 +118,7 @@ st.markdown(
       font-size: 1.35rem;
       font-weight: 800;
       letter-spacing: -0.02em;
-      margin: -0.68rem 0 0.3rem 0;
+      margin: -0.84rem 0 0.26rem 0;
     }
 
     /* How-it-works cards */
@@ -590,7 +590,7 @@ st.markdown("<div style='height: 0rem;'></div>", unsafe_allow_html=True)
 
 
 # Demo scan output (match the post-scan layout from Discovery)
-st.markdown('<div id="demo-scan" style="margin-top:-0.95rem;"></div>', unsafe_allow_html=True)
+st.markdown('<div id="demo-scan" style="margin-top:-1.12rem;"></div>', unsafe_allow_html=True)
 
 # If user clicked "View demo results" in the capability card, scroll here.
 if st.session_state.pop("_scroll_demo", False):
