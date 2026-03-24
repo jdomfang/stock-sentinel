@@ -524,7 +524,7 @@ with st.container(key="home_cap_grid"):
             )
 
             with st.container(key="home_card_scan_actions"):
-                sel_col, btn_col = st.columns([1.28, 0.92])
+                sel_col, btn_col = st.columns([1.22, 0.98])
                 with sel_col:
                     home_sector = st.selectbox(
                         "Sector",
@@ -565,7 +565,7 @@ with st.container(key="home_cap_grid"):
             )
 
             with st.container(key="home_card_analyze_actions"):
-                in_col, btn_col = st.columns([1.18, 0.98])
+                in_col, btn_col = st.columns([1.08, 1.02])
                 with in_col:
                     analyze_ticker = st.text_input(
                         "Ticker",
