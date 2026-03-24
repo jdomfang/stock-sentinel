@@ -672,20 +672,21 @@ if demo_results:
         .home-metrics [data-testid="stMetric"] {
           padding: 15px 16px !important;
           border-radius: 14px !important;
-          min-height: 96px !important;
+          min-height: 98px !important;
           background: linear-gradient(180deg, rgba(15,23,42,.90), rgba(15,23,42,.70)) !important;
           border: 1px solid rgba(148,163,184,0.18) !important;
           box-shadow: 0 12px 28px rgba(0,0,0,.24) !important;
         }
         .home-metrics [data-testid="stMetric"] label {
-          font-size: 0.77rem !important;
+          font-size: 0.76rem !important;
           margin-bottom: 7px !important;
-          white-space: nowrap;
-          letter-spacing: 0.015em;
+          white-space: normal !important;
+          line-height: 1.2 !important;
+          letter-spacing: 0.012em;
           color: rgba(229,231,235,.66) !important;
         }
         .home-metrics [data-testid="stMetric"] [data-testid="stMetricValue"] {
-          font-size: 1.28rem !important;
+          font-size: 1.32rem !important;
           line-height: 1.05 !important;
           white-space: nowrap;
           font-weight: 780 !important;
@@ -709,7 +710,7 @@ if demo_results:
     )
 
     st.markdown('<div class="home-metrics">', unsafe_allow_html=True)
-    m1, m2, m3, _sp = st.columns([1.12, 1.12, 1.12, 4.7])
+    m1, m2, m3 = st.columns([1.15, 1.15, 1.15])
     with m1:
         st.metric("Recommendation", ai_summary["recommendation"])
     with m2:
