@@ -670,22 +670,29 @@ if demo_results:
         """
         <style>
         .home-metrics [data-testid="stMetric"] {
-          padding: 10px 12px !important;
-          border-radius: 12px !important;
-          min-height: 74px !important;
+          padding: 14px 15px !important;
+          border-radius: 14px !important;
+          min-height: 92px !important;
+          background: linear-gradient(180deg, rgba(15,23,42,.88), rgba(15,23,42,.68)) !important;
+          border: 1px solid rgba(148,163,184,0.18) !important;
+          box-shadow: 0 10px 24px rgba(0,0,0,.22) !important;
         }
         .home-metrics [data-testid="stMetric"] label {
-          font-size: 0.82rem !important;
-          margin-bottom: 2px !important;
+          font-size: 0.78rem !important;
+          margin-bottom: 6px !important;
           white-space: nowrap;
+          letter-spacing: 0.01em;
+          color: rgba(229,231,235,.68) !important;
         }
         .home-metrics [data-testid="stMetric"] [data-testid="stMetricValue"] {
-          font-size: 1.05rem !important;
-          line-height: 1.15 !important;
+          font-size: 1.22rem !important;
+          line-height: 1.08 !important;
           white-space: nowrap;
+          font-weight: 760 !important;
+          color: rgba(248,250,252,.98) !important;
         }
         .home-metrics {
-          margin-top: 0px;
+          margin-top: 2px;
         }
         </style>
         """,
