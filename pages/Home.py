@@ -670,26 +670,26 @@ if demo_results:
         """
         <style>
         .home-metrics [data-testid="stMetric"] {
-          padding: 15px 16px !important;
+          padding: 12px 13px !important;
           border-radius: 14px !important;
-          min-height: 98px !important;
-          background: linear-gradient(180deg, rgba(15,23,42,.90), rgba(15,23,42,.70)) !important;
+          min-height: 82px !important;
+          background: linear-gradient(180deg, rgba(15,23,42,.90), rgba(15,23,42,.72)) !important;
           border: 1px solid rgba(148,163,184,0.18) !important;
-          box-shadow: 0 12px 28px rgba(0,0,0,.24) !important;
+          box-shadow: 0 10px 22px rgba(0,0,0,.22) !important;
         }
         .home-metrics [data-testid="stMetric"] label {
-          font-size: 0.76rem !important;
-          margin-bottom: 7px !important;
+          font-size: 0.74rem !important;
+          margin-bottom: 5px !important;
           white-space: normal !important;
-          line-height: 1.2 !important;
-          letter-spacing: 0.012em;
+          line-height: 1.15 !important;
+          letter-spacing: 0.01em;
           color: rgba(229,231,235,.66) !important;
         }
         .home-metrics [data-testid="stMetric"] [data-testid="stMetricValue"] {
-          font-size: 1.32rem !important;
-          line-height: 1.05 !important;
+          font-size: 1.16rem !important;
+          line-height: 1.08 !important;
           white-space: nowrap;
-          font-weight: 780 !important;
+          font-weight: 760 !important;
           color: rgba(248,250,252,.98) !important;
         }
         .home-metrics [data-testid="column"]:nth-child(1) [data-testid="stMetric"] {
@@ -710,7 +710,7 @@ if demo_results:
     )
 
     st.markdown('<div class="home-metrics">', unsafe_allow_html=True)
-    m1, m2, m3 = st.columns([1.15, 1.15, 1.15])
+    m1, m2, m3, _msp = st.columns([1.0, 1.0, 1.0, 2.2])
     with m1:
         st.metric("Recommendation", ai_summary["recommendation"])
     with m2:
