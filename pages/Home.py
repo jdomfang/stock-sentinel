@@ -630,10 +630,10 @@ else:
         company_name = row.get("Company Name", "")
         overall_sentiment = row.get("Overall Sentiment", "")
 
-        last_close = row.get("Last Close", None)
-        if isinstance(last_close, (int, float)):
+        last_close = row.get("Current Price ($)", None)
+        try:
             last_close_display = f"${float(last_close):.2f}"
-        else:
+        except (TypeError, ValueError):
             last_close_display = "N/A"
 
         st.markdown("<div class='ticker-row'>", unsafe_allow_html=True)
