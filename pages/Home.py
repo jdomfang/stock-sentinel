@@ -118,7 +118,7 @@ st.markdown(
       font-size: 1.35rem;
       font-weight: 800;
       letter-spacing: -0.02em;
-      margin: 0.25rem 0 0.75rem 0;
+      margin: 0.02rem 0 0.6rem 0;
     }
 
     /* How-it-works cards */
@@ -166,8 +166,8 @@ st.markdown(
     .demo-note {
       color: rgba(229,231,235,.70);
       font-size: 0.92rem;
-      margin-top: -2px;
-      margin-bottom: 10px;
+      margin-top: -4px;
+      margin-bottom: 8px;
     }
     .ticker-row {
       border: 1px solid rgba(148,163,184,0.14);
