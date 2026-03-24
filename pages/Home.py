@@ -584,11 +584,11 @@ with st.container(key="home_cap_grid"):
                         st.session_state["prefill_deep_ticker"] = (analyze_ticker or "").strip().upper()
                         st.switch_page("pages/Deep_Analysis.py" if is_logged_in() else "pages/Auth.py")
 
-st.markdown("<div style='height: 1.25rem;'></div>", unsafe_allow_html=True)
+st.markdown("<div style='height: 0.45rem;'></div>", unsafe_allow_html=True)
 
 # (Removed) How it works section - per request
 
-st.markdown("<div style='height: 1.25rem;'></div>", unsafe_allow_html=True)
+st.markdown("<div style='height: 0.2rem;'></div>", unsafe_allow_html=True)
 
 # Demo scan output (match the post-scan layout from Discovery)
 st.markdown('<div id="demo-scan"></div>', unsafe_allow_html=True)
