@@ -559,6 +559,7 @@ with st.container(key="home_cap_grid"):
                         "Sentinel Scan",
                         url,
                         type="primary",
+                        key="home_cap_scan",
                         use_container_width=True,
                     )
 
@@ -599,6 +600,7 @@ with st.container(key="home_cap_grid"):
                         "Analyze",
                         url,
                         type="primary",
+                        key="home_cap_analyze",
                         use_container_width=True,
                     )
 
