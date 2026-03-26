@@ -288,8 +288,22 @@ def _switch_to_next_page() -> None:
 # Check if already logged in
 if is_logged_in():
     st.success("✅ You are already signed in.")
-    if st.button("Continue", type="primary", use_container_width=True):
-        _switch_to_next_page()
+
+    # Preserve query params across the hop by using a link.
+    from utils.scan_intent import get_query_params
+    from urllib.parse import urlencode
+
+    qp = get_query_params()
+    nxt = (qp.pop("next", None) or "Discovery").strip()
+    if nxt.lower() in {"deep_analysis", "deep-analysis", "deep", "analysis"}:
+        dest = "/Deep_Analysis"
+    elif nxt.lower() in {"home"}:
+        dest = "/Home"
+    else:
+        dest = "/Discovery"
+
+    url = dest + ("?" + urlencode(qp) if qp else "")
+    st.link_button("Continue", url, type="primary", use_container_width=True)
     st.stop()
 
 # --- Hero Section ---
@@ -336,7 +350,23 @@ if mode == "Sign In":
             ok, err = sign_in(email.strip(), password, remember_me=remember_me)
             if ok:
                 st.success("✅ Signed in successfully!")
-                _switch_to_next_page()
+
+                # Preserve query params across the hop by using a link.
+                from utils.scan_intent import get_query_params
+                from urllib.parse import urlencode
+
+                qp = get_query_params()
+                nxt = (qp.pop("next", None) or "Discovery").strip()
+                if nxt.lower() in {"deep_analysis", "deep-analysis", "deep", "analysis"}:
+                    dest = "/Deep_Analysis"
+                elif nxt.lower() in {"home"}:
+                    dest = "/Home"
+                else:
+                    dest = "/Discovery"
+
+                url = dest + ("?" + urlencode(qp) if qp else "")
+                st.link_button("Continue", url, type="primary", use_container_width=True)
+                st.stop()
             else:
                 st.error(err or "Sign in failed. Please check your credentials.")
 else:

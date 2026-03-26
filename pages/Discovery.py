@@ -35,7 +35,7 @@ apply_theme()
 
 from utils.scan_intent import get_query_params, patch_query_params
 
-# ---- Intent prefill (optional, for direct links) ----
+# ---- Intent prefill (for Home/Auth links) ----
 _qp = get_query_params()
 _intent_sector = (_qp.get("sector") or "").strip().lower()
 _intent_autostart = (_qp.get("autostart") or "").strip().lower() in {"1", "true", "yes", "y", "on"}
@@ -45,9 +45,19 @@ if _intent_sector and not st.session_state.get("_intent_sector_applied"):
     st.session_state["discovery_sector"] = _intent_sector
     st.session_state["_intent_sector_applied"] = True
 
+# If we arrived here with autostart but are not logged in, show an auth link
+# that preserves intent.
+from utils.auth import is_logged_in
+if _intent_autostart and not is_logged_in():
+    from urllib.parse import urlencode
+
+    st.warning("Please log in to scan.")
+    url = "/Auth?" + urlencode({"next": "Discovery", **_qp})
+    st.link_button("Log in", url, type="primary")
+    st.stop()
+
 # Determine whether we should auto-run the scan on this load.
-# Primary mechanism is session_state (Home -> Auth -> Discovery).
-_autostart_scan = bool(st.session_state.pop("_autostart_discovery_scan", False))
+_autostart_scan = False
 if _intent_autostart and not st.session_state.get("_scan_autostart_consumed"):
     st.session_state["_scan_autostart_consumed"] = True
     _autostart_scan = True
@@ -908,10 +918,10 @@ if scan_triggered:
         logger.exception("Discovery scan failed")
         st.error("Something went wrong. Please try again later.")
 
-    # Clear one-shot redirect flags after a scan attempt (success or failure).
-    # This keeps refreshes from unexpectedly re-triggering autostart.
+    # Clear one-shot autostart flag after a scan attempt (success or failure).
+    # This keeps refreshes from unexpectedly re-triggering the scan.
     if _intent_autostart:
-        patch_query_params({"autostart": None, "next": None})
+        patch_query_params({"autostart": None})
 
 # --- Admin-only: Save demo snapshots for Home (local only; no API calls) ---
 # These buttons save the *current* results to data/education/ so Home can show
