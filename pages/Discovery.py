@@ -33,6 +33,25 @@ render_sidebar_navigation()
 render_top_nav()
 apply_theme()
 
+from utils.scan_intent import get_query_params, patch_query_params
+
+# ---- Intent prefill (optional, for direct links) ----
+_qp = get_query_params()
+_intent_sector = (_qp.get("sector") or "").strip().lower()
+_intent_autostart = (_qp.get("autostart") or "").strip().lower() in {"1", "true", "yes", "y", "on"}
+
+# Apply sector intent once (do not stomp user changes on reruns)
+if _intent_sector and not st.session_state.get("_intent_sector_applied"):
+    st.session_state["discovery_sector"] = _intent_sector
+    st.session_state["_intent_sector_applied"] = True
+
+# Determine whether we should auto-run the scan on this load.
+# Primary mechanism is session_state (Home -> Auth -> Discovery).
+_autostart_scan = bool(st.session_state.pop("_autostart_discovery_scan", False))
+if _intent_autostart and not st.session_state.get("_scan_autostart_consumed"):
+    st.session_state["_scan_autostart_consumed"] = True
+    _autostart_scan = True
+
 from utils.guard import require_active_account
 from utils.credits import consume_credit
 
@@ -469,21 +488,35 @@ with _main:
     ctrl_left, ctrl_right, _ctrl_pad = st.columns([0.78, 0.55, 2.67])
 
     with ctrl_left:
+        SECTOR_OPTIONS = [
+            "tech",
+            "healthcare",
+            "energy",
+            "finance",
+            "consumer",
+            "utilities",
+            "real estate",
+            "industrials",
+            "materials",
+            "communication",
+        ]
+
+        # Prefer query-param intent, otherwise use prior session selection.
+        _default_sector = (
+            (st.session_state.get("discovery_sector") or "").strip().lower()
+            or (st.session_state.get("selected_sector") or "").strip().lower()
+            or SECTOR_OPTIONS[0]
+        )
+        if _default_sector not in SECTOR_OPTIONS:
+            _default_sector = SECTOR_OPTIONS[0]
+        # Set a widget key so the value survives reruns reliably.
+        st.session_state.setdefault("discovery_sector", _default_sector)
+
         sector = st.selectbox(
             "Sector",
-            options=[
-                "tech",
-                "healthcare",
-                "energy",
-                "finance",
-                "consumer",
-                "utilities",
-                "real estate",
-                "industrials",
-                "materials",
-                "communication",
-            ],
-            index=0,
+            options=SECTOR_OPTIONS,
+            index=SECTOR_OPTIONS.index(st.session_state.get("discovery_sector") or SECTOR_OPTIONS[0]),
+            key="discovery_sector",
         )
 
     # Code-only setting (X API supports 100 per request; pagination will fetch more)
@@ -504,8 +537,10 @@ with _main:
         st.markdown("")
 
 
+scan_triggered = bool(scan_clicked or _autostart_scan)
+
 # Scan button
-if scan_clicked:
+if scan_triggered:
     # Must be logged in to scan.
     if not st.session_state.get("auth.user"):
         st.error("Please log in to scan.")
@@ -872,6 +907,11 @@ if scan_clicked:
     except Exception:
         logger.exception("Discovery scan failed")
         st.error("Something went wrong. Please try again later.")
+
+    # Clear one-shot redirect flags after a scan attempt (success or failure).
+    # This keeps refreshes from unexpectedly re-triggering autostart.
+    if _intent_autostart:
+        patch_query_params({"autostart": None, "next": None})
 
 # --- Admin-only: Save demo snapshots for Home (local only; no API calls) ---
 # These buttons save the *current* results to data/education/ so Home can show

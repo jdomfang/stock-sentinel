@@ -24,6 +24,7 @@ render_top_nav()
 
 from utils.guard import require_active_account
 from utils.credits import consume_credit
+from utils.scan_intent import get_query_params
 
 _profile = require_active_account()
 
@@ -33,6 +34,12 @@ open_page(
 )
 
 st.subheader("Stock Analysis")
+
+# If we arrived via Home -> Auth redirect, the ticker may be in query params.
+_qp = get_query_params()
+_qp_ticker = (_qp.get("ticker") or "").strip().upper()
+if _qp_ticker and not st.session_state.get("prefill_deep_ticker"):
+    st.session_state["prefill_deep_ticker"] = _qp_ticker
 
 ticker_default = (st.session_state.pop("prefill_deep_ticker", None) or "NVDA").strip() or "NVDA"
 

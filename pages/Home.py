@@ -551,7 +551,12 @@ with st.container(key="home_cap_grid"):
                         key="home_cap_scan",
                         use_container_width=True,
                     ):
-                        st.session_state["selected_sector"] = home_sector
+                        # Persist intent in session_state so Home -> Auth -> Discovery can
+                        # continue seamlessly after login.
+                        st.session_state["discovery_sector"] = home_sector
+                        st.session_state["_autostart_discovery_scan"] = True
+                        st.session_state["_after_auth_page"] = "Discovery"
+
                         st.switch_page("pages/Discovery.py" if is_logged_in() else "pages/Auth.py")
 
     with cap2:
@@ -581,7 +586,10 @@ with st.container(key="home_cap_grid"):
                         key="home_cap_analyze",
                         use_container_width=True,
                     ):
-                        st.session_state["prefill_deep_ticker"] = (analyze_ticker or "").strip().upper()
+                        ticker = (analyze_ticker or "").strip().upper()
+                        st.session_state["prefill_deep_ticker"] = ticker
+                        st.session_state["_after_auth_page"] = "Deep_Analysis"
+
                         st.switch_page("pages/Deep_Analysis.py" if is_logged_in() else "pages/Auth.py")
 
 st.markdown("<div style='height: 0rem;'></div>", unsafe_allow_html=True)

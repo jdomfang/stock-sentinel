@@ -274,11 +274,22 @@ st.markdown('<div class="auth-wrapper">', unsafe_allow_html=True)
 # Try to restore cached session (Remember Me)
 try_restore_cached_session()
 
+def _switch_to_next_page() -> None:
+    # Prefer an explicit destination set by a prior page (e.g. Home).
+    nxt = (st.session_state.pop("_after_auth_page", None) or "Discovery").strip().lower()
+    if nxt in {"deep_analysis", "deep-analysis", "deep", "analysis"}:
+        st.switch_page("pages/Deep_Analysis.py")
+    elif nxt in {"home"}:
+        st.switch_page("pages/Home.py")
+    else:
+        st.switch_page("pages/Discovery.py")
+
+
 # Check if already logged in
 if is_logged_in():
     st.success("✅ You are already signed in.")
-    if st.button("Go to Discovery", type="primary", use_container_width=True):
-        st.switch_page("pages/Discovery.py")
+    if st.button("Continue", type="primary", use_container_width=True):
+        _switch_to_next_page()
     st.stop()
 
 # --- Hero Section ---
@@ -325,7 +336,7 @@ if mode == "Sign In":
             ok, err = sign_in(email.strip(), password, remember_me=remember_me)
             if ok:
                 st.success("✅ Signed in successfully!")
-                st.switch_page("pages/Discovery.py")
+                _switch_to_next_page()
             else:
                 st.error(err or "Sign in failed. Please check your credentials.")
 else:
