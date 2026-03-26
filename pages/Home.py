@@ -545,23 +545,19 @@ with st.container(key="home_cap_grid"):
                         label_visibility="collapsed",
                     )
                 with btn_col:
-                    # Use a link-based navigation so query params survive the auth hop.
-                    # This avoids relying on session_state, which can get reset on reruns.
-                    from urllib.parse import urlencode
-
-                    base_params = {"sector": home_sector, "autostart": "1"}
-                    if is_logged_in():
-                        url = "/Discovery?" + urlencode(base_params)
-                    else:
-                        url = "/Auth?" + urlencode({"next": "Discovery", **base_params})
-
-                    st.link_button(
+                    if st.button(
                         "Sentinel Scan",
-                        url,
                         type="primary",
                         key="home_cap_scan",
                         use_container_width=True,
-                    )
+                    ):
+                        # Persist intent in session_state so Home -> Auth -> Discovery can
+                        # continue seamlessly after login.
+                        st.session_state["discovery_sector"] = home_sector
+                        st.session_state["_autostart_discovery_scan"] = True
+                        st.session_state["_after_auth_page"] = "Discovery"
+
+                        st.switch_page("pages/Discovery.py" if is_logged_in() else "pages/Auth.py")
 
     with cap2:
         with st.container(key="home_card_analyze"):
@@ -584,25 +580,17 @@ with st.container(key="home_cap_grid"):
                         label_visibility="collapsed",
                     )
                 with btn_col:
-                    from urllib.parse import urlencode
-
-                    ticker = (analyze_ticker or "").strip().upper()
-                    # Keep legacy prefill for backwards compatibility
-                    st.session_state["prefill_deep_ticker"] = ticker
-
-                    base_params = {"ticker": ticker}
-                    if is_logged_in():
-                        url = "/Deep_Analysis?" + urlencode(base_params)
-                    else:
-                        url = "/Auth?" + urlencode({"next": "Deep_Analysis", **base_params})
-
-                    st.link_button(
+                    if st.button(
                         "Analyze",
-                        url,
                         type="primary",
                         key="home_cap_analyze",
                         use_container_width=True,
-                    )
+                    ):
+                        ticker = (analyze_ticker or "").strip().upper()
+                        st.session_state["prefill_deep_ticker"] = ticker
+                        st.session_state["_after_auth_page"] = "Deep_Analysis"
+
+                        st.switch_page("pages/Deep_Analysis.py" if is_logged_in() else "pages/Auth.py")
 
 st.markdown("<div style='height: 0rem;'></div>", unsafe_allow_html=True)
 
