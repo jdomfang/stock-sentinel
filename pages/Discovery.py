@@ -15,6 +15,9 @@ import logging
 from utils.navigation import render_sidebar_navigation, render_top_nav
 from utils.ui import apply_theme, close_page
 from utils.sentiment import extract_tickers, analyze_sentiment
+from utils.finance import get_ticker_master_list, get_stock_data, get_last_close_prices_best_effort
+from utils.projections import simple_projection
+from utils.deep_analysis import ANALYSIS_PROMPTS, run_deep_analysis, generate_ai_summary
 
 
 def _sentiment_pill(label: str) -> str:
@@ -25,9 +28,6 @@ def _sentiment_pill(label: str) -> str:
         return '<span style="background:rgba(239,68,68,.15);color:rgba(248,113,113,.98);border:1px solid rgba(239,68,68,.30);padding:3px 10px;border-radius:999px;font-size:0.83rem;font-weight:700;">Bearish</span>'
     else:
         return f'<span style="background:rgba(148,163,184,.12);color:rgba(148,163,184,.92);border:1px solid rgba(148,163,184,.25);padding:3px 10px;border-radius:999px;font-size:0.83rem;font-weight:700;">{label or "Neutral"}</span>'
-from utils.finance import get_ticker_master_list, get_stock_data, get_last_close_prices_best_effort
-from utils.projections import simple_projection
-from utils.deep_analysis import ANALYSIS_PROMPTS, run_deep_analysis, generate_ai_summary
 
 # Set up logging - ensure it shows in Streamlit console
 logging.basicConfig(
