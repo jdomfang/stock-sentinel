@@ -90,11 +90,11 @@ def render_top_nav() -> None:
           line-height: 1 !important;
         }
 
-        /* Top header should be a real shared row, not two overlapped bands */
+        /* Top header: keep it stable (avoid negative-margin overlaps) */
         .clawd-topnav {
-          margin-top: -6.05rem !important;
-          margin-bottom: -4.85rem !important;
-          padding: 0 !important;
+          margin-top: -0.75rem !important;
+          margin-bottom: 0.75rem !important;
+          padding: 0.25rem 0 0.25rem 0 !important;
         }
 
         .clawd-topnav [data-testid="stHorizontalBlock"] {
@@ -118,7 +118,7 @@ def render_top_nav() -> None:
           font-size: 0.78rem;
           line-height: 32px;
           white-space: nowrap;
-          margin: 60px 0 0 0;
+          margin: 0;
           display: inline-block;
         }
 
@@ -351,7 +351,7 @@ def render_top_nav() -> None:
             brand_col, spacer_col, home_col, gap_col, auth_col = st.columns([1.45, 7.09, 0.46, 0.01, 0.99])
 
         with brand_col:
-            st.markdown('<div class="clawd-brand"><div class="clawd-brandtext" style="position: relative; top: 18px;"><span>STOCK SENTINEL</span></div></div>', unsafe_allow_html=True)
+            st.markdown('<div class="clawd-brand"><div class="clawd-brandtext"><span>STOCK SENTINEL</span></div></div>', unsafe_allow_html=True)
 
         with spacer_col:
             st.markdown("")

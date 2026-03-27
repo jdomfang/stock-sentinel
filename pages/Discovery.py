@@ -110,7 +110,7 @@ st.markdown(
 
     /* Hero (match Home) */
     .hero {
-      margin: -6.10rem 0 0.95rem 0;
+      margin: 0.10rem 0 0.95rem 0;
       padding: 0 2px 2px 2px;
     }
     .hero-title {
@@ -127,10 +127,6 @@ st.markdown(
       line-height: 1.45;
       margin: 0;
       max-width: 760px;
-    }
-
-    @media (max-width: 640px) {
-      .hero { margin: -2.5rem 0 0.95rem 0; }
     }
     .hero-chips {
       display: flex;
