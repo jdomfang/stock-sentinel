@@ -10,6 +10,16 @@ from utils.ui import apply_theme, close_page
 from utils.deep_analysis import generate_ai_summary
 
 
+def _sentiment_pill(label: str) -> str:
+    label = (label or "").strip()
+    if label.lower() == "bullish":
+        return '<span style="background:rgba(56,189,248,.18);color:rgba(56,189,248,.98);border:1px solid rgba(56,189,248,.35);padding:3px 10px;border-radius:999px;font-size:0.83rem;font-weight:700;">Bullish</span>'
+    elif label.lower() == "bearish":
+        return '<span style="background:rgba(239,68,68,.15);color:rgba(248,113,113,.98);border:1px solid rgba(239,68,68,.30);padding:3px 10px;border-radius:999px;font-size:0.83rem;font-weight:700;">Bearish</span>'
+    else:
+        return f'<span style="background:rgba(148,163,184,.12);color:rgba(148,163,184,.92);border:1px solid rgba(148,163,184,.25);padding:3px 10px;border-radius:999px;font-size:0.83rem;font-weight:700;">{label or "Neutral"}</span>'
+
+
 def _load_demo_scan() -> pd.DataFrame:
     """Load the saved Scan demo.
 
@@ -653,7 +663,7 @@ else:
         with col3:
             st.markdown(last_close_display)
         with col4:
-            st.markdown(overall_sentiment)
+            st.markdown(_sentiment_pill(overall_sentiment), unsafe_allow_html=True)
         with col5:
             st.button("Deep Analyze", key=f"home_deep_{ticker_symbol}", disabled=True)
         st.markdown("</div>", unsafe_allow_html=True)

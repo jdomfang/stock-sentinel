@@ -122,6 +122,36 @@ def apply_theme() -> None:
         unsafe_allow_html=True,
     )
 
+    st.markdown(
+        """
+        <style>
+        #clawd-transition-overlay {
+          position: fixed;
+          inset: 0;
+          z-index: 99999;
+          background: #020617;
+          pointer-events: none;
+          opacity: 1;
+          transition: opacity 0.35s ease;
+        }
+        #clawd-transition-overlay.clawd-fade-out { opacity: 0; }
+        </style>
+        <div id="clawd-transition-overlay"></div>
+        <script>
+        (function() {
+          var el = window.parent.document.getElementById('clawd-transition-overlay');
+          if (!el) { el = document.getElementById('clawd-transition-overlay'); }
+          if (!el) return;
+          setTimeout(function() {
+            el.classList.add('clawd-fade-out');
+            setTimeout(function() { if (el && el.parentNode) el.parentNode.removeChild(el); }, 400);
+          }, 120);
+        })();
+        </script>
+        """,
+        unsafe_allow_html=True,
+    )
+
     # Minimal dropdown readability fix (keeps select menus dark on Windows)
     components.html(
         """

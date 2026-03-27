@@ -1,0 +1,288 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Stock Sentinel — Compact Card Mock</title>
+  <style>
+    :root {
+      --bg: #0b1220;
+      --panel: rgba(20, 36, 61, 0.72);
+      --panel-strong: rgba(21, 40, 68, 0.88);
+      --border: rgba(170, 198, 224, 0.28);
+      --text: #f3f6fb;
+      --muted: rgba(232, 239, 247, 0.72);
+      --accent: #2ea8ff;
+      --accent-2: #1976d2;
+      --ghost: rgba(255,255,255,0.04);
+    }
+
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif;
+      color: var(--text);
+      background:
+        radial-gradient(900px 460px at 20% 0%, rgba(56,189,248,.16), transparent 52%),
+        radial-gradient(700px 360px at 84% 10%, rgba(34,197,94,.07), transparent 45%),
+        linear-gradient(180deg, #10213b 0%, #0b1220 62%, #0d1830 100%);
+      min-height: 100vh;
+    }
+
+    .shell {
+      max-width: 1180px;
+      margin: 0 auto;
+      padding: 22px 28px 64px;
+    }
+
+    .nav {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 8px 0 42px;
+    }
+
+    .brand {
+      font-size: 11px;
+      letter-spacing: .12em;
+      text-transform: uppercase;
+      font-weight: 800;
+      color: rgba(255,255,255,.95);
+    }
+
+    .nav-actions {
+      display: flex;
+      gap: 12px;
+      align-items: center;
+    }
+
+    .nav-link {
+      color: rgba(255,255,255,.92);
+      text-decoration: none;
+      font-size: 12px;
+      font-weight: 700;
+    }
+
+    .nav-btn {
+      border: 1px solid rgba(190,220,245,.35);
+      background: rgba(255,255,255,.08);
+      color: white;
+      border-radius: 999px;
+      font-size: 12px;
+      font-weight: 700;
+      padding: 8px 12px;
+      text-decoration: none;
+      box-shadow: inset 0 1px 0 rgba(255,255,255,.06);
+    }
+
+    .hero {
+      max-width: 840px;
+      margin-bottom: 28px;
+    }
+
+    .eyebrow {
+      font-size: 11px;
+      font-weight: 800;
+      letter-spacing: .12em;
+      text-transform: uppercase;
+      color: rgba(255,255,255,.78);
+      margin-bottom: 14px;
+    }
+
+    h1 {
+      margin: 0 0 14px;
+      font-size: clamp(36px, 5vw, 56px);
+      line-height: 1.03;
+      letter-spacing: -0.04em;
+      font-weight: 850;
+      max-width: 760px;
+    }
+
+    .sub {
+      margin: 0;
+      max-width: 620px;
+      color: var(--muted);
+      line-height: 1.5;
+      font-size: 14px;
+      font-weight: 520;
+    }
+
+    .cards {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(320px, 1fr));
+      gap: 14px;
+      max-width: 820px;
+    }
+
+    .card {
+      position: relative;
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      background: linear-gradient(180deg, rgba(87, 144, 184, 0.18), rgba(20, 36, 61, 0.72));
+      box-shadow: 0 18px 36px rgba(0,0,0,.24), inset 0 1px 0 rgba(255,255,255,.06);
+      padding: 14px 16px 12px;
+      min-height: 148px;
+      backdrop-filter: blur(8px);
+    }
+
+    .mode {
+      position: absolute;
+      top: 12px;
+      right: 12px;
+      width: 34px;
+      height: 34px;
+      border-radius: 999px;
+      border: 1px solid rgba(196, 220, 242, 0.35);
+      background: rgba(255,255,255,.06);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      font-size: 8px;
+      color: rgba(255,255,255,.82);
+      line-height: 1.05;
+      text-transform: uppercase;
+      font-weight: 800;
+      letter-spacing: .08em;
+    }
+
+    .mode span:last-child {
+      font-size: 11px;
+      letter-spacing: 0;
+      margin-top: 2px;
+    }
+
+    .card h3 {
+      margin: 0 0 4px;
+      font-size: 14px;
+      font-weight: 800;
+      letter-spacing: -0.02em;
+    }
+
+    .card p {
+      margin: 0;
+      color: rgba(240,246,255,.82);
+      font-size: 11.5px;
+      line-height: 1.4;
+      max-width: 92%;
+    }
+
+    .controls {
+      display: grid;
+      grid-template-columns: 1.45fr .95fr;
+      gap: 10px;
+      margin-top: 14px;
+      align-items: center;
+    }
+
+    .field, .button, .button-ghost {
+      height: 36px;
+      border-radius: 11px;
+      font-weight: 700;
+      font-size: 12px;
+    }
+
+    .field {
+      border: 1px solid rgba(194,216,236,.24);
+      background: rgba(255,255,255,.07);
+      color: rgba(255,255,255,.94);
+      display: flex;
+      align-items: center;
+      padding: 0 12px;
+      gap: 8px;
+      box-shadow: inset 0 1px 0 rgba(255,255,255,.04);
+    }
+
+    .field .placeholder {
+      color: rgba(255,255,255,.60);
+      font-weight: 600;
+    }
+
+    .button {
+      border: none;
+      color: white;
+      background: linear-gradient(180deg, var(--accent), var(--accent-2));
+      box-shadow: 0 8px 18px rgba(46,168,255,.30), inset 0 1px 0 rgba(255,255,255,.18);
+      cursor: default;
+    }
+
+    .button-ghost {
+      border: 1px solid rgba(194,216,236,.26);
+      background: rgba(255,255,255,.04);
+      color: white;
+      box-shadow: inset 0 1px 0 rgba(255,255,255,.05);
+      cursor: default;
+    }
+
+    .meta {
+      margin-top: 9px;
+      font-size: 10px;
+      font-weight: 650;
+      color: rgba(240,246,255,.70);
+    }
+
+    .two-buttons {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+      margin-top: 14px;
+    }
+
+    @media (max-width: 760px) {
+      .shell { padding: 18px 16px 40px; }
+      .nav { padding-bottom: 28px; }
+      .cards {
+        grid-template-columns: 1fr;
+        max-width: 100%;
+      }
+      .controls, .two-buttons {
+        grid-template-columns: 1fr;
+      }
+      .card {
+        min-height: auto;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="shell">
+    <div class="nav">
+      <div class="brand">Stock Sentinel</div>
+      <div class="nav-actions">
+        <a class="nav-link" href="#">Home</a>
+        <a class="nav-btn" href="#">Log in</a>
+      </div>
+    </div>
+
+    <section class="hero">
+      <div class="eyebrow">Option A</div>
+      <h1>Two primary capabilities as parallel “products.”</h1>
+      <p class="sub">Compact version: same two-card concept, but tighter proportions so the cards feel denser, more premium, and less visually empty.</p>
+    </section>
+
+    <section class="cards">
+      <article class="card">
+        <div class="mode"><span>Mode</span><span>1</span></div>
+        <h3>Market Scan</h3>
+        <p>Find US tickers gaining unusual attention, then shortlist the best candidates.</p>
+        <div class="two-buttons">
+          <button class="button">Start Market Scan</button>
+          <button class="button-ghost">View demo results</button>
+        </div>
+        <div class="meta">Best when you don’t have a ticker yet.</div>
+      </article>
+
+      <article class="card">
+        <div class="mode"><span>Mode</span><span>2</span></div>
+        <h3>Analyze a Stock</h3>
+        <p>Enter a ticker and get a clear signal (Buy/Watch/Avoid) with drivers and risk notes.</p>
+        <div class="controls">
+          <div class="field"><span class="placeholder">Ticker</span><span>TSLA</span></div>
+          <button class="button">Analyze</button>
+        </div>
+        <div class="meta">Best when you already have a ticker in mind.</div>
+      </article>
+    </section>
+  </div>
+</body>
+</html>

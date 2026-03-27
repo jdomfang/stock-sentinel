@@ -15,6 +15,16 @@ import logging
 from utils.navigation import render_sidebar_navigation, render_top_nav
 from utils.ui import apply_theme, close_page
 from utils.sentiment import extract_tickers, analyze_sentiment
+
+
+def _sentiment_pill(label: str) -> str:
+    label = (label or "").strip()
+    if label.lower() == "bullish":
+        return '<span style="background:rgba(56,189,248,.18);color:rgba(56,189,248,.98);border:1px solid rgba(56,189,248,.35);padding:3px 10px;border-radius:999px;font-size:0.83rem;font-weight:700;">Bullish</span>'
+    elif label.lower() == "bearish":
+        return '<span style="background:rgba(239,68,68,.15);color:rgba(248,113,113,.98);border:1px solid rgba(239,68,68,.30);padding:3px 10px;border-radius:999px;font-size:0.83rem;font-weight:700;">Bearish</span>'
+    else:
+        return f'<span style="background:rgba(148,163,184,.12);color:rgba(148,163,184,.92);border:1px solid rgba(148,163,184,.25);padding:3px 10px;border-radius:999px;font-size:0.83rem;font-weight:700;">{label or "Neutral"}</span>'
 from utils.finance import get_ticker_master_list, get_stock_data, get_last_close_prices_best_effort
 from utils.projections import simple_projection
 from utils.deep_analysis import ANALYSIS_PROMPTS, run_deep_analysis, generate_ai_summary
@@ -770,11 +780,16 @@ if scan_triggered:
                 validated_set.add(ticker)
                 company_by_ticker[ticker] = ticker_info.get('name', ticker)
 
-        with st.spinner("Searching X for emerging stocks..."):
+        progress_bar = st.progress(0)
+        status_text = st.empty()
+        status_text.markdown(f"**📡 Scanning X for {sector} momentum...**")
+
+        with st.spinner(f"Searching {sector} stocks on X..."):
             pages = 0
             while total_sector_relevant < SAFETY_CAP_TWEETS:
                 pages += 1
                 # Page fetch (always 100 max)
+                progress_bar.progress(15); status_text.markdown(f"**📡 Scanning X for {sector} momentum...**")
                 res = search_x_tweets_page(query=query, max_results=PER_PAGE, timeframe="24h", next_token=next_token)
                 if not res.get('success'):
                     err = res.get('error') or 'X API request failed'
@@ -783,6 +798,7 @@ if scan_triggered:
 
                 page_tweets = res.get('tweets') or []
                 next_token = res.get('next_token')
+                progress_bar.progress(45); status_text.markdown("**🔍 Filtering noise, validating tickers...**")
 
                 if not page_tweets:
                     break
@@ -827,6 +843,7 @@ if scan_triggered:
                             ticker_data[ticker]['sample_tweets'].append(short_text)
 
                 # After each page, try to validate enough tickers.
+                progress_bar.progress(70); status_text.markdown("**⚡ Building your shortlist...**")
                 _try_validate_from_current_ranking()
 
                 logger.info(
@@ -843,6 +860,8 @@ if scan_triggered:
 
                 if not next_token:
                     break
+
+        progress_bar.progress(100); status_text.empty(); progress_bar.empty()
 
         logger.info(f"🎯 Sector-relevant tweets processed (capped): {total_sector_relevant}")
 
@@ -1033,7 +1052,7 @@ if st.session_state.df_valid is not None:
             with col3:
                 st.markdown(last_close_display)
             with col4:
-                st.markdown(overall_sentiment)
+                st.markdown(_sentiment_pill(overall_sentiment), unsafe_allow_html=True)
             with col5:
                 if st.button("Deep Analyze", key=f"deep_analyze_{ticker_symbol}"):
                     # Consume a Deep Analyze credit here (most users use the inline button).
