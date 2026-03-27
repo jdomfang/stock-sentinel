@@ -72,12 +72,13 @@ st.markdown(
     <style>
     /* Discovery page styling; global theme comes from utils.ui.apply_theme() */
 
-    /* Main container spacing */
+    /* Main container spacing (match Home) */
     div[data-testid="stMainBlockContainer"] {
-      max-width: 100%;
-      padding-left: 2rem;
-      padding-right: 2rem;
-      padding-top: 0rem;
+      max-width: 1100px;
+      margin: 0 auto;
+      padding-left: clamp(16px, 4vw, 28px);
+      padding-right: clamp(16px, 4vw, 28px);
+      padding-top: 0.25rem;
     }
 
     /* Remove extra top whitespace so hero sits closer to the sticky top nav */
@@ -87,9 +88,9 @@ st.markdown(
     }
 
     .discovery-wrapper {
-      max-width: 1400px;
+      max-width: 1100px;
       margin: 0 auto;
-      padding: 0 1rem;
+      padding: 0;
     }
 
     /* Titles */
@@ -107,32 +108,29 @@ st.markdown(
       font-size: 0.98rem;
     }
 
-    /* Hero (no box) */
+    /* Hero (match Home) */
     .hero {
-      margin: -22px 0 5px 0;
-      padding: 0;
-    }
-    .hero-eyebrow {
-      color: rgba(56,189,248,.95);
-      font-weight: 750;
-      letter-spacing: 0.06em;
-      text-transform: uppercase;
-      font-size: 0.78rem;
-      margin-bottom: 10px;
+      margin: -6.10rem 0 0.95rem 0;
+      padding: 0 2px 2px 2px;
     }
     .hero-title {
-      font-size: 2.05rem;
+      font-size: clamp(42px, 5.1vw, 3.55rem);
       font-weight: 850;
-      letter-spacing: -0.03em;
-      line-height: 1.1;
-      margin: 0 0 10px 0;
+      letter-spacing: -0.035em;
+      line-height: 1.08;
+      margin: 0 0 8px 0;
+      max-width: 880px;
     }
     .hero-subtitle {
       color: var(--muted);
-      font-size: 1.05rem;
-      line-height: 1.5;
-      margin: 0 0 12px 0;
-      max-width: 980px;
+      font-size: clamp(15px, 1.35vw, 1.05rem);
+      line-height: 1.45;
+      margin: 0;
+      max-width: 760px;
+    }
+
+    @media (max-width: 640px) {
+      .hero { margin: -2.5rem 0 0.95rem 0; }
     }
     .hero-chips {
       display: flex;
@@ -168,6 +166,30 @@ st.markdown(
       background: linear-gradient(180deg, rgba(15,23,42,.92), rgba(15,23,42,.75));
       border-radius: 14px;
       padding: 16px;
+    }
+
+    /* Scan controls card (align with Home) */
+    .st-key-discovery_scan_card {
+      border: 1px solid rgba(148,163,184,0.18);
+      background: linear-gradient(180deg, rgba(15,23,42,.92), rgba(15,23,42,.72));
+      border-radius: 16px;
+      padding: 15px 15px 12px 15px;
+      box-shadow: 0 10px 28px rgba(0,0,0,.35);
+      margin-top: -0.10rem;
+      margin-bottom: 0.65rem;
+    }
+    .st-key-discovery_scan_card .cap-title {
+      font-weight: 800;
+      font-size: 1.00rem;
+      margin: 0;
+      color: rgba(229,231,235,.98);
+    }
+    .st-key-discovery_scan_card .cap-desc {
+      margin: 6px 0 10px 0;
+      color: rgba(229,231,235,.78);
+      font-size: 0.94rem;
+      line-height: 1.45;
+      max-width: 52ch;
     }
 
     /* Control row */
@@ -449,8 +471,8 @@ st.markdown('<div class="clawd-app-wrapper discovery-wrapper">', unsafe_allow_ht
 st.markdown(
     """
     <div class="hero">
-      <div class="hero-eyebrow">Stock Sentinel</div>
       <div class="hero-title">Finding short‑term opportunities shouldn’t feel like a full‑time job.</div>
+      <div class="hero-subtitle">Pick a sector and we identify US stocks gaining unusual attention in your selected sector—fast.</div>
     </div>
     """,
     unsafe_allow_html=True,
@@ -467,37 +489,19 @@ if "df_valid" not in st.session_state:
 if "df_unvalidated" not in st.session_state:
     st.session_state.df_unvalidated = None
 
-# Input form (UI/UX only — functionality unchanged)
-# Brief primer (keeps UI clean; replaces the old "How it works" expander)
-# Streamlit widgets can't truly be wrapped by an HTML <div>.
-# Left-align controls (dashboard feel) while keeping a sane max width.
-_main, _spacer = st.columns([2.8, 1.2])
-
-with _main:
+# Scan controls (align with Home card styling)
+with st.container(key="discovery_scan_card"):
     st.markdown(
         """
-        <div style="
-          font-size: 1.05rem;
-          line-height: 1.35;
-          font-weight: 520;
-          color: rgba(229, 231, 235, 0.95);
-          margin: 0.2rem 0 0.6rem 0;
-          padding: 0.45rem 0.65rem;
-          border-left: 3px solid rgba(56, 189, 248, 0.65);
-          border-radius: 0.65rem;
-          background: rgba(15, 23, 42, 0.35);
-        ">
-          <span style="font-weight: 750; color: rgba(229, 231, 235, 1);">Pick a sector</span>
-          <span> and we identify <b>US stocks</b> gaining unusual attention in your selected sector—fast.</span>
-        </div>
+        <div class="cap-title">Market Scan</div>
+        <p class="cap-desc">Pick a sector and we’ll shortlist US tickers gaining unusual attention on X.</p>
         """,
         unsafe_allow_html=True,
     )
 
-    # Controls (make sector field less wide by adding a right-side spacer column)
-    ctrl_left, ctrl_right, _ctrl_pad = st.columns([0.78, 0.55, 2.67])
+    sel_col, btn_col = st.columns([1.22, 0.98])
 
-    with ctrl_left:
+    with sel_col:
         SECTOR_OPTIONS = [
             "tech",
             "healthcare",
@@ -519,7 +523,7 @@ with _main:
         )
         if _default_sector not in SECTOR_OPTIONS:
             _default_sector = SECTOR_OPTIONS[0]
-        # Set a widget key so the value survives reruns reliably.
+
         st.session_state.setdefault("discovery_sector", _default_sector)
 
         sector = st.selectbox(
@@ -527,13 +531,10 @@ with _main:
             options=SECTOR_OPTIONS,
             index=SECTOR_OPTIONS.index(st.session_state.get("discovery_sector") or SECTOR_OPTIONS[0]),
             key="discovery_sector",
+            label_visibility="collapsed",
         )
 
-    # Code-only setting (X API supports 100 per request; pagination will fetch more)
-    # Keep cap aligned with deep analysis helper (max_pages=5 => ~500 tweets)
-    max_results = 500
-
-    with ctrl_right:
+    with btn_col:
         st.markdown("<div style='height: 1.65rem;'></div>", unsafe_allow_html=True)
         scan_clicked = st.button(
             "Sentinel Scan",
@@ -542,10 +543,9 @@ with _main:
             disabled=False,
         )
 
-    with _ctrl_pad:
-        # intentional blank space to prevent full-width stretching
-        st.markdown("")
-
+# Code-only setting (X API supports 100 per request; pagination will fetch more)
+# Keep cap aligned with deep analysis helper (max_pages=5 => ~500 tweets)
+max_results = 500
 
 scan_triggered = bool(scan_clicked or _autostart_scan)
 

@@ -122,6 +122,61 @@ def apply_theme() -> None:
         unsafe_allow_html=True,
     )
 
+    # Branded page-transition overlay (best-effort)
+    # Streamlit Cloud doesn't reliably run <script> inside st.markdown; components.html does.
+    # We inject an overlay into the parent document, then fade it out quickly.
+    components.html(
+        """
+        <script>
+        (function () {
+          try {
+            const doc = (window.parent && window.parent.document) ? window.parent.document : document;
+            const id = 'clawd-transition-overlay';
+
+            const mount = () => {
+              // Remove any stale overlay first
+              try {
+                const stale = doc.getElementById(id);
+                if (stale) stale.remove();
+              } catch (e) {}
+
+              const el = doc.createElement('div');
+              el.id = id;
+              el.style.cssText = [
+                'position:fixed',
+                'inset:0',
+                'z-index:99999',
+                'background:#020617',
+                'pointer-events:none',
+                'opacity:1',
+                'transition:opacity .35s ease'
+              ].join(';');
+
+              (doc.body || doc.documentElement).appendChild(el);
+
+              // Fade out + remove
+              setTimeout(() => { el.style.opacity = '0'; }, 120);
+              setTimeout(() => { try { el.remove(); } catch (e) {} }, 650);
+
+              // Safety cleanup
+              setTimeout(() => {
+                try {
+                  const maybe = doc.getElementById(id);
+                  if (maybe) maybe.remove();
+                } catch (e) {}
+              }, 2500);
+            };
+
+            if (!doc || (!doc.body && !doc.documentElement)) return;
+            if (!doc.body) setTimeout(mount, 0);
+            else mount();
+          } catch (e) {}
+        })();
+        </script>
+        """,
+        height=0,
+    )
+
     # Minimal dropdown readability fix (keeps select menus dark on Windows)
     components.html(
         """
