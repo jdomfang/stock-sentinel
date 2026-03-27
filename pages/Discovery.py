@@ -869,7 +869,7 @@ if scan_triggered:
             st.warning("No posts returned from X for this query.")
             st.stop()
 
-        st.success(f"✅ Processed {total_sector_relevant} sector-relevant posts!")
+        # (status message removed — results table speaks for itself)
 
         # Convert to final DataFrame
         if ticker_data:
@@ -909,7 +909,7 @@ if scan_triggered:
             if len(df_valid) == 0:
                 st.warning("⚠️ No validated stock tickers found. Try a different sector/time window.")
             else:
-                st.info("📈 Validated tickers ready.")
+                pass  # (status message removed)
         else:
             st.warning("⚠️ No stock tickers found in the posts. Try a different search query.")
 
