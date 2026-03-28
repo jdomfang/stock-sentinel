@@ -88,7 +88,7 @@ st.markdown(
       padding-top: 0 !important;
     }
 
-    /* Streamlit injects extra block padding — neutralise it */
+    /* Streamlit injects extra block padding - neutralise it */
     section[data-testid="stMain"] > div {
       padding-top: 0 !important;
     }
@@ -115,7 +115,7 @@ st.markdown(
     }
 
     /* Hero (match Home) */
-    /* Hero — exact match to Home */
+    /* Hero - exact match to Home */
     .hero {
       margin: -8.10rem 0 2px 0;
       padding: 0 2px 2px 2px;
@@ -328,7 +328,7 @@ st.markdown(
       background-color: rgba(15, 23, 42, 1.0);
     }
 
-    /* Secondary buttons (Deep Analyze) — stronger presence */
+    /* Secondary buttons (Deep Analyze) - stronger presence */
     button[data-testid="stBaseButton-secondary"],
     .stButton > button[kind="secondary"] {
       background: rgba(56,189,248,.08) !important;
@@ -349,7 +349,7 @@ st.markdown(
     }
 
     /* Primary CTA */
-    /* Primary buttons (Scan X) — must override the generic button rule */
+    /* Primary buttons (Scan X) - must override the generic button rule */
     button[data-testid="stBaseButton-primary"],
     .stButton > button[kind="primary"] {
       background: linear-gradient(180deg, rgba(56,189,248,.95), rgba(14,116,144,.95)) !important;
@@ -439,7 +439,7 @@ components.html(
           });
         }
 
-        // Deep Analyze buttons — teal tinted style via JS (overrides Streamlit forced white)
+        // Deep Analyze buttons - teal tinted style via JS (overrides Streamlit forced white)
         doc.querySelectorAll('button[data-testid="stBaseButton-secondary"]').forEach((btn) => {
           const base = () => {
             btn.style.setProperty('background-image', 'none', 'important');
@@ -515,8 +515,8 @@ st.markdown('<div class="clawd-app-wrapper discovery-wrapper">', unsafe_allow_ht
 st.markdown(
     """
     <div class="hero">
-      <div class="hero-title">Finding short‑term opportunities shouldn’t feel like a full‑time job.</div>
-      <div class="hero-subtitle">Pick a sector and we identify US stocks gaining unusual attention in your selected sector—fast.</div>
+      <div class="hero-title">Finding short-term opportunities shouldn't feel like a full-time job.</div>
+      <div class="hero-subtitle">Pick a sector and we identify US stocks gaining unusual attention in your selected sector-fast.</div>
     </div>
     """,
     unsafe_allow_html=True,
@@ -536,10 +536,7 @@ if "df_unvalidated" not in st.session_state:
 # Scan controls (align with Home card styling)
 with st.container(key="discovery_scan_card"):
     st.markdown(
-        """
-        <div class="cap-title">Market Scan</div>
-        <p class="cap-desc">Pick a sector and we’ll shortlist US tickers gaining unusual attention on X.</p>
-        """,
+        '<div class="cap-title">Market Scan</div>',
         unsafe_allow_html=True,
     )
 
@@ -689,7 +686,7 @@ if scan_triggered:
     try:
         # Load X Bearer Token from secrets
         x_bearer_token = st.secrets["X_BEARER_TOKEN"]
-        
+
         # Construct search query with sector-specific keywords (Free-tier compatible)
         # Note: Advanced operators like min_faves, filter:, and since: require Basic tier or higher
         # Using only basic operators: Boolean, lang, and -is:retweet for Free tier
@@ -805,7 +802,7 @@ if scan_triggered:
         else:
             sector_terms = sector_keywords.get(sector_key, sector)
             query = f"({sector} OR {sector_terms}) stock (bullish OR opportunity OR catalyst OR growth OR earnings) -bearish lang:en -is:retweet"
-        
+
         logger.info(f"🔍 Starting X search for sector: {sector}")
         logger.info(f"🧠 Using query mode: {'v2' if use_v2 else 'v1'}")
         logger.info(f"🧹 Post-filter enabled: {not use_v2}")
@@ -994,7 +991,7 @@ if scan_triggered:
             st.warning("No posts returned from X for this query.")
             st.stop()
 
-        # (status message removed — results table speaks for itself)
+        # (status message removed - results table speaks for itself)
 
         # Convert to final DataFrame
         if ticker_data:
@@ -1145,12 +1142,12 @@ if st.session_state.df_valid is not None:
         _value_style = "font-size:1.30rem;font-weight:800;letter-spacing:-0.02em;color:rgba(248,250,252,.98);"
 
         st.markdown(
-            f'<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:0.75rem;">'
-            f'<div style="{_card_style}border:1px solid rgba(148,163,184,.18);">'
+            f'<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:0.75rem;width:100%;box-sizing:border-box;">'
+            f'<div style="{_card_style}border:1px solid rgba(148,163,184,.18);box-sizing:border-box;">'
             f'<div style="{_label_style}">Stocks found</div>'
             f'<div style="{_value_style}">{total_valid}</div>'
             f'</div>'
-            f'<div style="{_card_style}border:1px solid {sent_border};">'
+            f'<div style="{_card_style}border:1px solid {sent_border};box-sizing:border-box;">'
             f'<div style="{_label_style}">Avg Sentiment</div>'
             f'<div style="font-size:1.10rem;font-weight:750;color:{sent_color};">{sent_label}</div>'
             f'</div>'
@@ -1309,7 +1306,7 @@ if st.session_state.selected_ticker and st.session_state.deep_analysis_results:
                 p10 = projection.get("gain_p10")
                 p90 = projection.get("gain_p90")
                 if p10 is not None and p90 is not None:
-                    proj_display = f"{p10:.1f}–{p90:.1f}%"
+                    proj_display = f"{p10:.1f}-{p90:.1f}%"
                 else:
                     proj_display = f"{float(projection.get('avg_gain', 0.0)):.1f}%"
                 proj_reason = ""
@@ -1503,7 +1500,7 @@ st.markdown(
       opacity: 1 !important;
     }
 
-    /* Deep Analyze button — teal tinted, visible, premium */
+    /* Deep Analyze button - teal tinted, visible, premium */
     html body button[data-testid="stBaseButton-secondary"],
     div.stButton > button[kind="secondary"][data-testid="stBaseButton-secondary"],
     .stButton > button[kind="secondary"][data-testid="stBaseButton-secondary"],
