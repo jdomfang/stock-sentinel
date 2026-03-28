@@ -328,20 +328,24 @@ st.markdown(
       background-color: rgba(15, 23, 42, 1.0);
     }
 
-    /* Secondary buttons (e.g., Deep Analyze) */
+    /* Secondary buttons (Deep Analyze) — stronger presence */
     button[data-testid="stBaseButton-secondary"],
     .stButton > button[kind="secondary"] {
-      background: rgba(15, 23, 42, 0.85) !important;
-      background-color: rgba(15, 23, 42, 0.85) !important;
-      color: #E5E7EB !important;
-      border: 1px solid rgba(56,189,248,0.28) !important;
+      background: rgba(56,189,248,.08) !important;
+      background-color: rgba(56,189,248,.08) !important;
+      color: rgba(56,189,248,.95) !important;
+      border: 1px solid rgba(56,189,248,0.40) !important;
+      font-weight: 700 !important;
       opacity: 1 !important;
+      transition: all 0.15s ease !important;
     }
     button[data-testid="stBaseButton-secondary"]:hover,
     .stButton > button[kind="secondary"]:hover {
-      background: rgba(15, 23, 42, 1.0) !important;
-      background-color: rgba(15, 23, 42, 1.0) !important;
-      border-color: rgba(56,189,248,0.55) !important;
+      background: rgba(56,189,248,.18) !important;
+      background-color: rgba(56,189,248,.18) !important;
+      border-color: rgba(56,189,248,0.75) !important;
+      color: rgba(255,255,255,.98) !important;
+      box-shadow: 0 0 12px rgba(56,189,248,.20) !important;
     }
 
     /* Primary CTA */
@@ -381,6 +385,28 @@ st.markdown(
       border-color: rgba(56, 189, 248, 0.40);
       transform: translateY(-1px);
     }
+
+    /* Top Signal elevated card */
+    .ticker-row--top-signal {
+      border: 1px solid rgba(56,189,248,.45) !important;
+      background: linear-gradient(180deg, rgba(56,189,248,.06), rgba(15,23,42,.85)) !important;
+      box-shadow: 0 0 0 1px rgba(56,189,248,.18), 0 8px 24px rgba(56,189,248,.08) !important;
+      position: relative;
+    }
+    .ticker-row--top-signal::before {
+      content: "TOP SIGNAL";
+      position: absolute;
+      top: -10px;
+      left: 14px;
+      font-size: 0.62rem;
+      font-weight: 800;
+      letter-spacing: 0.10em;
+      color: rgba(56,189,248,.95);
+      background: #020617;
+      padding: 0 6px;
+      border-radius: 4px;
+    }
+
     .ticker-row [data-testid="column"]:nth-child(2) p {
       white-space: nowrap;
       overflow: hidden;
@@ -1023,7 +1049,23 @@ if st.session_state.df_valid is not None:
 
         k1, k2 = st.columns([1, 1])
         k1.metric("Validated stocks", total_valid)
-        k2.metric("Avg sentiment", f"{avg_sent:.3f}")
+        if avg_sent >= 0.15:
+            sent_label = f"Bullish ({avg_sent:.2f})"
+            sent_color = "rgba(56,189,248,.95)"
+        elif avg_sent <= -0.10:
+            sent_label = f"Bearish ({avg_sent:.2f})"
+            sent_color = "rgba(239,68,68,.90)"
+        else:
+            sent_label = f"Neutral ({avg_sent:.2f})"
+            sent_color = "rgba(148,163,184,.90)"
+        k2.markdown(
+            f'<div style="border:1px solid rgba(148,163,184,0.18);background:rgba(15,23,42,.65);'
+            f'border-radius:14px;padding:12px 14px;">'
+            f'<div style="color:rgba(148,163,184,.75);font-size:0.8rem;margin-bottom:4px;">Avg Sentiment</div>'
+            f'<div style="color:{sent_color};font-size:1.05rem;font-weight:750;">{sent_label}</div>'
+            f'</div>',
+            unsafe_allow_html=True,
+        )
         st.markdown("", unsafe_allow_html=True)
     except Exception:
         # Never let UI extras break the page
@@ -1039,6 +1081,14 @@ if st.session_state.df_valid is not None:
             f'{sector.title()} · {len(df_valid_display)} stocks</div>',
             unsafe_allow_html=True,
         )
+
+        # Sort: Bullish first, then Neutral, then Bearish
+        sentiment_order = {"bullish": 0, "neutral": 1, "bearish": 2}
+        df_valid_display = df_valid_display.copy()
+        df_valid_display["_sort"] = df_valid_display["Overall Sentiment"].str.lower().map(lambda x: sentiment_order.get(x, 1))
+        df_valid_display = df_valid_display.sort_values("_sort").drop(columns=["_sort"])
+        df_valid_display = df_valid_display.reset_index(drop=True)
+
         header_cols = st.columns([0.9, 1.5, 1.1, 0.95, 0.9])
         # Load last close prices (cache → Polygon on miss → cache)
         tickers_for_prices = [str(t) for t in df_valid_display["Ticker"].tolist()]
@@ -1051,16 +1101,20 @@ if st.session_state.df_valid is not None:
             st.caption(f"Price lookup failed: {str(e)[:120]}")
             last_close_map = {}
 
-        header_labels = [
-            "Ticker",
-            "Company",
-            "Last Close",
-            "Overall",
-            "Deep Analyze"
-        ]
+        st.markdown(
+            '<div style="display:flex;padding:0 0.85rem;margin-bottom:0.25rem;">'
+            '</div>',
+            unsafe_allow_html=True,
+        )
+        header_labels = ["Ticker", "Company", "Last Close", "Signal", "Action"]
         for col, label in zip(header_cols, header_labels):
-            col.markdown(f"**{label}**")
+            col.markdown(
+                f'<span style="font-size:0.75rem;font-weight:700;letter-spacing:0.06em;'
+                f'text-transform:uppercase;color:rgba(148,163,184,.70);">{label}</span>',
+                unsafe_allow_html=True,
+            )
 
+        _top_signal_shown = False
         for _, row in df_valid_display.iterrows():
             ticker_symbol = row["Ticker"]
             company_name = row["Company Name"]
@@ -1068,7 +1122,11 @@ if st.session_state.df_valid is not None:
             last_close = last_close_map.get(str(ticker_symbol).upper())
             last_close_display = "N/A" if last_close is None else f"${float(last_close):.2f}"
 
-            st.markdown("<div class='ticker-row'>", unsafe_allow_html=True)
+            if not _top_signal_shown and overall_sentiment.lower() == "bullish":
+                st.markdown("<div class='ticker-row ticker-row--top-signal'>", unsafe_allow_html=True)
+                _top_signal_shown = True
+            else:
+                st.markdown("<div class='ticker-row'>", unsafe_allow_html=True)
             col1, col2, col3, col4, col5 = st.columns(
                 [0.9, 1.5, 1.1, 0.95, 0.9]
             )

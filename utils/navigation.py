@@ -94,7 +94,13 @@ def render_top_nav() -> None:
         .clawd-topnav {
           margin-top: -5.80rem !important;
           margin-bottom: -4.60rem !important;
-          padding: 0 !important;
+          padding: 0.20rem 0 0.20rem 0 !important;
+          border-bottom: 1px solid rgba(148,163,184,0.10);
+          backdrop-filter: blur(12px);
+          -webkit-backdrop-filter: blur(12px);
+          background: rgba(2,6,23,0.72);
+          position: relative;
+          z-index: 100;
         }
 
         .clawd-topnav [data-testid="stHorizontalBlock"] {
