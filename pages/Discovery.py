@@ -72,7 +72,7 @@ st.markdown(
     <style>
     /* Discovery page styling; global theme comes from utils.ui.apply_theme() */
 
-    /* Main container spacing (match Home) */
+    /* Main container spacing (match Home exactly) */
     div[data-testid="stMainBlockContainer"] {
       max-width: 1100px;
       margin: 0 auto;
@@ -81,9 +81,15 @@ st.markdown(
       padding-top: 0.25rem;
     }
 
-    /* Remove extra top whitespace so hero sits closer to the sticky top nav */
-    div[data-testid="stMainBlockContainer"] > div:first-child {
+    /* Kill Streamlit's default top padding that creates the dead gap */
+    div[data-testid="stMainBlockContainer"] > div:first-child,
+    div[data-testid="stVerticalBlock"] > div:first-child {
       margin-top: 0 !important;
+      padding-top: 0 !important;
+    }
+
+    /* Streamlit injects extra block padding — neutralise it */
+    section[data-testid="stMain"] > div {
       padding-top: 0 !important;
     }
 
@@ -109,12 +115,13 @@ st.markdown(
     }
 
     /* Hero (match Home) */
+    /* Hero — exact match to Home */
     .hero {
-      margin: 0.10rem 0 0.95rem 0;
+      margin: -7.80rem 0 1.10rem 0;
       padding: 0 2px 2px 2px;
     }
     .hero-title {
-      font-size: clamp(42px, 5.1vw, 3.55rem);
+      font-size: clamp(36px, 4.8vw, 3.35rem);
       font-weight: 850;
       letter-spacing: -0.035em;
       line-height: 1.08;
@@ -123,10 +130,13 @@ st.markdown(
     }
     .hero-subtitle {
       color: var(--muted);
-      font-size: clamp(15px, 1.35vw, 1.05rem);
+      font-size: clamp(14px, 1.3vw, 1.00rem);
       line-height: 1.45;
       margin: 0;
       max-width: 760px;
+    }
+    @media (max-width: 640px) {
+      .hero { margin: -2rem 0 1rem 0; }
     }
     .hero-chips {
       display: flex;
@@ -164,28 +174,40 @@ st.markdown(
       padding: 16px;
     }
 
-    /* Scan controls card (align with Home) */
+    /* Scan controls card (aligned with Home Market Scan card) */
     .st-key-discovery_scan_card {
       border: 1px solid rgba(148,163,184,0.18);
       background: linear-gradient(180deg, rgba(15,23,42,.92), rgba(15,23,42,.72));
       border-radius: 16px;
-      padding: 15px 15px 12px 15px;
+      padding: 16px 16px 14px 16px;
       box-shadow: 0 10px 28px rgba(0,0,0,.35);
-      margin-top: -0.10rem;
-      margin-bottom: 0.65rem;
+      margin-bottom: 0.85rem;
     }
     .st-key-discovery_scan_card .cap-title {
       font-weight: 800;
       font-size: 1.00rem;
-      margin: 0;
+      margin: 0 0 4px 0;
       color: rgba(229,231,235,.98);
     }
     .st-key-discovery_scan_card .cap-desc {
-      margin: 6px 0 10px 0;
+      margin: 0 0 12px 0;
       color: rgba(229,231,235,.78);
-      font-size: 0.94rem;
+      font-size: 0.93rem;
       line-height: 1.45;
-      max-width: 52ch;
+      max-width: 56ch;
+    }
+    /* Keep dropdown + button aligned on the same baseline */
+    .st-key-discovery_scan_card [data-testid="stHorizontalBlock"] {
+      align-items: flex-end !important;
+      gap: 10px !important;
+    }
+    .st-key-discovery_scan_card [data-baseweb="select"] > div {
+      border-radius: 12px !important;
+      min-height: 38px !important;
+    }
+    .st-key-discovery_scan_card .stButton > button {
+      min-height: 38px !important;
+      border-radius: 12px !important;
     }
 
     /* Control row */
@@ -495,7 +517,7 @@ with st.container(key="discovery_scan_card"):
         unsafe_allow_html=True,
     )
 
-    sel_col, btn_col = st.columns([1.22, 0.98])
+    sel_col, btn_col, _pad = st.columns([1.4, 0.9, 1.7])
 
     with sel_col:
         SECTOR_OPTIONS = [
@@ -531,12 +553,11 @@ with st.container(key="discovery_scan_card"):
         )
 
     with btn_col:
-        st.markdown("<div style='height: 1.65rem;'></div>", unsafe_allow_html=True)
+        st.markdown("<div style='height:1.68rem'></div>", unsafe_allow_html=True)
         scan_clicked = st.button(
             "Sentinel Scan",
             type="primary",
             use_container_width=True,
-            disabled=False,
         )
 
 # Code-only setting (X API supports 100 per request; pagination will fetch more)
@@ -1007,7 +1028,12 @@ if st.session_state.df_valid is not None:
     df_valid_display = st.session_state.df_valid.drop(columns=["Mentions", "Sample Tweets"], errors="ignore")
 
     if len(df_valid_display) > 0:
-        st.subheader("✅ Stocks Found with Market Sentiment")
+        st.markdown(
+            f'<div style="font-size:1.15rem;font-weight:800;letter-spacing:-0.01em;'
+            f'color:rgba(229,231,235,.98);margin:0.35rem 0 0.65rem 0;">'
+            f'{sector.title()} · {len(df_valid_display)} stocks</div>',
+            unsafe_allow_html=True,
+        )
         header_cols = st.columns([0.9, 1.5, 1.1, 0.95, 0.9])
         # Load last close prices (cache → Polygon on miss → cache)
         tickers_for_prices = [str(t) for t in df_valid_display["Ticker"].tolist()]
@@ -1065,7 +1091,7 @@ if st.session_state.df_valid is not None:
                         )
             st.markdown("</div>", unsafe_allow_html=True)
 
-        st.success(f"📊 {len(df_valid_display)} validated stock(s) found. Click 'Deep Analyze' for complete financial insights.")
+        st.caption(f"Click Deep Analyze on any ticker for catalysts, signals, and a Buy/Watch/Avoid recommendation.")
     else:
         st.warning("⚠️ No valid stock tickers found with financial data.")
 

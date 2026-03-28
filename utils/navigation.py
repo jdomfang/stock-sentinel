@@ -90,11 +90,11 @@ def render_top_nav() -> None:
           line-height: 1 !important;
         }
 
-        /* Top header: keep it stable (avoid negative-margin overlaps) */
+        /* Top header */
         .clawd-topnav {
-          margin-top: -0.75rem !important;
-          margin-bottom: 0.75rem !important;
-          padding: 0.25rem 0 0.25rem 0 !important;
+          margin-top: -5.80rem !important;
+          margin-bottom: -4.60rem !important;
+          padding: 0 !important;
         }
 
         .clawd-topnav [data-testid="stHorizontalBlock"] {
