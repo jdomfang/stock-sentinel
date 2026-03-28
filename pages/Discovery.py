@@ -117,7 +117,7 @@ st.markdown(
     /* Hero (match Home) */
     /* Hero — exact match to Home */
     .hero {
-      margin: -7.80rem 0 1.10rem 0;
+      margin: -8.10rem 0 2px 0;
       padding: 0 2px 2px 2px;
     }
     .hero-title {
@@ -380,6 +380,12 @@ st.markdown(
       background: rgba(15, 23, 42, 0.85);
       border-color: rgba(56, 189, 248, 0.40);
       transform: translateY(-1px);
+    }
+    .ticker-row [data-testid="column"]:nth-child(2) p {
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      max-width: 28ch;
     }
 
     /* Hide Streamlit "Made with" footer */
@@ -1015,10 +1021,9 @@ if st.session_state.df_valid is not None:
         total_unique = total_valid + total_other
         avg_sent = float(dfv["Avg Sentiment Score"].mean()) if (dfv is not None and "Avg Sentiment Score" in dfv.columns and len(dfv) > 0) else 0.0
 
-        k1, k2, k3 = st.columns(3)
+        k1, k2 = st.columns([1, 1])
         k1.metric("Validated stocks", total_valid)
-        k2.metric("Other mentions", total_other)
-        k3.metric("Avg sentiment", f"{avg_sent:.3f}")
+        k2.metric("Avg sentiment", f"{avg_sent:.3f}")
         st.markdown("", unsafe_allow_html=True)
     except Exception:
         # Never let UI extras break the page
@@ -1373,4 +1378,6 @@ st.markdown(
     </style>
     """,
     unsafe_allow_html=True,
+)
+rue,
 )

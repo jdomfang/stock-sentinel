@@ -98,7 +98,7 @@ def render_top_nav() -> None:
         }
 
         .clawd-topnav [data-testid="stHorizontalBlock"] {
-          gap: 0.20rem !important;
+          gap: 0.35rem !important;
           align-items: center !important;
         }
 
