@@ -1062,22 +1062,19 @@ if st.session_state.df_valid is not None:
         _label_style = "color:rgba(148,163,184,.75);font-size:0.75rem;font-weight:600;letter-spacing:0.04em;text-transform:uppercase;margin-bottom:5px;"
         _value_style = "font-size:1.30rem;font-weight:800;letter-spacing:-0.02em;color:rgba(248,250,252,.98);"
 
-        k1, k2 = st.columns([1, 1])
-        k1.markdown(
+        st.markdown(
+            f'<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:0.75rem;">'
             f'<div style="{_card_style}border:1px solid rgba(148,163,184,.18);">'
             f'<div style="{_label_style}">Stocks found</div>'
             f'<div style="{_value_style}">{total_valid}</div>'
-            f'</div>',
-            unsafe_allow_html=True,
-        )
-        k2.markdown(
+            f'</div>'
             f'<div style="{_card_style}border:1px solid {sent_border};">'
             f'<div style="{_label_style}">Avg Sentiment</div>'
             f'<div style="font-size:1.10rem;font-weight:750;color:{sent_color};">{sent_label}</div>'
+            f'</div>'
             f'</div>',
             unsafe_allow_html=True,
         )
-        st.markdown("<div style='height:0.5rem'></div>", unsafe_allow_html=True)
     except Exception:
         # Never let UI extras break the page
         pass
