@@ -373,17 +373,23 @@ st.markdown(
 
     /* Validated ticker rows */
     .ticker-row {
-      padding: 0.85rem 1rem;
-      border: 1px solid var(--border);
-      border-radius: 14px;
-      margin-bottom: 0.65rem;
-      background: rgba(15, 23, 42, 0.60);
-      transition: background 0.18s ease, border 0.18s ease, transform 0.18s ease;
+      padding: 0.55rem 0.85rem;
+      border: 1px solid rgba(148,163,184,0.12);
+      border-radius: 12px;
+      margin-bottom: 0.40rem;
+      background: rgba(15, 23, 42, 0.55);
+      transition: background 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease;
+      cursor: pointer;
     }
     .ticker-row:hover {
-      background: rgba(15, 23, 42, 0.85);
-      border-color: rgba(56, 189, 248, 0.40);
-      transform: translateY(-1px);
+      background: rgba(15, 23, 42, 0.92) !important;
+      border-color: rgba(56, 189, 248, 0.45) !important;
+      box-shadow: 0 0 0 1px rgba(56,189,248,.12), 0 4px 16px rgba(56,189,248,.07) !important;
+    }
+    /* Full row highlight on hover — override Streamlit column defaults */
+    .ticker-row:hover [data-testid="column"] p,
+    .ticker-row:hover [data-testid="column"] span {
+      color: rgba(248,250,252,.98) !important;
     }
 
     /* Top Signal elevated card */
@@ -1263,20 +1269,61 @@ if st.session_state.df_valid is not None:
         )
 
 if st.session_state.selected_ticker and st.session_state.deep_analysis_results:
-    st.markdown("---")
-    st.subheader(
-        f"🧠 Deep Analysis for {st.session_state.selected_ticker} ({st.session_state.selected_sector})"
-    )
+    ticker_label = st.session_state.selected_ticker
+    sector_label = (st.session_state.selected_sector or "").title()
     ai_summary = generate_ai_summary(st.session_state.deep_analysis_results)
 
-    # --- Headline summary (always show a complete block) ---
+    rec = ai_summary.get("recommendation", "—")
+    conf = ai_summary.get("confidence", "—")
+    rec_color = (
+        "rgba(56,189,248,.95)" if "buy" in rec.lower()
+        else "rgba(239,68,68,.90)" if "avoid" in rec.lower()
+        else "rgba(245,158,11,.90)"
+    )
+
+    # Panel header
+    st.markdown(
+        f"""
+        <div style="
+          margin-top:1.5rem;
+          border:1px solid rgba(56,189,248,.30);
+          border-radius:16px 16px 0 0;
+          padding:18px 20px 14px 20px;
+          background:linear-gradient(180deg,rgba(56,189,248,.07),rgba(15,23,42,.95));
+          display:flex;
+          align-items:center;
+          justify-content:space-between;
+          gap:12px;
+        ">
+          <div>
+            <div style="font-size:0.72rem;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:rgba(56,189,248,.80);margin-bottom:3px;">Deep Analysis · {sector_label}</div>
+            <div style="font-size:1.55rem;font-weight:850;letter-spacing:-0.02em;color:rgba(248,250,252,.98);">{ticker_label}</div>
+          </div>
+          <div style="text-align:right;">
+            <div style="font-size:0.72rem;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:rgba(148,163,184,.65);margin-bottom:3px;">Signal</div>
+            <div style="font-size:1.30rem;font-weight:850;color:{rec_color};">{rec}</div>
+            <div style="font-size:0.80rem;color:rgba(148,163,184,.75);margin-top:2px;">Confidence: {conf}</div>
+          </div>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
+
+    # Panel body wrapper
+    st.markdown(
+        '<div style="border:1px solid rgba(56,189,248,.20);border-top:none;border-radius:0 0 16px 16px;padding:16px 20px 20px 20px;background:rgba(15,23,42,.88);margin-bottom:1.5rem;">',
+        unsafe_allow_html=True,
+    )
+
+    # Close button
+    if st.button("✕ Close", key="close_deep_panel", type="secondary"):
+        st.session_state.selected_ticker = None
+        st.session_state.deep_analysis_results = None
+        st.rerun()
+
+    # Headline metrics row — all custom HTML for consistency
+    st.markdown("<div style='height:0.5rem'></div>", unsafe_allow_html=True)
     col1, col2, col3 = st.columns([1.2, 1, 2])
-    with col1:
-        st.metric("Recommendation", ai_summary["recommendation"])
-    with col2:
-        st.metric("Confidence", ai_summary["confidence"])
-    with col3:
-        st.metric("Weighted Sentiment", f"{ai_summary['avg_sentiment']:.3f}")
 
     # Financial metrics (best-effort; always displayed)
     ticker = st.session_state.selected_ticker
@@ -1327,19 +1374,18 @@ if st.session_state.selected_ticker and st.session_state.deep_analysis_results:
         proj_reason = "Data unavailable"
         hold_reason = "Data unavailable"
 
-    f1, f2, f3 = st.columns([1.2, 1, 2])
-    with f1:
-        st.metric("Current Price", price_display)
-        if price_display == "Unavailable":
-            st.caption(f"Reason: {price_reason}")
-    with f2:
-        st.metric("Projected Gain (30d)", proj_display)
-        if proj_display == "Unavailable":
-            st.caption(f"Reason: {proj_reason}")
-    with f3:
-        st.metric("Hold Period", hold_display)
-        if hold_display == "Unavailable":
-            st.caption(f"Reason: {hold_reason}")
+    # Premium metric cards grid
+    _mc = "border-radius:12px;padding:13px 15px;background:rgba(15,23,42,.70);border:1px solid rgba(148,163,184,.15);flex:1;"
+    _ml = "font-size:0.72rem;font-weight:700;letter-spacing:0.05em;text-transform:uppercase;color:rgba(148,163,184,.65);margin-bottom:4px;"
+    _mv = "font-size:1.10rem;font-weight:800;color:rgba(248,250,252,.95);"
+    st.markdown(
+        f'<div style="display:flex;gap:10px;margin:10px 0 14px 0;flex-wrap:wrap;">'
+        f'<div style="{_mc}"><div style="{_ml}">Price</div><div style="{_mv}">{price_display}</div></div>'
+        f'<div style="{_mc}"><div style="{_ml}">Proj. Gain 30d</div><div style="{_mv}">{proj_display}</div></div>'
+        f'<div style="{_mc}"><div style="{_ml}">Hold Period</div><div style="{_mv}">{hold_display}</div></div>'
+        f'</div>',
+        unsafe_allow_html=True,
+    )
 
     # Data quality line
     try:
@@ -1351,17 +1397,20 @@ if st.session_state.selected_ticker and st.session_state.deep_analysis_results:
     except Exception:
         _mentions_ct = 0
 
-    st.caption(f"Data quality: {_mentions_ct} mentions • {price_points} price points")
+    st.markdown(
+        f'<div style="color:rgba(148,163,184,.55);font-size:0.75rem;margin-bottom:12px;">'
+        f'{_mentions_ct} mentions analysed · {price_points} price points</div>',
+        unsafe_allow_html=True,
+    )
 
-    st.markdown("**📋 Rationale:**")
+    st.markdown('<div style="font-size:0.85rem;font-weight:700;color:rgba(148,163,184,.75);letter-spacing:0.04em;text-transform:uppercase;margin-bottom:8px;">Rationale</div>', unsafe_allow_html=True)
     for bullet in ai_summary["rationale"]:
         st.markdown(f"- {bullet}")
 
-    # Append a finance bullet to rationale for clarity
     if price_display != "Unavailable" and proj_display != "Unavailable" and hold_display != "Unavailable":
         st.markdown(f"- Price {price_display}; projected {proj_display} over 30d; suggested hold {hold_display}.")
     elif price_display == "Unavailable":
-        st.markdown("- Price/projection unavailable.")
+        st.markdown("- Price/projection data unavailable.")
 
     with st.expander("📦 Full Analysis Details", expanded=False):
         # --- Coverage / data-quality table (lean, non-insight) ---
@@ -1445,6 +1494,9 @@ if st.session_state.selected_ticker and st.session_state.deep_analysis_results:
                 st.error("Analysis failed for this prompt.")
 
             st.markdown("---")
+
+    # Close panel wrapper div
+    st.markdown('</div>', unsafe_allow_html=True)
 
 # Performance statistics (show in expander) - HIDDEN FROM UI
 # with st.expander("📊 Performance & Database Stats"):
