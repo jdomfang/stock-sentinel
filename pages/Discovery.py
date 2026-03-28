@@ -439,41 +439,35 @@ components.html(
           });
         }
 
-        // Fix secondary buttons (e.g. Deep Analyze) that get forced white by Streamlit theme.
-        // We also install explicit hover handlers because Streamlit's styles can override CSS :hover.
+        // Deep Analyze buttons — teal tinted style via JS (overrides Streamlit forced white)
         doc.querySelectorAll('button[data-testid="stBaseButton-secondary"]').forEach((btn) => {
           const base = () => {
             btn.style.setProperty('background-image', 'none', 'important');
-            btn.style.setProperty('background-color', 'rgba(15, 23, 42, 0.92)', 'important');
-            btn.style.setProperty('border', '1px solid rgba(56,189,248,0.28)', 'important');
-            btn.style.setProperty('color', '#E5E7EB', 'important');
+            btn.style.setProperty('background-color', 'rgba(56,189,248,.10)', 'important');
+            btn.style.setProperty('border', '1px solid rgba(56,189,248,0.42)', 'important');
+            btn.style.setProperty('color', 'rgba(56,189,248,.95)', 'important');
+            btn.style.setProperty('font-weight', '700', 'important');
             btn.style.setProperty('opacity', '1', 'important');
             btn.style.setProperty('filter', 'none', 'important');
-
-            // Streamlit renders button text as <p> inside the button
             btn.querySelectorAll('p, span').forEach((t) => {
-              t.style.setProperty('color', '#E5E7EB', 'important');
+              t.style.setProperty('color', 'rgba(56,189,248,.95)', 'important');
             });
           };
 
           const hover = () => {
-            btn.style.setProperty('background-image', 'linear-gradient(180deg, rgba(56,189,248,.95), rgba(14,116,144,.95))', 'important');
-            btn.style.setProperty('background-color', 'transparent', 'important');
-            btn.style.setProperty('border', '1px solid rgba(56,189,248,.45)', 'important');
-            btn.style.setProperty('color', '#001018', 'important');
-            btn.style.setProperty('opacity', '1', 'important');
-            btn.style.setProperty('filter', 'none', 'important');
-
+            btn.style.setProperty('background-image', 'none', 'important');
+            btn.style.setProperty('background-color', 'rgba(56,189,248,.22)', 'important');
+            btn.style.setProperty('border', '1px solid rgba(56,189,248,.75)', 'important');
+            btn.style.setProperty('color', 'rgba(255,255,255,.98)', 'important');
+            btn.style.setProperty('box-shadow', '0 0 14px rgba(56,189,248,.22)', 'important');
             btn.querySelectorAll('p, span').forEach((t) => {
-              t.style.setProperty('color', '#001018', 'important');
+              t.style.setProperty('color', 'rgba(255,255,255,.98)', 'important');
             });
           };
 
-          // Apply style each pass without stomping hover
           if (btn.matches(':hover') || btn.matches(':focus')) hover();
           else base();
 
-          // Install hover handlers once
           if (!btn.dataset.clawdHoverBound) {
             btn.dataset.clawdHoverBound = '1';
             btn.addEventListener('mouseenter', hover);
@@ -1396,32 +1390,36 @@ st.markdown(
       opacity: 1 !important;
     }
 
-    /* Force Streamlit secondary buttons (Deep Analyze) to match dark theme */
+    /* Deep Analyze button — teal tinted, visible, premium */
     html body button[data-testid="stBaseButton-secondary"],
     div.stButton > button[kind="secondary"][data-testid="stBaseButton-secondary"],
     .stButton > button[kind="secondary"][data-testid="stBaseButton-secondary"],
     button[kind="secondary"][data-testid="stBaseButton-secondary"] {
-      background-color: rgba(15, 23, 42, 0.92) !important;
-      color: #E5E7EB !important;
-      border: 1px solid rgba(56,189,248,0.28) !important;
+      background-color: rgba(56,189,248,.10) !important;
+      background-image: none !important;
+      color: rgba(56,189,248,.95) !important;
+      border: 1px solid rgba(56,189,248,0.42) !important;
+      font-weight: 700 !important;
       opacity: 1 !important;
       filter: none !important;
-      text-shadow: none !important;
     }
     html body button[data-testid="stBaseButton-secondary"]:hover,
     div.stButton > button[kind="secondary"][data-testid="stBaseButton-secondary"]:hover,
     .stButton > button[kind="secondary"][data-testid="stBaseButton-secondary"]:hover,
     button[kind="secondary"][data-testid="stBaseButton-secondary"]:hover {
-      /* On hover, match Scan X gradient so it's obviously clickable */
-      background-image: linear-gradient(180deg, rgba(56,189,248,.95), rgba(14,116,144,.95)) !important;
-      background-color: transparent !important;
-      border-color: rgba(56,189,248,.45) !important;
-      color: #001018 !important;
+      background-color: rgba(56,189,248,.22) !important;
+      background-image: none !important;
+      border-color: rgba(56,189,248,.75) !important;
+      color: rgba(255,255,255,.98) !important;
+      box-shadow: 0 0 14px rgba(56,189,248,.22) !important;
     }
-
+    html body button[data-testid="stBaseButton-secondary"] p,
+    html body button[data-testid="stBaseButton-secondary"] span {
+      color: rgba(56,189,248,.95) !important;
+    }
     html body button[data-testid="stBaseButton-secondary"]:hover p,
     html body button[data-testid="stBaseButton-secondary"]:hover span {
-      color: #001018 !important;
+      color: rgba(255,255,255,.98) !important;
     }
 
     /* Force Scan X primary button back to gradient */
