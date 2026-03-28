@@ -371,6 +371,15 @@ st.markdown(
     /* Dataframe */
     .stDataFrame { width: 100%; }
 
+    /* Force KPI grid to fill full container width */
+    [data-testid="stMarkdownContainer"]:has(> div[style*="grid-template-columns:1fr 1fr"]) {
+      width: 100% !important;
+      display: block !important;
+    }
+    [data-testid="stMarkdownContainer"] > div[style*="grid-template-columns:1fr 1fr"] {
+      width: 100% !important;
+    }
+
     /* Validated ticker rows */
     .ticker-row {
       padding: 0.55rem 0.85rem;
