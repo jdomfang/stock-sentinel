@@ -586,6 +586,16 @@ with st.container(key="discovery_scan_card"):
             use_container_width=True,
         )
 
+    # Last scan context line
+    _last_sector = st.session_state.get("selected_sector")
+    _last_count = len(st.session_state.df_valid) if st.session_state.get("df_valid") is not None else None
+    if _last_sector and _last_count is not None:
+        st.markdown(
+            f'<div style="color:rgba(148,163,184,.58);font-size:0.78rem;margin-top:-0.35rem;margin-bottom:0.25rem;">'
+            f'Last scan: <b style="color:rgba(148,163,184,.80);">{_last_sector}</b> · {_last_count} stocks found</div>',
+            unsafe_allow_html=True,
+        )
+
 # Code-only setting (X API supports 100 per request; pagination will fetch more)
 # Keep cap aligned with deep analysis helper (max_pages=5 => ~500 tweets)
 max_results = 500
@@ -593,6 +603,78 @@ max_results = 500
 scan_triggered = bool(scan_clicked or _autostart_scan)
 
 # Scan button
+def _get_checkout_url(user_id: str) -> str | None:
+    """Call Railway payments API to create a Stripe checkout session."""
+    try:
+        base = st.secrets.get("PAYMENTS_API_BASE_URL", "").rstrip("/")
+        secret = st.secrets.get("PAYMENTS_API_SHARED_SECRET", "")
+        if not base or not secret:
+            return None
+        import requests as _req
+        r = _req.post(
+            f"{base}/create-checkout-session",
+            json={"user_id": user_id},
+            headers={"X-Payments-Shared-Secret": secret},
+            timeout=8,
+        )
+        if r.status_code == 200:
+            return r.json().get("checkout_url")
+    except Exception:
+        pass
+    return None
+
+
+def _upgrade_modal(reason: str, event_type: str = "scan") -> None:
+    """Show a premium upgrade modal inline when out of credits."""
+    user = st.session_state.get("auth.user") or {}
+    uid = (user.get("id") if isinstance(user, dict) else getattr(user, "id", None)) or ""
+
+    if event_type == "scan":
+        icon, title, what_you_get = "📡", "Unlock more scans", [
+            "Scan any sector for momentum signals",
+            "Processed from real X data in seconds",
+            "Shortlist of validated US tickers",
+        ]
+    else:
+        icon, what_you_get = "🔍", [
+            "Full sentiment breakdown",
+            "Confidence score + trend context",
+            "Catalysts, red flags & projections",
+            "Clear Buy / Watch / Avoid signal",
+        ]
+        title = f"Unlock Deep Analysis"
+
+    st.markdown(
+        f"""
+        <div style="
+          border:1px solid rgba(56,189,248,.35);
+          background:linear-gradient(180deg,rgba(56,189,248,.06),rgba(15,23,42,.92));
+          border-radius:16px;
+          padding:24px 24px 20px 24px;
+          margin:1rem 0;
+          box-shadow:0 0 0 1px rgba(56,189,248,.15),0 12px 32px rgba(56,189,248,.08);
+        ">
+          <div style="font-size:1.4rem;font-weight:800;color:rgba(248,250,252,.98);margin-bottom:6px;">{icon} {title}</div>
+          <div style="color:rgba(148,163,184,.85);font-size:0.93rem;margin-bottom:14px;">{reason}</div>
+          <ul style="list-style:none;padding:0;margin:0 0 18px 0;">
+            {"".join(f'<li style="color:rgba(229,231,235,.90);font-size:0.93rem;margin-bottom:6px;">✓ {item}</li>' for item in what_you_get)}
+          </ul>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
+
+    checkout_url = _get_checkout_url(uid) if uid else None
+    col_a, col_b = st.columns([1.2, 2.8])
+    with col_a:
+        if checkout_url:
+            st.link_button("Buy credits →", checkout_url, type="primary", use_container_width=True)
+        else:
+            st.button("Buy credits →", type="primary", disabled=True, use_container_width=True)
+    with col_b:
+        st.caption("Secure checkout via Stripe. Credits never expire.")
+
+
 if scan_triggered:
     # Must be logged in to scan.
     if not st.session_state.get("auth.user"):
@@ -601,7 +683,7 @@ if scan_triggered:
 
     ok, err = consume_credit("scan")
     if not ok:
-        st.error(err)
+        _upgrade_modal("You've used all your scan credits.", event_type="scan")
         st.stop()
 
     try:
@@ -1148,10 +1230,9 @@ if st.session_state.df_valid is not None:
                 st.markdown(_sentiment_pill(overall_sentiment), unsafe_allow_html=True)
             with col5:
                 if st.button("Deep Analyze", key=f"deep_analyze_{ticker_symbol}"):
-                    # Consume a Deep Analyze credit here (most users use the inline button).
                     ok, err = consume_credit("deep_analyze")
                     if not ok:
-                        st.error(err)
+                        _upgrade_modal(f"Unlock the full analysis for {ticker_symbol}.", event_type="deep_analyze")
                         st.stop()
 
                     st.session_state.selected_ticker = ticker_symbol
@@ -1164,7 +1245,25 @@ if st.session_state.df_valid is not None:
 
         st.caption(f"Click Deep Analyze on any ticker for catalysts, signals, and a Buy/Watch/Avoid recommendation.")
     else:
-        st.warning("⚠️ No valid stock tickers found with financial data.")
+        st.markdown(
+            """
+            <div style="
+              border:1px solid rgba(148,163,184,.15);
+              border-radius:16px;
+              padding:32px 24px;
+              text-align:center;
+              background:rgba(15,23,42,.45);
+              margin:1rem 0;
+            ">
+              <div style="font-size:2rem;margin-bottom:10px;">🔭</div>
+              <div style="font-size:1.05rem;font-weight:700;color:rgba(229,231,235,.90);margin-bottom:6px;">No signals found this scan</div>
+              <div style="color:rgba(148,163,184,.75);font-size:0.90rem;max-width:380px;margin:0 auto;">
+                Not enough chatter in this sector right now. Try a different sector or run again in a few hours when momentum picks up.
+              </div>
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
 
 if st.session_state.selected_ticker and st.session_state.deep_analysis_results:
     st.markdown("---")
