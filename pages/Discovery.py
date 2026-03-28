@@ -1262,10 +1262,12 @@ if st.session_state.df_valid is not None:
                     with st.spinner(f"Analysing {ticker_symbol} — this takes 20–40s..."):
                         try:
                             # Run directly — threading.Thread can't access st.session_state/st.secrets
-                            st.session_state.deep_analysis_results = run_deep_analysis(
+                            _results = run_deep_analysis(
                                 ticker_symbol,
                                 st.session_state.selected_sector,
                             )
+                            st.session_state.deep_analysis_results = _results
+                            st.session_state.selected_ticker = ticker_symbol
                         except Exception as _e:
                             _deep_error = f"Analysis failed for {ticker_symbol}. Try again in a moment."
                             logger.exception(f"Deep analysis error for {ticker_symbol}")
