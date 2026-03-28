@@ -1178,6 +1178,205 @@ if st.session_state.df_valid is not None:
         # Never let UI extras break the page
         pass
 
+# ── Deep Analysis Panel (rendered ABOVE results table so it's always in view) ──
+if st.session_state.selected_ticker and st.session_state.deep_analysis_results:
+    ticker_label = st.session_state.selected_ticker
+    sector_label = (st.session_state.selected_sector or "").title()
+    ai_summary = generate_ai_summary(st.session_state.deep_analysis_results)
+
+    rec = ai_summary.get("recommendation", "—")
+    conf = ai_summary.get("confidence", "—")
+    rec_color = (
+        "rgba(56,189,248,.95)" if "buy" in rec.lower()
+        else "rgba(239,68,68,.90)" if "avoid" in rec.lower()
+        else "rgba(245,158,11,.90)"
+    )
+
+    # Anchor for auto-scroll
+    st.markdown('<div id="deep-panel-anchor"></div>', unsafe_allow_html=True)
+
+    # Auto-scroll to panel (one-shot — cleared after first render)
+    if st.session_state.get("_scroll_to_deep_panel"):
+        components.html(
+            '<script>document.getElementById("deep-panel-anchor")?.scrollIntoView({behavior:"smooth",block:"start"});</script>',
+            height=0,
+        )
+        st.session_state["_scroll_to_deep_panel"] = False
+
+    # Panel header
+    st.markdown(
+        f"""
+        <div style="
+          margin-top:1.2rem;
+          border:1px solid rgba(56,189,248,.30);
+          border-radius:16px 16px 0 0;
+          padding:18px 20px 14px 20px;
+          background:linear-gradient(180deg,rgba(56,189,248,.07),rgba(15,23,42,.95));
+          display:flex;
+          align-items:center;
+          justify-content:space-between;
+          gap:12px;
+        ">
+          <div>
+            <div style="font-size:0.72rem;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:rgba(56,189,248,.80);margin-bottom:3px;">Deep Analysis · {sector_label}</div>
+            <div style="font-size:1.55rem;font-weight:850;letter-spacing:-0.02em;color:rgba(248,250,252,.98);">{ticker_label}</div>
+          </div>
+          <div style="text-align:right;">
+            <div style="font-size:0.72rem;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:rgba(148,163,184,.65);margin-bottom:3px;">Signal</div>
+            <div style="font-size:1.30rem;font-weight:850;color:{rec_color};">{rec}</div>
+            <div style="font-size:0.80rem;color:rgba(148,163,184,.75);margin-top:2px;">Confidence: {conf}</div>
+          </div>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
+
+    # Panel body wrapper
+    st.markdown(
+        '<div style="border:1px solid rgba(56,189,248,.20);border-top:none;border-radius:0 0 16px 16px;padding:16px 20px 20px 20px;background:rgba(15,23,42,.88);margin-bottom:1.5rem;">',
+        unsafe_allow_html=True,
+    )
+
+    # Close button
+    if st.button("✕ Close", key="close_deep_panel", type="secondary"):
+        st.session_state.selected_ticker = None
+        st.session_state.deep_analysis_results = None
+        st.rerun()
+
+    # Headline metrics row
+    st.markdown("<div style='height:0.5rem'></div>", unsafe_allow_html=True)
+
+    # Financial metrics (best-effort; always displayed)
+    ticker = st.session_state.selected_ticker
+    price_display = "Unavailable"
+    proj_display = "Unavailable"
+    hold_display = "Unavailable"
+    price_points = 0
+
+    try:
+        stock_data = get_stock_data(ticker)
+        if stock_data.get("error") is None and stock_data.get("prices"):
+            prices = stock_data.get("prices") or []
+            price_points = len(prices)
+            last_px = prices[-1]
+            if isinstance(last_px, (int, float)):
+                price_display = f"${last_px:.2f}"
+            projection = simple_projection(prices, ai_summary["avg_sentiment"], days=30)
+            if projection.get("error") is None:
+                p10 = projection.get("gain_p10")
+                p90 = projection.get("gain_p90")
+                proj_display = f"{p10:.1f}–{p90:.1f}%" if (p10 is not None and p90 is not None) else f"{float(projection.get('avg_gain', 0.0)):.1f}%"
+                hold_display = f"{int(projection.get('suggested_hold_days', 0))} days"
+    except Exception:
+        pass
+
+    # Premium metric cards
+    _mc = "border-radius:12px;padding:13px 15px;background:rgba(15,23,42,.70);border:1px solid rgba(148,163,184,.15);flex:1;"
+    _ml = "font-size:0.72rem;font-weight:700;letter-spacing:0.05em;text-transform:uppercase;color:rgba(148,163,184,.65);margin-bottom:4px;"
+    _mv = "font-size:1.10rem;font-weight:800;color:rgba(248,250,252,.95);"
+    st.markdown(
+        f'<div style="display:flex;gap:10px;margin:10px 0 14px 0;flex-wrap:wrap;">'
+        f'<div style="{_mc}"><div style="{_ml}">Price</div><div style="{_mv}">{price_display}</div></div>'
+        f'<div style="{_mc}"><div style="{_ml}">Proj. Gain 30d</div><div style="{_mv}">{proj_display}</div></div>'
+        f'<div style="{_mc}"><div style="{_ml}">Hold Period</div><div style="{_mv}">{hold_display}</div></div>'
+        f'</div>',
+        unsafe_allow_html=True,
+    )
+
+    # Data quality line
+    try:
+        _uids = set()
+        for _r in (st.session_state.deep_analysis_results or {}).values():
+            for _tid in (_r.get("tweet_ids") or []):
+                _uids.add(_tid)
+        _mentions_ct = len(_uids)
+    except Exception:
+        _mentions_ct = 0
+
+    st.markdown(
+        f'<div style="color:rgba(148,163,184,.55);font-size:0.75rem;margin-bottom:12px;">'
+        f'{_mentions_ct} mentions analysed · {price_points} price points</div>',
+        unsafe_allow_html=True,
+    )
+
+    # Rationale
+    st.markdown('<div style="font-size:0.85rem;font-weight:700;color:rgba(148,163,184,.75);letter-spacing:0.04em;text-transform:uppercase;margin-bottom:8px;">Rationale</div>', unsafe_allow_html=True)
+    for bullet in ai_summary["rationale"]:
+        st.markdown(f"- {bullet}")
+    if price_display != "Unavailable" and proj_display != "Unavailable" and hold_display != "Unavailable":
+        st.markdown(f"- Price {price_display}; projected {proj_display} over 30d; suggested hold {hold_display}.")
+    elif price_display == "Unavailable":
+        st.markdown("- Price/projection data unavailable.")
+
+    # Full Analysis Details — dark-themed HTML table (no white flash)
+    with st.expander("📦 Full Analysis Details", expanded=False):
+        coverage_rows = []
+        for prompt_name, result in (st.session_state.deep_analysis_results or {}).items():
+            timeframe = (ANALYSIS_PROMPTS.get(prompt_name, {}) or {}).get("timeframe", "")
+            evidence = int(result.get("mention_count", 0) or 0)
+            overall = (result.get("overall_sentiment") or "").lower()
+            if overall == "error":
+                strength, tilt = "Unavailable", "Unavailable"
+            elif evidence == 0:
+                strength, tilt = "No Signal", "Neutral"
+            else:
+                strength = "Strong" if evidence > 5 else "Weak"
+                tilt = overall.title() if overall in ("bullish", "bearish", "neutral") else "Neutral"
+            coverage_rows.append((prompt_name, timeframe, evidence, strength, tilt))
+
+        if coverage_rows:
+            tilt_color = {"Bullish": "rgba(56,189,248,.95)", "Bearish": "rgba(239,68,68,.90)", "Neutral": "rgba(148,163,184,.80)"}
+            rows_html = ""
+            for prompt_name, timeframe, evidence, strength, tilt in coverage_rows:
+                tc = tilt_color.get(tilt, "rgba(148,163,184,.80)")
+                rows_html += (
+                    f'<tr style="border-bottom:1px solid rgba(148,163,184,.10);">'
+                    f'<td style="padding:9px 10px;color:rgba(229,231,235,.90);font-size:0.82rem;">{prompt_name}</td>'
+                    f'<td style="padding:9px 10px;color:rgba(148,163,184,.70);font-size:0.82rem;">{timeframe}</td>'
+                    f'<td style="padding:9px 10px;color:rgba(148,163,184,.80);font-size:0.82rem;text-align:center;">{evidence}</td>'
+                    f'<td style="padding:9px 10px;color:rgba(148,163,184,.80);font-size:0.82rem;">{strength}</td>'
+                    f'<td style="padding:9px 10px;font-size:0.82rem;font-weight:700;color:{tc};">{tilt}</td>'
+                    f'</tr>'
+                )
+            st.markdown(
+                f'<table style="width:100%;border-collapse:collapse;background:rgba(15,23,42,.60);border-radius:10px;overflow:hidden;">'
+                f'<thead><tr style="border-bottom:1px solid rgba(148,163,184,.20);">'
+                f'<th style="padding:8px 10px;text-align:left;font-size:0.72rem;font-weight:700;letter-spacing:0.05em;text-transform:uppercase;color:rgba(148,163,184,.60);">Analysis Type</th>'
+                f'<th style="padding:8px 10px;text-align:left;font-size:0.72rem;font-weight:700;letter-spacing:0.05em;text-transform:uppercase;color:rgba(148,163,184,.60);">Timeframe</th>'
+                f'<th style="padding:8px 10px;text-align:center;font-size:0.72rem;font-weight:700;letter-spacing:0.05em;text-transform:uppercase;color:rgba(148,163,184,.60);">Evidence</th>'
+                f'<th style="padding:8px 10px;text-align:left;font-size:0.72rem;font-weight:700;letter-spacing:0.05em;text-transform:uppercase;color:rgba(148,163,184,.60);">Strength</th>'
+                f'<th style="padding:8px 10px;text-align:left;font-size:0.72rem;font-weight:700;letter-spacing:0.05em;text-transform:uppercase;color:rgba(148,163,184,.60);">Tilt</th>'
+                f'</tr></thead><tbody>{rows_html}</tbody></table>',
+                unsafe_allow_html=True,
+            )
+        else:
+            st.caption("No coverage data available.")
+
+        st.markdown('<div style="height:1rem"></div>', unsafe_allow_html=True)
+        st.markdown('<div style="font-size:0.85rem;font-weight:700;color:rgba(148,163,184,.75);letter-spacing:0.04em;text-transform:uppercase;margin-bottom:8px;">Detailed Analysis</div>', unsafe_allow_html=True)
+        for prompt_name, config in ANALYSIS_PROMPTS.items():
+            st.markdown(f"**{prompt_name}** · {config['timeframe']}")
+            if prompt_name in st.session_state.deep_analysis_results:
+                result = st.session_state.deep_analysis_results[prompt_name]
+                col1, col2, col3 = st.columns(3)
+                col1.metric("Sentiment Score", f"{result['sentiment_score']:.3f}")
+                col2.metric("Overall Sentiment", result['overall_sentiment'].title())
+                col3.metric("Mentions Found", result['mention_count'])
+                st.markdown(f"**Key Insights:** {result['insights']}")
+                if result['key_themes']:
+                    st.markdown(f"**Key Themes:** {', '.join(result['key_themes'])}")
+                if result['sample_tweets']:
+                    st.markdown("**Sample Posts:**")
+                    for i, tweet in enumerate(result['sample_tweets'], 1):
+                        st.text(f"{i}. {tweet}")
+            else:
+                st.caption("Analysis unavailable for this type.")
+            st.markdown("<hr style='border:none;border-top:1px solid rgba(148,163,184,.12);margin:10px 0;'>", unsafe_allow_html=True)
+
+    # Close panel wrapper div
+    st.markdown('</div>', unsafe_allow_html=True)
+
+# ── Results table ──
 if st.session_state.df_valid is not None:
     df_valid_display = st.session_state.df_valid.drop(columns=["Mentions", "Sample Tweets"], errors="ignore")
 
@@ -1268,6 +1467,7 @@ if st.session_state.df_valid is not None:
                             )
                             st.session_state.deep_analysis_results = _results
                             st.session_state.selected_ticker = ticker_symbol
+                            st.session_state["_scroll_to_deep_panel"] = True
                         except Exception as _e:
                             _deep_error = f"Analysis failed for {ticker_symbol}. Try again in a moment."
                             logger.exception(f"Deep analysis error for {ticker_symbol}")
@@ -1302,236 +1502,6 @@ if st.session_state.df_valid is not None:
             """,
             unsafe_allow_html=True,
         )
-
-if st.session_state.selected_ticker and st.session_state.deep_analysis_results:
-    ticker_label = st.session_state.selected_ticker
-    sector_label = (st.session_state.selected_sector or "").title()
-    ai_summary = generate_ai_summary(st.session_state.deep_analysis_results)
-
-    rec = ai_summary.get("recommendation", "—")
-    conf = ai_summary.get("confidence", "—")
-    rec_color = (
-        "rgba(56,189,248,.95)" if "buy" in rec.lower()
-        else "rgba(239,68,68,.90)" if "avoid" in rec.lower()
-        else "rgba(245,158,11,.90)"
-    )
-
-    # Panel header
-    st.markdown(
-        f"""
-        <div style="
-          margin-top:1.5rem;
-          border:1px solid rgba(56,189,248,.30);
-          border-radius:16px 16px 0 0;
-          padding:18px 20px 14px 20px;
-          background:linear-gradient(180deg,rgba(56,189,248,.07),rgba(15,23,42,.95));
-          display:flex;
-          align-items:center;
-          justify-content:space-between;
-          gap:12px;
-        ">
-          <div>
-            <div style="font-size:0.72rem;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:rgba(56,189,248,.80);margin-bottom:3px;">Deep Analysis · {sector_label}</div>
-            <div style="font-size:1.55rem;font-weight:850;letter-spacing:-0.02em;color:rgba(248,250,252,.98);">{ticker_label}</div>
-          </div>
-          <div style="text-align:right;">
-            <div style="font-size:0.72rem;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:rgba(148,163,184,.65);margin-bottom:3px;">Signal</div>
-            <div style="font-size:1.30rem;font-weight:850;color:{rec_color};">{rec}</div>
-            <div style="font-size:0.80rem;color:rgba(148,163,184,.75);margin-top:2px;">Confidence: {conf}</div>
-          </div>
-        </div>
-        """,
-        unsafe_allow_html=True,
-    )
-
-    # Panel body wrapper
-    st.markdown(
-        '<div style="border:1px solid rgba(56,189,248,.20);border-top:none;border-radius:0 0 16px 16px;padding:16px 20px 20px 20px;background:rgba(15,23,42,.88);margin-bottom:1.5rem;">',
-        unsafe_allow_html=True,
-    )
-
-    # Close button
-    if st.button("✕ Close", key="close_deep_panel", type="secondary"):
-        st.session_state.selected_ticker = None
-        st.session_state.deep_analysis_results = None
-        st.rerun()
-
-    # Headline metrics row — all custom HTML for consistency
-    st.markdown("<div style='height:0.5rem'></div>", unsafe_allow_html=True)
-    col1, col2, col3 = st.columns([1.2, 1, 2])
-
-    # Financial metrics (best-effort; always displayed)
-    ticker = st.session_state.selected_ticker
-    price_display = "Unavailable"
-    price_reason = "Not fetched"
-    proj_display = "Unavailable"
-    proj_reason = "Need price data"
-    hold_display = "Unavailable"
-    hold_reason = "Need projection"
-    price_points = 0
-
-    try:
-        stock_data = get_stock_data(ticker)
-        if stock_data.get("error") is None and stock_data.get("prices"):
-            prices = stock_data.get("prices") or []
-            price_points = len(prices)
-            last_px = prices[-1]
-            if isinstance(last_px, (int, float)):
-                price_display = f"${last_px:.2f}"
-                price_reason = ""
-            else:
-                price_reason = "Invalid price"
-
-            # Projection (uses avg sentiment from AI summary)
-            projection = simple_projection(prices, ai_summary["avg_sentiment"], days=30)
-            if projection.get("error") is None:
-                p10 = projection.get("gain_p10")
-                p90 = projection.get("gain_p90")
-                if p10 is not None and p90 is not None:
-                    proj_display = f"{p10:.1f}-{p90:.1f}%"
-                else:
-                    proj_display = f"{float(projection.get('avg_gain', 0.0)):.1f}%"
-                proj_reason = ""
-
-                hold_display = f"{int(projection.get('suggested_hold_days', 0))} days"
-                hold_reason = ""
-            else:
-                proj_reason = projection.get("error") or "Projection failed"
-                hold_reason = "Projection failed"
-        else:
-            # Hide raw provider errors from users
-            price_reason = "Data unavailable"
-            proj_reason = "Data unavailable"
-            hold_reason = "Data unavailable"
-    except Exception:
-        # Hide raw exception details from users; full trace should be in server logs
-        price_reason = "Data unavailable"
-        proj_reason = "Data unavailable"
-        hold_reason = "Data unavailable"
-
-    # Premium metric cards grid
-    _mc = "border-radius:12px;padding:13px 15px;background:rgba(15,23,42,.70);border:1px solid rgba(148,163,184,.15);flex:1;"
-    _ml = "font-size:0.72rem;font-weight:700;letter-spacing:0.05em;text-transform:uppercase;color:rgba(148,163,184,.65);margin-bottom:4px;"
-    _mv = "font-size:1.10rem;font-weight:800;color:rgba(248,250,252,.95);"
-    st.markdown(
-        f'<div style="display:flex;gap:10px;margin:10px 0 14px 0;flex-wrap:wrap;">'
-        f'<div style="{_mc}"><div style="{_ml}">Price</div><div style="{_mv}">{price_display}</div></div>'
-        f'<div style="{_mc}"><div style="{_ml}">Proj. Gain 30d</div><div style="{_mv}">{proj_display}</div></div>'
-        f'<div style="{_mc}"><div style="{_ml}">Hold Period</div><div style="{_mv}">{hold_display}</div></div>'
-        f'</div>',
-        unsafe_allow_html=True,
-    )
-
-    # Data quality line
-    try:
-        _uids = set()
-        for _r in (st.session_state.deep_analysis_results or {}).values():
-            for _tid in (_r.get("tweet_ids") or []):
-                _uids.add(_tid)
-        _mentions_ct = len(_uids)
-    except Exception:
-        _mentions_ct = 0
-
-    st.markdown(
-        f'<div style="color:rgba(148,163,184,.55);font-size:0.75rem;margin-bottom:12px;">'
-        f'{_mentions_ct} mentions analysed · {price_points} price points</div>',
-        unsafe_allow_html=True,
-    )
-
-    st.markdown('<div style="font-size:0.85rem;font-weight:700;color:rgba(148,163,184,.75);letter-spacing:0.04em;text-transform:uppercase;margin-bottom:8px;">Rationale</div>', unsafe_allow_html=True)
-    for bullet in ai_summary["rationale"]:
-        st.markdown(f"- {bullet}")
-
-    if price_display != "Unavailable" and proj_display != "Unavailable" and hold_display != "Unavailable":
-        st.markdown(f"- Price {price_display}; projected {proj_display} over 30d; suggested hold {hold_display}.")
-    elif price_display == "Unavailable":
-        st.markdown("- Price/projection data unavailable.")
-
-    with st.expander("📦 Full Analysis Details", expanded=False):
-        # --- Coverage / data-quality table (lean, non-insight) ---
-        coverage_rows = []
-        for prompt_name, result in (st.session_state.deep_analysis_results or {}).items():
-            timeframe = (ANALYSIS_PROMPTS.get(prompt_name, {}) or {}).get("timeframe", "")
-            evidence = int(result.get("mention_count", 0) or 0)
-            overall = (result.get("overall_sentiment") or "").lower()
-
-            # Strength (quantity). Do NOT conflate with bullish/bearish.
-            if overall == "error":
-                strength = "Unavailable"
-            elif evidence == 0:
-                strength = "No Signal"
-            elif evidence <= 5:
-                strength = "Weak"
-            else:
-                strength = "Strong"
-
-            # Tilt (direction)
-            if overall == "error":
-                tilt = "Unavailable"
-            elif evidence == 0:
-                tilt = "Neutral"
-            else:
-                tilt = overall.title() if overall in ("bullish", "bearish", "neutral") else "Neutral"
-
-            coverage_rows.append({
-                "Analysis Type": prompt_name,
-                "Timeframe": timeframe,
-                "Evidence Count": evidence,
-                "Signal Strength": strength,
-                "Sentiment Tilt": tilt,
-            })
-
-        df_cov = pd.DataFrame(coverage_rows)
-
-        if not df_cov.empty:
-            st.dataframe(
-                df_cov,
-                column_config={
-                    "Analysis Type": st.column_config.TextColumn("Analysis Type", width="large"),
-                    "Timeframe": st.column_config.TextColumn("Timeframe", width="small"),
-                    "Evidence Count": st.column_config.NumberColumn("Evidence Count", width="small"),
-                    "Signal Strength": st.column_config.TextColumn("Signal Strength", width="small"),
-                    "Sentiment Tilt": st.column_config.TextColumn("Sentiment Tilt", width="small"),
-                },
-                hide_index=True,
-                use_container_width=True,
-            )
-        else:
-            st.caption("No coverage data available.")
-
-        st.subheader("📋 Detailed Analysis")
-        for prompt_name, config in ANALYSIS_PROMPTS.items():
-            st.markdown(f"### 🔍 {prompt_name}")
-            st.markdown(f"**Description:** {config['description']}")
-            st.markdown(f"**Timeframe:** {config['timeframe']}")
-
-            if prompt_name in st.session_state.deep_analysis_results:
-                result = st.session_state.deep_analysis_results[prompt_name]
-
-                col1, col2, col3 = st.columns(3)
-                with col1:
-                    st.metric("Sentiment Score", f"{result['sentiment_score']:.3f}")
-                with col2:
-                    st.metric("Overall Sentiment", result['overall_sentiment'].title())
-                with col3:
-                    st.metric("Mentions Found", result['mention_count'])
-
-                st.markdown(f"**Key Insights:** {result['insights']}")
-
-                if result['key_themes']:
-                    st.markdown(f"**Key Themes:** {', '.join(result['key_themes'])}")
-
-                if result['sample_tweets']:
-                    st.markdown("**Sample Tweets:**")
-                    for i, tweet in enumerate(result['sample_tweets'], 1):
-                        st.text(f"{i}. {tweet}")
-            else:
-                st.error("Analysis failed for this prompt.")
-
-            st.markdown("---")
-
-    # Close panel wrapper div
-    st.markdown('</div>', unsafe_allow_html=True)
 
 # Performance statistics (show in expander) - HIDDEN FROM UI
 # with st.expander("📊 Performance & Database Stats"):
