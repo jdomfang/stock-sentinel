@@ -13,6 +13,52 @@ CACHE_USER_KEY = "_cached_user"
 REMEMBER_ME_KEY = "_remember_me"
 
 
+def refresh_session_if_needed() -> bool:
+    """Silently refresh Supabase session token if it exists but may be stale.
+
+    Called at the top of pages that run long operations (e.g. Deep Analyze).
+    Returns True if session is valid after the attempt.
+    """
+    session = st.session_state.get(SESSION_KEY)
+    if not session:
+        return False
+    try:
+        sb = get_client()
+        # Get refresh token from stored session dict
+        refresh_token = (
+            session.get("refresh_token") if isinstance(session, dict)
+            else getattr(session, "refresh_token", None)
+        )
+        if not refresh_token:
+            return bool(st.session_state.get(USER_KEY))
+
+        res = sb.auth.refresh_session(refresh_token)
+        new_session = getattr(res, "session", None)
+        new_user = getattr(res, "user", None)
+
+        if new_session is not None and hasattr(new_session, "model_dump"):
+            new_session = new_session.model_dump()
+        if new_user is not None and hasattr(new_user, "model_dump"):
+            new_user = new_user.model_dump()
+
+        if new_session:
+            st.session_state[SESSION_KEY] = new_session
+        if new_user:
+            st.session_state[USER_KEY] = new_user
+
+        # Update cache if remember-me is on
+        if st.session_state.get(REMEMBER_ME_KEY):
+            if new_session:
+                st.session_state[CACHE_SESSION_KEY] = json.dumps(new_session)
+            if new_user:
+                st.session_state[CACHE_USER_KEY] = json.dumps(new_user)
+
+        return True
+    except Exception:
+        # Non-fatal — session may still be valid
+        return bool(st.session_state.get(USER_KEY))
+
+
 def is_logged_in() -> bool:
     return bool(st.session_state.get(USER_KEY))
 

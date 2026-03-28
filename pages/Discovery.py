@@ -63,6 +63,7 @@ if _intent_autostart and not st.session_state.get("_scan_autostart_consumed"):
     _autostart_scan = True
 
 from utils.guard import require_active_account
+from utils.auth import refresh_session_if_needed
 from utils.credits import consume_credit
 
 _profile = require_active_account()
@@ -1251,11 +1252,49 @@ if st.session_state.df_valid is not None:
                         _upgrade_modal(f"Unlock the full analysis for {ticker_symbol}.", event_type="deep_analyze")
                         st.stop()
 
+                    # Silently refresh token before long operation to prevent session expiry mid-run
+                    refresh_session_if_needed()
+
                     st.session_state.selected_ticker = ticker_symbol
-                    with st.spinner(f"Running deep analysis for {ticker_symbol}..."):
-                        st.session_state.deep_analysis_results = run_deep_analysis(
-                            ticker_symbol,
-                            st.session_state.selected_sector,
+                    st.session_state.deep_analysis_results = None
+
+                    _deep_error = None
+                    with st.spinner(f"Analysing {ticker_symbol} — this takes 20–40s..."):
+                        try:
+                            import signal as _signal
+
+                            def _timeout_handler(signum, frame):
+                                raise TimeoutError("Deep analysis timed out")
+
+                            # 55s hard timeout (Streamlit Cloud kills at 60s)
+                            try:
+                                _signal.signal(_signal.SIGALRM, _timeout_handler)
+                                _signal.alarm(55)
+                            except (AttributeError, OSError):
+                                pass  # Windows/some envs don't support SIGALRM
+
+                            st.session_state.deep_analysis_results = run_deep_analysis(
+                                ticker_symbol,
+                                st.session_state.selected_sector,
+                            )
+
+                            try:
+                                _signal.alarm(0)
+                            except (AttributeError, OSError):
+                                pass
+
+                        except TimeoutError:
+                            _deep_error = f"Analysis for {ticker_symbol} took too long. Try again or pick a larger-cap ticker."
+                        except Exception as _e:
+                            _deep_error = f"Analysis failed for {ticker_symbol}. Try again in a moment."
+                            logger.exception(f"Deep analysis error for {ticker_symbol}")
+
+                    if _deep_error:
+                        st.markdown(
+                            f'<div style="border:1px solid rgba(239,68,68,.30);border-radius:12px;padding:14px 16px;'
+                            f'background:rgba(239,68,68,.06);color:rgba(248,113,113,.95);margin:0.5rem 0;">'
+                            f'⚠️ {_deep_error}</div>',
+                            unsafe_allow_html=True,
                         )
             st.markdown("</div>", unsafe_allow_html=True)
 

@@ -996,40 +996,56 @@ def generate_ai_summary(analysis_results: Dict[str, Dict]) -> Dict[str, Any]:
         else:
             confidence = "Low"
 
-    # ---- Rationale (brief, stable) ----
+    # ---- Rationale (human-readable sentences) ----
     rationale: List[str] = []
 
-    rationale.append(f"Prompts: {bullish_prompts} bullish, {bearish_prompts} bearish, {neutral_prompts} neutral")
-
-    # Strength
+    # Sentiment direction + strength
     if abs(avg_sentiment) >= 0.30:
-        strength = "Strong"
+        strength_word = "strongly"
     elif abs(avg_sentiment) >= 0.15:
-        strength = "Moderate"
+        strength_word = "moderately"
     else:
-        strength = "Weak"
-    rationale.append(
-        f"Sentiment: {strength} {'bullish' if avg_sentiment > 0 else 'bearish' if avg_sentiment < 0 else 'neutral'} ({avg_sentiment:.3f})"
-    )
+        strength_word = "slightly"
 
-    # Evidence
-    if total_mentions >= 50:
-        rationale.append(f"Evidence: strong ({total_mentions} unique mentions)")
-    elif total_mentions >= 20:
-        rationale.append(f"Evidence: moderate ({total_mentions} unique mentions)")
+    direction = "bullish" if avg_sentiment > 0 else "bearish" if avg_sentiment < 0 else "neutral"
+    if avg_sentiment == 0 or abs(avg_sentiment) < 0.05:
+        rationale.append(f"Social sentiment is largely neutral with no clear directional bias.")
     else:
-        rationale.append(f"Evidence: limited ({total_mentions} unique mentions)")
+        rationale.append(f"Social sentiment is {strength_word} {direction} with a score of {avg_sentiment:.2f}.")
+
+    # Signal agreement
+    if bullish_prompts > 0 and bearish_prompts == 0:
+        rationale.append(f"All {bullish_prompts} analysis signals point bullish — no conflicting bearish signals detected.")
+    elif bearish_prompts > 0 and bullish_prompts == 0:
+        rationale.append(f"All {bearish_prompts} analysis signals point bearish — no conflicting bullish signals detected.")
+    elif bullish_prompts > 0 and bearish_prompts > 0:
+        rationale.append(f"Mixed signals: {bullish_prompts} bullish vs {bearish_prompts} bearish across analysis types.")
+    else:
+        rationale.append(f"Signals are neutral across all {neutral_prompts} analysis types.")
+
+    # Evidence volume
+    if total_mentions >= 50:
+        rationale.append(f"Strong evidence base: {total_mentions} unique mentions analysed.")
+    elif total_mentions >= 20:
+        rationale.append(f"Moderate evidence base: {total_mentions} unique mentions analysed.")
+    else:
+        rationale.append(f"Limited evidence: only {total_mentions} mentions found. Treat this signal with caution.")
 
     # Risk
-    rationale.append(f"Risk: red-flag rate {red_flag_rate:.0%}")
+    if red_flag_rate == 0:
+        rationale.append("No red flags or warning signals detected in recent posts.")
+    elif red_flag_rate <= 0.10:
+        rationale.append(f"Low red-flag rate ({red_flag_rate:.0%}) — minimal warning signals in posts.")
+    else:
+        rationale.append(f"Elevated red-flag rate ({red_flag_rate:.0%}) — some warning signals detected.")
 
     # Consistency
     if disagreement >= 0.65:
-        rationale.append("Signals: mixed (high disagreement)")
+        rationale.append("Signals are inconsistent — high disagreement between analysis types.")
     elif disagreement >= 0.40:
-        rationale.append("Signals: somewhat mixed")
+        rationale.append("Some disagreement between analysis types — moderate conviction only.")
     else:
-        rationale.append("Signals: consistent")
+        rationale.append("Signals are consistent across analysis types — conviction is higher.")
 
     return {
         "recommendation": recommendation,
