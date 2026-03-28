@@ -1261,30 +1261,32 @@ if st.session_state.df_valid is not None:
                     _deep_error = None
                     with st.spinner(f"Analysing {ticker_symbol} — this takes 20–40s..."):
                         try:
-                            import signal as _signal
+                            import threading as _threading
 
-                            def _timeout_handler(signum, frame):
-                                raise TimeoutError("Deep analysis timed out")
+                            _result_container = [None]
+                            _exc_container = [None]
 
-                            # 55s hard timeout (Streamlit Cloud kills at 60s)
-                            try:
-                                _signal.signal(_signal.SIGALRM, _timeout_handler)
-                                _signal.alarm(55)
-                            except (AttributeError, OSError):
-                                pass  # Windows/some envs don't support SIGALRM
+                            def _run_analysis():
+                                try:
+                                    _result_container[0] = run_deep_analysis(
+                                        ticker_symbol,
+                                        st.session_state.selected_sector,
+                                    )
+                                except Exception as _e:
+                                    _exc_container[0] = _e
 
-                            st.session_state.deep_analysis_results = run_deep_analysis(
-                                ticker_symbol,
-                                st.session_state.selected_sector,
-                            )
+                            _t = _threading.Thread(target=_run_analysis, daemon=True)
+                            _t.start()
+                            _t.join(timeout=55)  # 55s timeout — safe for Streamlit Cloud
 
-                            try:
-                                _signal.alarm(0)
-                            except (AttributeError, OSError):
-                                pass
+                            if _t.is_alive():
+                                # Still running after 55s — treat as timeout
+                                _deep_error = f"Analysis for {ticker_symbol} took too long. Try again shortly."
+                            elif _exc_container[0] is not None:
+                                raise _exc_container[0]
+                            else:
+                                st.session_state.deep_analysis_results = _result_container[0]
 
-                        except TimeoutError:
-                            _deep_error = f"Analysis for {ticker_symbol} took too long. Try again or pick a larger-cap ticker."
                         except Exception as _e:
                             _deep_error = f"Analysis failed for {ticker_symbol}. Try again in a moment."
                             logger.exception(f"Deep analysis error for {ticker_symbol}")
