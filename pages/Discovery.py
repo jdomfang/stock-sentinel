@@ -1041,26 +1041,43 @@ if st.session_state.df_valid is not None:
         total_unique = total_valid + total_other
         avg_sent = float(dfv["Avg Sentiment Score"].mean()) if (dfv is not None and "Avg Sentiment Score" in dfv.columns and len(dfv) > 0) else 0.0
 
-        k1, k2 = st.columns([1, 1])
-        k1.metric("Validated stocks", total_valid)
         if avg_sent >= 0.15:
             sent_label = f"Bullish ({avg_sent:.2f})"
             sent_color = "rgba(56,189,248,.95)"
+            sent_border = "rgba(56,189,248,.28)"
         elif avg_sent <= -0.10:
             sent_label = f"Bearish ({avg_sent:.2f})"
             sent_color = "rgba(239,68,68,.90)"
+            sent_border = "rgba(239,68,68,.25)"
         else:
             sent_label = f"Neutral ({avg_sent:.2f})"
             sent_color = "rgba(148,163,184,.90)"
-        k2.markdown(
-            f'<div style="border:1px solid rgba(148,163,184,0.18);background:rgba(15,23,42,.65);'
-            f'border-radius:14px;padding:12px 14px;">'
-            f'<div style="color:rgba(148,163,184,.75);font-size:0.8rem;margin-bottom:4px;">Avg Sentiment</div>'
-            f'<div style="color:{sent_color};font-size:1.05rem;font-weight:750;">{sent_label}</div>'
+            sent_border = "rgba(148,163,184,.22)"
+
+        _card_style = (
+            "border-radius:14px;padding:14px 16px;height:72px;"
+            "display:flex;flex-direction:column;justify-content:center;"
+            "background:linear-gradient(180deg,rgba(15,23,42,.90),rgba(15,23,42,.72));"
+        )
+        _label_style = "color:rgba(148,163,184,.75);font-size:0.75rem;font-weight:600;letter-spacing:0.04em;text-transform:uppercase;margin-bottom:5px;"
+        _value_style = "font-size:1.30rem;font-weight:800;letter-spacing:-0.02em;color:rgba(248,250,252,.98);"
+
+        k1, k2 = st.columns([1, 1])
+        k1.markdown(
+            f'<div style="{_card_style}border:1px solid rgba(148,163,184,.18);">'
+            f'<div style="{_label_style}">Stocks found</div>'
+            f'<div style="{_value_style}">{total_valid}</div>'
             f'</div>',
             unsafe_allow_html=True,
         )
-        st.markdown("", unsafe_allow_html=True)
+        k2.markdown(
+            f'<div style="{_card_style}border:1px solid {sent_border};">'
+            f'<div style="{_label_style}">Avg Sentiment</div>'
+            f'<div style="font-size:1.10rem;font-weight:750;color:{sent_color};">{sent_label}</div>'
+            f'</div>',
+            unsafe_allow_html=True,
+        )
+        st.markdown("<div style='height:0.5rem'></div>", unsafe_allow_html=True)
     except Exception:
         # Never let UI extras break the page
         pass
