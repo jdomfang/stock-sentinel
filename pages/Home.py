@@ -675,97 +675,80 @@ st.markdown("<div style='height: 0.45rem;'></div>", unsafe_allow_html=True)
 # Deep Analysis sample (educational, no API calls)
 demo_ticker, demo_sector, demo_results = _load_demo_deep()
 if demo_results:
-    st.markdown(
-        """
-        <style>
-        .deep-demo-section {
-          margin-top: -0.62rem;
-        }
-        .deep-demo-title {
-          font-size: 1.32rem;
-          font-weight: 700;
-          line-height: 1.15;
-          margin: 0 0 0.18rem 0;
-          color: rgba(248,250,252,.98);
-        }
-        .deep-demo-caption {
-          color: rgba(229,231,235,.72);
-          font-size: 0.92rem;
-          line-height: 1.42;
-          margin: 0 0 0.22rem 0;
-          max-width: 900px;
-        }
-        </style>
-        <div class="deep-demo-section">
-          <div class="deep-demo-title">Deep Analyze (demo)</div>
-          <div class="deep-demo-caption">Deep Analyze turns the data into a clear recommendation (Buy / Watch / Avoid), confidence, and the key reasons (catalysts and red flags)-so you can decide whether to take a position or stand aside.</div>
-        </div>
-        """,
-        unsafe_allow_html=True,
-    )
-
     ai_summary = generate_ai_summary(demo_results)
 
-    # Metric cards (bigger so text fits cleanly on Home)
+    rec = ai_summary.get("recommendation", "—")
+    conf = ai_summary.get("confidence", "—")
+    rec_color = (
+        "rgba(56,189,248,.95)" if "buy" in rec.lower()
+        else "rgba(239,68,68,.90)" if "avoid" in rec.lower()
+        else "rgba(245,158,11,.90)"
+    )
+
+    # Section label (matches "Sample scan results (demo)" style above)
     st.markdown(
-        """
-        <style>
-        .home-metrics [data-testid="stMetric"] {
-          padding: 11px 12px !important;
-          border-radius: 13px !important;
-          min-height: 78px !important;
-          background: linear-gradient(180deg, rgba(15,23,42,.90), rgba(15,23,42,.73)) !important;
-          border: 1px solid rgba(148,163,184,0.18) !important;
-          box-shadow: 0 9px 20px rgba(0,0,0,.21) !important;
-        }
-        .home-metrics [data-testid="stMetric"] label {
-          font-size: 0.73rem !important;
-          margin-bottom: 5px !important;
-          white-space: normal !important;
-          line-height: 1.14 !important;
-          letter-spacing: 0.008em;
-          color: rgba(229,231,235,.66) !important;
-        }
-        .home-metrics [data-testid="stMetric"] [data-testid="stMetricValue"] {
-          font-size: 1.11rem !important;
-          line-height: 1.06 !important;
-          white-space: nowrap;
-          font-weight: 755 !important;
-          color: rgba(248,250,252,.98) !important;
-        }
-        .home-metrics [data-testid="column"]:nth-child(1) [data-testid="stMetric"] {
-          border-color: rgba(56,189,248,0.28) !important;
-        }
-        .home-metrics [data-testid="column"]:nth-child(2) [data-testid="stMetric"] {
-          border-color: rgba(125,211,252,0.18) !important;
-        }
-        .home-metrics [data-testid="column"]:nth-child(3) [data-testid="stMetric"] {
-          border-color: rgba(148,163,184,0.24) !important;
-        }
-        .home-metrics {
-          margin-top: -0.16rem;
-        }
-        </style>
+        '<div class="section-title">Deep Analyze (demo) <span style="color: rgba(229,231,235,.65); font-weight: 700;"></span></div>',
+        unsafe_allow_html=True,
+    )
+    st.markdown(
+        '<div style="color:rgba(229,231,235,.70);font-size:0.92rem;line-height:1.42;margin:-0.4rem 0 0.6rem 0;max-width:820px;">'
+        'Deep Analyze turns the data into a clear recommendation (Buy / Watch / Avoid), confidence, and the key reasons—so you can decide whether to take a position or stand aside.'
+        '</div>',
+        unsafe_allow_html=True,
+    )
+
+    # Panel header — identical structure to Discovery deep panel
+    st.markdown(
+        f"""
+        <div style="
+          border:1px solid rgba(56,189,248,.30);
+          border-radius:16px 16px 0 0;
+          padding:18px 20px 14px 20px;
+          background:linear-gradient(180deg,rgba(56,189,248,.07),rgba(15,23,42,.95));
+          display:flex;
+          align-items:center;
+          justify-content:space-between;
+          gap:12px;
+        ">
+          <div>
+            <div style="font-size:0.72rem;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:rgba(56,189,248,.80);margin-bottom:3px;">Deep Analysis · {(demo_sector or 'tech').title()}</div>
+            <div style="font-size:1.55rem;font-weight:850;letter-spacing:-0.02em;color:rgba(248,250,252,.98);">{demo_ticker or 'NVDA'}</div>
+          </div>
+          <div style="text-align:right;">
+            <div style="font-size:0.72rem;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:rgba(148,163,184,.65);margin-bottom:3px;">Signal</div>
+            <div style="font-size:1.30rem;font-weight:850;color:{rec_color};">{rec}</div>
+            <div style="font-size:0.80rem;color:rgba(148,163,184,.75);margin-top:2px;">Confidence: {conf}</div>
+          </div>
+        </div>
+        <div style="border:1px solid rgba(56,189,248,.20);border-top:none;border-radius:0 0 16px 16px;padding:16px 20px 20px 20px;background:rgba(15,23,42,.88);margin-bottom:0.5rem;">
         """,
         unsafe_allow_html=True,
     )
 
-    st.markdown('<div class="home-metrics">', unsafe_allow_html=True)
-    m1, m2, m3, _msp = st.columns([1.02, 1.02, 1.12, 2.05])
-    with m1:
-        st.metric("Recommendation", ai_summary["recommendation"])
-    with m2:
-        st.metric("Confidence", ai_summary.get("confidence") or "")
-    with m3:
-        st.metric("Weighted Sentiment", f"{ai_summary['avg_sentiment']:.3f}")
-    st.markdown('</div>', unsafe_allow_html=True)
+    # Metric cards — same as Discovery/Deep_Analysis
+    _mc = "border-radius:12px;padding:13px 15px;background:rgba(15,23,42,.70);border:1px solid rgba(148,163,184,.15);flex:1;"
+    _ml = "font-size:0.72rem;font-weight:700;letter-spacing:0.05em;text-transform:uppercase;color:rgba(148,163,184,.65);margin-bottom:4px;"
+    _mv = "font-size:1.10rem;font-weight:800;color:rgba(248,250,252,.95);"
+    _sent_val = f"{ai_summary['avg_sentiment']:.3f}"
+    st.markdown(
+        f'<div style="display:flex;gap:10px;margin:10px 0 14px 0;flex-wrap:wrap;">'
+        f'<div style="{_mc}"><div style="{_ml}">Recommendation</div><div style="font-size:1.10rem;font-weight:800;color:{rec_color};">{rec}</div></div>'
+        f'<div style="{_mc}"><div style="{_ml}">Confidence</div><div style="{_mv}">{conf}</div></div>'
+        f'<div style="{_mc}"><div style="{_ml}">Weighted Sentiment</div><div style="{_mv}">{_sent_val}</div></div>'
+        f'</div>',
+        unsafe_allow_html=True,
+    )
 
-    st.markdown("<div style='margin-top:0.06rem;'><b>Rationale:</b></div>", unsafe_allow_html=True)
-    # Match Discovery-style rationale bullets
+    # Rationale
+    st.markdown(
+        '<div style="font-size:0.85rem;font-weight:700;color:rgba(148,163,184,.75);letter-spacing:0.04em;text-transform:uppercase;margin-bottom:8px;">Rationale</div>',
+        unsafe_allow_html=True,
+    )
     for line in ai_summary.get("rationale", [])[:2]:
         st.markdown(f"- {line}")
 
-    # (education line shown at section header)
+    # Close panel body div
+    st.markdown('</div>', unsafe_allow_html=True)
 
 else:
     st.info("No Deep Analyze demo data found yet. (Expected: data/education/deep_latest.json)")
