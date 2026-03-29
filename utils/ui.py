@@ -122,9 +122,10 @@ def apply_theme() -> None:
         unsafe_allow_html=True,
     )
 
-    # Branded page-transition overlay (best-effort)
-    # Streamlit Cloud doesn't reliably run <script> inside st.markdown; components.html does.
-    # We inject an overlay into the parent document, then fade it out quickly.
+    # Branded page-transition overlay.
+    # Fires on every page load/rerun — overlays the page with the brand dark color
+    # then fades out, giving a smooth "entering the app" feel between pages.
+    # Uses components.html (not st.markdown) so the <script> actually executes.
     components.html(
         """
         <script>
@@ -134,42 +135,40 @@ def apply_theme() -> None:
             const id = 'clawd-transition-overlay';
 
             const mount = () => {
-              // Remove any stale overlay first
-              try {
-                const stale = doc.getElementById(id);
-                if (stale) stale.remove();
-              } catch (e) {}
+              // Kill any stale overlay from a previous run
+              try { const s = doc.getElementById(id); if (s) { s.style.transition = 'none'; s.remove(); } } catch (e) {}
 
               const el = doc.createElement('div');
               el.id = id;
               el.style.cssText = [
                 'position:fixed',
                 'inset:0',
-                'z-index:99999',
+                'z-index:99998',
                 'background:#020617',
                 'pointer-events:none',
                 'opacity:1',
-                'transition:opacity .35s ease'
+                'transition:opacity 0.40s cubic-bezier(0.4,0,0.2,1)',
+                'will-change:opacity',
               ].join(';');
-
               (doc.body || doc.documentElement).appendChild(el);
 
-              // Fade out + remove
-              setTimeout(() => { el.style.opacity = '0'; }, 120);
-              setTimeout(() => { try { el.remove(); } catch (e) {} }, 650);
+              // Begin fade-out after a single paint frame
+              requestAnimationFrame(() => {
+                requestAnimationFrame(() => {
+                  el.style.opacity = '0';
+                });
+              });
 
-              // Safety cleanup
-              setTimeout(() => {
-                try {
-                  const maybe = doc.getElementById(id);
-                  if (maybe) maybe.remove();
-                } catch (e) {}
-              }, 2500);
+              // Remove after transition completes
+              el.addEventListener('transitionend', () => { try { el.remove(); } catch (e) {} });
+
+              // Safety net cleanup
+              setTimeout(() => { try { const m = doc.getElementById(id); if (m) m.remove(); } catch (e) {} }, 1500);
             };
 
-            if (!doc || (!doc.body && !doc.documentElement)) return;
-            if (!doc.body) setTimeout(mount, 0);
-            else mount();
+            // Mount as soon as the parent document body exists
+            if (doc && (doc.body || doc.documentElement)) mount();
+            else setTimeout(mount, 0);
           } catch (e) {}
         })();
         </script>

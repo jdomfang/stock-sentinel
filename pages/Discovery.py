@@ -930,8 +930,18 @@ if scan_triggered:
                 progress_bar.progress(15); status_text.markdown(f"**📡 Scanning X for {sector} momentum...**")
                 res = search_x_tweets_page(query=query, max_results=PER_PAGE, timeframe="24h", next_token=next_token)
                 if not res.get('success'):
-                    err = res.get('error') or 'X API request failed'
-                    st.error(f"❌ X API error: {err}")
+                    _api_err = res.get('error') or 'X API request failed'
+                    st.markdown(
+                        f"""
+                        <div style="border:1px solid rgba(245,158,11,.28);border-radius:14px;padding:18px 20px;
+                          background:rgba(245,158,11,.05);margin:0.5rem 0;text-align:center;">
+                          <div style="font-size:1.2rem;margin-bottom:6px;">📡</div>
+                          <div style="font-weight:700;color:rgba(251,191,36,.95);font-size:0.95rem;margin-bottom:4px;">X data feed unavailable</div>
+                          <div style="color:rgba(148,163,184,.75);font-size:0.82rem;">{_api_err[:200]}</div>
+                        </div>
+                        """,
+                        unsafe_allow_html=True,
+                    )
                     break
 
                 page_tweets = res.get('tweets') or []
@@ -1054,16 +1064,44 @@ if scan_triggered:
         # Note: detailed pagination + stop reasons are logged by utils.deep_analysis.search_x_tweets
 
     except KeyError:
-        st.error("❌ Missing X_BEARER_TOKEN in .streamlit/secrets.toml")
-        st.info("Please add your X Bearer Token to the secrets file.")
+        st.markdown(
+            """
+            <div style="border:1px solid rgba(239,68,68,.30);border-radius:16px;padding:24px;
+              background:rgba(239,68,68,.05);margin:1rem 0;text-align:center;">
+              <div style="font-size:1.5rem;margin-bottom:8px;">🔑</div>
+              <div style="font-weight:700;color:rgba(248,113,113,.95);font-size:1.0rem;margin-bottom:4px;">Configuration error</div>
+              <div style="color:rgba(148,163,184,.80);font-size:0.88rem;">Missing API credentials. Contact support if this keeps happening.</div>
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
 
     except requests.exceptions.RequestException:
-        st.error("Something went wrong. Please try again later.")
-        st.info("Please check your internet connection and try again.")
+        st.markdown(
+            """
+            <div style="border:1px solid rgba(245,158,11,.28);border-radius:16px;padding:24px;
+              background:rgba(245,158,11,.05);margin:1rem 0;text-align:center;">
+              <div style="font-size:1.5rem;margin-bottom:8px;">📡</div>
+              <div style="font-weight:700;color:rgba(251,191,36,.95);font-size:1.0rem;margin-bottom:4px;">Connection issue</div>
+              <div style="color:rgba(148,163,184,.80);font-size:0.88rem;">Couldn't reach the data source. Check your connection and try again.</div>
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
 
     except Exception:
         logger.exception("Discovery scan failed")
-        st.error("Something went wrong. Please try again later.")
+        st.markdown(
+            """
+            <div style="border:1px solid rgba(239,68,68,.25);border-radius:16px;padding:24px;
+              background:rgba(239,68,68,.04);margin:1rem 0;text-align:center;">
+              <div style="font-size:1.5rem;margin-bottom:8px;">⚠️</div>
+              <div style="font-weight:700;color:rgba(248,113,113,.95);font-size:1.0rem;margin-bottom:4px;">Something went wrong</div>
+              <div style="color:rgba(148,163,184,.80);font-size:0.88rem;">The scan hit an unexpected error. Try again in a moment — this is usually temporary.</div>
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
 
     # Clear one-shot redirect flags after a scan attempt (success or failure).
     # This keeps refreshes from unexpectedly re-triggering autostart.

@@ -95,12 +95,54 @@ def render_top_nav() -> None:
           margin-top: -5.80rem !important;
           margin-bottom: -4.60rem !important;
           padding: 0.20rem 0 0.20rem 0 !important;
-          border-bottom: 1px solid rgba(148,163,184,0.10);
-          backdrop-filter: blur(12px);
-          -webkit-backdrop-filter: blur(12px);
-          background: rgba(2,6,23,0.72);
+          border-bottom: 1px solid rgba(148,163,184,0.18);
+          backdrop-filter: blur(16px);
+          -webkit-backdrop-filter: blur(16px);
+          background: rgba(2,6,23,0.85);
           position: relative;
           z-index: 100;
+          box-shadow: 0 1px 0 rgba(56,189,248,0.06);
+        }
+
+        /* Mobile nav: hide text links, show hamburger */
+        @media (max-width: 640px) {
+          .clawd-nav-links-desktop { display: none !important; }
+          .clawd-nav-hamburger { display: flex !important; }
+        }
+        @media (min-width: 641px) {
+          .clawd-nav-links-desktop { display: flex !important; }
+          .clawd-nav-hamburger { display: none !important; }
+        }
+        /* Mobile menu drawer */
+        #clawd-mobile-menu {
+          display: none;
+          flex-direction: column;
+          gap: 0;
+          position: absolute;
+          top: 100%;
+          left: 0;
+          right: 0;
+          background: rgba(2,6,23,0.97);
+          border-bottom: 1px solid rgba(148,163,184,0.18);
+          backdrop-filter: blur(16px);
+          z-index: 9999;
+          padding: 8px 0;
+        }
+        #clawd-mobile-menu.open { display: flex !important; }
+        #clawd-mobile-menu a, #clawd-mobile-menu button {
+          display: block;
+          width: 100%;
+          padding: 12px 20px;
+          color: rgba(229,231,235,.92) !important;
+          background: transparent;
+          border: none;
+          text-align: left;
+          font-size: 0.96rem;
+          font-weight: 650;
+          cursor: pointer;
+        }
+        #clawd-mobile-menu a:hover, #clawd-mobile-menu button:hover {
+          background: rgba(56,189,248,.08);
         }
 
         .clawd-topnav [data-testid="stHorizontalBlock"] {
@@ -431,8 +473,74 @@ def render_top_nav() -> None:
 
         st.markdown('</div>', unsafe_allow_html=True)
 
-        # JS: hide the sentinel "Services" row in the dropdown menu (so menu shows only real destinations)
+    # Mobile hamburger menu (injected via components.html so JS runs in iframe → parent)
+    st_components.html(
+        """
+        <script>
+        (function () {
+          const doc = (window.parent && window.parent.document) ? window.parent.document : document;
 
-    # JS: force selectbox placeholder/value readable + keep dropdown themed (the earlier working approach)
+          const tryInject = () => {
+            const nav = doc.querySelector('.clawd-topnav');
+            if (!nav || doc.getElementById('clawd-mobile-menu')) return;
+
+            // Build drawer
+            const menu = doc.createElement('div');
+            menu.id = 'clawd-mobile-menu';
+            menu.innerHTML = [
+              '<a onclick="window._stNavigate && window._stNavigate(\'Home\')">Home</a>',
+              '<a onclick="window._stNavigate && window._stNavigate(\'Discovery\')">Market Scan</a>',
+            ].join('');
+            nav.style.position = 'relative';
+            nav.appendChild(menu);
+
+            // Hamburger button
+            const btn = doc.createElement('button');
+            btn.id = 'clawd-hamburger';
+            btn.setAttribute('aria-label', 'Menu');
+            btn.style.cssText = [
+              'display:none',
+              'align-items:center',
+              'justify-content:center',
+              'background:transparent',
+              'border:1px solid rgba(148,163,184,0.25)',
+              'border-radius:8px',
+              'width:32px',
+              'height:32px',
+              'cursor:pointer',
+              'color:rgba(229,231,235,.92)',
+              'font-size:1.1rem',
+              'position:absolute',
+              'right:12px',
+              'top:50%',
+              'transform:translateY(-50%)',
+              'z-index:10000',
+            ].join(';');
+            btn.innerHTML = '&#9776;';
+            btn.addEventListener('click', () => {
+              menu.classList.toggle('open');
+              btn.innerHTML = menu.classList.contains('open') ? '&#10005;' : '&#9776;';
+            });
+            nav.appendChild(btn);
+
+            // Show/hide hamburger based on viewport
+            const syncHamburger = () => {
+              const isMobile = (doc.documentElement.clientWidth || doc.body.clientWidth || 0) <= 640;
+              btn.style.display = isMobile ? 'flex' : 'none';
+              if (!isMobile) menu.classList.remove('open');
+            };
+            syncHamburger();
+            doc.defaultView.addEventListener('resize', syncHamburger);
+          };
+
+          const obs = new MutationObserver(tryInject);
+          obs.observe(doc.documentElement, { childList: true, subtree: true });
+          setTimeout(tryInject, 300);
+          setTimeout(tryInject, 900);
+        })();
+        </script>
+        """,
+        height=0,
+    )
 
     # No extra spacer after nav (prevents big gap before the hero)

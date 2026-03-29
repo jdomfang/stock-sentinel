@@ -8,9 +8,30 @@ from utils.profile import get_my_profile
 
 def require_login() -> None:
     if not is_logged_in():
-        st.warning("Please log in to continue.")
-        if st.button("Log in", type="primary", key="guard_login_button"):
-            st.switch_page("pages/Auth.py")
+        st.markdown(
+            """
+            <div style="
+              border:1px solid rgba(56,189,248,.25);
+              border-radius:18px;
+              padding:36px 28px;
+              background:linear-gradient(180deg,rgba(56,189,248,.05),rgba(15,23,42,.80));
+              text-align:center;
+              margin:2rem auto;
+              max-width:480px;
+            ">
+              <div style="font-size:2rem;margin-bottom:10px;">🔒</div>
+              <div style="font-size:1.15rem;font-weight:800;color:rgba(248,250,252,.98);margin-bottom:6px;">Sign in to continue</div>
+              <div style="color:rgba(148,163,184,.80);font-size:0.92rem;line-height:1.5;max-width:320px;margin:0 auto 20px auto;">
+                Create a free account or log in to run scans and access market signals.
+              </div>
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
+        col_a, col_b, col_c = st.columns([1.5, 1, 1.5])
+        with col_b:
+            if st.button("Log in →", type="primary", use_container_width=True, key="guard_login_button"):
+                st.switch_page("pages/Auth.py")
         st.stop()
 
 
