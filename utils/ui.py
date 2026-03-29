@@ -208,13 +208,38 @@ def open_page(*, title: str, subtitle: str | None = None, eyebrow: str = "Stock 
 
     st.markdown('<div class="clawd-app-wrapper">', unsafe_allow_html=True)
 
-    # Discovery-style hero
+    # Discovery-style hero — font sizes match Home/Discovery exactly
     st.markdown(
         f"""
+        <style>
+        .clawd-page-hero-title {{
+          font-size: clamp(42px, 5.1vw, 3.55rem);
+          font-weight: 850;
+          letter-spacing: -0.035em;
+          line-height: 1.08;
+          margin: 0 0 8px 0;
+          color: rgba(248,250,252,.98);
+        }}
+        .clawd-page-hero-sub {{
+          color: rgba(148,163,184,.92);
+          font-size: clamp(15px, 1.35vw, 1.05rem);
+          line-height: 1.45;
+          margin: 0 0 10px 0;
+          max-width: 760px;
+        }}
+        .clawd-page-hero-eyebrow {{
+          color: rgba(56,189,248,.95);
+          font-weight: 750;
+          letter-spacing: 0.06em;
+          text-transform: uppercase;
+          font-size: 0.78rem;
+          margin-bottom: 8px;
+        }}
+        </style>
         <div style="margin: -22px 0 12px 0;">
-          <div style="color: rgba(56,189,248,.95); font-weight: 750; letter-spacing: 0.06em; text-transform: uppercase; font-size: 0.78rem; margin-bottom: 10px;">{eyebrow}</div>
-          <div style="font-size: 2.05rem; font-weight: 850; letter-spacing: -0.03em; line-height: 1.1; margin: 0 0 8px 0;">{title}</div>
-          {f'<div style="color: rgba(148,163,184,.95); font-size: 1.02rem; line-height: 1.5; margin: 0 0 10px 0;">{subtitle}</div>' if subtitle else ''}
+          <div class="clawd-page-hero-eyebrow">{eyebrow}</div>
+          <div class="clawd-page-hero-title">{title}</div>
+          {f'<div class="clawd-page-hero-sub">{subtitle}</div>' if subtitle else ''}
         </div>
         """,
         unsafe_allow_html=True,

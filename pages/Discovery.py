@@ -122,7 +122,7 @@ st.markdown(
       padding: 0 2px 2px 2px;
     }
     .hero-title {
-      font-size: clamp(36px, 4.8vw, 3.35rem);
+      font-size: clamp(42px, 5.1vw, 3.55rem);
       font-weight: 850;
       letter-spacing: -0.035em;
       line-height: 1.08;
@@ -131,7 +131,7 @@ st.markdown(
     }
     .hero-subtitle {
       color: var(--muted);
-      font-size: clamp(14px, 1.3vw, 1.00rem);
+      font-size: clamp(15px, 1.35vw, 1.05rem);
       line-height: 1.45;
       margin: 0;
       max-width: 760px;

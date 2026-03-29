@@ -1,7 +1,4 @@
 import streamlit as st
-import pandas as pd
-from datetime import datetime, timedelta
-import time
 from typing import Dict, List, Any
 
 from utils.navigation import render_sidebar_navigation, render_top_nav
@@ -70,18 +67,12 @@ if st.button("🔬 Run Deep Analysis", type="primary"):
                 st.stop()
 
         # Display results
-        st.success("✅ Deep analysis complete!")
-
-        # AI-powered summary
         ai_summary = generate_ai_summary(analysis_results)
-        
-        # Fetch financial data for projections (best-effort; always display results or Unavailable)
+
+        # Fetch financial data (best-effort)
         current_price = "Unavailable"
-        current_price_reason = "Not fetched"
         projected_gain = "Unavailable"
-        projected_gain_reason = "Need price data"
         hold_days = "Unavailable"
-        hold_days_reason = "Need projection"
         price_points = 0
 
         try:
@@ -92,159 +83,189 @@ if st.button("🔬 Run Deep Analysis", type="primary"):
                 last_px = prices[-1]
                 if isinstance(last_px, (int, float)):
                     current_price = f"${last_px:.2f}"
-                    current_price_reason = ""
-                else:
-                    current_price_reason = "Invalid price"
-
-                # Calculate projections
                 projection = simple_projection(prices, ai_summary["avg_sentiment"], days=30)
                 if projection.get("error") is None:
                     p10 = projection.get("gain_p10")
                     p90 = projection.get("gain_p90")
-                    if p10 is not None and p90 is not None:
-                        projected_gain = f"{p10:.1f}–{p90:.1f}%"
-                    else:
-                        projected_gain = f"{float(projection.get('avg_gain', 0.0)):.1f}%"
-                    projected_gain_reason = ""
-
+                    projected_gain = f"{p10:.1f}–{p90:.1f}%" if (p10 is not None and p90 is not None) else f"{float(projection.get('avg_gain', 0.0)):.1f}%"
                     hold_days = f"{int(projection.get('suggested_hold_days', 0))} days"
-                    hold_days_reason = ""
-                else:
-                    projected_gain_reason = projection.get("error") or "Projection failed"
-                    hold_days_reason = "Projection failed"
-            else:
-                # Hide raw provider errors from users
-                current_price_reason = "Data unavailable"
-                projected_gain_reason = "Data unavailable"
-                hold_days_reason = "Data unavailable"
         except Exception:
-            # Hide raw exception details from users; full trace should be in server logs
-            current_price_reason = GENERIC_ERROR_TEXT
-            projected_gain_reason = GENERIC_ERROR_TEXT
-            hold_days_reason = GENERIC_ERROR_TEXT
-        
-        st.subheader("🧠 AI-Powered Summary")
+            pass
 
-        # Top row: Recommendation, Confidence, Sentiment
-        col1, col2, col3 = st.columns([1.2, 1, 2])
-        with col1:
-            st.metric("Recommendation", ai_summary["recommendation"])
-        with col2:
-            st.metric("Confidence", ai_summary["confidence"])
-        with col3:
-            st.metric("Weighted Sentiment", f"{ai_summary['avg_sentiment']:.3f}")
-        
-        # Bottom row: Financial metrics (always show, with Unavailable reasons)
-        col4, col5, col6 = st.columns([1.2, 1, 2])
-        with col4:
-            st.metric("Current Price", current_price)
-            if current_price == "Unavailable":
-                st.caption(f"Reason: {current_price_reason}")
-        with col5:
-            st.metric("Projected Gain (30d)", projected_gain)
-            if projected_gain == "Unavailable":
-                st.caption(f"Reason: {projected_gain_reason}")
-        with col6:
-            st.metric("Hold Period", hold_days)
-            if hold_days == "Unavailable":
-                st.caption(f"Reason: {hold_days_reason}")
+        # ── Recommendation panel (matches Discovery deep panel + Home demo exactly) ──
+        rec = ai_summary.get("recommendation", "—")
+        conf = ai_summary.get("confidence", "—")
+        rec_color = (
+            "rgba(56,189,248,.95)" if "buy" in rec.lower()
+            else "rgba(239,68,68,.90)" if "avoid" in rec.lower()
+            else "rgba(245,158,11,.90)"
+        )
 
-        st.caption(f"Data quality: {sum(r.get('mention_count', 0) for r in analysis_results.values())} total mentions • {price_points} price points")
+        # Panel header
+        st.markdown(
+            f"""
+            <style>
+            .da-metrics [data-testid="stMetric"] {{
+              padding: 11px 12px !important;
+              border-radius: 13px !important;
+              min-height: 78px !important;
+              background: linear-gradient(180deg, rgba(15,23,42,.90), rgba(15,23,42,.73)) !important;
+              border: 1px solid rgba(148,163,184,0.18) !important;
+              box-shadow: 0 9px 20px rgba(0,0,0,.21) !important;
+            }}
+            .da-metrics [data-testid="stMetric"] label {{
+              font-size: 0.73rem !important;
+              margin-bottom: 5px !important;
+              white-space: normal !important;
+              line-height: 1.14 !important;
+              letter-spacing: 0.008em;
+              color: rgba(229,231,235,.66) !important;
+            }}
+            .da-metrics [data-testid="stMetric"] [data-testid="stMetricValue"] {{
+              font-size: 1.11rem !important;
+              line-height: 1.06 !important;
+              white-space: nowrap;
+              font-weight: 755 !important;
+              color: rgba(248,250,252,.98) !important;
+            }}
+            .da-metrics [data-testid="column"]:nth-child(1) [data-testid="stMetric"] {{
+              border-color: rgba(56,189,248,0.28) !important;
+            }}
+            .da-metrics [data-testid="column"]:nth-child(2) [data-testid="stMetric"] {{
+              border-color: rgba(125,211,252,0.18) !important;
+            }}
+            .da-metrics [data-testid="column"]:nth-child(3) [data-testid="stMetric"] {{
+              border-color: rgba(148,163,184,0.24) !important;
+            }}
+            .da-metrics {{
+              margin-top: 0.25rem;
+            }}
+            </style>
+            <div style="
+              margin-top:1.0rem;
+              border:1px solid rgba(56,189,248,.30);
+              border-radius:16px 16px 0 0;
+              padding:18px 20px 14px 20px;
+              background:linear-gradient(180deg,rgba(56,189,248,.07),rgba(15,23,42,.95));
+              display:flex;
+              align-items:center;
+              justify-content:space-between;
+              gap:12px;
+            ">
+              <div>
+                <div style="font-size:0.72rem;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:rgba(56,189,248,.80);margin-bottom:3px;">Deep Analysis · {sector.title()}</div>
+                <div style="font-size:1.55rem;font-weight:850;letter-spacing:-0.02em;color:rgba(248,250,252,.98);">{ticker.upper()}</div>
+              </div>
+              <div style="text-align:right;">
+                <div style="font-size:0.72rem;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:rgba(148,163,184,.65);margin-bottom:3px;">Signal</div>
+                <div style="font-size:1.30rem;font-weight:850;color:{rec_color};">{rec}</div>
+                <div style="font-size:0.80rem;color:rgba(148,163,184,.75);margin-top:2px;">Confidence: {conf}</div>
+              </div>
+            </div>
+            <div style="border:1px solid rgba(56,189,248,.20);border-top:none;border-radius:0 0 16px 16px;padding:16px 20px 20px 20px;background:rgba(15,23,42,.88);margin-bottom:1.5rem;">
+            """,
+            unsafe_allow_html=True,
+        )
 
-        st.markdown("**📋 Rationale:**")
+        # Premium metric cards (same class as Home demo)
+        _mc = "border-radius:12px;padding:13px 15px;background:rgba(15,23,42,.70);border:1px solid rgba(148,163,184,.15);flex:1;"
+        _ml = "font-size:0.72rem;font-weight:700;letter-spacing:0.05em;text-transform:uppercase;color:rgba(148,163,184,.65);margin-bottom:4px;"
+        _mv = "font-size:1.10rem;font-weight:800;color:rgba(248,250,252,.95);"
+        st.markdown(
+            f'<div style="display:flex;gap:10px;margin:10px 0 14px 0;flex-wrap:wrap;">'
+            f'<div style="{_mc}"><div style="{_ml}">Price</div><div style="{_mv}">{current_price}</div></div>'
+            f'<div style="{_mc}"><div style="{_ml}">Proj. Gain 30d</div><div style="{_mv}">{projected_gain}</div></div>'
+            f'<div style="{_mc}"><div style="{_ml}">Hold Period</div><div style="{_mv}">{hold_days}</div></div>'
+            f'</div>',
+            unsafe_allow_html=True,
+        )
+
+        # Data quality line
+        _total_mentions = sum(r.get("mention_count", 0) for r in analysis_results.values())
+        st.markdown(
+            f'<div style="color:rgba(148,163,184,.55);font-size:0.75rem;margin-bottom:12px;">'
+            f'{_total_mentions} mentions analysed · {price_points} price points</div>',
+            unsafe_allow_html=True,
+        )
+
+        # Rationale
+        st.markdown(
+            '<div style="font-size:0.85rem;font-weight:700;color:rgba(148,163,184,.75);letter-spacing:0.04em;text-transform:uppercase;margin-bottom:8px;">Rationale</div>',
+            unsafe_allow_html=True,
+        )
         for bullet in ai_summary["rationale"]:
             st.markdown(f"- {bullet}")
-
         if current_price != "Unavailable" and projected_gain != "Unavailable" and hold_days != "Unavailable":
             st.markdown(f"- Price {current_price}; projected {projected_gain} over 30d; suggested hold {hold_days}.")
         elif current_price == "Unavailable":
-            st.markdown("- Price/projection unavailable.")
+            st.markdown("- Price/projection data unavailable.")
+
+        # Close the panel wrapper div
+        st.markdown('</div>', unsafe_allow_html=True)
 
         with st.expander("📦 Full Analysis Details", expanded=False):
-            # Coverage / data-quality table (lean, non-insight)
-            st.subheader("📊 Coverage")
-
             coverage_rows = []
             for prompt_name, result in (analysis_results or {}).items():
                 timeframe = (ANALYSIS_PROMPTS.get(prompt_name, {}) or {}).get("timeframe", "")
                 evidence = int(result.get("mention_count", 0) or 0)
                 overall = (result.get("overall_sentiment") or "").lower()
-
-                # Strength (quantity). Do NOT conflate with bullish/bearish.
                 if overall == "error":
-                    strength = "Unavailable"
+                    strength, tilt = "Unavailable", "Unavailable"
                 elif evidence == 0:
-                    strength = "No Signal"
-                elif evidence <= 5:
-                    strength = "Weak"
+                    strength, tilt = "No Signal", "Neutral"
                 else:
-                    strength = "Strong"
-
-                # Tilt (direction)
-                if overall == "error":
-                    tilt = "Unavailable"
-                elif evidence == 0:
-                    tilt = "Neutral"
-                else:
+                    strength = "Strong" if evidence > 5 else "Weak"
                     tilt = overall.title() if overall in ("bullish", "bearish", "neutral") else "Neutral"
+                coverage_rows.append((prompt_name, timeframe, evidence, strength, tilt))
 
-                coverage_rows.append({
-                    "Analysis Type": prompt_name,
-                    "Timeframe": timeframe,
-                    "Evidence Count": evidence,
-                    "Signal Strength": strength,
-                    "Sentiment Tilt": tilt,
-                })
-
-            df_cov = pd.DataFrame(coverage_rows)
-
-            if not df_cov.empty:
-                st.dataframe(
-                    df_cov,
-                    column_config={
-                        "Analysis Type": st.column_config.TextColumn("Analysis Type", width="large"),
-                        "Timeframe": st.column_config.TextColumn("Timeframe", width="small"),
-                        "Evidence Count": st.column_config.NumberColumn("Evidence Count", width="small"),
-                        "Signal Strength": st.column_config.TextColumn("Signal Strength", width="small"),
-                        "Sentiment Tilt": st.column_config.TextColumn("Sentiment Tilt", width="small"),
-                    },
-                    hide_index=True,
-                    use_container_width=True,
+            if coverage_rows:
+                tilt_color = {"Bullish": "rgba(56,189,248,.95)", "Bearish": "rgba(239,68,68,.90)", "Neutral": "rgba(148,163,184,.80)"}
+                rows_html = ""
+                for prompt_name, timeframe, evidence, strength, tilt in coverage_rows:
+                    tc = tilt_color.get(tilt, "rgba(148,163,184,.80)")
+                    rows_html += (
+                        f'<tr style="border-bottom:1px solid rgba(148,163,184,.10);">'
+                        f'<td style="padding:9px 10px;color:rgba(229,231,235,.90);font-size:0.82rem;">{prompt_name}</td>'
+                        f'<td style="padding:9px 10px;color:rgba(148,163,184,.70);font-size:0.82rem;">{timeframe}</td>'
+                        f'<td style="padding:9px 10px;color:rgba(148,163,184,.80);font-size:0.82rem;text-align:center;">{evidence}</td>'
+                        f'<td style="padding:9px 10px;color:rgba(148,163,184,.80);font-size:0.82rem;">{strength}</td>'
+                        f'<td style="padding:9px 10px;font-size:0.82rem;font-weight:700;color:{tc};">{tilt}</td>'
+                        f'</tr>'
+                    )
+                st.markdown(
+                    f'<table style="width:100%;border-collapse:collapse;background:rgba(15,23,42,.60);border-radius:10px;overflow:hidden;">'
+                    f'<thead><tr style="border-bottom:1px solid rgba(148,163,184,.20);">'
+                    f'<th style="padding:8px 10px;text-align:left;font-size:0.72rem;font-weight:700;letter-spacing:0.05em;text-transform:uppercase;color:rgba(148,163,184,.60);">Analysis Type</th>'
+                    f'<th style="padding:8px 10px;text-align:left;font-size:0.72rem;font-weight:700;letter-spacing:0.05em;text-transform:uppercase;color:rgba(148,163,184,.60);">Timeframe</th>'
+                    f'<th style="padding:8px 10px;text-align:center;font-size:0.72rem;font-weight:700;letter-spacing:0.05em;text-transform:uppercase;color:rgba(148,163,184,.60);">Evidence</th>'
+                    f'<th style="padding:8px 10px;text-align:left;font-size:0.72rem;font-weight:700;letter-spacing:0.05em;text-transform:uppercase;color:rgba(148,163,184,.60);">Strength</th>'
+                    f'<th style="padding:8px 10px;text-align:left;font-size:0.72rem;font-weight:700;letter-spacing:0.05em;text-transform:uppercase;color:rgba(148,163,184,.60);">Tilt</th>'
+                    f'</tr></thead><tbody>{rows_html}</tbody></table>',
+                    unsafe_allow_html=True,
                 )
             else:
                 st.caption("No coverage data available.")
 
-            # Detailed analysis sections
-            st.subheader("📋 Detailed Analysis")
+            st.markdown('<div style="height:1rem"></div>', unsafe_allow_html=True)
+            st.markdown('<div style="font-size:0.85rem;font-weight:700;color:rgba(148,163,184,.75);letter-spacing:0.04em;text-transform:uppercase;margin-bottom:8px;">Detailed Analysis</div>', unsafe_allow_html=True)
 
             for prompt_name, config in ANALYSIS_PROMPTS.items():
-                st.markdown(f"### 🔍 {prompt_name}")
-                st.markdown(f"**Description:** {config['description']}")
-                st.markdown(f"**Timeframe:** {config['timeframe']}")
-
+                st.markdown(f"**{prompt_name}** · {config['timeframe']}")
                 if prompt_name in analysis_results:
                     result = analysis_results[prompt_name]
-
                     col1, col2, col3 = st.columns(3)
-                    with col1:
-                        st.metric("Sentiment Score", f"{result['sentiment_score']:.3f}")
-                    with col2:
-                        st.metric("Overall Sentiment", result["overall_sentiment"].title())
-                    with col3:
-                        st.metric("Mentions Found", result["mention_count"])
-
+                    col1.metric("Sentiment Score", f"{result['sentiment_score']:.3f}")
+                    col2.metric("Overall Sentiment", result["overall_sentiment"].title())
+                    col3.metric("Mentions Found", result["mention_count"])
                     st.markdown(f"**Key Insights:** {result['insights']}")
-
                     if result["key_themes"]:
-                        st.markdown(f"**Tags:** {', '.join(result['key_themes'])}")
-
+                        st.markdown(f"**Key Themes:** {', '.join(result['key_themes'])}")
                     if result["sample_tweets"]:
-                        st.markdown("**Sample Tweets:**")
+                        st.markdown("**Sample Posts:**")
                         for i, tweet in enumerate(result["sample_tweets"], 1):
                             st.text(f"{i}. {tweet}")
                 else:
-                    st.error("Analysis failed for this prompt.")
-
-                st.markdown("---")
+                    st.caption("Analysis unavailable for this type.")
+                st.markdown("<hr style='border:none;border-top:1px solid rgba(148,163,184,.12);margin:10px 0;'>", unsafe_allow_html=True)
 
 close_page()
