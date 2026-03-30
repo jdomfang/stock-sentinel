@@ -360,37 +360,32 @@ def render_recommendation_panel(
     _bar_pct = min(100, int(abs(avg_sent) * 250 + ({"high": 30, "moderate": 15, "low": 0}.get(conf.lower(), 0))))
     _bar_color = rec_color
 
-    # ── Unified panel: header + body in one card, no gap ──
+    # ── Contracted panel: natural content width, no dead space ──
     _sector_label = (' · ' + sector.title()) if sector and sector.lower() not in ('unknown', '') else ''
-    _mentions_line = f"{mentions} posts · {price_points} price pts" if (mentions or price_points) else ""
     st.markdown(
         f"""
         <div style="
+          display:inline-block;
+          min-width:320px;
+          max-width:520px;
           margin-top:0.75rem;
+          margin-bottom:1.2rem;
           border:1px solid rgba(56,189,248,.28);
           border-radius:16px;
           background:linear-gradient(180deg,rgba(56,189,248,.06) 0%,rgba(15,23,42,.96) 60px);
           overflow:hidden;
-          margin-bottom:1.2rem;
         ">
-          <!-- Header row -->
+          <!-- Header row: ticker left, signal right, naturally close -->
           <div style="
             padding:14px 20px 12px 20px;
-            display:flex;align-items:center;gap:0;
+            display:flex;align-items:center;justify-content:space-between;gap:32px;
             border-bottom:1px solid rgba(56,189,248,.12);
           ">
-            <!-- Ticker + label -->
-            <div style="flex:0 0 auto;">
+            <div>
               <div style="font-size:0.68rem;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:rgba(56,189,248,.75);">Deep Analysis{_sector_label}</div>
               <div style="font-size:1.45rem;font-weight:850;letter-spacing:-0.02em;color:rgba(248,250,252,.98);line-height:1.15;">{ticker}</div>
             </div>
-            <!-- Centre fill: posts + price data quality -->
-            <div style="flex:1;padding:0 20px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;">
-              <div style="font-size:0.68rem;font-weight:600;color:rgba(148,163,184,.45);letter-spacing:0.04em;text-transform:uppercase;">Data coverage</div>
-              <div style="font-size:0.82rem;font-weight:700;color:rgba(148,163,184,.65);">{_mentions_line or "—"}</div>
-            </div>
-            <!-- Signal + confidence -->
-            <div style="flex:0 0 auto;text-align:right;">
+            <div style="text-align:right;">
               <div style="font-size:0.68rem;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:rgba(148,163,184,.50);margin-bottom:2px;">Signal</div>
               <div style="font-size:1.45rem;font-weight:850;color:{rec_color};line-height:1.15;">{rec}</div>
               <div style="font-size:0.76rem;color:rgba(148,163,184,.60);margin-top:1px;">Confidence: {conf}</div>
