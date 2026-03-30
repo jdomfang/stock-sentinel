@@ -115,7 +115,7 @@ with st.container(key="da_scan_card"):
             max_chars=6,
         )
     with btn_col:
-        _run_clicked = st.button("Analyze →", type="primary", use_container_width=True)
+        _run_clicked = st.button("Deep Analyze", type="primary", use_container_width=True)
 
 # Auto-sector: Deep analysis can run without sector input. Default to unknown.
 sector = "unknown"
