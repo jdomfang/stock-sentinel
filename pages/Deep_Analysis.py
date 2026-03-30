@@ -20,58 +20,39 @@ st.set_page_config(
 render_sidebar_navigation()
 render_top_nav()
 
-# Apply theme BEFORE guard so unauthenticated users see the dark theme on the login gate
+# Apply theme + hero BEFORE guard — logged-out users see the full styled page
 from utils.ui import apply_theme
 apply_theme()
 
-from utils.guard import require_active_account
-from utils.credits import consume_credit
-from utils.scan_intent import get_query_params
-
-_profile = require_active_account()
-
-# ── Hero (matches Home/Discovery exactly — no open_page() to avoid double gap) ──
 st.markdown(
     """
     <style>
     div[data-testid="stMainBlockContainer"] {
-      max-width: 1100px;
-      margin: 0 auto;
+      max-width: 1100px; margin: 0 auto;
       padding-left: clamp(16px, 4vw, 28px);
       padding-right: clamp(16px, 4vw, 28px);
       padding-top: 0.25rem;
     }
     div[data-testid="stMainBlockContainer"] > div:first-child,
     div[data-testid="stVerticalBlock"] > div:first-child {
-      margin-top: 0 !important;
-      padding-top: 0 !important;
+      margin-top: 0 !important; padding-top: 0 !important;
     }
     section[data-testid="stMain"] > div { padding-top: 0 !important; }
 
     .da-hero { margin: -8.10rem 0 10px 0; padding: 0 2px 2px 2px; }
     .da-hero-title {
-      font-size: clamp(42px, 5.1vw, 3.55rem);
-      font-weight: 850;
-      letter-spacing: -0.035em;
-      line-height: 1.08;
-      margin: 0 0 8px 0;
+      font-size: clamp(42px, 5.1vw, 3.55rem); font-weight: 850;
+      letter-spacing: -0.035em; line-height: 1.08; margin: 0 0 8px 0;
     }
     .da-hero-sub {
-      color: var(--muted);
-      font-size: clamp(15px, 1.35vw, 1.05rem);
-      line-height: 1.45;
-      margin: 0 0 0.85rem 0;
-      max-width: 680px;
+      color: var(--muted); font-size: clamp(15px, 1.35vw, 1.05rem);
+      line-height: 1.45; margin: 0 0 0.85rem 0; max-width: 680px;
     }
     @media (max-width: 640px) { .da-hero { margin: -2rem 0 0.75rem 0; } }
 
-    /* Inline ticker row — no card border */
     .st-key-da_scan_card {
-      background: transparent !important;
-      border: none !important;
-      box-shadow: none !important;
-      padding: 0 !important;
-      margin-bottom: 0.75rem;
+      background: transparent !important; border: none !important;
+      box-shadow: none !important; padding: 0 !important; margin-bottom: 0.75rem;
     }
     .st-key-da_scan_card [data-testid="stHorizontalBlock"] {
       align-items: center !important; gap: 10px !important;
@@ -92,6 +73,12 @@ st.markdown(
     """,
     unsafe_allow_html=True,
 )
+
+from utils.guard import require_active_account
+from utils.credits import consume_credit
+from utils.scan_intent import get_query_params
+
+_profile = require_active_account()
 
 # If we arrived via Home → Auth redirect, the ticker may be in query params.
 _qp = get_query_params()
