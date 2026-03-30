@@ -360,28 +360,44 @@ def render_recommendation_panel(
     _bar_pct = min(100, int(abs(avg_sent) * 250 + ({"high": 30, "moderate": 15, "low": 0}.get(conf.lower(), 0))))
     _bar_color = rec_color
 
-    # Panel header
+    # ── Unified panel: header + body in one card, no gap ──
+    _sector_label = (' · ' + sector.title()) if sector and sector.lower() not in ('unknown', '') else ''
+    _mentions_line = f"{mentions} posts · {price_points} price pts" if (mentions or price_points) else ""
     st.markdown(
         f"""
         <div style="
-          margin-top:1.0rem;
-          border:1px solid rgba(56,189,248,.30);
-          border-radius:16px 16px 0 0;
-          padding:18px 20px 14px 20px;
-          background:linear-gradient(180deg,rgba(56,189,248,.07),rgba(15,23,42,.95));
-          display:flex;align-items:center;justify-content:space-between;gap:12px;
+          margin-top:0.75rem;
+          border:1px solid rgba(56,189,248,.28);
+          border-radius:16px;
+          background:linear-gradient(180deg,rgba(56,189,248,.06) 0%,rgba(15,23,42,.96) 60px);
+          overflow:hidden;
+          margin-bottom:1.2rem;
         ">
-          <div>
-            <div style="font-size:0.72rem;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:rgba(56,189,248,.80);margin-bottom:3px;">Deep Analysis{(' · ' + sector.title()) if sector and sector.lower() not in ('unknown','') else ''}</div>
-            <div style="font-size:1.55rem;font-weight:850;letter-spacing:-0.02em;color:rgba(248,250,252,.98);">{ticker}</div>
+          <!-- Header row -->
+          <div style="
+            padding:14px 20px 12px 20px;
+            display:flex;align-items:center;gap:0;
+            border-bottom:1px solid rgba(56,189,248,.12);
+          ">
+            <!-- Ticker + label -->
+            <div style="flex:0 0 auto;">
+              <div style="font-size:0.68rem;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:rgba(56,189,248,.75);">Deep Analysis{_sector_label}</div>
+              <div style="font-size:1.45rem;font-weight:850;letter-spacing:-0.02em;color:rgba(248,250,252,.98);line-height:1.15;">{ticker}</div>
+            </div>
+            <!-- Centre fill: posts + price data quality -->
+            <div style="flex:1;padding:0 20px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;">
+              <div style="font-size:0.68rem;font-weight:600;color:rgba(148,163,184,.45);letter-spacing:0.04em;text-transform:uppercase;">Data coverage</div>
+              <div style="font-size:0.82rem;font-weight:700;color:rgba(148,163,184,.65);">{_mentions_line or "—"}</div>
+            </div>
+            <!-- Signal + confidence -->
+            <div style="flex:0 0 auto;text-align:right;">
+              <div style="font-size:0.68rem;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:rgba(148,163,184,.50);margin-bottom:2px;">Signal</div>
+              <div style="font-size:1.45rem;font-weight:850;color:{rec_color};line-height:1.15;">{rec}</div>
+              <div style="font-size:0.76rem;color:rgba(148,163,184,.60);margin-top:1px;">Confidence: {conf}</div>
+            </div>
           </div>
-          <div style="text-align:right;">
-            <div style="font-size:0.72rem;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:rgba(148,163,184,.65);margin-bottom:3px;">Signal</div>
-            <div style="font-size:1.30rem;font-weight:850;color:{rec_color};">{rec}</div>
-            <div style="font-size:0.80rem;color:rgba(148,163,184,.75);margin-top:2px;">Confidence: {conf}</div>
-          </div>
-        </div>
-        <div style="border:1px solid rgba(56,189,248,.20);border-top:none;border-radius:0 0 16px 16px;padding:16px 20px 20px 20px;background:rgba(15,23,42,.88);margin-bottom:1.5rem;">
+          <!-- Body -->
+          <div style="padding:14px 20px 18px 20px;">
         """,
         unsafe_allow_html=True,
     )
@@ -465,8 +481,8 @@ def render_recommendation_panel(
     for bullet in rationale:
         st.markdown(f"- {bullet}")
 
-    # Close panel body
-    st.markdown('</div>', unsafe_allow_html=True)
+    # Close body div + outer card div
+    st.markdown('</div></div>', unsafe_allow_html=True)
 
 
 def render_full_analysis_expander(analysis_results: dict, key_suffix: str = "") -> None:

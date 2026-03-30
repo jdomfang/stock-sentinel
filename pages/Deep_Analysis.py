@@ -52,7 +52,16 @@ st.markdown(
 
     .st-key-da_scan_card {
       background: transparent !important; border: none !important;
-      box-shadow: none !important; padding: 0 !important; margin-bottom: 0.75rem;
+      box-shadow: none !important; padding: 0 !important; margin-bottom: 0.25rem;
+    }
+    /* Kill Streamlit block gap between input row and results panel */
+    .st-key-da_scan_card + div[data-testid="stVerticalBlock"],
+    .st-key-da_scan_card ~ div {
+      margin-top: 0 !important;
+    }
+    /* Tighten all vertical block gaps on this page */
+    section[data-testid="stMain"] [data-testid="stVerticalBlock"] > [data-testid="stVerticalBlock"] {
+      gap: 0.25rem !important;
     }
     .st-key-da_scan_card [data-testid="stHorizontalBlock"] {
       align-items: center !important; gap: 10px !important;
