@@ -48,7 +48,7 @@ st.markdown(
     }
     section[data-testid="stMain"] > div { padding-top: 0 !important; }
 
-    .da-hero { margin: -8.10rem 0 2px 0; padding: 0 2px 2px 2px; }
+    .da-hero { margin: -8.10rem 0 10px 0; padding: 0 2px 2px 2px; }
     .da-hero-title {
       font-size: clamp(42px, 5.1vw, 3.55rem);
       font-weight: 850;
@@ -60,44 +60,35 @@ st.markdown(
       color: var(--muted);
       font-size: clamp(15px, 1.35vw, 1.05rem);
       line-height: 1.45;
-      margin: 0 0 1.2rem 0;
+      margin: 0 0 0.85rem 0;
       max-width: 680px;
     }
-    @media (max-width: 640px) { .da-hero { margin: -2rem 0 1rem 0; } }
+    @media (max-width: 640px) { .da-hero { margin: -2rem 0 0.75rem 0; } }
 
-    /* Compact scan card — same style as Discovery */
+    /* Tight inline scan card — no wasted space */
     .st-key-da_scan_card {
       border: 1px solid rgba(148,163,184,0.18);
       background: linear-gradient(180deg, rgba(15,23,42,.92), rgba(15,23,42,.72));
-      border-radius: 16px;
-      padding: 16px 16px 14px 16px;
-      box-shadow: 0 10px 28px rgba(0,0,0,.35);
-      margin-bottom: 0.85rem;
-    }
-    .st-key-da_scan_card .cap-title {
-      font-weight: 800; font-size: 1.00rem;
-      margin: 0 0 4px 0; color: rgba(229,231,235,.98);
-    }
-    .st-key-da_scan_card .cap-desc {
-      margin: 0 0 12px 0; color: rgba(229,231,235,.70);
-      font-size: 0.90rem; line-height: 1.45; max-width: 56ch;
+      border-radius: 14px;
+      padding: 10px 14px 10px 14px;
+      box-shadow: 0 8px 22px rgba(0,0,0,.30);
+      margin-bottom: 0.75rem;
     }
     .st-key-da_scan_card [data-testid="stHorizontalBlock"] {
-      align-items: flex-end !important; gap: 10px !important;
+      align-items: center !important; gap: 10px !important;
     }
     .st-key-da_scan_card [data-baseweb="input"] > div {
-      border-radius: 12px !important; min-height: 38px !important;
+      border-radius: 10px !important; min-height: 36px !important;
     }
     .st-key-da_scan_card .stButton > button {
-      min-height: 38px !important; border-radius: 12px !important;
+      min-height: 36px !important; border-radius: 10px !important;
+      padding-top: 0 !important; padding-bottom: 0 !important;
     }
-    /* Force ticker input to stay compact */
-    .st-key-da_ticker_col { max-width: 200px !important; }
     </style>
     <div class="clawd-app-wrapper">
     <div class="da-hero">
-      <div class="da-hero-title">Analyze any stock.</div>
-      <div class="da-hero-sub">Enter a ticker and get a clear signal — Buy, Watch, or Avoid — backed by real social sentiment and price data.</div>
+      <div class="da-hero-title">Analyze any US stock.</div>
+      <div class="da-hero-sub">Enter a ticker and get a clear signal — Buy, Watch, or Avoid — built from real social sentiment and market data.</div>
     </div>
     """,
     unsafe_allow_html=True,
@@ -114,8 +105,7 @@ _autorun = bool(st.session_state.pop("_autorun_deep_analysis", False))
 
 # ── Compact scan card ──
 with st.container(key="da_scan_card"):
-    st.markdown('<div class="cap-title">Analyze a Stock</div>', unsafe_allow_html=True)
-    ticker_col, btn_col, _pad = st.columns([0.6, 0.5, 1.9])
+    ticker_col, btn_col, _pad = st.columns([0.55, 0.45, 2.0])
     with ticker_col:
         ticker = st.text_input(
             "Ticker",
@@ -126,7 +116,6 @@ with st.container(key="da_scan_card"):
             max_chars=6,
         )
     with btn_col:
-        st.markdown("<div style='height:1.68rem'></div>", unsafe_allow_html=True)
         _run_clicked = st.button("Analyze →", type="primary", use_container_width=True)
 
 # Auto-sector: Deep analysis can run without sector input. Default to unknown.
