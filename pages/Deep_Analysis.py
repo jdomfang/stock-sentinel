@@ -30,35 +30,109 @@ from utils.scan_intent import get_query_params
 
 _profile = require_active_account()
 
-open_page(
-    title="Deep Analysis",
-    subtitle="Full breakdown: sentiment, catalysts, risks, and an on-demand projection.",
+# ── Hero (matches Home/Discovery exactly — no open_page() to avoid double gap) ──
+st.markdown(
+    """
+    <style>
+    div[data-testid="stMainBlockContainer"] {
+      max-width: 1100px;
+      margin: 0 auto;
+      padding-left: clamp(16px, 4vw, 28px);
+      padding-right: clamp(16px, 4vw, 28px);
+      padding-top: 0.25rem;
+    }
+    div[data-testid="stMainBlockContainer"] > div:first-child,
+    div[data-testid="stVerticalBlock"] > div:first-child {
+      margin-top: 0 !important;
+      padding-top: 0 !important;
+    }
+    section[data-testid="stMain"] > div { padding-top: 0 !important; }
+
+    .da-hero { margin: -8.10rem 0 2px 0; padding: 0 2px 2px 2px; }
+    .da-hero-title {
+      font-size: clamp(42px, 5.1vw, 3.55rem);
+      font-weight: 850;
+      letter-spacing: -0.035em;
+      line-height: 1.08;
+      margin: 0 0 8px 0;
+    }
+    .da-hero-sub {
+      color: var(--muted);
+      font-size: clamp(15px, 1.35vw, 1.05rem);
+      line-height: 1.45;
+      margin: 0 0 1.2rem 0;
+      max-width: 680px;
+    }
+    @media (max-width: 640px) { .da-hero { margin: -2rem 0 1rem 0; } }
+
+    /* Compact scan card — same style as Discovery */
+    .st-key-da_scan_card {
+      border: 1px solid rgba(148,163,184,0.18);
+      background: linear-gradient(180deg, rgba(15,23,42,.92), rgba(15,23,42,.72));
+      border-radius: 16px;
+      padding: 16px 16px 14px 16px;
+      box-shadow: 0 10px 28px rgba(0,0,0,.35);
+      margin-bottom: 0.85rem;
+    }
+    .st-key-da_scan_card .cap-title {
+      font-weight: 800; font-size: 1.00rem;
+      margin: 0 0 4px 0; color: rgba(229,231,235,.98);
+    }
+    .st-key-da_scan_card .cap-desc {
+      margin: 0 0 12px 0; color: rgba(229,231,235,.70);
+      font-size: 0.90rem; line-height: 1.45; max-width: 56ch;
+    }
+    .st-key-da_scan_card [data-testid="stHorizontalBlock"] {
+      align-items: flex-end !important; gap: 10px !important;
+    }
+    .st-key-da_scan_card [data-baseweb="input"] > div {
+      border-radius: 12px !important; min-height: 38px !important;
+    }
+    .st-key-da_scan_card .stButton > button {
+      min-height: 38px !important; border-radius: 12px !important;
+    }
+    /* Force ticker input to stay compact */
+    .st-key-da_ticker_col { max-width: 200px !important; }
+    </style>
+    <div class="clawd-app-wrapper">
+    <div class="da-hero">
+      <div class="da-hero-title">Analyze any stock.</div>
+      <div class="da-hero-sub">Enter a ticker and get a clear signal — Buy, Watch, or Avoid — backed by real social sentiment and price data.</div>
+    </div>
+    """,
+    unsafe_allow_html=True,
 )
 
-st.subheader("Stock Analysis")
-
-# If we arrived via Home -> Auth redirect, the ticker may be in query params.
+# If we arrived via Home → Auth redirect, the ticker may be in query params.
 _qp = get_query_params()
 _qp_ticker = (_qp.get("ticker") or "").strip().upper()
 if _qp_ticker and not st.session_state.get("prefill_deep_ticker"):
     st.session_state["prefill_deep_ticker"] = _qp_ticker
 
-# Pull prefill ticker — but don't fall back to NVDA (empty is fine)
 _prefill = (st.session_state.pop("prefill_deep_ticker", None) or "").strip().upper()
 _autorun = bool(st.session_state.pop("_autorun_deep_analysis", False))
 
-ticker = st.text_input(
-    "Stock Ticker",
-    value=_prefill,
-    placeholder="e.g. TSLA",
-    help="Enter stock ticker symbol (e.g., NVDA, AAPL, TSLA)",
-)
+# ── Compact scan card ──
+with st.container(key="da_scan_card"):
+    st.markdown('<div class="cap-title">Analyze a Stock</div>', unsafe_allow_html=True)
+    ticker_col, btn_col, _pad = st.columns([0.6, 0.5, 1.9])
+    with ticker_col:
+        ticker = st.text_input(
+            "Ticker",
+            value=_prefill,
+            placeholder="e.g. RCAT",
+            key="da_ticker_input",
+            label_visibility="collapsed",
+            max_chars=6,
+        )
+    with btn_col:
+        st.markdown("<div style='height:1.68rem'></div>", unsafe_allow_html=True)
+        _run_clicked = st.button("Analyze →", type="primary", use_container_width=True)
 
 # Auto-sector: Deep analysis can run without sector input. Default to unknown.
 sector = "unknown"
 
 # Main analysis button — or auto-triggered from Home
-_run_clicked = st.button("🔬 Run Deep Analysis", type="primary")
 if _run_clicked or (_autorun and _prefill):
     ok, err = consume_credit("deep_analyze")
     if not ok:
