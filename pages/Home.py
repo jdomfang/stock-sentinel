@@ -6,7 +6,7 @@ import streamlit as st
 import streamlit.components.v1 as components
 
 from utils.navigation import render_sidebar_navigation, render_top_nav
-from utils.ui import apply_theme, close_page, render_deep_panel_header
+from utils.ui import apply_theme, close_page, render_recommendation_panel
 from utils.deep_analysis import generate_ai_summary
 
 
@@ -679,15 +679,6 @@ demo_ticker, demo_sector, demo_results = _load_demo_deep()
 if demo_results:
     ai_summary = generate_ai_summary(demo_results)
 
-    rec = ai_summary.get("recommendation", "—")
-    conf = ai_summary.get("confidence", "—")
-    rec_color = (
-        "rgba(56,189,248,.95)" if "buy" in rec.lower()
-        else "rgba(239,68,68,.90)" if "avoid" in rec.lower()
-        else "rgba(245,158,11,.90)"
-    )
-
-    # Section label (matches "Sample scan results (demo)" style above)
     st.markdown(
         '<div class="section-title">Deep Analyze (demo) <span style="color: rgba(229,231,235,.65); font-weight: 700;"></span></div>',
         unsafe_allow_html=True,
@@ -699,53 +690,11 @@ if demo_results:
         unsafe_allow_html=True,
     )
 
-    # Panel header — identical structure to Discovery deep panel
-    st.markdown(
-        f"""
-        <div style="
-          border:1px solid rgba(56,189,248,.30);
-          border-radius:16px 16px 0 0;
-          padding:18px 20px 14px 20px;
-          background:linear-gradient(180deg,rgba(56,189,248,.07),rgba(15,23,42,.95));
-          display:flex;
-          align-items:center;
-          justify-content:space-between;
-          gap:12px;
-        ">
-          <div>
-            <div style="font-size:0.72rem;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:rgba(56,189,248,.80);margin-bottom:3px;">Deep Analysis · {(demo_sector or 'tech').title()}</div>
-            <div style="font-size:1.55rem;font-weight:850;letter-spacing:-0.02em;color:rgba(248,250,252,.98);">{demo_ticker or 'NVDA'}</div>
-          </div>
-          <div style="text-align:right;">
-            <div style="font-size:0.72rem;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:rgba(148,163,184,.65);margin-bottom:3px;">Signal</div>
-            <div style="font-size:1.30rem;font-weight:850;color:{rec_color};">{rec}</div>
-            <div style="font-size:0.80rem;color:rgba(148,163,184,.75);margin-top:2px;">Confidence: {conf}</div>
-          </div>
-        </div>
-        <div style="border:1px solid rgba(56,189,248,.20);border-top:none;border-radius:0 0 16px 16px;padding:16px 20px 20px 20px;background:rgba(15,23,42,.88);margin-bottom:0.5rem;">
-        """,
-        unsafe_allow_html=True,
-    )
-
-    # Shared premium recommendation cards
-    render_deep_panel_header(
+    render_recommendation_panel(
         ticker=demo_ticker or "NVDA",
         sector=demo_sector or "tech",
-        rec=rec,
-        conf=conf,
-        avg_sentiment=ai_summary["avg_sentiment"],
+        ai_summary=ai_summary,
     )
-
-    # Rationale
-    st.markdown(
-        '<div style="font-size:0.85rem;font-weight:700;color:rgba(148,163,184,.75);letter-spacing:0.04em;text-transform:uppercase;margin-bottom:8px;">Rationale</div>',
-        unsafe_allow_html=True,
-    )
-    for line in ai_summary.get("rationale", [])[:2]:
-        st.markdown(f"- {line}")
-
-    # Close panel body div
-    st.markdown('</div>', unsafe_allow_html=True)
 
 else:
     st.info("No Deep Analyze demo data found yet. (Expected: data/education/deep_latest.json)")

@@ -79,8 +79,16 @@ def load_sentiment_pipeline():
     NOTE: We import transformers lazily here so the app can boot even if
     transformers/torch cannot be installed on a given platform.
     """
+    # Silence torch/transformers internal noise before importing them
+    import logging as _logging
+    for _noisy in ("transformers", "torch", "torch.classes", "torch._classes"):
+        _logging.getLogger(_noisy).setLevel(_logging.ERROR)
+
     try:
         from transformers import pipeline  # type: ignore
+        # Also suppress transformers pipeline init chatter
+        _logging.getLogger("transformers.pipelines").setLevel(_logging.ERROR)
+        _logging.getLogger("transformers.modeling_utils").setLevel(_logging.ERROR)
     except Exception as e:
         raise RuntimeError(
             "Sentiment model dependencies are not available in this environment. "

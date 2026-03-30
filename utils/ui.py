@@ -313,6 +313,246 @@ def close_page() -> None:
     st.markdown("</div>", unsafe_allow_html=True)
 
 
+def render_recommendation_panel(
+    *,
+    ticker: str,
+    sector: str,
+    ai_summary: dict,
+    current_price: str = "Unavailable",
+    projected_gain: str = "Unavailable",
+    hold_days: str = "Unavailable",
+    mentions: int = 0,
+    price_points: int = 0,
+) -> None:
+    """Render the premium deep-analysis recommendation panel.
+
+    Identical layout used on Discovery inline panel, Deep_Analysis page,
+    and Home demo — single source of truth.
+    """
+    rec = ai_summary.get("recommendation", "—")
+    conf = ai_summary.get("confidence", "—")
+    avg_sent = float(ai_summary.get("avg_sentiment", 0.0))
+    rationale = ai_summary.get("rationale", [])
+
+    # Colors
+    rec_color = (
+        "rgba(56,189,248,.95)" if "buy" in rec.lower()
+        else "rgba(239,68,68,.90)" if "avoid" in rec.lower()
+        else "rgba(245,158,11,.90)"
+    )
+    sent_color = (
+        "rgba(56,189,248,.95)" if avg_sent >= 0.10
+        else "rgba(239,68,68,.88)" if avg_sent <= -0.10
+        else "rgba(148,163,184,.85)"
+    )
+    sent_label = (
+        f"Bullish ({avg_sent:+.2f})" if avg_sent >= 0.10
+        else f"Bearish ({avg_sent:+.2f})" if avg_sent <= -0.10
+        else f"Neutral ({avg_sent:+.2f})"
+    )
+    conf_color = (
+        "rgba(56,189,248,.90)" if conf.lower() == "high"
+        else "rgba(245,158,11,.90)" if conf.lower() == "moderate"
+        else "rgba(148,163,184,.80)"
+    )
+
+    # Signal strength bar (0–100 based on sentiment magnitude + confidence)
+    _bar_pct = min(100, int(abs(avg_sent) * 250 + ({"high": 30, "moderate": 15, "low": 0}.get(conf.lower(), 0))))
+    _bar_color = rec_color
+
+    # Panel header
+    st.markdown(
+        f"""
+        <div style="
+          margin-top:1.0rem;
+          border:1px solid rgba(56,189,248,.30);
+          border-radius:16px 16px 0 0;
+          padding:18px 20px 14px 20px;
+          background:linear-gradient(180deg,rgba(56,189,248,.07),rgba(15,23,42,.95));
+          display:flex;align-items:center;justify-content:space-between;gap:12px;
+        ">
+          <div>
+            <div style="font-size:0.72rem;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:rgba(56,189,248,.80);margin-bottom:3px;">Deep Analysis · {(sector or 'unknown').title()}</div>
+            <div style="font-size:1.55rem;font-weight:850;letter-spacing:-0.02em;color:rgba(248,250,252,.98);">{ticker}</div>
+          </div>
+          <div style="text-align:right;">
+            <div style="font-size:0.72rem;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:rgba(148,163,184,.65);margin-bottom:3px;">Signal</div>
+            <div style="font-size:1.30rem;font-weight:850;color:{rec_color};">{rec}</div>
+            <div style="font-size:0.80rem;color:rgba(148,163,184,.75);margin-top:2px;">Confidence: {conf}</div>
+          </div>
+        </div>
+        <div style="border:1px solid rgba(56,189,248,.20);border-top:none;border-radius:0 0 16px 16px;padding:16px 20px 20px 20px;background:rgba(15,23,42,.88);margin-bottom:1.5rem;">
+        """,
+        unsafe_allow_html=True,
+    )
+
+    # ── 3 premium metric cards with signal bar + sublabel ──
+    _mc_base = (
+        "border-radius:12px;padding:14px 16px 12px 16px;"
+        "background:rgba(15,23,42,.70);"
+        "flex:1;min-width:0;display:flex;flex-direction:column;gap:6px;"
+    )
+
+    def _bar_html(pct, color):
+        return (
+            f'<div style="width:100%;height:4px;background:rgba(148,163,184,.12);border-radius:999px;margin-top:6px;">'
+            f'<div style="width:{pct}%;height:4px;background:{color};border-radius:999px;transition:width 0.6s ease;"></div>'
+            f'</div>'
+        )
+
+    _rec_sublabel = {"buy": "Strong upside signal", "watch": "Hold — monitor closely", "avoid": "Risk outweighs reward"}.get(rec.lower(), "")
+    _conf_sublabel = {"high": "Strong data backing", "moderate": "Reasonable evidence", "low": "Thin data — use caution"}.get(conf.lower(), "")
+    _conf_bar = {"high": 90, "moderate": 55, "low": 25}.get(conf.lower(), 30)
+
+    st.markdown(
+        f'<div style="display:flex;gap:10px;margin:10px 0 16px 0;flex-wrap:nowrap;">'
+
+        # Recommendation card
+        f'<div style="{_mc_base}border:1px solid {rec_color.replace(".95",",.30").replace(".90",",.28")};">'
+        f'<div style="font-size:0.70rem;font-weight:700;letter-spacing:0.06em;text-transform:uppercase;color:rgba(148,163,184,.60);">Recommendation</div>'
+        f'<div style="font-size:1.18rem;font-weight:850;color:{rec_color};letter-spacing:-0.01em;">{rec}</div>'
+        f'<div style="font-size:0.75rem;color:rgba(148,163,184,.65);margin-top:1px;">{_rec_sublabel}</div>'
+        f'{_bar_html(_bar_pct, rec_color)}'
+        f'</div>'
+
+        # Confidence card
+        f'<div style="{_mc_base}border:1px solid rgba(148,163,184,.18);">'
+        f'<div style="font-size:0.70rem;font-weight:700;letter-spacing:0.06em;text-transform:uppercase;color:rgba(148,163,184,.60);">Confidence</div>'
+        f'<div style="font-size:1.18rem;font-weight:850;color:{conf_color};letter-spacing:-0.01em;">{conf}</div>'
+        f'<div style="font-size:0.75rem;color:rgba(148,163,184,.65);margin-top:1px;">{_conf_sublabel}</div>'
+        f'{_bar_html(_conf_bar, conf_color)}'
+        f'</div>'
+
+        # Sentiment card
+        f'<div style="{_mc_base}border:1px solid rgba(148,163,184,.18);">'
+        f'<div style="font-size:0.70rem;font-weight:700;letter-spacing:0.06em;text-transform:uppercase;color:rgba(148,163,184,.60);">Market Mood</div>'
+        f'<div style="font-size:1.18rem;font-weight:850;color:{sent_color};letter-spacing:-0.01em;">{sent_label.split(" ")[0]}</div>'
+        f'<div style="font-size:0.75rem;color:rgba(148,163,184,.65);margin-top:1px;">Score {avg_sent:+.3f}</div>'
+        f'{_bar_html(min(100,int(abs(avg_sent)*280)), sent_color)}'
+        f'</div>'
+
+        f'</div>',
+        unsafe_allow_html=True,
+    )
+
+    # ── Price / projection / hold period row ──
+    if current_price != "Unavailable" or projected_gain != "Unavailable" or hold_days != "Unavailable":
+        _fc = "border-radius:10px;padding:10px 14px;background:rgba(15,23,42,.55);border:1px solid rgba(148,163,184,.12);flex:1;"
+        _fl = "font-size:0.68rem;font-weight:700;letter-spacing:0.05em;text-transform:uppercase;color:rgba(148,163,184,.55);margin-bottom:3px;"
+        _fv = "font-size:1.00rem;font-weight:800;color:rgba(248,250,252,.92);"
+        st.markdown(
+            f'<div style="display:flex;gap:8px;margin-bottom:14px;flex-wrap:nowrap;">'
+            f'<div style="{_fc}"><div style="{_fl}">Last Price</div><div style="{_fv}">{current_price}</div></div>'
+            f'<div style="{_fc}"><div style="{_fl}">Proj. Gain 30d</div><div style="{_fv}">{projected_gain}</div></div>'
+            f'<div style="{_fc}"><div style="{_fl}">Hold Period</div><div style="{_fv}">{hold_days}</div></div>'
+            f'</div>',
+            unsafe_allow_html=True,
+        )
+
+    # Data quality
+    if mentions or price_points:
+        st.markdown(
+            f'<div style="color:rgba(148,163,184,.48);font-size:0.73rem;margin-bottom:12px;">'
+            f'{mentions} posts analysed · {price_points} price points</div>',
+            unsafe_allow_html=True,
+        )
+
+    # Rationale
+    st.markdown(
+        '<div style="font-size:0.80rem;font-weight:700;color:rgba(148,163,184,.65);letter-spacing:0.05em;text-transform:uppercase;margin-bottom:7px;">Why this signal</div>',
+        unsafe_allow_html=True,
+    )
+    for bullet in rationale:
+        st.markdown(f"- {bullet}")
+
+    # Close panel body
+    st.markdown('</div>', unsafe_allow_html=True)
+
+
+def render_full_analysis_expander(analysis_results: dict, key_suffix: str = "") -> None:
+    """Styled 'Full breakdown' expander — visually obvious, premium look."""
+    from utils.deep_analysis import ANALYSIS_PROMPTS
+
+    # Styled trigger strip (more obvious than default Streamlit expander arrow)
+    st.markdown(
+        """
+        <style>
+        details > summary { list-style: none; }
+        details > summary::-webkit-details-marker { display: none; }
+        </style>
+        """,
+        unsafe_allow_html=True,
+    )
+
+    with st.expander("📋  Full breakdown  ↓  click to expand", expanded=False):
+        coverage_rows = []
+        for prompt_name, result in (analysis_results or {}).items():
+            timeframe = (ANALYSIS_PROMPTS.get(prompt_name, {}) or {}).get("timeframe", "")
+            evidence = int(result.get("mention_count", 0) or 0)
+            overall = (result.get("overall_sentiment") or "").lower()
+            if overall == "error":
+                strength, tilt = "Unavailable", "Unavailable"
+            elif evidence == 0:
+                strength, tilt = "No Signal", "Neutral"
+            else:
+                strength = "Strong" if evidence > 5 else "Weak"
+                tilt = overall.title() if overall in ("bullish", "bearish", "neutral") else "Neutral"
+            coverage_rows.append((prompt_name, timeframe, evidence, strength, tilt))
+
+        if coverage_rows:
+            tilt_color = {
+                "Bullish": "rgba(56,189,248,.95)",
+                "Bearish": "rgba(239,68,68,.90)",
+                "Neutral": "rgba(148,163,184,.80)",
+            }
+            rows_html = "".join(
+                f'<tr style="border-bottom:1px solid rgba(148,163,184,.10);">'
+                f'<td style="padding:9px 10px;color:rgba(229,231,235,.90);font-size:0.82rem;">{pn}</td>'
+                f'<td style="padding:9px 10px;color:rgba(148,163,184,.70);font-size:0.82rem;">{tf}</td>'
+                f'<td style="padding:9px 10px;color:rgba(148,163,184,.80);font-size:0.82rem;text-align:center;">{ev}</td>'
+                f'<td style="padding:9px 10px;color:rgba(148,163,184,.80);font-size:0.82rem;">{st_}</td>'
+                f'<td style="padding:9px 10px;font-size:0.82rem;font-weight:700;color:{tilt_color.get(tl,"rgba(148,163,184,.80)")};">{tl}</td>'
+                f'</tr>'
+                for pn, tf, ev, st_, tl in coverage_rows
+            )
+            st.markdown(
+                f'<table style="width:100%;border-collapse:collapse;background:rgba(15,23,42,.60);border-radius:10px;overflow:hidden;">'
+                f'<thead><tr style="border-bottom:1px solid rgba(148,163,184,.20);">'
+                + "".join(
+                    f'<th style="padding:8px 10px;text-align:{"center" if h=="Evidence" else "left"};font-size:0.70rem;font-weight:700;letter-spacing:0.05em;text-transform:uppercase;color:rgba(148,163,184,.55);">{h}</th>'
+                    for h in ["Signal Type", "Timeframe", "Evidence", "Strength", "Tilt"]
+                )
+                + f'</tr></thead><tbody>{rows_html}</tbody></table>',
+                unsafe_allow_html=True,
+            )
+        else:
+            st.caption("No coverage data available.")
+
+        st.markdown('<div style="height:0.75rem"></div>', unsafe_allow_html=True)
+        st.markdown(
+            '<div style="font-size:0.80rem;font-weight:700;color:rgba(148,163,184,.65);letter-spacing:0.05em;text-transform:uppercase;margin-bottom:8px;">Detailed breakdown</div>',
+            unsafe_allow_html=True,
+        )
+        for prompt_name, config in ANALYSIS_PROMPTS.items():
+            st.markdown(f"**{prompt_name}** · {config.get('timeframe','')}")
+            if prompt_name in (analysis_results or {}):
+                result = analysis_results[prompt_name]
+                c1, c2, c3 = st.columns(3)
+                c1.metric("Sentiment Score", f"{result['sentiment_score']:.3f}")
+                c2.metric("Overall", result["overall_sentiment"].title())
+                c3.metric("Mentions", result["mention_count"])
+                st.markdown(f"**Insights:** {result['insights']}")
+                if result.get("key_themes"):
+                    st.markdown(f"**Themes:** {', '.join(result['key_themes'])}")
+                if result.get("sample_tweets"):
+                    st.markdown("**Sample posts:**")
+                    for i, tw in enumerate(result["sample_tweets"], 1):
+                        st.text(f"{i}. {tw}")
+            else:
+                st.caption("Unavailable.")
+            st.markdown("<hr style='border:none;border-top:1px solid rgba(148,163,184,.10);margin:8px 0;'>", unsafe_allow_html=True)
+
+
 def ui_error(message: str = GENERIC_ERROR_TEXT) -> None:
     st.error(message)
 
