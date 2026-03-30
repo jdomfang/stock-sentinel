@@ -39,7 +39,7 @@ st.markdown(
     }
     section[data-testid="stMain"] > div { padding-top: 0 !important; }
 
-    .da-hero { margin: -8.10rem 0 10px 0; padding: 0 2px 2px 2px; }
+    .da-hero { margin: -11.0rem 0 10px 0; padding: 0 2px 2px 2px; }
     .da-hero-title {
       font-size: clamp(42px, 5.1vw, 3.55rem); font-weight: 850;
       letter-spacing: -0.035em; line-height: 1.08; margin: 0 0 8px 0;

@@ -118,7 +118,7 @@ st.markdown(
     /* Hero (match Home) */
     /* Hero - exact match to Home */
     .hero {
-      margin: -8.10rem 0 2px 0;
+      margin: -11.0rem 0 2px 0;
       padding: 0 2px 2px 2px;
     }
     .hero-title {
