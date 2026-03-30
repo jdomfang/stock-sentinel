@@ -3,6 +3,7 @@ from typing import Dict, List, Any
 
 from utils.navigation import render_sidebar_navigation, render_top_nav
 from utils.ui import open_page, close_page, GENERIC_ERROR_TEXT, safe_ui, render_recommendation_panel, render_full_analysis_expander
+import streamlit.components.v1 as _components
 from utils.finance import get_stock_data
 from utils.projections import simple_projection
 from utils.deep_analysis import ANALYSIS_PROMPTS, run_deep_analysis, generate_ai_summary
@@ -154,6 +155,14 @@ if _run_clicked or (_autorun and _prefill):
             pass
 
         _total_mentions = sum(r.get("mention_count", 0) for r in analysis_results.values())
+
+        # Anchor + auto-scroll so panel comes into view immediately
+        import streamlit as _st
+        _st.markdown('<div id="da-results-anchor"></div>', unsafe_allow_html=True)
+        _components.html(
+            '<script>setTimeout(()=>{ const el = window.parent.document.getElementById("da-results-anchor"); if(el) el.scrollIntoView({behavior:"smooth",block:"start"}); }, 200);</script>',
+            height=0,
+        )
 
         render_recommendation_panel(
             ticker=_run_ticker,

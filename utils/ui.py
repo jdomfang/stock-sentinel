@@ -372,7 +372,7 @@ def render_recommendation_panel(
           display:flex;align-items:center;justify-content:space-between;gap:12px;
         ">
           <div>
-            <div style="font-size:0.72rem;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:rgba(56,189,248,.80);margin-bottom:3px;">Deep Analysis · {(sector or 'unknown').title()}</div>
+            <div style="font-size:0.72rem;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:rgba(56,189,248,.80);margin-bottom:3px;">Deep Analysis{(' · ' + sector.title()) if sector and sector.lower() not in ('unknown','') else ''}</div>
             <div style="font-size:1.55rem;font-weight:850;letter-spacing:-0.02em;color:rgba(248,250,252,.98);">{ticker}</div>
           </div>
           <div style="text-align:right;">
