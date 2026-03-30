@@ -19,6 +19,10 @@ st.set_page_config(
 render_sidebar_navigation()
 render_top_nav()
 
+# Apply theme BEFORE guard so unauthenticated users see the dark theme on the login gate
+from utils.ui import apply_theme
+apply_theme()
+
 from utils.guard import require_active_account
 from utils.credits import consume_credit
 from utils.scan_intent import get_query_params
