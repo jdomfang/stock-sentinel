@@ -2,7 +2,7 @@ import streamlit as st
 from typing import Dict, List, Any
 
 from utils.navigation import render_sidebar_navigation, render_top_nav
-from utils.ui import open_page, close_page, GENERIC_ERROR_TEXT, safe_ui
+from utils.ui import open_page, close_page, GENERIC_ERROR_TEXT, safe_ui, render_deep_panel_header
 from utils.finance import get_stock_data
 from utils.projections import simple_projection
 from utils.deep_analysis import ANALYSIS_PROMPTS, run_deep_analysis, generate_ai_summary
@@ -38,33 +38,96 @@ _qp_ticker = (_qp.get("ticker") or "").strip().upper()
 if _qp_ticker and not st.session_state.get("prefill_deep_ticker"):
     st.session_state["prefill_deep_ticker"] = _qp_ticker
 
-ticker_default = (st.session_state.pop("prefill_deep_ticker", None) or "NVDA").strip() or "NVDA"
+# Pull prefill ticker — but don't fall back to NVDA (empty is fine)
+_prefill = (st.session_state.pop("prefill_deep_ticker", None) or "").strip().upper()
+_autorun = bool(st.session_state.pop("_autorun_deep_analysis", False))
 
 ticker = st.text_input(
     "Stock Ticker",
-    ticker_default,
+    value=_prefill,
+    placeholder="e.g. TSLA",
     help="Enter stock ticker symbol (e.g., NVDA, AAPL, TSLA)",
 )
 
 # Auto-sector: Deep analysis can run without sector input. Default to unknown.
 sector = "unknown"
 
-# Main analysis button
-if st.button("🔬 Run Deep Analysis", type="primary"):
+# Main analysis button — or auto-triggered from Home
+_run_clicked = st.button("🔬 Run Deep Analysis", type="primary")
+if _run_clicked or (_autorun and _prefill):
     ok, err = consume_credit("deep_analyze")
     if not ok:
         st.error(err)
         st.stop()
-    if not ticker.strip():
+    if not (ticker or _prefill).strip():
         st.error("Please enter a stock ticker.")
     else:
-        with st.spinner("Running deep analysis... This may take a moment."):
-            analysis_results = safe_ui(
-                lambda: run_deep_analysis(ticker.upper(), sector),
-                context="deep_analysis.run_deep_analysis",
+        _run_ticker = (ticker or _prefill).strip().upper()
+        # Multi-step progress display so user knows work is happening
+        _da_progress = st.progress(0)
+        _da_status = st.empty()
+        _da_status.markdown(
+            f'<div style="color:rgba(229,231,235,.85);font-size:0.92rem;font-weight:600;margin-bottom:0.25rem;">'
+            f'📡 Pulling social data for <b>{_run_ticker}</b>...</div>',
+            unsafe_allow_html=True,
+        )
+        _da_progress.progress(12)
+
+        import threading, time as _time
+
+        _result_holder: dict = {}
+        _done_flag = threading.Event()
+
+        def _run():
+            try:
+                _result_holder["result"] = run_deep_analysis(_run_ticker, sector)
+            except Exception as _e:
+                _result_holder["error"] = str(_e)
+            finally:
+                _done_flag.set()
+
+        _t = threading.Thread(target=_run, daemon=True)
+        _t.start()
+
+        _steps = [
+            (20, "🔍 Scanning X posts for market signals..."),
+            (35, "📊 Analysing sentiment across timeframes..."),
+            (50, "🧠 Running FinBERT classification on mentions..."),
+            (65, "📈 Modelling 30-day price projection..."),
+            (78, "⚡ Calculating conviction score..."),
+            (88, "🔬 Synthesising Buy / Watch / Avoid signal..."),
+        ]
+        _step_idx = 0
+        _start = _time.time()
+        while not _done_flag.wait(timeout=1.5):
+            if _step_idx < len(_steps):
+                prog, msg = _steps[_step_idx]
+                _da_progress.progress(prog)
+                _da_status.markdown(
+                    f'<div style="color:rgba(229,231,235,.85);font-size:0.92rem;font-weight:600;">{msg}</div>',
+                    unsafe_allow_html=True,
+                )
+                _step_idx += 1
+
+        _da_progress.progress(100)
+        _da_status.empty()
+        _da_progress.empty()
+
+        if "error" in _result_holder:
+            st.markdown(
+                '<div style="border:1px solid rgba(239,68,68,.30);border-radius:14px;padding:18px 20px;'
+                'background:rgba(239,68,68,.05);text-align:center;margin:0.5rem 0;">'
+                '<div style="font-size:1.2rem;margin-bottom:6px;">⚠️</div>'
+                '<div style="font-weight:700;color:rgba(248,113,113,.95);">Analysis failed</div>'
+                '<div style="color:rgba(148,163,184,.75);font-size:0.85rem;margin-top:4px;">Try again in a moment — this is usually temporary.</div>'
+                '</div>',
+                unsafe_allow_html=True,
             )
-            if not analysis_results:
-                st.stop()
+            st.stop()
+
+        analysis_results = _result_holder.get("result")
+        if not analysis_results:
+            st.stop()
 
         # Display results
         ai_summary = generate_ai_summary(analysis_results)
@@ -92,7 +155,7 @@ if st.button("🔬 Run Deep Analysis", type="primary"):
         except Exception:
             pass
 
-        # ── Recommendation panel (matches Discovery deep panel + Home demo exactly) ──
+        # ── Recommendation panel ──
         rec = ai_summary.get("recommendation", "—")
         conf = ai_summary.get("confidence", "—")
         rec_color = (
@@ -101,60 +164,16 @@ if st.button("🔬 Run Deep Analysis", type="primary"):
             else "rgba(245,158,11,.90)"
         )
 
-        # Panel header
+        # Panel header bar
         st.markdown(
             f"""
-            <style>
-            .da-metrics [data-testid="stMetric"] {{
-              padding: 11px 12px !important;
-              border-radius: 13px !important;
-              min-height: 78px !important;
-              background: linear-gradient(180deg, rgba(15,23,42,.90), rgba(15,23,42,.73)) !important;
-              border: 1px solid rgba(148,163,184,0.18) !important;
-              box-shadow: 0 9px 20px rgba(0,0,0,.21) !important;
-            }}
-            .da-metrics [data-testid="stMetric"] label {{
-              font-size: 0.73rem !important;
-              margin-bottom: 5px !important;
-              white-space: normal !important;
-              line-height: 1.14 !important;
-              letter-spacing: 0.008em;
-              color: rgba(229,231,235,.66) !important;
-            }}
-            .da-metrics [data-testid="stMetric"] [data-testid="stMetricValue"] {{
-              font-size: 1.11rem !important;
-              line-height: 1.06 !important;
-              white-space: nowrap;
-              font-weight: 755 !important;
-              color: rgba(248,250,252,.98) !important;
-            }}
-            .da-metrics [data-testid="column"]:nth-child(1) [data-testid="stMetric"] {{
-              border-color: rgba(56,189,248,0.28) !important;
-            }}
-            .da-metrics [data-testid="column"]:nth-child(2) [data-testid="stMetric"] {{
-              border-color: rgba(125,211,252,0.18) !important;
-            }}
-            .da-metrics [data-testid="column"]:nth-child(3) [data-testid="stMetric"] {{
-              border-color: rgba(148,163,184,0.24) !important;
-            }}
-            .da-metrics {{
-              margin-top: 0.25rem;
-            }}
-            </style>
-            <div style="
-              margin-top:1.0rem;
-              border:1px solid rgba(56,189,248,.30);
-              border-radius:16px 16px 0 0;
+            <div style="margin-top:1.0rem;border:1px solid rgba(56,189,248,.30);border-radius:16px 16px 0 0;
               padding:18px 20px 14px 20px;
               background:linear-gradient(180deg,rgba(56,189,248,.07),rgba(15,23,42,.95));
-              display:flex;
-              align-items:center;
-              justify-content:space-between;
-              gap:12px;
-            ">
+              display:flex;align-items:center;justify-content:space-between;gap:12px;">
               <div>
                 <div style="font-size:0.72rem;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:rgba(56,189,248,.80);margin-bottom:3px;">Deep Analysis · {sector.title()}</div>
-                <div style="font-size:1.55rem;font-weight:850;letter-spacing:-0.02em;color:rgba(248,250,252,.98);">{ticker.upper()}</div>
+                <div style="font-size:1.55rem;font-weight:850;letter-spacing:-0.02em;color:rgba(248,250,252,.98);">{_run_ticker}</div>
               </div>
               <div style="text-align:right;">
                 <div style="font-size:0.72rem;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:rgba(148,163,184,.65);margin-bottom:3px;">Signal</div>
@@ -162,18 +181,28 @@ if st.button("🔬 Run Deep Analysis", type="primary"):
                 <div style="font-size:0.80rem;color:rgba(148,163,184,.75);margin-top:2px;">Confidence: {conf}</div>
               </div>
             </div>
-            <div style="border:1px solid rgba(56,189,248,.20);border-top:none;border-radius:0 0 16px 16px;padding:16px 20px 20px 20px;background:rgba(15,23,42,.88);margin-bottom:1.5rem;">
+            <div style="border:1px solid rgba(56,189,248,.20);border-top:none;border-radius:0 0 16px 16px;
+              padding:16px 20px 20px 20px;background:rgba(15,23,42,.88);margin-bottom:1.5rem;">
             """,
             unsafe_allow_html=True,
         )
 
-        # Premium metric cards (same class as Home demo)
+        # Shared premium recommendation cards (rec / confidence / sentiment with signal bars)
+        render_deep_panel_header(
+            ticker=_run_ticker,
+            sector=sector,
+            rec=rec,
+            conf=conf,
+            avg_sentiment=ai_summary["avg_sentiment"],
+        )
+
+        # Financial metric cards
         _mc = "border-radius:12px;padding:13px 15px;background:rgba(15,23,42,.70);border:1px solid rgba(148,163,184,.15);flex:1;"
-        _ml = "font-size:0.72rem;font-weight:700;letter-spacing:0.05em;text-transform:uppercase;color:rgba(148,163,184,.65);margin-bottom:4px;"
+        _ml = "font-size:0.68rem;font-weight:700;letter-spacing:0.05em;text-transform:uppercase;color:rgba(148,163,184,.60);margin-bottom:4px;"
         _mv = "font-size:1.10rem;font-weight:800;color:rgba(248,250,252,.95);"
         st.markdown(
-            f'<div style="display:flex;gap:10px;margin:10px 0 14px 0;flex-wrap:wrap;">'
-            f'<div style="{_mc}"><div style="{_ml}">Price</div><div style="{_mv}">{current_price}</div></div>'
+            f'<div style="display:flex;gap:10px;margin:0 0 14px 0;flex-wrap:wrap;">'
+            f'<div style="{_mc}"><div style="{_ml}">Last Price</div><div style="{_mv}">{current_price}</div></div>'
             f'<div style="{_mc}"><div style="{_ml}">Proj. Gain 30d</div><div style="{_mv}">{projected_gain}</div></div>'
             f'<div style="{_mc}"><div style="{_ml}">Hold Period</div><div style="{_mv}">{hold_days}</div></div>'
             f'</div>',
@@ -203,7 +232,8 @@ if st.button("🔬 Run Deep Analysis", type="primary"):
         # Close the panel wrapper div
         st.markdown('</div>', unsafe_allow_html=True)
 
-        with st.expander("📦 Full Analysis Details", expanded=False):
+        st.markdown('<div style="height:0.5rem"></div>', unsafe_allow_html=True)
+        with st.expander("📊 Full breakdown — click to expand signal details", expanded=False):
             coverage_rows = []
             for prompt_name, result in (analysis_results or {}).items():
                 timeframe = (ANALYSIS_PROMPTS.get(prompt_name, {}) or {}).get("timeframe", "")

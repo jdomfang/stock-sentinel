@@ -13,7 +13,7 @@ from collections import defaultdict
 import logging
 
 from utils.navigation import render_sidebar_navigation, render_top_nav
-from utils.ui import apply_theme, close_page
+from utils.ui import apply_theme, close_page, render_deep_panel_header, render_full_analysis_expander_label
 from utils.sentiment import extract_tickers, analyze_sentiment
 from utils.finance import get_ticker_master_list, get_stock_data, get_last_close_prices_best_effort
 from utils.projections import simple_projection
@@ -1308,13 +1308,22 @@ if st.session_state.selected_ticker and st.session_state.deep_analysis_results:
     except Exception:
         pass
 
-    # Premium metric cards
+    # Shared premium recommendation cards (rec / confidence / sentiment with signal bars)
+    render_deep_panel_header(
+        ticker=ticker,
+        sector=sector_label,
+        rec=rec,
+        conf=conf,
+        avg_sentiment=ai_summary["avg_sentiment"],
+    )
+
+    # Financial metric cards row (price / projection / hold)
     _mc = "border-radius:12px;padding:13px 15px;background:rgba(15,23,42,.70);border:1px solid rgba(148,163,184,.15);flex:1;"
-    _ml = "font-size:0.72rem;font-weight:700;letter-spacing:0.05em;text-transform:uppercase;color:rgba(148,163,184,.65);margin-bottom:4px;"
+    _ml = "font-size:0.68rem;font-weight:700;letter-spacing:0.05em;text-transform:uppercase;color:rgba(148,163,184,.60);margin-bottom:4px;"
     _mv = "font-size:1.10rem;font-weight:800;color:rgba(248,250,252,.95);"
     st.markdown(
-        f'<div style="display:flex;gap:10px;margin:10px 0 14px 0;flex-wrap:wrap;">'
-        f'<div style="{_mc}"><div style="{_ml}">Price</div><div style="{_mv}">{price_display}</div></div>'
+        f'<div style="display:flex;gap:10px;margin:0 0 14px 0;flex-wrap:wrap;">'
+        f'<div style="{_mc}"><div style="{_ml}">Last Price</div><div style="{_mv}">{price_display}</div></div>'
         f'<div style="{_mc}"><div style="{_ml}">Proj. Gain 30d</div><div style="{_mv}">{proj_display}</div></div>'
         f'<div style="{_mc}"><div style="{_ml}">Hold Period</div><div style="{_mv}">{hold_display}</div></div>'
         f'</div>',
@@ -1347,7 +1356,11 @@ if st.session_state.selected_ticker and st.session_state.deep_analysis_results:
         st.markdown("- Price/projection data unavailable.")
 
     # Full Analysis Details — dark-themed HTML table (no white flash)
-    with st.expander("📦 Full Analysis Details", expanded=False):
+    st.markdown(
+        '<div style="height:0.5rem"></div>',
+        unsafe_allow_html=True,
+    )
+    with st.expander("📊 Full breakdown — click to expand signal details", expanded=False):
         coverage_rows = []
         for prompt_name, result in (st.session_state.deep_analysis_results or {}).items():
             timeframe = (ANALYSIS_PROMPTS.get(prompt_name, {}) or {}).get("timeframe", "")
@@ -1434,16 +1447,25 @@ if st.session_state.df_valid is not None:
         df_valid_display = df_valid_display.reset_index(drop=True)
 
         header_cols = st.columns([0.9, 1.5, 1.1, 0.95, 0.9])
-        # Load last close prices (cache → Polygon on miss → cache)
+        # Load last close prices with a progress indicator so the user sees activity
         tickers_for_prices = [str(t) for t in df_valid_display["Ticker"].tolist()]
         last_close_map = {}
+        _price_prog = st.progress(0)
+        _price_status = st.empty()
+        _price_status.markdown(
+            '<div style="color:rgba(148,163,184,.70);font-size:0.82rem;">💹 Fetching live prices...</div>',
+            unsafe_allow_html=True,
+        )
         try:
+            _price_prog.progress(40)
             last_close_map = get_last_close_prices_best_effort(tickers_for_prices)
+            _price_prog.progress(100)
         except Exception as e:
             logger.exception("Last close price lookup failed")
-            # Don't break the scan UI; show a small hint for debugging.
-            st.caption(f"Price lookup failed: {str(e)[:120]}")
             last_close_map = {}
+        finally:
+            _price_prog.empty()
+            _price_status.empty()
 
         st.markdown(
             '<div style="display:flex;padding:0 0.85rem;margin-bottom:0.25rem;">'
@@ -1496,19 +1518,64 @@ if st.session_state.df_valid is not None:
                     st.session_state.deep_analysis_results = None
 
                     _deep_error = None
-                    with st.spinner(f"Analysing {ticker_symbol} — this takes 20–40s..."):
+                    _disc_prog = st.progress(0)
+                    _disc_status = st.empty()
+                    _disc_status.markdown(
+                        f'<div style="color:rgba(229,231,235,.85);font-size:0.92rem;font-weight:600;">'
+                        f'📡 Pulling social data for <b>{ticker_symbol}</b>...</div>',
+                        unsafe_allow_html=True,
+                    )
+                    _disc_prog.progress(10)
+
+                    import threading as _th, time as _tm
+
+                    _disc_holder: dict = {}
+                    _disc_done = _th.Event()
+
+                    def _disc_run():
                         try:
-                            # Run directly — threading.Thread can't access st.session_state/st.secrets
-                            _results = run_deep_analysis(
+                            _disc_holder["result"] = run_deep_analysis(
                                 ticker_symbol,
                                 st.session_state.selected_sector,
                             )
-                            st.session_state.deep_analysis_results = _results
-                            st.session_state.selected_ticker = ticker_symbol
-                            st.session_state["_scroll_to_deep_panel"] = True
                         except Exception as _e:
-                            _deep_error = f"Analysis failed for {ticker_symbol}. Try again in a moment."
+                            _disc_holder["error"] = str(_e)
                             logger.exception(f"Deep analysis error for {ticker_symbol}")
+                        finally:
+                            _disc_done.set()
+
+                    _disc_thread = _th.Thread(target=_disc_run, daemon=True)
+                    _disc_thread.start()
+
+                    _disc_steps = [
+                        (20, "🔍 Scanning X posts for market signals..."),
+                        (35, "📊 Analysing sentiment across timeframes..."),
+                        (50, "🧠 Running FinBERT classification on mentions..."),
+                        (65, "📈 Modelling 30-day price projection..."),
+                        (78, "⚡ Calculating conviction score..."),
+                        (88, "🔬 Synthesising Buy / Watch / Avoid signal..."),
+                    ]
+                    _disc_step_idx = 0
+                    while not _disc_done.wait(timeout=1.5):
+                        if _disc_step_idx < len(_disc_steps):
+                            _dp, _dm = _disc_steps[_disc_step_idx]
+                            _disc_prog.progress(_dp)
+                            _disc_status.markdown(
+                                f'<div style="color:rgba(229,231,235,.85);font-size:0.92rem;font-weight:600;">{_dm}</div>',
+                                unsafe_allow_html=True,
+                            )
+                            _disc_step_idx += 1
+
+                    _disc_prog.progress(100)
+                    _disc_status.empty()
+                    _disc_prog.empty()
+
+                    if "error" in _disc_holder:
+                        _deep_error = f"Analysis failed for {ticker_symbol}. Try again in a moment."
+                    else:
+                        st.session_state.deep_analysis_results = _disc_holder.get("result")
+                        st.session_state.selected_ticker = ticker_symbol
+                        st.session_state["_scroll_to_deep_panel"] = True
 
                     if _deep_error:
                         st.markdown(

@@ -6,7 +6,7 @@ import streamlit as st
 import streamlit.components.v1 as components
 
 from utils.navigation import render_sidebar_navigation, render_top_nav
-from utils.ui import apply_theme, close_page
+from utils.ui import apply_theme, close_page, render_deep_panel_header
 from utils.deep_analysis import generate_ai_summary
 
 
@@ -597,7 +597,9 @@ with st.container(key="home_cap_grid"):
                         use_container_width=True,
                     ):
                         ticker = (analyze_ticker or "").strip().upper()
-                        st.session_state["prefill_deep_ticker"] = ticker
+                        if ticker:
+                            st.session_state["prefill_deep_ticker"] = ticker
+                            st.session_state["_autorun_deep_analysis"] = True
                         st.session_state["_after_auth_page"] = "Deep_Analysis"
 
                         st.switch_page("pages/Deep_Analysis.py" if is_logged_in() else "pages/Auth.py")
@@ -725,18 +727,13 @@ if demo_results:
         unsafe_allow_html=True,
     )
 
-    # Metric cards — same as Discovery/Deep_Analysis
-    _mc = "border-radius:12px;padding:13px 15px;background:rgba(15,23,42,.70);border:1px solid rgba(148,163,184,.15);flex:1;"
-    _ml = "font-size:0.72rem;font-weight:700;letter-spacing:0.05em;text-transform:uppercase;color:rgba(148,163,184,.65);margin-bottom:4px;"
-    _mv = "font-size:1.10rem;font-weight:800;color:rgba(248,250,252,.95);"
-    _sent_val = f"{ai_summary['avg_sentiment']:.3f}"
-    st.markdown(
-        f'<div style="display:flex;gap:10px;margin:10px 0 14px 0;flex-wrap:wrap;">'
-        f'<div style="{_mc}"><div style="{_ml}">Recommendation</div><div style="font-size:1.10rem;font-weight:800;color:{rec_color};">{rec}</div></div>'
-        f'<div style="{_mc}"><div style="{_ml}">Confidence</div><div style="{_mv}">{conf}</div></div>'
-        f'<div style="{_mc}"><div style="{_ml}">Weighted Sentiment</div><div style="{_mv}">{_sent_val}</div></div>'
-        f'</div>',
-        unsafe_allow_html=True,
+    # Shared premium recommendation cards
+    render_deep_panel_header(
+        ticker=demo_ticker or "NVDA",
+        sector=demo_sector or "tech",
+        rec=rec,
+        conf=conf,
+        avg_sentiment=ai_summary["avg_sentiment"],
     )
 
     # Rationale
