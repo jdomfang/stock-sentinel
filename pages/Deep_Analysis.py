@@ -65,23 +65,22 @@ st.markdown(
     }
     @media (max-width: 640px) { .da-hero { margin: -2rem 0 0.75rem 0; } }
 
-    /* Tight inline scan card — no wasted space */
+    /* Inline ticker row — no card border */
     .st-key-da_scan_card {
-      border: 1px solid rgba(148,163,184,0.18);
-      background: linear-gradient(180deg, rgba(15,23,42,.92), rgba(15,23,42,.72));
-      border-radius: 14px;
-      padding: 10px 14px 10px 14px;
-      box-shadow: 0 8px 22px rgba(0,0,0,.30);
+      background: transparent !important;
+      border: none !important;
+      box-shadow: none !important;
+      padding: 0 !important;
       margin-bottom: 0.75rem;
     }
     .st-key-da_scan_card [data-testid="stHorizontalBlock"] {
       align-items: center !important; gap: 10px !important;
     }
     .st-key-da_scan_card [data-baseweb="input"] > div {
-      border-radius: 10px !important; min-height: 36px !important;
+      border-radius: 10px !important; min-height: 38px !important;
     }
     .st-key-da_scan_card .stButton > button {
-      min-height: 36px !important; border-radius: 10px !important;
+      min-height: 38px !important; border-radius: 10px !important;
       padding-top: 0 !important; padding-bottom: 0 !important;
     }
     </style>
