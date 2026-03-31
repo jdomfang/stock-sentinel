@@ -82,6 +82,33 @@ def apply_theme() -> None:
           padding-top: 0rem;
         }
 
+        /* Mobile: remove the “big empty band” on first load by tightening Streamlit's
+           default vertical spacing and overriding hero offsets globally.
+           (Desktop untouched.) */
+        @media (max-width: 640px) {
+          div[data-testid="stMainBlockContainer"] {
+            padding-left: 1.05rem !important;
+            padding-right: 1.05rem !important;
+          }
+
+          /* Streamlit sometimes inserts empty element containers that still reserve space */
+          section[data-testid="stMain"] [data-testid="stVerticalBlock"] {
+            gap: 0.18rem !important;
+          }
+          section[data-testid="stMain"] .stElementContainer {
+            margin-top: 0 !important;
+            margin-bottom: 0 !important;
+          }
+
+          /* Hero: pull up aggressively on mobile (we use a fixed mobile topbar) */
+          section[data-testid="stMain"] .hero {
+            margin-top: -7.6rem !important;
+          }
+          section[data-testid="stMain"] .da-hero {
+            margin-top: -7.6rem !important;
+          }
+        }
+
         .clawd-app-wrapper {
           /* Keep wrapper aligned with global main container */
           max-width: 1100px;
