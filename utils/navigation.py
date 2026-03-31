@@ -110,11 +110,14 @@ def render_top_nav() -> None:
           .clawd-topnav { display: none !important; }
 
           /* Also hide any leftover Streamlit button containers from the header */
+          .clawd-brand,
           .clawd-navlink,
           .clawd-auth,
           .st-key-nav_home,
           .st-key-nav_discover,
-          .st-key-nav_deep {
+          .st-key-nav_deep,
+          .st-key-nav_auth_login,
+          .st-key-nav_auth_logout {
             display: none !important;
           }
 
@@ -551,11 +554,11 @@ def render_top_nav() -> None:
         with auth_col:
             st.markdown('<div class="clawd-auth">', unsafe_allow_html=True)
             if is_logged_in():
-                if st.button("Log out", use_container_width=False):
+                if st.button("Log out", use_container_width=False, key="nav_auth_logout"):
                     sign_out()
                     st.switch_page("pages/Home.py")
             else:
-                if st.button("Log in", use_container_width=False, type="primary"):
+                if st.button("Log in", use_container_width=False, type="primary", key="nav_auth_login"):
                     st.switch_page("pages/Auth.py")
             st.markdown('</div>', unsafe_allow_html=True)
 
