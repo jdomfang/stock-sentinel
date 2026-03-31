@@ -312,8 +312,8 @@ st.markdown(
       padding-top: 10px;
       align-self: stretch;
       justify-self: stretch;
-      width: calc(100% - 30px) !important;
-      max-width: calc(100% - 30px) !important;
+      width: 100% !important;
+      max-width: 100% !important;
       overflow: hidden !important;
     }
 
@@ -339,6 +339,32 @@ st.markdown(
       width: 100% !important;
       max-width: 100% !important;
       box-sizing: border-box !important;
+    }
+
+    /* Mobile: let the select/input + button stack so they don't overflow the card */
+    @media (max-width: 640px) {
+      .st-key-home_card_scan_actions [data-testid="stHorizontalBlock"],
+      .st-key-home_card_analyze_actions [data-testid="stHorizontalBlock"] {
+        flex-wrap: wrap !important;
+        align-items: stretch !important;
+      }
+
+      .st-key-home_card_scan_actions [data-testid="column"],
+      .st-key-home_card_analyze_actions [data-testid="column"] {
+        flex: 1 1 100% !important;
+        min-width: 100% !important;
+      }
+
+      .st-key-home_card_scan [data-baseweb="select"],
+      .st-key-home_card_analyze [data-baseweb="input"] {
+        width: 100% !important;
+        max-width: 100% !important;
+      }
+
+      .st-key-home_card_scan .stButton > button,
+      .st-key-home_card_analyze .stButton > button {
+        width: 100% !important;
+      }
     }
 
     .st-key-home_card_scan_actions [data-testid="column"],
