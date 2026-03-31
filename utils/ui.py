@@ -102,10 +102,11 @@ def apply_theme() -> None:
 
           /* Hero: pull up aggressively on mobile (we use a fixed mobile topbar) */
           section[data-testid="stMain"] .hero {
-            margin-top: -7.6rem !important;
+            /* Keep chips/hero just under the fixed mobile topbar */
+            margin-top: -4.2rem !important;
           }
           section[data-testid="stMain"] .da-hero {
-            margin-top: -7.6rem !important;
+            margin-top: -4.2rem !important;
           }
         }
 
