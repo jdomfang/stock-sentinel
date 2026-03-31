@@ -312,8 +312,9 @@ st.markdown(
       padding-top: 10px;
       align-self: stretch;
       justify-self: stretch;
-      width: 100% !important;
-      max-width: 100% !important;
+      /* Constrain to card inner width (card has 15px padding each side = 30px total) */
+      width: calc(100% - 30px) !important;
+      max-width: calc(100% - 30px) !important;
       overflow: hidden !important;
     }
 
