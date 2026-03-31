@@ -229,6 +229,16 @@ st.markdown(
       .hero { margin: -6.8rem 0 10px 0; }
       .hero-title { font-size: clamp(34px, 9.5vw, 44px); }
       .hero-subtitle { font-size: 1.00rem; }
+
+      /* Fix overlap in the demo section: section title + demo-note were both using negative margins */
+      .section-title {
+        margin: 0.25rem 0 0.45rem 0;
+        font-size: 1.15rem;
+      }
+      .demo-note {
+        margin-top: 0;
+        margin-bottom: 10px;
+      }
     }
     .hero-chips {
       display: flex;
