@@ -306,170 +306,91 @@ st.markdown(
 # --- Form Container ---
 st.markdown('<div class="auth-form-container">', unsafe_allow_html=True)
 
-# ── Auth mode toggle ──
+# --- Login Form Fields ---
+# NOTE: Streamlit doesn't let us set HTML autocomplete/name attrs directly.
+# We inject a tiny JS MutationObserver below to add them, which helps
+# Chrome/Safari/Firefox password managers offer save + autofill.
+email = st.text_input("Email address", placeholder="you@example.com", key="auth_email")
+password = st.text_input("Password", type="password", placeholder="••••••••", key="auth_password")
+
+# --- Remember Me Checkbox (Sign In only) ---
+# Center-align to match the rest of the auth form
+_c1, _c2, _c3 = st.columns([1, 2, 1])
+with _c2:
+    remember_me = st.checkbox("Remember me on this device", value=False)
+
+# --- Auth Mode Toggle (Custom HTML + Hidden Radio) ---
+st.markdown('<div style="margin: 0.5rem 0;"></div>', unsafe_allow_html=True)
+
+# Create radio button but hide it completely
 col1, col2, col3 = st.columns([1, 2, 1])
 with col2:
     mode = st.radio("Auth Mode", ["Sign In", "Create Account"], horizontal=True, label_visibility="collapsed")
 
-st.markdown("<div style='margin-top:-1.2rem;'></div>", unsafe_allow_html=True)
+#st.markdown("<div style='height: 0.3rem;'></div>", unsafe_allow_html=True)
+#st.markdown("<div style='margin-top: -0.8rem;'></div>", unsafe_allow_html=True)
+st.markdown("<div style='margin-top: -1.2rem;'></div>", unsafe_allow_html=True)
 
-# ── Autofill-compatible HTML form ──
-# Uses a real <form> with name/id/autocomplete attrs so Chrome/Safari/Firefox
-# password managers can detect, save, and autofill credentials.
-# Values are posted back to Streamlit via a hidden st.text_input bridge.
-import streamlit.components.v1 as _auth_comp
+# ── Autofill / password manager hints (best-effort) ──
+# Adds standard attributes to Streamlit-rendered <input> elements.
+import streamlit.components.v1 as components
 
-_form_id = "clawd-auth-form"
-_autocomplete_pw = "current-password" if mode == "Sign In" else "new-password"
-
-_auth_comp.html(
+_pw_ac = "current-password" if mode == "Sign In" else "new-password"
+components.html(
     f"""
-    <style>
-    * {{ box-sizing:border-box; margin:0; padding:0; }}
-    body {{ background:transparent; font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif; }}
-    form {{ display:flex; flex-direction:column; gap:12px; width:100%; max-width:420px; margin:0 auto; padding:4px 0; }}
-    .field-label {{ font-size:0.92rem; font-weight:550; color:rgba(229,231,235,.90); margin-bottom:4px; display:block; }}
-    input[type=email], input[type=password] {{
-      width:100%; padding:12px 16px;
-      background:rgba(2,6,23,.55);
-      border:1px solid rgba(148,163,184,.25);
-      border-radius:12px; color:#E5E7EB;
-      font-size:0.95rem; outline:none;
-      transition:border-color 0.15s ease;
-    }}
-    input[type=email]:focus, input[type=password]:focus {{
-      border-color:rgba(56,189,248,.60);
-    }}
-    input::placeholder {{ color:rgba(148,163,184,.50); }}
-    .remember {{ display:flex; align-items:center; gap:8px; font-size:0.88rem; color:rgba(148,163,184,.80); cursor:pointer; }}
-    .remember input {{ width:16px; height:16px; accent-color:rgba(56,189,248,.90); }}
-    .submit-btn {{
-      width:100%; padding:12px;
-      background:linear-gradient(180deg,rgba(56,189,248,.95),rgba(14,116,144,.95));
-      border:1px solid rgba(56,189,248,.45); border-radius:10px;
-      color:#001018; font-size:0.96rem; font-weight:700;
-      cursor:pointer; margin-top:4px;
-      transition:opacity 0.15s ease;
-    }}
-    .submit-btn:hover {{ opacity:0.88; }}
-    </style>
-    <form id="{_form_id}" autocomplete="on" onsubmit="handleSubmit(event)">
-      <div>
-        <label class="field-label" for="auth-email">Email address</label>
-        <input type="email" id="auth-email" name="email"
-          autocomplete="email" placeholder="you@example.com"
-          required autofocus />
-      </div>
-      <div>
-        <label class="field-label" for="auth-password">Password</label>
-        <input type="password" id="auth-password" name="password"
-          autocomplete="{_autocomplete_pw}" placeholder="••••••••"
-          required />
-      </div>
-      {"" if mode != "Sign In" else '''<label class="remember"><input type="checkbox" id="auth-remember" name="remember" /> Remember me on this device</label>'''}
-      <button type="submit" class="submit-btn">{"Sign In" if mode == "Sign In" else "Create Account"}</button>
-    </form>
     <script>
-    function handleSubmit(e) {{
-      e.preventDefault();
-      const email = document.getElementById('auth-email').value.trim();
-      const pw = document.getElementById('auth-password').value;
-      const rem = document.getElementById('auth-remember');
-      const remember = rem ? rem.checked : false;
-      // Post credentials to parent Streamlit frame
-      const msg = {{ type: 'clawd_auth', email, password: pw, remember, mode: '{mode}' }};
-      window.parent.postMessage(JSON.stringify(msg), '*');
-    }}
-    // Pre-fill from browser autofill after short delay
-    setTimeout(() => {{
-      const em = document.getElementById('auth-email');
-      const pw = document.getElementById('auth-password');
-      if (em && em.value) window.parent.postMessage(JSON.stringify({{type:'clawd_prefill',email:em.value}}), '*');
-    }}, 800);
-    </script>
-    """,
-    height=240 if mode == "Sign In" else 220,
-    scrolling=False,
-)
+    (function(){{
+      try {{
+        const doc = window.parent ? window.parent.document : document;
+        const apply = () => {{
+          const email = Array.from(doc.querySelectorAll('input')).find(i => i.getAttribute('aria-label') === 'Email address');
+          const pw = Array.from(doc.querySelectorAll('input')).find(i => i.getAttribute('aria-label') === 'Password');
 
-# ── Hidden bridge inputs — receive postMessage values ──
-# These are invisible; the HTML form above drives the UX.
-if "_auth_form_email" not in st.session_state:
-    st.session_state["_auth_form_email"] = ""
-if "_auth_form_password" not in st.session_state:
-    st.session_state["_auth_form_password"] = ""
-if "_auth_form_submitted" not in st.session_state:
-    st.session_state["_auth_form_submitted"] = False
-if "_auth_form_remember" not in st.session_state:
-    st.session_state["_auth_form_remember"] = False
+          if (email) {{
+            email.setAttribute('name','email');
+            email.setAttribute('id','auth-email');
+            // Password managers often prefer 'username' over 'email'
+            email.setAttribute('autocomplete','username');
+            email.setAttribute('inputmode','email');
+          }}
+          if (pw) {{
+            pw.setAttribute('name','password');
+            pw.setAttribute('id','auth-password');
+            pw.setAttribute('autocomplete','{_pw_ac}');
+          }}
+        }};
 
-# JS listener to capture postMessage and write to hidden inputs via Streamlit
-_auth_comp.html(
-    """
-    <script>
-    window.addEventListener('message', function(ev) {
-      try {
-        const data = typeof ev.data === 'string' ? JSON.parse(ev.data) : ev.data;
-        if (data.type === 'clawd_auth') {
-          // Write to hidden Streamlit inputs by simulating input events
-          const setVal = (sel, val) => {
-            const doc = window.parent.document;
-            const el = doc.querySelector(sel);
-            if (!el) return;
-            const nativeInput = Object.getOwnPropertyDescriptor(window.parent.HTMLInputElement.prototype, 'value');
-            nativeInput.set.call(el, val);
-            el.dispatchEvent(new Event('input', {bubbles:true}));
-            el.dispatchEvent(new Event('change', {bubbles:true}));
-          };
-          setVal('input[data-testid="stTextInput"][aria-label="__auth_email__"]', data.email || '');
-          setVal('input[data-testid="stTextInput"][aria-label="__auth_password__"]', data.password || '');
-          setVal('input[data-testid="stTextInput"][aria-label="__auth_submit__"]', data.mode === 'Sign In' ? 'signin' : 'signup');
-        }
-      } catch(e) {}
-    });
+        apply();
+        new MutationObserver(apply).observe(doc.body, {{ subtree:true, childList:true }});
+      }} catch(e) {{}}
+    }})();
     </script>
     """,
     height=0,
 )
 
-# Hidden Streamlit inputs that receive values from the HTML form
-email = st.text_input("__auth_email__", key="_auth_email_bridge", label_visibility="collapsed")
-password = st.text_input("__auth_password__", key="_auth_pw_bridge", label_visibility="collapsed", type="password")
-_submit_signal = st.text_input("__auth_submit__", key="_auth_submit_bridge", label_visibility="collapsed")
-remember_me = st.session_state.get("_auth_form_remember", False)
-
-# Hide bridge inputs visually
-st.markdown(
-    """
-    <style>
-    div:has(> div > [aria-label="__auth_email__"]),
-    div:has(> div > [aria-label="__auth_password__"]),
-    div:has(> div > [aria-label="__auth_submit__"]) { display:none !important; }
-    </style>
-    """,
-    unsafe_allow_html=True,
-)
-
-# Process submission
-if _submit_signal == "signin":
-    if not email or not password:
-        st.error("Please enter both email and password.")
-    else:
-        ok, err = sign_in(email.strip(), password, remember_me=remember_me)
-        if ok:
-            st.success("✅ Signed in successfully!")
-            _switch_to_next_page()
+if mode == "Sign In":
+    if st.button("Sign In", type="primary", use_container_width=True):
+        if not email or not password:
+            st.error("Please enter both email and password.")
         else:
-            st.error(err or "Sign in failed. Please check your credentials.")
-elif _submit_signal == "signup":
-    if not email or not password:
-        st.error("Please enter both email and password.")
-    else:
-        ok, err = sign_up(email.strip(), password)
-        if ok:
-            st.success("✅ Account created! Check your email to confirm, then sign in.")
+            ok, err = sign_in(email.strip(), password, remember_me=remember_me)
+            if ok:
+                st.success("✅ Signed in successfully!")
+                _switch_to_next_page()
+            else:
+                st.error(err or "Sign in failed. Please check your credentials.")
+else:
+    st.caption("We'll email you a confirmation link to verify your account.")
+    if st.button("Create Account", type="primary", use_container_width=True):
+        if not email or not password:
+            st.error("Please enter both email and password.")
         else:
-            st.error(err or "Account creation failed. Email may already be in use.")
+            ok, err = sign_up(email.strip(), password)
+            if ok:
+                st.success("✅ Account created! Check your email to confirm, then sign in.")
+            else:
+                st.error(err or "Account creation failed. Email may already be in use.")
 
 st.markdown('</div>', unsafe_allow_html=True)
 
