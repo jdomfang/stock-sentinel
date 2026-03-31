@@ -487,9 +487,12 @@ def render_top_nav() -> None:
             // Build drawer
             const menu = doc.createElement('div');
             menu.id = 'clawd-mobile-menu';
+            // Use plain href navigation (works reliably in Streamlit Cloud)
             menu.innerHTML = [
-              '<a onclick="window._stNavigate && window._stNavigate(\'Home\')">Home</a>',
-              '<a onclick="window._stNavigate && window._stNavigate(\'Discovery\')">Market Scan</a>',
+              '<a href="/Home">Home</a>',
+              '<a href="/Discovery">Market Scan</a>',
+              '<a href="/Deep_Analysis">Deep Analyze</a>',
+              '<a href="/Auth">Log in / Account</a>',
             ].join('');
             nav.style.position = 'relative';
             nav.appendChild(menu);
