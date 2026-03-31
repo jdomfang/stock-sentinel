@@ -104,15 +104,12 @@ def render_top_nav() -> None:
           box-shadow: 0 1px 0 rgba(56,189,248,0.06);
         }
 
-        /* Mobile nav: collapse header + use hamburger menu */
+        /* Mobile nav: replace desktop header with a dedicated fixed mobile topbar */
         @media (max-width: 640px) {
-          .clawd-nav-links-desktop { display: none !important; }
-          .clawd-nav-hamburger { display: flex !important; }
+          /* Hide the entire desktop header — it stacks weirdly in Streamlit on iOS/Android */
+          .clawd-topnav { display: none !important; }
 
-          /* Streamlit columns can stack on narrow widths; hide the desktop Home/Login buttons
-             and rely on the hamburger menu instead. */
-          /* These wrappers aren't always nested under .clawd-topnav due to Streamlit layout wrappers */
-          /* Hide the desktop nav buttons that stack vertically on mobile */
+          /* Also hide any leftover Streamlit button containers from the header */
           .clawd-navlink,
           .clawd-auth,
           .st-key-nav_home,
@@ -121,16 +118,84 @@ def render_top_nav() -> None:
             display: none !important;
           }
 
-          /* Reduce the giant header block on mobile */
-          .clawd-topnav {
-            margin-top: -4.10rem !important;
-            margin-bottom: -3.40rem !important;
-            padding: 0.35rem 0 0.35rem 0 !important;
+          /* Give the app content room under the fixed mobile bar */
+          div[data-testid="stAppViewContainer"] section.main {
+            padding-top: 56px !important;
           }
 
-          .clawd-topnav .clawd-brand {
-            padding-left: 14px;
+          /* Fixed mobile bar */
+          #clawd-mobile-topbar {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 52px;
+            padding: 0 12px;
+            display: none;
+            align-items: center;
+            justify-content: space-between;
+            background: rgba(2,6,23,0.88);
+            border-bottom: 1px solid rgba(148,163,184,0.18);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            z-index: 100000;
           }
+          #clawd-mobile-topbar .brand {
+            color: rgba(56,189,248,.95);
+            font-weight: 800;
+            letter-spacing: 0.08em;
+            text-transform: uppercase;
+            font-size: 0.78rem;
+            white-space: nowrap;
+          }
+
+          /* Mobile menu drawer */
+          #clawd-mobile-menu {
+            position: fixed;
+            top: 52px;
+            left: 0;
+            right: 0;
+            display: none;
+            flex-direction: column;
+            background: rgba(2,6,23,0.97);
+            border-bottom: 1px solid rgba(148,163,184,0.18);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            z-index: 100000;
+            padding: 8px 0;
+          }
+          #clawd-mobile-menu.open { display: flex !important; }
+          #clawd-mobile-menu a {
+            display: block;
+            width: 100%;
+            padding: 12px 16px;
+            color: rgba(229,231,235,.92) !important;
+            text-decoration: none;
+            font-size: 0.96rem;
+            font-weight: 650;
+          }
+          #clawd-mobile-menu a:active,
+          #clawd-mobile-menu a:hover {
+            background: rgba(56,189,248,.08);
+          }
+
+          #clawd-hamburger {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            background: rgba(148,163,184,0.08);
+            border: 1px solid rgba(148,163,184,0.22);
+            border-radius: 10px;
+            width: 36px;
+            height: 36px;
+            cursor: pointer;
+            color: rgba(229,231,235,.92);
+            font-size: 1.1rem;
+          }
+        }
+
+        @media (min-width: 641px) {
+          #clawd-mobile-topbar, #clawd-mobile-menu { display: none !important; }
         }
         @media (min-width: 641px) {
           .clawd-nav-links-desktop { display: flex !important; }
@@ -521,60 +586,56 @@ def render_top_nav() -> None:
           const doc = pickDoc();
 
           const tryInject = () => {
-            const nav = doc.querySelector('.clawd-topnav');
-            if (!nav || doc.getElementById('clawd-mobile-menu')) return;
+            if (doc.getElementById('clawd-mobile-topbar')) return;
 
-            // Build drawer
+            // Fixed topbar
+            const bar = doc.createElement('div');
+            bar.id = 'clawd-mobile-topbar';
+            bar.innerHTML = [
+              '<div class="brand">STOCK SENTINEL</div>',
+              '<button id="clawd-hamburger" aria-label="Menu">&#9776;</button>',
+            ].join('');
+
+            // Menu
             const menu = doc.createElement('div');
             menu.id = 'clawd-mobile-menu';
-            // Use plain href navigation (works reliably in Streamlit Cloud)
-            // Use relative links so they work both in Streamlit's "/~/+/" iframe shell and direct paths
             menu.innerHTML = [
               '<a href="./Home">Home</a>',
               '<a href="./Discovery">Market Scan</a>',
               '<a href="./Deep_Analysis">Deep Analyze</a>',
               '<a href="./Auth">Log in / Account</a>',
             ].join('');
-            nav.style.position = 'relative';
-            nav.appendChild(menu);
 
-            // Hamburger button
-            const btn = doc.createElement('button');
-            btn.id = 'clawd-hamburger';
-            btn.setAttribute('aria-label', 'Menu');
-            btn.style.cssText = [
-              'display:none',
-              'align-items:center',
-              'justify-content:center',
-              'background:transparent',
-              'border:1px solid rgba(148,163,184,0.25)',
-              'border-radius:8px',
-              'width:32px',
-              'height:32px',
-              'cursor:pointer',
-              'color:rgba(229,231,235,.92)',
-              'font-size:1.1rem',
-              'position:absolute',
-              'right:12px',
-              'top:50%',
-              'transform:translateY(-50%)',
-              'z-index:10000',
-            ].join(';');
-            btn.innerHTML = '&#9776;';
+            doc.body.appendChild(bar);
+            doc.body.appendChild(menu);
+
+            const btn = doc.getElementById('clawd-hamburger');
+
+            const sync = () => {
+              const w = (doc.documentElement.clientWidth || doc.body.clientWidth || 0);
+              const isMobile = w <= 640;
+              bar.style.display = isMobile ? 'flex' : 'none';
+              if (!isMobile) {
+                menu.classList.remove('open');
+                btn.innerHTML = '&#9776;';
+              }
+            };
+
             btn.addEventListener('click', () => {
               menu.classList.toggle('open');
               btn.innerHTML = menu.classList.contains('open') ? '&#10005;' : '&#9776;';
             });
-            nav.appendChild(btn);
 
-            // Show/hide hamburger based on viewport
-            const syncHamburger = () => {
-              const isMobile = (doc.documentElement.clientWidth || doc.body.clientWidth || 0) <= 640;
-              btn.style.display = isMobile ? 'flex' : 'none';
-              if (!isMobile) menu.classList.remove('open');
-            };
-            syncHamburger();
-            (doc.defaultView || window).addEventListener('resize', syncHamburger);
+            // Close menu after navigation
+            menu.addEventListener('click', (e) => {
+              if (e.target && e.target.tagName === 'A') {
+                menu.classList.remove('open');
+                btn.innerHTML = '&#9776;';
+              }
+            });
+
+            sync();
+            (doc.defaultView || window).addEventListener('resize', sync);
           };
 
           const obs = new MutationObserver(tryInject);
