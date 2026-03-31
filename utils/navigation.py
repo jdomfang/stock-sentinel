@@ -112,8 +112,12 @@ def render_top_nav() -> None:
           /* Streamlit columns can stack on narrow widths; hide the desktop Home/Login buttons
              and rely on the hamburger menu instead. */
           /* These wrappers aren't always nested under .clawd-topnav due to Streamlit layout wrappers */
+          /* Hide the desktop nav buttons that stack vertically on mobile */
           .clawd-navlink,
-          .clawd-auth {
+          .clawd-auth,
+          .st-key-nav_home,
+          .st-key-nav_discover,
+          .st-key-nav_deep {
             display: none !important;
           }
 
