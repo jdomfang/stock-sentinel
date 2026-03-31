@@ -90,6 +90,16 @@ def render_top_nav() -> None:
           line-height: 1 !important;
         }
 
+        /* Collapse the Streamlit nav container wrapper — it adds ~100px dead height.
+           The actual visible nav comes from .clawd-topnav which uses negative margins. */
+        .st-key-clawd_nav_container {
+          min-height: 0 !important;
+          max-height: 0 !important;
+          overflow: visible !important;
+          padding: 0 !important;
+          margin: 0 !important;
+        }
+
         /* Top header */
         .clawd-topnav {
           margin-top: -5.80rem !important;
