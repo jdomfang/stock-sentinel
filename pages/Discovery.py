@@ -43,6 +43,36 @@ render_sidebar_navigation()
 render_top_nav()
 apply_theme()
 
+# ── Hero rendered BEFORE guard so logged-out users see the full header ──
+st.markdown(
+    """
+    <style>
+    .discovery-pre-hero .hero-title {
+      font-size: clamp(42px, 5.1vw, 3.55rem); font-weight: 850;
+      letter-spacing: -0.035em; line-height: 1.08; margin: 0 0 8px 0;
+    }
+    .discovery-pre-hero .hero-subtitle {
+      color: var(--muted); font-size: clamp(15px, 1.35vw, 1.05rem);
+      line-height: 1.45; margin: 0; max-width: 760px;
+    }
+    .discovery-pre-hero {
+      margin: -8.10rem 0 2px 0; padding: 0 2px 2px 2px;
+      max-width: 1100px;
+    }
+    </style>
+    <div class="discovery-pre-hero">
+      <div style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:14px;">
+        <span style="display:inline-flex;align-items:center;gap:6px;background:rgba(56,189,248,.06);border:1px solid rgba(56,189,248,.18);border-radius:999px;padding:5px 12px;font-size:0.80rem;font-weight:600;color:rgba(229,231,235,.80);">📡 Real-time social sentiment</span>
+        <span style="display:inline-flex;align-items:center;gap:6px;background:rgba(56,189,248,.06);border:1px solid rgba(56,189,248,.18);border-radius:999px;padding:5px 12px;font-size:0.80rem;font-weight:600;color:rgba(229,231,235,.80);">🏦 4,000+ US stocks</span>
+        <span style="display:inline-flex;align-items:center;gap:6px;background:rgba(56,189,248,.06);border:1px solid rgba(56,189,248,.18);border-radius:999px;padding:5px 12px;font-size:0.80rem;font-weight:600;color:rgba(229,231,235,.80);">⚡ Signal in under 60 seconds</span>
+      </div>
+      <div class="hero-title">Finding short-term opportunities shouldn't feel like a full-time job.</div>
+      <div class="hero-subtitle">Pick a sector and we identify US stocks gaining unusual attention in your selected sector-fast.</div>
+    </div>
+    """,
+    unsafe_allow_html=True,
+)
+
 from utils.scan_intent import get_query_params, patch_query_params
 
 # ---- Intent prefill (optional, for direct links) ----
@@ -527,21 +557,6 @@ components.html(
 )
 
 st.markdown('<div class="clawd-app-wrapper discovery-wrapper">', unsafe_allow_html=True)
-
-st.markdown(
-    """
-    <div class="hero">
-      <div style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:14px;">
-        <span style="display:inline-flex;align-items:center;gap:6px;background:rgba(56,189,248,.06);border:1px solid rgba(56,189,248,.18);border-radius:999px;padding:5px 12px;font-size:0.80rem;font-weight:600;color:rgba(229,231,235,.80);">📡 Real-time social sentiment</span>
-        <span style="display:inline-flex;align-items:center;gap:6px;background:rgba(56,189,248,.06);border:1px solid rgba(56,189,248,.18);border-radius:999px;padding:5px 12px;font-size:0.80rem;font-weight:600;color:rgba(229,231,235,.80);">🏦 4,000+ US stocks</span>
-        <span style="display:inline-flex;align-items:center;gap:6px;background:rgba(56,189,248,.06);border:1px solid rgba(56,189,248,.18);border-radius:999px;padding:5px 12px;font-size:0.80rem;font-weight:600;color:rgba(229,231,235,.80);">⚡ Signal in under 60 seconds</span>
-      </div>
-      <div class="hero-title">Finding short-term opportunities shouldn't feel like a full-time job.</div>
-      <div class="hero-subtitle">Pick a sector and we identify US stocks gaining unusual attention in your selected sector-fast.</div>
-    </div>
-    """,
-    unsafe_allow_html=True,
-)
 
 if "selected_ticker" not in st.session_state:
     st.session_state.selected_ticker = None
