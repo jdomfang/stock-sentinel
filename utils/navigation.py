@@ -108,6 +108,8 @@ def render_top_nav() -> None:
         @media (max-width: 640px) {
           /* Hide the entire desktop header — it stacks weirdly in Streamlit on iOS/Android */
           .clawd-topnav { display: none !important; }
+          /* Hide the whole Streamlit nav container too (the buttons sometimes render outside our wrapper) */
+          .st-key-clawd_nav_container { display: none !important; }
 
           /* Also hide any leftover Streamlit button containers from the header */
           .clawd-brand,
@@ -418,7 +420,8 @@ def render_top_nav() -> None:
         unsafe_allow_html=True,
     )
 
-    nav = st.container()
+    # Use a stable key so we can hide the entire Streamlit-rendered nav block on mobile.
+    nav = st.container(key="clawd_nav_container")
     with nav:
         st.markdown('<div class="clawd-topnav">', unsafe_allow_html=True)
 
