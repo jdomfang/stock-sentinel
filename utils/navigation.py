@@ -104,10 +104,28 @@ def render_top_nav() -> None:
           box-shadow: 0 1px 0 rgba(56,189,248,0.06);
         }
 
-        /* Mobile nav: hide text links, show hamburger */
+        /* Mobile nav: collapse header + use hamburger menu */
         @media (max-width: 640px) {
           .clawd-nav-links-desktop { display: none !important; }
           .clawd-nav-hamburger { display: flex !important; }
+
+          /* Streamlit columns can stack on narrow widths; hide the desktop Home/Login buttons
+             and rely on the hamburger menu instead. */
+          .clawd-topnav .clawd-navlink,
+          .clawd-topnav .clawd-auth {
+            display: none !important;
+          }
+
+          /* Reduce the giant header block on mobile */
+          .clawd-topnav {
+            margin-top: -4.10rem !important;
+            margin-bottom: -3.40rem !important;
+            padding: 0.35rem 0 0.35rem 0 !important;
+          }
+
+          .clawd-topnav .clawd-brand {
+            padding-left: 14px;
+          }
         }
         @media (min-width: 641px) {
           .clawd-nav-links-desktop { display: flex !important; }

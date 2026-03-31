@@ -288,8 +288,18 @@ def _switch_to_next_page() -> None:
 # Check if already logged in
 if is_logged_in():
     st.success("✅ You are already signed in.")
-    if st.button("Continue", type="primary", use_container_width=True):
-        _switch_to_next_page()
+
+    c1, c2 = st.columns([1, 1])
+    with c1:
+        if st.button("Continue", type="primary", use_container_width=True):
+            _switch_to_next_page()
+    with c2:
+        # Mobile-safe escape hatch if we hide the top-nav auth button on small screens
+        from utils.auth import sign_out
+        if st.button("Log out", use_container_width=True):
+            sign_out()
+            st.switch_page("pages/Home.py")
+
     st.stop()
 
 # --- Hero Section ---
