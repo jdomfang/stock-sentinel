@@ -292,7 +292,6 @@ st.markdown(
       width: 100% !important;
     }
 
-    /* Desktop card layout — exact original */
     .st-key-home_card_scan,
     .st-key-home_card_analyze {
       border: 1px solid rgba(148,163,184,0.18);
@@ -305,14 +304,6 @@ st.markdown(
       height: 174px;
       display: grid;
       grid-template-rows: 1fr auto;
-    }
-
-    /* Mobile-only: clip inputs that would otherwise overshoot the rounded card corners */
-    @media (max-width: 640px) {
-      .st-key-home_card_scan,
-      .st-key-home_card_analyze {
-        overflow: hidden;
-      }
     }
 
     .st-key-home_card_scan_actions,
