@@ -222,6 +222,13 @@ st.markdown(
       margin: 0 0 0 0;
       max-width: 760px;
     }
+
+    /* Mobile: remove aggressive negative hero offset (header is different on phones) */
+    @media (max-width: 640px) {
+      .hero { margin: -2.2rem 0 10px 0; }
+      .hero-title { font-size: clamp(34px, 9.5vw, 44px); }
+      .hero-subtitle { font-size: 1.00rem; }
+    }
     .hero-chips {
       display: flex;
       flex-wrap: wrap;

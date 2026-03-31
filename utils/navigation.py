@@ -200,41 +200,6 @@ def render_top_nav() -> None:
         @media (min-width: 641px) {
           #clawd-mobile-topbar, #clawd-mobile-menu { display: none !important; }
         }
-        @media (min-width: 641px) {
-          .clawd-nav-links-desktop { display: flex !important; }
-          .clawd-nav-hamburger { display: none !important; }
-        }
-        /* Mobile menu drawer */
-        #clawd-mobile-menu {
-          display: none;
-          flex-direction: column;
-          gap: 0;
-          position: absolute;
-          top: 100%;
-          left: 0;
-          right: 0;
-          background: rgba(2,6,23,0.97);
-          border-bottom: 1px solid rgba(148,163,184,0.18);
-          backdrop-filter: blur(16px);
-          z-index: 9999;
-          padding: 8px 0;
-        }
-        #clawd-mobile-menu.open { display: flex !important; }
-        #clawd-mobile-menu a, #clawd-mobile-menu button {
-          display: block;
-          width: 100%;
-          padding: 12px 20px;
-          color: rgba(229,231,235,.92) !important;
-          background: transparent;
-          border: none;
-          text-align: left;
-          font-size: 0.96rem;
-          font-weight: 650;
-          cursor: pointer;
-        }
-        #clawd-mobile-menu a:hover, #clawd-mobile-menu button:hover {
-          background: rgba(56,189,248,.08);
-        }
 
         .clawd-topnav [data-testid="stHorizontalBlock"] {
           gap: 0.35rem !important;
@@ -586,9 +551,8 @@ def render_top_nav() -> None:
             return document;
           };
 
-          const doc = pickDoc();
-
           const tryInject = () => {
+            const doc = pickDoc();
             if (doc.getElementById('clawd-mobile-topbar')) return;
 
             // Fixed topbar
@@ -642,9 +606,11 @@ def render_top_nav() -> None:
           };
 
           const obs = new MutationObserver(tryInject);
-          obs.observe(doc.documentElement, { childList: true, subtree: true });
+          try { obs.observe(document.documentElement, { childList: true, subtree: true }); } catch (e) {}
+          try { const d = pickDoc(); obs.observe(d.documentElement, { childList: true, subtree: true }); } catch (e) {}
           setTimeout(tryInject, 300);
           setTimeout(tryInject, 900);
+          setTimeout(tryInject, 1800);
         })();
         </script>
         """,

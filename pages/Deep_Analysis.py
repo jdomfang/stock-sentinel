@@ -48,7 +48,12 @@ st.markdown(
       color: var(--muted); font-size: clamp(15px, 1.35vw, 1.05rem);
       line-height: 1.45; margin: 0 0 0.85rem 0; max-width: 680px;
     }
-    @media (max-width: 640px) { .da-hero { margin: -2rem 0 0.75rem 0; } }
+    /* Mobile: remove aggressive negative hero offset (header is different on phones) */
+    @media (max-width: 640px) {
+      .da-hero { margin: -2.2rem 0 10px 0; }
+      .da-hero-title { font-size: clamp(34px, 9.5vw, 44px); }
+      .da-hero-sub { font-size: 1.00rem; }
+    }
 
     .st-key-da_scan_card {
       background: transparent !important; border: none !important;
