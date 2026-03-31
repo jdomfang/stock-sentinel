@@ -496,7 +496,24 @@ def render_top_nav() -> None:
         """
         <script>
         (function () {
-          const doc = (window.parent && window.parent.document) ? window.parent.document : document;
+          const pickDoc = () => {
+            // Streamlit runs inside nested iframes (and iOS Safari can be picky).
+            // Walk up a few parents and pick the first document we can access that contains .clawd-topnav.
+            let w = window;
+            for (let i = 0; i < 4; i++) {
+              try {
+                const d = w.document;
+                if (d && d.querySelector && d.querySelector('.clawd-topnav')) return d;
+              } catch (e) {}
+              try {
+                if (w === w.parent) break;
+                w = w.parent;
+              } catch (e) { break; }
+            }
+            return document;
+          };
+
+          const doc = pickDoc();
 
           const tryInject = () => {
             const nav = doc.querySelector('.clawd-topnav');
@@ -552,7 +569,7 @@ def render_top_nav() -> None:
               if (!isMobile) menu.classList.remove('open');
             };
             syncHamburger();
-            doc.defaultView.addEventListener('resize', syncHamburger);
+            (doc.defaultView || window).addEventListener('resize', syncHamburger);
           };
 
           const obs = new MutationObserver(tryInject);
