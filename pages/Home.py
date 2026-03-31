@@ -292,26 +292,37 @@ st.markdown(
       width: 100% !important;
     }
 
+    /* Desktop/default card layout */
     .st-key-home_card_scan,
     .st-key-home_card_analyze {
       border: 1px solid rgba(148,163,184,0.18);
       background: linear-gradient(180deg, rgba(15,23,42,.92), rgba(15,23,42,.72));
       border-radius: 16px;
-      padding: 0; /* padding is applied to the inner Streamlit wrapper to avoid input overflow */
-      overflow: hidden;
+      padding: 15px 15px 12px 15px;
+      overflow: hidden; /* never allow inputs to bleed past rounded corners */
       box-shadow: 0 10px 28px rgba(0,0,0,.35);
       min-height: 174px;
       width: 100%;
       height: 174px;
-    }
-
-    .st-key-home_card_scan > div[data-testid="stVerticalBlockBorderWrapper"],
-    .st-key-home_card_analyze > div[data-testid="stVerticalBlockBorderWrapper"] {
-      padding: 15px 15px 12px 15px;
-      height: 100%;
-      box-sizing: border-box;
       display: grid;
       grid-template-rows: 1fr auto;
+    }
+
+    /* Mobile-only: move padding to inner wrapper so BaseWeb inputs don't overshoot */
+    @media (max-width: 640px) {
+      .st-key-home_card_scan,
+      .st-key-home_card_analyze {
+        padding: 0;
+      }
+
+      .st-key-home_card_scan > div[data-testid="stVerticalBlockBorderWrapper"],
+      .st-key-home_card_analyze > div[data-testid="stVerticalBlockBorderWrapper"] {
+        padding: 15px 15px 12px 15px;
+        height: 100%;
+        box-sizing: border-box;
+        display: grid;
+        grid-template-rows: 1fr auto;
+      }
     }
 
     .st-key-home_card_scan_actions,
