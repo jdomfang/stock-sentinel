@@ -67,38 +67,32 @@ def render_top_nav() -> None:
           }
         }
 
-        /* Tablet: keep CTA compact, prevent oversized button and brand wrap */
+        /* Tablet (641–1024px): compact nav buttons, no wrapping */
         @media (min-width: 641px) and (max-width: 1024px) {
-          /* Target auth col buttons specifically */
-          .st-key-nav_auth_login > div > button,
-          .st-key-nav_auth_logout > div > button,
-          .st-key-nav_home > div > button {
+          .st-key-nav_auth_login button,
+          .st-key-nav_auth_logout button,
+          .st-key-nav_home button {
             white-space: nowrap !important;
-            width: auto !important;
+            width: fit-content !important;
             min-width: 44px !important;
-            max-width: 90px !important;
-            padding: 0.15rem 0.65rem !important;
-            font-size: 0.78rem !important;
-            min-height: 30px !important;
+            max-width: 75px !important;
+            min-height: 28px !important;
             max-height: 30px !important;
-            line-height: 30px !important;
+            padding: 0 0.55rem !important;
+            font-size: 0.76rem !important;
+            line-height: 28px !important;
             border-radius: 999px !important;
-            display: inline-flex !important;
-            align-items: center !important;
-            justify-content: center !important;
           }
-          .st-key-nav_auth_login > div > button p,
-          .st-key-nav_auth_logout > div > button p,
-          .st-key-nav_home > div > button p {
+          .st-key-nav_auth_login button p,
+          .st-key-nav_auth_logout button p,
+          .st-key-nav_home button p {
             white-space: nowrap !important;
             line-height: 1 !important;
             margin: 0 !important;
             padding: 0 !important;
           }
-          /* Prevent brand from wrapping on iPad */
           .clawd-topnav .clawd-brandtext {
             font-size: 0.72rem !important;
-            letter-spacing: 0.04em !important;
             white-space: nowrap !important;
           }
         }
@@ -519,29 +513,6 @@ def render_top_nav() -> None:
             else:
                 if st.button("Log in", use_container_width=False, type="primary", key="nav_auth_login"):
                     st.switch_page("pages/Auth.py")
-            # Force auth button to never stretch on any viewport
-            st.markdown("""
-            <style>
-            .st-key-nav_auth_login button,
-            .st-key-nav_auth_logout button {
-                width: fit-content !important;
-                min-width: 54px !important;
-                max-width: 72px !important;
-                min-height: 28px !important;
-                max-height: 30px !important;
-                padding: 0.12rem 0.60rem !important;
-                font-size: 0.78rem !important;
-                line-height: 1 !important;
-                white-space: nowrap !important;
-            }
-            .st-key-nav_auth_login button p,
-            .st-key-nav_auth_logout button p {
-                white-space: nowrap !important;
-                line-height: 1 !important;
-                margin: 0 !important;
-            }
-            </style>
-            """, unsafe_allow_html=True)
             st.markdown('</div>', unsafe_allow_html=True)
 
         st.markdown('</div>', unsafe_allow_html=True)
