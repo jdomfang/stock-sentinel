@@ -485,10 +485,10 @@ def render_top_nav() -> None:
         # Phase 1 fix: unified column layout for both logged-in and logged-out states.
         # Credits are removed from the nav entirely — they render in the page body (Home.py).
         # This prevents the nav from gaining height on login and breaking the hero layout.
-        brand_col, spacer_col, admin_col, home_col, auth_col = st.columns([1.80, 7.00, 0.38, 0.44, 0.98])
+        brand_col, spacer_col, admin_col, auth_col = st.columns([1.80, 7.60, 0.38, 0.98])
 
         with brand_col:
-            st.markdown('<div class="clawd-brand"><div class="clawd-brandtext"><span>STOCK SENTINEL</span></div></div>', unsafe_allow_html=True)
+            st.markdown('<div class="clawd-brand"><a href="/Home" target="_self" style="text-decoration:none;"><div class="clawd-brandtext"><span>STOCK SENTINEL</span></div></a></div>', unsafe_allow_html=True)
 
         with spacer_col:
             st.markdown("")
@@ -501,13 +501,6 @@ def render_top_nav() -> None:
                 if user_email.lower().strip() == admin_email and admin_email:
                     if st.button("🛠️", use_container_width=True, help="Admin Dashboard"):
                         st.switch_page("pages/Admin.py")
-
-        # Home link (right before auth)
-        with home_col:
-            st.markdown('<div class="clawd-navlink">', unsafe_allow_html=True)
-            if st.button("Home", use_container_width=False, key="nav_home"):
-                st.switch_page("pages/Home.py")
-            st.markdown('</div>', unsafe_allow_html=True)
 
         # Auth button (right-most)
         with auth_col:
@@ -561,7 +554,6 @@ def render_top_nav() -> None:
             const menu = doc.createElement('div');
             menu.id = 'clawd-mobile-menu';
             menu.innerHTML = [
-              '<a href="./Home">Home</a>',
               '<a href="./Discovery">Market Scan</a>',
               '<a href="./Deep_Analysis">Deep Analyze</a>',
               '<a href="./Auth">Log in / Account</a>',
