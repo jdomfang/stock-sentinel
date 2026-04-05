@@ -290,22 +290,21 @@ if not try_restore_cached_session():
     else:
         # First visit (or hard refresh) — ask JS to read localStorage and redirect
         # with the token as a query param so Python can see it.
-        # Must use st.markdown (unsafe_allow_html) — components.html() runs in a
-        # sandboxed srcdoc iframe that cannot access window.localStorage.
-        st.markdown(
+        import streamlit.components.v1 as _cmp_rt
+        _cmp_rt.html(
             """<script>
             (function() {
               try {
                 var rt = localStorage.getItem('ss_refresh_token');
                 if (rt) {
-                  var url = new URL(window.location.href);
+                  var url = new URL(window.parent.location.href);
                   url.searchParams.set('rt', rt);
-                  window.location.replace(url.toString());
+                  window.parent.location.replace(url.toString());
                 }
               } catch(e) {}
             })();
             </script>""",
-            unsafe_allow_html=True,
+            height=0,
         )
 
 def _switch_to_next_page() -> None:
