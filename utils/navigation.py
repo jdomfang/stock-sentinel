@@ -485,7 +485,7 @@ def render_top_nav() -> None:
         # Phase 1 fix: unified column layout for both logged-in and logged-out states.
         # Credits are removed from the nav entirely — they render in the page body (Home.py).
         # This prevents the nav from gaining height on login and breaking the hero layout.
-        brand_col, spacer_col, admin_col, home_col, auth_col = st.columns([1.80, 7.00, 0.42, 0.46, 0.82])
+        brand_col, spacer_col, admin_col, home_col, auth_col = st.columns([1.80, 7.20, 0.38, 0.44, 0.68])
 
         with brand_col:
             st.markdown('<div class="clawd-brand"><div class="clawd-brandtext"><span>STOCK SENTINEL</span></div></div>', unsafe_allow_html=True)
@@ -519,6 +519,29 @@ def render_top_nav() -> None:
             else:
                 if st.button("Log in", use_container_width=False, type="primary", key="nav_auth_login"):
                     st.switch_page("pages/Auth.py")
+            # Force auth button to never stretch on any viewport
+            st.markdown("""
+            <style>
+            .st-key-nav_auth_login button,
+            .st-key-nav_auth_logout button {
+                width: fit-content !important;
+                min-width: 54px !important;
+                max-width: 72px !important;
+                min-height: 28px !important;
+                max-height: 30px !important;
+                padding: 0.12rem 0.60rem !important;
+                font-size: 0.78rem !important;
+                line-height: 1 !important;
+                white-space: nowrap !important;
+            }
+            .st-key-nav_auth_login button p,
+            .st-key-nav_auth_logout button p {
+                white-space: nowrap !important;
+                line-height: 1 !important;
+                margin: 0 !important;
+            }
+            </style>
+            """, unsafe_allow_html=True)
             st.markdown('</div>', unsafe_allow_html=True)
 
         st.markdown('</div>', unsafe_allow_html=True)
