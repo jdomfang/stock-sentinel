@@ -619,7 +619,7 @@ with st.container(key="home_cap_grid"):
                     )
                 with btn_col:
                     if st.button(
-                        "Scan →",
+                        "Sentinel Scan",
                         type="primary",
                         key="home_cap_scan",
                         use_container_width=True,
@@ -654,7 +654,7 @@ with st.container(key="home_cap_grid"):
                     )
                 with btn_col:
                     if st.button(
-                        "Analyze →",
+                        "Deep Analyze",
                         type="primary",
                         key="home_cap_analyze",
                         use_container_width=True,
