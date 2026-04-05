@@ -2,7 +2,7 @@ import streamlit as st
 
 from utils.navigation import render_sidebar_navigation
 from utils.ui import apply_theme, render_footer
-from utils.auth import sign_in, sign_up, is_logged_in, try_restore_cached_session
+from utils.auth import sign_in, sign_up, is_logged_in, try_restore_cached_session, restore_session_from_refresh_token
 
 st.set_page_config(
     page_title="Stock Sentinel - Sign In",
@@ -271,8 +271,42 @@ st.markdown(
 
 st.markdown('<div class="auth-wrapper">', unsafe_allow_html=True)
 
-# Try to restore cached session (Remember Me)
-try_restore_cached_session()
+# ── Remember Me restore (two-stage) ──────────────────────────────────────────
+# Stage 1: fast-path — same browser session (st.session_state survives navigation
+#           between pages, but NOT a tab close / hard refresh).
+# Stage 2: if stage 1 misses, read localStorage via JS → inject ?rt= query param
+#           → Streamlit reruns → we call Supabase refresh_session with the token.
+# ─────────────────────────────────────────────────────────────────────────────
+import streamlit.components.v1 as _cmp_auth  # noqa: E402
+
+if not try_restore_cached_session():
+    # Check if we already have a refresh token in query params (second rerun)
+    _rt_param = st.query_params.get("rt", "")
+    if _rt_param:
+        # Clear the param immediately so it doesn't linger in the URL
+        st.query_params.clear()
+        if restore_session_from_refresh_token(_rt_param):
+            pass  # session restored; is_logged_in() check below handles redirect
+    else:
+        # First visit (or hard refresh) — ask JS to read localStorage and redirect
+        # with the token as a query param so Python can see it.
+        _cmp_auth.html(
+            """
+            <script>
+            (function() {
+              try {
+                var rt = window.parent.localStorage.getItem('ss_refresh_token');
+                if (rt) {
+                  var url = new URL(window.parent.location.href);
+                  url.searchParams.set('rt', rt);
+                  window.parent.location.replace(url.toString());
+                }
+              } catch(e) {}
+            })();
+            </script>
+            """,
+            height=0,
+        )
 
 def _switch_to_next_page() -> None:
     # Prefer an explicit destination set by a prior page (e.g. Home).

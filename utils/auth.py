@@ -191,60 +191,102 @@ def restore_session_from_query_params() -> None:
     return
 
 
-def _cache_auth_to_browser(session: dict | None, user: dict | None, email: str, password: str) -> None:
-    """Cache auth credentials and session to st.session_state (persists within browser session)."""
+def _save_token_to_browser(refresh_token: str) -> None:
+    """Inject JS to persist refresh token in localStorage (survives tab close/reopen)."""
+    import streamlit.components.v1 as components
+    components.html(
+        f"""
+        <script>
+        try {{
+            window.parent.localStorage.setItem('ss_refresh_token', {json.dumps(refresh_token)});
+        }} catch(e) {{}}
+        </script>
+        """,
+        height=0,
+    )
+
+
+def _cache_auth_to_browser(session: dict | None, user: dict | None, email: str = "", password: str = "") -> None:
+    """Cache session to st.session_state (within-session fast path) AND localStorage (cross-session)."""
     try:
         st.session_state[CACHE_SESSION_KEY] = json.dumps(session) if session else None
         st.session_state[CACHE_USER_KEY] = json.dumps(user) if user else None
         st.session_state[REMEMBER_ME_KEY] = True
+        # Persist refresh token to localStorage for cross-session restore
+        if session:
+            rt = session.get("refresh_token") if isinstance(session, dict) else None
+            if rt:
+                _save_token_to_browser(rt)
     except Exception as e:
         print(f"Warning: Failed to cache auth: {e}")
 
 
 def _clear_browser_cache() -> None:
-    """Clear cached auth from st.session_state."""
+    """Clear cached auth from session_state and localStorage."""
+    import streamlit.components.v1 as components
+    st.session_state.pop(CACHE_SESSION_KEY, None)
+    st.session_state.pop(CACHE_USER_KEY, None)
+    st.session_state.pop(REMEMBER_ME_KEY, None)
+    components.html(
+        """
+        <script>
+        try {
+            window.parent.localStorage.removeItem('ss_refresh_token');
+        } catch(e) {}
+        </script>
+        """,
+        height=0,
+    )
+
+
+def restore_session_from_refresh_token(refresh_token: str) -> bool:
+    """Call Supabase refresh_session with a stored token; restore session on success.
+
+    Used by the Auth page when it detects a saved token in localStorage (via ?rt= query param).
+    Returns True if session was restored.
+    """
     try:
-        import streamlit.components.v1 as components
-        
-        st.session_state.pop(CACHE_SESSION_KEY, None)
-        st.session_state.pop(CACHE_USER_KEY, None)
-        st.session_state.pop(REMEMBER_ME_KEY, None)
-        
-        # Inject JS to clear browser localStorage (if available)
-        components.html(
-            """
-            <script>
-            localStorage.removeItem('_auth_session');
-            localStorage.removeItem('_auth_user');
-            localStorage.removeItem('_auth_email');
-            localStorage.removeItem('_auth_token');
-            sessionStorage.clear();
-            </script>
-            """,
-            height=0,
-        )
+        sb = get_client()
+        res = sb.auth.refresh_session(refresh_token)
+        session = getattr(res, "session", None)
+        user = getattr(res, "user", None)
+        if session is None or user is None:
+            return False
+        if hasattr(session, "model_dump"):
+            session = session.model_dump()
+        if hasattr(user, "model_dump"):
+            user = user.model_dump()
+        st.session_state[SESSION_KEY] = session
+        st.session_state[USER_KEY] = user
+        st.session_state[REMEMBER_ME_KEY] = True
+        # Cache to session_state for within-session fast path
+        st.session_state[CACHE_SESSION_KEY] = json.dumps(session)
+        st.session_state[CACHE_USER_KEY] = json.dumps(user)
+        # Update localStorage with the new refresh token Supabase issued
+        new_rt = session.get("refresh_token") if isinstance(session, dict) else None
+        if new_rt:
+            _save_token_to_browser(new_rt)
+        return True
     except Exception as e:
-        print(f"Warning: Failed to clear browser cache: {e}")
+        print(f"Warning: Failed to restore session from refresh token: {e}")
+        return False
 
 
 def try_restore_cached_session() -> bool:
-    """Attempt to restore cached session from st.session_state.
-    
+    """Fast-path: restore session from st.session_state (within-session navigation).
+
     Returns True if session was restored, False otherwise.
     """
     try:
         if st.session_state.get(REMEMBER_ME_KEY):
             cached_session_json = st.session_state.get(CACHE_SESSION_KEY)
             cached_user_json = st.session_state.get(CACHE_USER_KEY)
-            
             if cached_session_json and cached_user_json:
                 session = json.loads(cached_session_json)
                 user = json.loads(cached_user_json)
-                
                 st.session_state[SESSION_KEY] = session
                 st.session_state[USER_KEY] = user
                 return True
     except Exception as e:
         print(f"Warning: Failed to restore cached session: {e}")
-    
     return False
