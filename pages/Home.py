@@ -552,24 +552,36 @@ components.html(
 )
 
 
-# --- Hero: same structure as Discovery; wording swapped for Home ---
-st.markdown(
-    """
-    <div class="hero">
-      <div style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:14px;">
-        <span style="display:inline-flex;align-items:center;gap:6px;background:rgba(56,189,248,.06);border:1px solid rgba(56,189,248,.18);border-radius:999px;padding:5px 12px;font-size:0.80rem;font-weight:600;color:rgba(229,231,235,.80);">📡 Real-time social sentiment</span>
-        <span style="display:inline-flex;align-items:center;gap:6px;background:rgba(56,189,248,.06);border:1px solid rgba(56,189,248,.18);border-radius:999px;padding:5px 12px;font-size:0.80rem;font-weight:600;color:rgba(229,231,235,.80);">🏦 Thousands of US stocks</span>
-        <span style="display:inline-flex;align-items:center;gap:6px;background:rgba(56,189,248,.06);border:1px solid rgba(56,189,248,.18);border-radius:999px;padding:5px 12px;font-size:0.80rem;font-weight:600;color:rgba(229,231,235,.80);">⚡ Signal in under 60 seconds</span>
-      </div>
-      <div class="hero-title">Finding short-term opportunities shouldn't feel like a full-time job.</div>
-      <div class="hero-subtitle">We turn noise into signals by analyzing social media sentiment and using market data to validate real momentum.</div>
-    </div>
-    """,
-    unsafe_allow_html=True,
-)
-
-# --- Capability cards (v3 mockup layout) ---
+# --- Hero: two-mode ---
 from utils.auth import is_logged_in
+
+if is_logged_in():
+    # Dashboard greeting — clean, no marketing noise
+    st.markdown(
+        """
+        <div class="hero">
+          <div class="hero-title" style="font-size:clamp(28px,3.2vw,2.2rem);margin-bottom:4px;">Welcome back.</div>
+          <div class="hero-subtitle">What are you trading today?</div>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
+else:
+    # Marketing hero for logged-out visitors
+    st.markdown(
+        """
+        <div class="hero">
+          <div style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:14px;">
+            <span style="display:inline-flex;align-items:center;gap:6px;background:rgba(56,189,248,.06);border:1px solid rgba(56,189,248,.18);border-radius:999px;padding:5px 12px;font-size:0.80rem;font-weight:600;color:rgba(229,231,235,.80);">📡 Real-time social sentiment</span>
+            <span style="display:inline-flex;align-items:center;gap:6px;background:rgba(56,189,248,.06);border:1px solid rgba(56,189,248,.18);border-radius:999px;padding:5px 12px;font-size:0.80rem;font-weight:600;color:rgba(229,231,235,.80);">🏦 Thousands of US stocks</span>
+            <span style="display:inline-flex;align-items:center;gap:6px;background:rgba(56,189,248,.06);border:1px solid rgba(56,189,248,.18);border-radius:999px;padding:5px 12px;font-size:0.80rem;font-weight:600;color:rgba(229,231,235,.80);">⚡ Signal in under 60 seconds</span>
+          </div>
+          <div class="hero-title">Finding short-term opportunities shouldn't feel like a full-time job.</div>
+          <div class="hero-subtitle">We turn noise into signals by analyzing social media sentiment and using market data to validate real momentum.</div>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
 
 with st.container(key="home_cap_grid"):
     cap1, cap_gap, cap2, _cap_spacer = st.columns([1.0, 0.045, 1.0, 0.85])
@@ -655,110 +667,119 @@ with st.container(key="home_cap_grid"):
 
                         st.switch_page("pages/Deep_Analysis.py" if is_logged_in() else "pages/Auth.py")
 
-st.markdown("<div style='height: 0rem;'></div>", unsafe_allow_html=True)
+st.markdown("<div style='height: 0.5rem;'></div>", unsafe_allow_html=True)
 
-# (Removed) How it works section - per request
+# ─── TWO-MODE SPLIT ────────────────────────────────────────────────────────────
+if is_logged_in():
+    # ── LOGGED-IN: Dashboard view ──────────────────────────────────────────────
+    from utils.auth import get_user
+    from utils.supabase_client import get_client
 
-
-# Demo scan output (match the post-scan layout from Discovery)
-st.markdown('<div id="demo-scan" style="margin-top:-1.12rem;"></div>', unsafe_allow_html=True)
-
-# If user clicked "View demo results" in the capability card, scroll here.
-if st.session_state.pop("_scroll_demo", False):
-    components.html(
-        """
-        <script>
-          const el = window.parent.document.getElementById('demo-scan');
-          if (el) el.scrollIntoView({behavior: 'smooth', block: 'start'});
-        </script>
-        """,
-        height=0,
-    )
-
-df_demo = _load_demo_scan()
-if df_demo.empty:
-    st.info("No demo data found yet. You can generate it via scripts/record_demo.py")
-else:
-    st.markdown('<div class="section-title">Sample scan results <span style="color: rgba(229,231,235,.65); font-weight: 700;">(demo)</span></div>', unsafe_allow_html=True)
-    st.markdown('<div class="demo-note">Shortlist for action: This table ranks candidates worth a closer look. If a ticker stands out, click Deep Analyze to see catalysts, red flags, and guidance.</div>', unsafe_allow_html=True)
-
-    # Match the simplified post-scan Discovery table
-    st.markdown('<div class="demo-header">', unsafe_allow_html=True)
-    header_cols = st.columns([1.1, 1.8, 1.2, 1.1, 1.0])
-    header_labels = [
-        "Ticker",
-        "Company",
-        "Last Close",
-        "Overall",
-        "Deep Analyze",
-    ]
-    for col, label in zip(header_cols, header_labels):
-        col.markdown(f"**{label}**")
-    st.markdown('</div>', unsafe_allow_html=True)
-
-    for _, row in df_demo.iterrows():
-        ticker_symbol = row.get("Ticker", "")
-        company_name = row.get("Company Name", "")
-        overall_sentiment = row.get("Overall Sentiment", "")
-
-        last_close = row.get("Current Price ($)", None)
+    @st.cache_data(ttl=10, show_spinner=False)
+    def _get_credits(uid: str):
         try:
-            last_close_display = f"${float(last_close):.2f}"
-        except (TypeError, ValueError):
-            last_close_display = "N/A"
+            sb = get_client()
+            resp = sb.table("profiles").select("scan_credits,deep_credits").eq("user_id", uid).maybe_single().execute()
+            data = getattr(resp, "data", None) or {}
+            return int(data.get("scan_credits") or 0), int(data.get("deep_credits") or 0)
+        except Exception:
+            return None, None
 
-        st.markdown("<div class='ticker-row'>", unsafe_allow_html=True)
-        col1, col2, col3, col4, col5 = st.columns([1.1, 1.8, 1.2, 1.1, 1.0])
-        with col1:
-            st.markdown(f"**{ticker_symbol}**")
-        with col2:
-            st.markdown(company_name)
-        with col3:
-            st.markdown(last_close_display)
-        with col4:
-            st.markdown(_sentiment_pill(overall_sentiment), unsafe_allow_html=True)
-        with col5:
-            st.button("Deep Analyze", key=f"home_deep_{ticker_symbol}", disabled=True)
-        st.markdown("</div>", unsafe_allow_html=True)
+    user = get_user() or {}
+    uid = (user.get("id") if isinstance(user, dict) else getattr(user, "id", None)) or ""
+    scan_c, deep_c = _get_credits(uid)
 
-    # (removed summary line on request)
-
-st.markdown("<div style='height: 0.45rem;'></div>", unsafe_allow_html=True)
-
-# Deep Analysis sample (educational, no API calls)
-demo_ticker, demo_sector, demo_results = _load_demo_deep()
-if demo_results:
-    ai_summary = generate_ai_summary(demo_results)
-
-    st.markdown(
-        '<div class="section-title">Deep Analyze (demo) <span style="color: rgba(229,231,235,.65); font-weight: 700;"></span></div>',
-        unsafe_allow_html=True,
-    )
-    st.markdown(
-        '<div style="color:rgba(229,231,235,.70);font-size:0.92rem;line-height:1.42;margin:-0.4rem 0 0.6rem 0;max-width:820px;">'
-        'Deep Analyze turns the data into a clear recommendation (Buy / Watch / Avoid), confidence, and the key reasons—so you can decide whether to take a position or stand aside.'
-        '</div>',
-        unsafe_allow_html=True,
-    )
-
-    render_recommendation_panel(
-        ticker=demo_ticker or "NVDA",
-        sector=demo_sector or "tech",
-        ai_summary=ai_summary,
-    )
+    # Credits row
+    if scan_c is not None:
+        st.markdown(
+            f"""
+            <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin:0.25rem 0 1.2rem 0;">
+              <div style="display:inline-flex;align-items:center;gap:8px;
+                background:linear-gradient(135deg,rgba(15,23,42,.92),rgba(2,6,23,.80));
+                border:1px solid rgba(56,189,248,.22);border-radius:14px;
+                padding:10px 18px;">
+                <span style="color:rgba(148,163,184,.85);font-size:0.80rem;font-weight:600;">SCAN CREDITS</span>
+                <span style="color:rgba(56,189,248,.98);font-size:1.35rem;font-weight:800;line-height:1;">{scan_c}</span>
+              </div>
+              <div style="display:inline-flex;align-items:center;gap:8px;
+                background:linear-gradient(135deg,rgba(15,23,42,.92),rgba(2,6,23,.80));
+                border:1px solid rgba(56,189,248,.22);border-radius:14px;
+                padding:10px 18px;">
+                <span style="color:rgba(148,163,184,.85);font-size:0.80rem;font-weight:600;">DEEP CREDITS</span>
+                <span style="color:rgba(56,189,248,.98);font-size:1.35rem;font-weight:800;line-height:1;">{deep_c}</span>
+              </div>
+              <a href="/Auth" target="_self" style="
+                color:rgba(148,163,184,.75);font-size:0.82rem;font-weight:600;
+                text-decoration:none;border-bottom:1px solid rgba(148,163,184,.30);
+                padding-bottom:1px;">
+                + Buy Credits
+              </a>
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
 
 else:
-    st.info("No Deep Analyze demo data found yet. (Expected: data/education/deep_latest.json)")
+    # ── LOGGED-OUT: Marketing view ─────────────────────────────────────────────
 
-st.markdown("<div style='height: 1.25rem;'></div>", unsafe_allow_html=True)
+    # Demo scan table
+    st.markdown('<div id="demo-scan" style="margin-top:-1.12rem;"></div>', unsafe_allow_html=True)
 
-# CTA at bottom
-cta = st.container()
-with cta:
+    if st.session_state.pop("_scroll_demo", False):
+        components.html(
+            """<script>
+              const el = window.parent.document.getElementById('demo-scan');
+              if (el) el.scrollIntoView({behavior: 'smooth', block: 'start'});
+            </script>""",
+            height=0,
+        )
+
+    df_demo = _load_demo_scan()
+    if not df_demo.empty:
+        st.markdown('<div class="section-title">Sample scan results <span style="color: rgba(229,231,235,.65); font-weight: 700;">(demo)</span></div>', unsafe_allow_html=True)
+        st.markdown('<div class="demo-note">Shortlist for action: This table ranks candidates worth a closer look. If a ticker stands out, click Deep Analyze to see catalysts, red flags, and guidance.</div>', unsafe_allow_html=True)
+
+        st.markdown('<div class="demo-header">', unsafe_allow_html=True)
+        header_cols = st.columns([1.1, 1.8, 1.2, 1.1, 1.0])
+        for col, label in zip(header_cols, ["Ticker", "Company", "Last Close", "Overall", "Deep Analyze"]):
+            col.markdown(f"**{label}**")
+        st.markdown('</div>', unsafe_allow_html=True)
+
+        for _, row in df_demo.iterrows():
+            ticker_symbol = row.get("Ticker", "")
+            last_close = row.get("Current Price ($)", None)
+            try:
+                last_close_display = f"${float(last_close):.2f}"
+            except (TypeError, ValueError):
+                last_close_display = "N/A"
+            st.markdown("<div class='ticker-row'>", unsafe_allow_html=True)
+            col1, col2, col3, col4, col5 = st.columns([1.1, 1.8, 1.2, 1.1, 1.0])
+            with col1: st.markdown(f"**{ticker_symbol}**")
+            with col2: st.markdown(row.get("Company Name", ""))
+            with col3: st.markdown(last_close_display)
+            with col4: st.markdown(_sentiment_pill(row.get("Overall Sentiment", "")), unsafe_allow_html=True)
+            with col5: st.button("Deep Analyze", key=f"home_deep_{ticker_symbol}", disabled=True)
+            st.markdown("</div>", unsafe_allow_html=True)
+
+    st.markdown("<div style='height: 0.45rem;'></div>", unsafe_allow_html=True)
+
+    # Demo deep analyze
+    demo_ticker, demo_sector, demo_results = _load_demo_deep()
+    if demo_results:
+        ai_summary = generate_ai_summary(demo_results)
+        st.markdown('<div class="section-title">Deep Analyze <span style="color:rgba(229,231,235,.65);font-weight:700;">(demo)</span></div>', unsafe_allow_html=True)
+        st.markdown(
+            '<div style="color:rgba(229,231,235,.70);font-size:0.92rem;line-height:1.42;margin:-0.4rem 0 0.6rem 0;max-width:820px;">'
+            'Deep Analyze turns the data into a clear recommendation (Buy / Watch / Avoid), confidence, and the key reasons.'
+            '</div>', unsafe_allow_html=True,
+        )
+        render_recommendation_panel(ticker=demo_ticker or "NVDA", sector=demo_sector or "tech", ai_summary=ai_summary)
+
+    st.markdown("<div style='height: 1.25rem;'></div>", unsafe_allow_html=True)
+
+    # CTA
     if st.button("Run your scan", type="primary", use_container_width=False):
-        from utils.auth import is_logged_in
-        st.switch_page("pages/Discovery.py" if is_logged_in() else "pages/Auth.py")
-    # Helper text should be directly below the button
+        st.switch_page("pages/Auth.py")
     st.caption("Includes $5.00 in free credits to get started.")
 
 close_page()
