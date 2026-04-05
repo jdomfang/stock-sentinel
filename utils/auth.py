@@ -210,17 +210,20 @@ def flush_pending_rt_save() -> None:
 
 
 def _save_token_to_browser(refresh_token: str) -> None:
-    """Inject JS to persist refresh token in localStorage (survives tab close/reopen)."""
-    import streamlit.components.v1 as components
-    components.html(
-        f"""
-        <script>
-        try {{
-            window.parent.localStorage.setItem('ss_refresh_token', {json.dumps(refresh_token)});
-        }} catch(e) {{}}
-        </script>
-        """,
-        height=0,
+    """Inject JS to persist refresh token in localStorage (survives tab close/reopen).
+
+    Uses st.markdown (unsafe_allow_html) so the script runs in the main Streamlit
+    frame, which has direct localStorage access. components.html() uses a sandboxed
+    srcdoc iframe that cannot reach window.parent.localStorage.
+    """
+    st.markdown(
+        f"""<script>
+        (function(){{
+          try {{ localStorage.setItem('ss_refresh_token', {json.dumps(refresh_token)}); }}
+          catch(e) {{}}
+        }})();
+        </script>""",
+        unsafe_allow_html=True,
     )
 
 
@@ -241,19 +244,14 @@ def _cache_auth_to_browser(session: dict | None, user: dict | None, email: str =
 
 def _clear_browser_cache() -> None:
     """Clear cached auth from session_state and localStorage."""
-    import streamlit.components.v1 as components
     st.session_state.pop(CACHE_SESSION_KEY, None)
     st.session_state.pop(CACHE_USER_KEY, None)
     st.session_state.pop(REMEMBER_ME_KEY, None)
-    components.html(
-        """
-        <script>
-        try {
-            window.parent.localStorage.removeItem('ss_refresh_token');
-        } catch(e) {}
-        </script>
-        """,
-        height=0,
+    st.markdown(
+        """<script>
+        (function(){ try { localStorage.removeItem('ss_refresh_token'); } catch(e) {} })();
+        </script>""",
+        unsafe_allow_html=True,
     )
 
 

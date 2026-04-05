@@ -277,7 +277,7 @@ st.markdown('<div class="auth-wrapper">', unsafe_allow_html=True)
 # Stage 2: if stage 1 misses, read localStorage via JS → inject ?rt= query param
 #           → Streamlit reruns → we call Supabase refresh_session with the token.
 # ─────────────────────────────────────────────────────────────────────────────
-import streamlit.components.v1 as _cmp_auth  # noqa: E402
+
 
 if not try_restore_cached_session():
     # Check if we already have a refresh token in query params (second rerun)
@@ -290,22 +290,22 @@ if not try_restore_cached_session():
     else:
         # First visit (or hard refresh) — ask JS to read localStorage and redirect
         # with the token as a query param so Python can see it.
-        _cmp_auth.html(
-            """
-            <script>
+        # Must use st.markdown (unsafe_allow_html) — components.html() runs in a
+        # sandboxed srcdoc iframe that cannot access window.localStorage.
+        st.markdown(
+            """<script>
             (function() {
               try {
-                var rt = window.parent.localStorage.getItem('ss_refresh_token');
+                var rt = localStorage.getItem('ss_refresh_token');
                 if (rt) {
-                  var url = new URL(window.parent.location.href);
+                  var url = new URL(window.location.href);
                   url.searchParams.set('rt', rt);
-                  window.parent.location.replace(url.toString());
+                  window.location.replace(url.toString());
                 }
               } catch(e) {}
             })();
-            </script>
-            """,
-            height=0,
+            </script>""",
+            unsafe_allow_html=True,
         )
 
 def _switch_to_next_page() -> None:
