@@ -92,8 +92,8 @@ def render_top_nav() -> None:
 
         /* Top header */
         .clawd-topnav {
-          margin-top: -4.20rem !important;
-          margin-bottom: -3.80rem !important;
+          margin-top: -5.20rem !important;
+          margin-bottom: -4.20rem !important;
           padding: 0.20rem 0 0.20rem 0 !important;
           border-bottom: 1px solid rgba(148,163,184,0.18);
           backdrop-filter: blur(16px);
