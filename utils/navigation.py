@@ -148,7 +148,7 @@ def render_top_nav() -> None:
             padding-top: 56px !important;
           }
 
-          /* Fixed mobile bar */
+          /* Fixed mobile bar — visible by default via CSS; JS only needed for hamburger toggle */
           #clawd-mobile-topbar {
             position: fixed;
             top: 0;
@@ -156,7 +156,7 @@ def render_top_nav() -> None:
             right: 0;
             height: 52px;
             padding: 0 12px;
-            display: none;
+            display: flex;
             align-items: center;
             justify-content: space-between;
             background: rgba(2,6,23,0.88);
@@ -569,10 +569,13 @@ def render_top_nav() -> None:
             const sync = () => {
               const w = (doc.documentElement.clientWidth || doc.body.clientWidth || 0);
               const isMobile = w <= 640;
-              bar.style.display = isMobile ? 'flex' : 'none';
+              // On desktop hide it; on mobile let CSS display:flex handle it
               if (!isMobile) {
+                bar.style.display = 'none';
                 menu.classList.remove('open');
                 btn.innerHTML = '&#9776;';
+              } else {
+                bar.style.removeProperty('display'); // let CSS take over
               }
             };
 
