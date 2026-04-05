@@ -69,16 +69,28 @@ def render_top_nav() -> None:
 
         /* Tablet: keep CTA compact, prevent oversized button and brand wrap */
         @media (min-width: 641px) and (max-width: 1024px) {
+          .clawd-topnav .stButton > button,
           .clawd-topnav button[data-testid="stBaseButton-primary"],
-          .clawd-topnav .stButton > button[kind="primary"],
-          .clawd-topnav .stButton > button {
+          .clawd-topnav button[data-testid="stBaseButton-secondary"] {
             white-space: nowrap !important;
-            min-width: 56px !important;
-            max-width: 80px !important;
+            overflow: hidden !important;
+            text-overflow: ellipsis !important;
+            min-width: 52px !important;
+            max-width: 72px !important;
             width: fit-content !important;
-            padding: 0.12rem 0.50rem !important;
-            font-size: 0.78rem !important;
-            min-height: 30px !important;
+            padding: 0.10rem 0.55rem !important;
+            font-size: 0.76rem !important;
+            min-height: 28px !important;
+            max-height: 32px !important;
+            line-height: 1 !important;
+            border-radius: 999px !important;
+          }
+          /* Force paragraph inside button to single line */
+          .clawd-topnav .stButton > button p {
+            white-space: nowrap !important;
+            overflow: hidden !important;
+            margin: 0 !important;
+            line-height: 1 !important;
           }
           /* Prevent brand from wrapping on iPad */
           .clawd-topnav .clawd-brandtext {

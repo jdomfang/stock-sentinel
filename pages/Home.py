@@ -225,6 +225,10 @@ st.markdown(
     }
 
     /* Mobile: remove aggressive negative hero offset (header is different on phones) */
+    /* iPad / tablet: same gap math as desktop but viewport is narrower */
+    @media (min-width: 641px) and (max-width: 1024px) {
+      .hero { margin: -8.5rem 0 2px 0; }
+    }
     @media (max-width: 640px) {
       .hero { margin: -6.0rem 0 10px 0; }
       .hero-title { font-size: clamp(34px, 9.5vw, 44px); }
@@ -554,7 +558,7 @@ st.markdown(
     <div class="hero">
       <div style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:14px;">
         <span style="display:inline-flex;align-items:center;gap:6px;background:rgba(56,189,248,.06);border:1px solid rgba(56,189,248,.18);border-radius:999px;padding:5px 12px;font-size:0.80rem;font-weight:600;color:rgba(229,231,235,.80);">📡 Real-time social sentiment</span>
-        <span style="display:inline-flex;align-items:center;gap:6px;background:rgba(56,189,248,.06);border:1px solid rgba(56,189,248,.18);border-radius:999px;padding:5px 12px;font-size:0.80rem;font-weight:600;color:rgba(229,231,235,.80);">🏦 4,000+ US stocks</span>
+        <span style="display:inline-flex;align-items:center;gap:6px;background:rgba(56,189,248,.06);border:1px solid rgba(56,189,248,.18);border-radius:999px;padding:5px 12px;font-size:0.80rem;font-weight:600;color:rgba(229,231,235,.80);">🏦 Thousands of US stocks</span>
         <span style="display:inline-flex;align-items:center;gap:6px;background:rgba(56,189,248,.06);border:1px solid rgba(56,189,248,.18);border-radius:999px;padding:5px 12px;font-size:0.80rem;font-weight:600;color:rgba(229,231,235,.80);">⚡ Signal in under 60 seconds</span>
       </div>
       <div class="hero-title">Finding short-term opportunities shouldn't feel like a full-time job.</div>
