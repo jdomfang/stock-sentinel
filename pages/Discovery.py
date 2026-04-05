@@ -42,7 +42,7 @@ logger.setLevel(logging.INFO)
 render_sidebar_navigation()
 render_top_nav()
 apply_theme()
-flush_pending_rt_save()  # Write deferred refresh token to localStorage after login
+
 
 # ── Hero rendered BEFORE guard so logged-out users see the full header ──
 st.markdown(
@@ -95,6 +95,7 @@ if _intent_autostart and not st.session_state.get("_scan_autostart_consumed"):
 
 from utils.guard import require_active_account
 from utils.auth import refresh_session_if_needed, flush_pending_rt_save
+flush_pending_rt_save()
 from utils.credits import consume_credit
 
 _profile = require_active_account()
