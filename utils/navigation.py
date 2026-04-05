@@ -67,13 +67,27 @@ def render_top_nav() -> None:
           }
         }
 
-        /* Tablet/phone: keep CTA compact so it doesn't stack vertically */
-        @media (max-width: 1024px) {
+        /* Tablet: keep CTA compact, prevent oversized button and brand wrap */
+        @media (min-width: 641px) and (max-width: 1024px) {
           .clawd-topnav button[data-testid="stBaseButton-primary"],
-          .clawd-topnav .stButton > button[kind="primary"] {
+          .clawd-topnav .stButton > button[kind="primary"],
+          .clawd-topnav .stButton > button {
             white-space: nowrap !important;
-            min-width: 64px !important;
-            padding: 0.14rem 0.44rem !important;
+            min-width: 56px !important;
+            max-width: 80px !important;
+            width: fit-content !important;
+            padding: 0.12rem 0.50rem !important;
+            font-size: 0.78rem !important;
+            min-height: 30px !important;
+          }
+          /* Prevent brand from wrapping on iPad */
+          .clawd-topnav .clawd-brandtext {
+            font-size: 0.72rem !important;
+            letter-spacing: 0.04em !important;
+            white-space: nowrap !important;
+          }
+          .clawd-topnav .clawd-brand {
+            min-width: 110px !important;
           }
         }
 
@@ -223,9 +237,15 @@ def render_top_nav() -> None:
           text-transform: uppercase;
           font-size: 0.78rem;
           line-height: 32px;
-          white-space: nowrap;
+          white-space: nowrap !important;
+          overflow: hidden;
+          text-overflow: clip;
           margin: 0;
           display: inline-block;
+        }
+        .clawd-topnav .clawd-brand {
+          min-width: 120px;
+          overflow: visible;
         }
 
         /* Responsive nav note:
@@ -453,7 +473,7 @@ def render_top_nav() -> None:
         # Phase 1 fix: unified column layout for both logged-in and logged-out states.
         # Credits are removed from the nav entirely — they render in the page body (Home.py).
         # This prevents the nav from gaining height on login and breaking the hero layout.
-        brand_col, spacer_col, admin_col, home_col, auth_col = st.columns([1.45, 7.20, 0.42, 0.46, 0.99])
+        brand_col, spacer_col, admin_col, home_col, auth_col = st.columns([1.80, 7.00, 0.42, 0.46, 0.82])
 
         with brand_col:
             st.markdown('<div class="clawd-brand"><div class="clawd-brandtext"><span>STOCK SENTINEL</span></div></div>', unsafe_allow_html=True)
