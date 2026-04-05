@@ -69,25 +69,31 @@ def render_top_nav() -> None:
 
         /* Tablet (641–1024px): compact nav buttons, no wrapping */
         @media (min-width: 641px) and (max-width: 1024px) {
+          /* Use attribute selector to match Streamlit's specificity and override min-height */
+          .st-key-nav_auth_login button[data-testid],
+          .st-key-nav_auth_logout button[data-testid],
+          .st-key-nav_home button[data-testid],
           .st-key-nav_auth_login button,
           .st-key-nav_auth_logout button,
           .st-key-nav_home button {
             white-space: nowrap !important;
             width: fit-content !important;
             min-width: 44px !important;
-            max-width: 75px !important;
+            max-width: 80px !important;
             min-height: 28px !important;
-            max-height: 30px !important;
-            padding: 0 0.55rem !important;
+            max-height: 28px !important;
+            height: 28px !important;
+            padding: 0 0.60rem !important;
             font-size: 0.76rem !important;
             line-height: 28px !important;
             border-radius: 999px !important;
+            overflow: hidden !important;
           }
           .st-key-nav_auth_login button p,
           .st-key-nav_auth_logout button p,
           .st-key-nav_home button p {
             white-space: nowrap !important;
-            line-height: 1 !important;
+            line-height: 28px !important;
             margin: 0 !important;
             padding: 0 !important;
           }
