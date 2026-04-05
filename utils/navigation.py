@@ -479,7 +479,7 @@ def render_top_nav() -> None:
         # Phase 1 fix: unified column layout for both logged-in and logged-out states.
         # Credits are removed from the nav entirely — they render in the page body (Home.py).
         # This prevents the nav from gaining height on login and breaking the hero layout.
-        brand_col, spacer_col, admin_col, home_col, auth_col = st.columns([1.80, 7.20, 0.38, 0.44, 0.68])
+        brand_col, spacer_col, admin_col, home_col, auth_col = st.columns([1.80, 7.00, 0.38, 0.44, 0.98])
 
         with brand_col:
             st.markdown('<div class="clawd-brand"><div class="clawd-brandtext"><span>STOCK SENTINEL</span></div></div>', unsafe_allow_html=True)
