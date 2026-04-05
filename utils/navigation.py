@@ -92,8 +92,8 @@ def render_top_nav() -> None:
 
         /* Top header */
         .clawd-topnav {
-          margin-top: -5.80rem !important;
-          margin-bottom: -4.60rem !important;
+          margin-top: -4.20rem !important;
+          margin-bottom: -3.80rem !important;
           padding: 0.20rem 0 0.20rem 0 !important;
           border-bottom: 1px solid rgba(148,163,184,0.18);
           backdrop-filter: blur(16px);
@@ -450,12 +450,10 @@ def render_top_nav() -> None:
                 return None
             return int(data.get("scan_credits") or 0), int(data.get("deep_credits") or 0)
 
-        if is_logged_in():
-            brand_col, spacer_col, credits_col, admin_col, home_col, gap_col, auth_col = st.columns(
-                [1.45, 5.36, 1.15, 0.55, 0.50, 0.01, 0.98]
-            )
-        else:
-            brand_col, spacer_col, home_col, gap_col, auth_col = st.columns([1.45, 7.09, 0.46, 0.01, 0.99])
+        # Phase 1 fix: unified column layout for both logged-in and logged-out states.
+        # Credits are removed from the nav entirely — they render in the page body (Home.py).
+        # This prevents the nav from gaining height on login and breaking the hero layout.
+        brand_col, spacer_col, admin_col, home_col, auth_col = st.columns([1.45, 7.20, 0.42, 0.46, 0.99])
 
         with brand_col:
             st.markdown('<div class="clawd-brand"><div class="clawd-brandtext"><span>STOCK SENTINEL</span></div></div>', unsafe_allow_html=True)
@@ -463,50 +461,11 @@ def render_top_nav() -> None:
         with spacer_col:
             st.markdown("")
 
-        # Fixed gap before CTA (keeps nav→CTA spacing consistent)
-        if 'gap_col' in locals():
-            with gap_col:
-                st.markdown("")
-
-        # Logged-in extras
-        if is_logged_in():
-            with credits_col:
-                user = get_user() or {}
-                uid = (user.get("id") if isinstance(user, dict) else getattr(user, "id", None)) or ""
-                try:
-                    counts = _load_credit_counts(uid)
-                except Exception:
-                    counts = None
-
-                if counts:
-                    scan_c, deep_c = counts
-                    st.markdown(
-                        f"""
-                        <div style="
-                          display: inline-block;
-                          padding: 6px 10px;
-                          border-radius: 999px;
-                          border: 1px solid rgba(148,163,184,0.22);
-                          background: rgba(15,23,42,0.70);
-                          color: rgba(229,231,235,0.92);
-                          font-size: 0.78rem;
-                          font-weight: 650;
-                          text-align: center;
-                          width: 100%;
-                        ">
-                          Scan: {scan_c} | Deep: {deep_c}
-                        </div>
-                        """,
-                        unsafe_allow_html=True,
-                    )
-                else:
-                    st.markdown("")
-
-            with admin_col:
+        with admin_col:
+            if is_logged_in():
                 user = get_user() or {}
                 user_email = (user.get("email") if isinstance(user, dict) else getattr(user, "email", None)) or ""
                 admin_email = st.secrets.get("ADMIN_EMAIL", "").lower().strip()
-
                 if user_email.lower().strip() == admin_email and admin_email:
                     if st.button("🛠️", use_container_width=True, help="Admin Dashboard"):
                         st.switch_page("pages/Admin.py")
