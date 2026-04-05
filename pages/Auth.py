@@ -218,9 +218,11 @@ st.markdown(
       margin-bottom: 0.5rem !important;
     }
 
-    /* Primary buttons */
+    /* Primary buttons + form submit button */
     button[data-testid="stBaseButton-primary"],
-    .stButton > button[kind="primary"] {
+    button[data-testid="stFormSubmitButton"],
+    .stButton > button[kind="primary"],
+    .stFormSubmitButton > button {
       background: linear-gradient(180deg, rgba(56,189,248,.95), rgba(14,116,144,.95)) !important;
       background-color: transparent !important;
       border: 1px solid rgba(56,189,248,.45) !important;
@@ -233,14 +235,22 @@ st.markdown(
       margin-top: 0.5rem !important;
     }
 
-    .stButton {
+    .stButton,
+    .stFormSubmitButton {
       text-align: center !important;
     }
 
-    .stButton > button {
+    .stButton > button,
+    .stFormSubmitButton > button {
       width: 100% !important;
       max-width: 420px !important;
       margin: 0 auto !important;
+    }
+
+    /* Remove default form border/padding that Streamlit adds */
+    [data-testid="stForm"] {
+      border: none !important;
+      padding: 0 !important;
     }
 
     /* Hide Streamlit "Made with" footer */
