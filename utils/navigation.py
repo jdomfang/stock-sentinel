@@ -69,37 +69,37 @@ def render_top_nav() -> None:
 
         /* Tablet: keep CTA compact, prevent oversized button and brand wrap */
         @media (min-width: 641px) and (max-width: 1024px) {
-          .clawd-topnav .stButton > button,
-          .clawd-topnav button[data-testid="stBaseButton-primary"],
-          .clawd-topnav button[data-testid="stBaseButton-secondary"] {
+          /* Target auth col buttons specifically */
+          .st-key-nav_auth_login > div > button,
+          .st-key-nav_auth_logout > div > button,
+          .st-key-nav_home > div > button {
             white-space: nowrap !important;
-            overflow: hidden !important;
-            text-overflow: ellipsis !important;
-            min-width: 52px !important;
-            max-width: 72px !important;
-            width: fit-content !important;
-            padding: 0.10rem 0.55rem !important;
-            font-size: 0.76rem !important;
-            min-height: 28px !important;
-            max-height: 32px !important;
-            line-height: 1 !important;
+            width: auto !important;
+            min-width: 44px !important;
+            max-width: 90px !important;
+            padding: 0.15rem 0.65rem !important;
+            font-size: 0.78rem !important;
+            min-height: 30px !important;
+            max-height: 30px !important;
+            line-height: 30px !important;
             border-radius: 999px !important;
+            display: inline-flex !important;
+            align-items: center !important;
+            justify-content: center !important;
           }
-          /* Force paragraph inside button to single line */
-          .clawd-topnav .stButton > button p {
+          .st-key-nav_auth_login > div > button p,
+          .st-key-nav_auth_logout > div > button p,
+          .st-key-nav_home > div > button p {
             white-space: nowrap !important;
-            overflow: hidden !important;
-            margin: 0 !important;
             line-height: 1 !important;
+            margin: 0 !important;
+            padding: 0 !important;
           }
           /* Prevent brand from wrapping on iPad */
           .clawd-topnav .clawd-brandtext {
             font-size: 0.72rem !important;
             letter-spacing: 0.04em !important;
             white-space: nowrap !important;
-          }
-          .clawd-topnav .clawd-brand {
-            min-width: 110px !important;
           }
         }
 

@@ -225,9 +225,9 @@ st.markdown(
     }
 
     /* Mobile: remove aggressive negative hero offset (header is different on phones) */
-    /* iPad / tablet: same gap math as desktop but viewport is narrower */
+    /* iPad / tablet */
     @media (min-width: 641px) and (max-width: 1024px) {
-      .hero { margin: -8.5rem 0 2px 0; }
+      .hero { margin: -11.2rem 0 2px 0; }
     }
     @media (max-width: 640px) {
       .hero { margin: -6.0rem 0 10px 0; }
