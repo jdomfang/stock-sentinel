@@ -22,7 +22,9 @@ render_top_nav()
 
 # Apply theme + hero BEFORE guard — logged-out users see the full styled page
 from utils.ui import apply_theme
+from utils.auth import flush_pending_rt_save
 apply_theme()
+flush_pending_rt_save()
 
 st.markdown(
     """

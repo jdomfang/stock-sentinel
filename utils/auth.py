@@ -105,6 +105,12 @@ def sign_in(email: str, password: str, remember_me: bool = False) -> tuple[bool,
         # Cache to browser if remember_me enabled
         if remember_me:
             _cache_auth_to_browser(session, user, email, password)
+            # Store refresh token for deferred localStorage write on next page
+            # (st.switch_page fires before components.html can execute JS)
+            if session:
+                rt = session.get("refresh_token") if isinstance(session, dict) else None
+                if rt:
+                    st.session_state["_pending_rt_save"] = rt
 
         return True, ""
     except Exception as e:
@@ -189,6 +195,18 @@ def restore_session_from_query_params() -> None:
     For email/password in Streamlit, we rely on session_state.
     """
     return
+
+
+def flush_pending_rt_save() -> None:
+    """Call once per page (near top) to write pending refresh token to localStorage.
+
+    Because st.switch_page() kills the current render before components.html
+    can execute, we defer the localStorage write to the first page that loads
+    after login. Safe to call on every page — no-ops when nothing pending.
+    """
+    rt = st.session_state.pop("_pending_rt_save", None)
+    if rt:
+        _save_token_to_browser(rt)
 
 
 def _save_token_to_browser(refresh_token: str) -> None:
