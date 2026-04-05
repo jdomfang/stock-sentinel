@@ -349,36 +349,27 @@ st.markdown(
 # --- Form Container ---
 st.markdown('<div class="auth-form-container">', unsafe_allow_html=True)
 
-# --- Login Form Fields ---
-# NOTE: Streamlit doesn't let us set HTML autocomplete/name attrs directly.
-# We inject a tiny JS MutationObserver below to add them, which helps
-# Chrome/Safari/Firefox password managers offer save + autofill.
-email = st.text_input("Email address", placeholder="you@example.com", key="auth_email")
-password = st.text_input("Password", type="password", placeholder="••••••••", key="auth_password")
-
-# --- Remember Me Checkbox (Sign In only) ---
-# Center-align to match the rest of the auth form
-_c1, _c2, _c3 = st.columns([1, 2, 1])
-with _c2:
-    remember_me = st.checkbox("Remember me on this device", value=False)
-
-# --- Auth Mode Toggle (Custom HTML + Hidden Radio) ---
+# --- Auth Mode Toggle ---
 st.markdown('<div style="margin: 0.5rem 0;"></div>', unsafe_allow_html=True)
-
-# Create radio button but hide it completely
 col1, col2, col3 = st.columns([1, 2, 1])
 with col2:
     mode = st.radio("Auth Mode", ["Sign In", "Create Account"], horizontal=True, label_visibility="collapsed")
+st.markdown("<div style=\'margin-top: -1.2rem;\'></div>", unsafe_allow_html=True)
 
-#st.markdown("<div style='height: 0.3rem;'></div>", unsafe_allow_html=True)
-#st.markdown("<div style='margin-top: -0.8rem;'></div>", unsafe_allow_html=True)
-st.markdown("<div style='margin-top: -1.2rem;'></div>", unsafe_allow_html=True)
-
-# ── Autofill / password manager hints (best-effort) ──
-# Adds standard attributes to Streamlit-rendered <input> elements.
 import streamlit.components.v1 as components
-
 _pw_ac = "current-password" if mode == "Sign In" else "new-password"
+_btn_label = "Sign In" if mode == "Sign In" else "Create Account"
+
+# st.form handles Enter key submission natively
+with st.form("auth_form", clear_on_submit=False):
+    email = st.text_input("Email address", placeholder="you@example.com", key="auth_email")
+    password = st.text_input("Password", type="password", placeholder="Password", key="auth_password")
+    _c1, _c2, _c3 = st.columns([1, 2, 1])
+    with _c2:
+        remember_me = st.checkbox("Remember me on this device", value=False)
+    submitted = st.form_submit_button(_btn_label, type="primary", use_container_width=True)
+
+# Autofill / password manager hints
 components.html(
     f"""
     <script>
@@ -386,23 +377,11 @@ components.html(
       try {{
         const doc = window.parent ? window.parent.document : document;
         const apply = () => {{
-          const email = Array.from(doc.querySelectorAll('input')).find(i => i.getAttribute('aria-label') === 'Email address');
+          const em = Array.from(doc.querySelectorAll('input')).find(i => i.getAttribute('aria-label') === 'Email address');
           const pw = Array.from(doc.querySelectorAll('input')).find(i => i.getAttribute('aria-label') === 'Password');
-
-          if (email) {{
-            email.setAttribute('name','email');
-            email.setAttribute('id','auth-email');
-            // Password managers often prefer 'username' over 'email'
-            email.setAttribute('autocomplete','username');
-            email.setAttribute('inputmode','email');
-          }}
-          if (pw) {{
-            pw.setAttribute('name','password');
-            pw.setAttribute('id','auth-password');
-            pw.setAttribute('autocomplete','{_pw_ac}');
-          }}
+          if (em) {{ em.setAttribute('name','email'); em.setAttribute('autocomplete','username'); em.setAttribute('inputmode','email'); }}
+          if (pw) {{ pw.setAttribute('name','password'); pw.setAttribute('autocomplete','{_pw_ac}'); }}
         }};
-
         apply();
         new MutationObserver(apply).observe(doc.body, {{ subtree:true, childList:true }});
       }} catch(e) {{}}
@@ -412,31 +391,24 @@ components.html(
     height=0,
 )
 
-if mode == "Sign In":
-    if st.button("Sign In", type="primary", use_container_width=True):
-        if not email or not password:
-            st.error("Please enter both email and password.")
+if submitted:
+    if not email or not password:
+        st.error("Please enter both email and password.")
+    elif mode == "Sign In":
+        ok, err = sign_in(email.strip(), password, remember_me=remember_me)
+        if ok:
+            st.success("Signed in successfully!")
+            _switch_to_next_page()
         else:
-            ok, err = sign_in(email.strip(), password, remember_me=remember_me)
-            if ok:
-                st.success("✅ Signed in successfully!")
-                _switch_to_next_page()
-            else:
-                st.error(err or "Sign in failed. Please check your credentials.")
-else:
-    st.caption("We'll email you a confirmation link to verify your account.")
-    if st.button("Create Account", type="primary", use_container_width=True):
-        if not email or not password:
-            st.error("Please enter both email and password.")
+            st.error(err or "Sign in failed. Please check your credentials.")
+    else:
+        ok, err = sign_up(email.strip(), password)
+        if ok:
+            st.success("Account created! Check your email to confirm, then sign in.")
         else:
-            ok, err = sign_up(email.strip(), password)
-            if ok:
-                st.success("✅ Account created! Check your email to confirm, then sign in.")
-            else:
-                st.error(err or "Account creation failed. Email may already be in use.")
+            st.error(err or "Account creation failed. Email may already be in use.")
 
 st.markdown('</div>', unsafe_allow_html=True)
-
 st.markdown('</div>', unsafe_allow_html=True)
 
 render_footer()
