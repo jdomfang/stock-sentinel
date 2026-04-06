@@ -522,6 +522,16 @@ st.markdown(
 from utils.auth import is_logged_in
 
 if is_logged_in():
+    from utils.auth import get_user
+    _user = get_user() or {}
+    _meta = (_user.get("user_metadata") if isinstance(_user, dict) else getattr(_user, "user_metadata", None)) or {}
+    _email = (_user.get("email") if isinstance(_user, dict) else getattr(_user, "email", None)) or ""
+    _display = (
+        _meta.get("full_name") or _meta.get("name") or _meta.get("first_name")
+        or (_email.split("@")[0].replace(".", " ").replace("_", " ").title() if _email else "")
+    )
+    _greeting = f"Welcome back, {_display}." if _display else "Welcome back."
+
     st.markdown(
         """
         <style>
@@ -713,14 +723,7 @@ if is_logged_in():
     uid = (user.get("id") if isinstance(user, dict) else getattr(user, "id", None)) or ""
     scan_c, deep_c = _get_credits(uid)
 
-    # Resolve display name: user_metadata > email prefix
-    _meta = (user.get("user_metadata") if isinstance(user, dict) else getattr(user, "user_metadata", None)) or {}
-    _email = (user.get("email") if isinstance(user, dict) else getattr(user, "email", None)) or ""
-    _display = (
-        _meta.get("full_name") or _meta.get("name") or _meta.get("first_name")
-        or (_email.split("@")[0].replace(".", " ").replace("_", " ").title() if _email else "")
-    )
-    _greeting = f"Welcome back, {_display}." if _display else "Welcome back."
+
 
     # Credits row
     if scan_c is not None:
