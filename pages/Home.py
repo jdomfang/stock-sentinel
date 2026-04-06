@@ -549,10 +549,21 @@ if is_logged_in():
         .st-key-home_cap_grid {
           margin-top: -2.8rem !important;
         }
+        /* Mobile: stack credits pills vertically, full width */
+        @media (max-width: 640px) {
+          .clawd-credits-row {
+            flex-direction: column !important;
+            align-items: flex-start !important;
+          }
+          .clawd-credits-row > div {
+            width: 100% !important;
+            justify-content: space-between !important;
+          }
+        }
         </style>
         <div class="clawd-dashboard-hero">
-          <div style="font-size:clamp(22px,2.4vw,1.75rem);font-weight:800;letter-spacing:-0.02em;line-height:1.1;color:rgba(229,231,235,.98);">Welcome back.</div>
-          <div style="color:rgba(148,163,184,.80);font-size:0.94rem;margin-top:3px;">What are you trading today?</div>
+          <div style="font-size:clamp(32px,3.8vw,2.8rem);font-weight:850;letter-spacing:-0.035em;line-height:1.08;color:rgba(229,231,235,.98);">Welcome back.</div>
+          <div style="color:rgba(148,163,184,.78);font-size:clamp(15px,1.35vw,1.05rem);line-height:1.45;margin-top:5px;">What are you trading today?</div>
         </div>
         <script>
         (function () {
@@ -719,7 +730,7 @@ if is_logged_in():
     if scan_c is not None:
         st.markdown(
             f"""
-            <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin:0.5rem 0 0.9rem 0;">
+            <div class="clawd-credits-row" style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin:0.5rem 0 0.9rem 0;">
               <div style="display:inline-flex;align-items:center;gap:8px;
                 background:linear-gradient(135deg,rgba(15,23,42,.92),rgba(2,6,23,.80));
                 border:1px solid rgba(56,189,248,.22);border-radius:12px;
