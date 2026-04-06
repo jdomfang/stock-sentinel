@@ -539,10 +539,12 @@ if is_logged_in():
           margin: -9.2rem 0 0.4rem 0;
         }
         @media (min-width: 641px) and (max-width: 1024px) {
-          .clawd-dashboard-hero { margin: -11.5rem 0 0.4rem 0; }
+          /* iPad: nav is ~52px, sits at ~80px from top — pull greeting up gently */
+          .clawd-dashboard-hero { margin: -7.0rem 0 0.4rem 0; }
         }
         @media (max-width: 640px) {
-          .clawd-dashboard-hero { margin: -6.5rem 0 0.4rem 0; }
+          /* iPhone: fixed topbar is 52px, content already has padding-top:56px — just small pull */
+          .clawd-dashboard-hero { margin: -1.5rem 0 0.4rem 0; }
         }
         [data-testid="stVerticalBlock"] > [data-testid="stElementContainer"],
         [data-testid="stVerticalBlock"] > [data-testid="stVerticalBlockBorderWrapper"] {
