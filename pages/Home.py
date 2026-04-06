@@ -734,12 +734,12 @@ if is_logged_in():
                 <span style="color:rgba(148,163,184,.80);font-size:0.76rem;font-weight:600;text-transform:uppercase;letter-spacing:0.04em;">Analyze Credits</span>
                 <span style="color:rgba(56,189,248,.98);font-size:1.20rem;font-weight:800;line-height:1;">{deep_c}</span>
               </div>
-              <a href="/Auth" target="_self" style="
-                color:rgba(148,163,184,.70);font-size:0.80rem;font-weight:600;
-                text-decoration:none;border-bottom:1px solid rgba(148,163,184,.25);
-                padding-bottom:1px;margin-left:2px;">
+              <span style="
+                color:rgba(148,163,184,.35);font-size:0.80rem;font-weight:600;
+                cursor:not-allowed;margin-left:2px;"
+                title="Coming soon">
                 + Buy Credits
-              </a>
+              </span>
             </div>
             """,
             unsafe_allow_html=True,
