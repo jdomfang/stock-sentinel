@@ -562,7 +562,7 @@ if is_logged_in():
         }
         </style>
         <div class="clawd-dashboard-hero">
-          <div style="font-size:clamp(32px,3.8vw,2.8rem);font-weight:850;letter-spacing:-0.035em;line-height:1.08;color:rgba(229,231,235,.98);">Welcome back.</div>
+          <div style="font-size:clamp(32px,3.8vw,2.8rem);font-weight:850;letter-spacing:-0.035em;line-height:1.08;color:rgba(229,231,235,.98);">Welcome back{(", " + _display) if _display else ""}.</div>
           <div style="color:rgba(148,163,184,.78);font-size:clamp(15px,1.35vw,1.05rem);line-height:1.45;margin-top:5px;">What are you trading today?</div>
         </div>
         <script>
@@ -725,6 +725,14 @@ if is_logged_in():
     user = get_user() or {}
     uid = (user.get("id") if isinstance(user, dict) else getattr(user, "id", None)) or ""
     scan_c, deep_c = _get_credits(uid)
+
+    # Resolve display name: user_metadata > email prefix
+    _meta = (user.get("user_metadata") if isinstance(user, dict) else getattr(user, "user_metadata", None)) or {}
+    _email = (user.get("email") if isinstance(user, dict) else getattr(user, "email", None)) or ""
+    _display = (
+        _meta.get("full_name") or _meta.get("name") or _meta.get("first_name")
+        or (_email.split("@")[0].replace(".", " ").replace("_", " ").title() if _email else "")
+    )
 
     # Credits row
     if scan_c is not None:
