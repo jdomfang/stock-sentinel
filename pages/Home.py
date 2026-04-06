@@ -518,67 +518,54 @@ st.markdown(
     unsafe_allow_html=True,
 )
 
-# JS-only UI fix (copied from Discovery so Home behaves identically across Streamlit builds)
-components.html(
-    """
-    <script>
-    (function () {
-      const APPLY_TO = (doc) => {
-        const ul = doc.querySelector('ul[data-testid="stSelectboxVirtualDropdown"]');
-        if (ul) {
-          ul.style.setProperty('background-color', '#0F172A', 'important');
-          ul.style.setProperty('color', '#E5E7EB', 'important');
-          ul.querySelectorAll('li, li *').forEach((el) => {
-            el.style.setProperty('color', '#E5E7EB', 'important');
-            el.style.setProperty('opacity', '1', 'important');
-          });
-        }
-      };
-
-      const APPLY = () => {
-        try { APPLY_TO(document); } catch (e) {}
-      };
-
-      const obs = new MutationObserver(() => APPLY());
-      obs.observe(document.documentElement, { childList: true, subtree: true });
-      window.addEventListener('load', APPLY);
-      setTimeout(APPLY, 250);
-      setTimeout(APPLY, 1000);
-      setInterval(APPLY, 750);
-    })();
-    </script>
-    """,
-    height=0,
-)
-
-
-# --- Hero: two-mode ---
+# --- Hero: two-mode (JS dropdown fix merged in to avoid extra filler block) ---
 from utils.auth import is_logged_in
 
 if is_logged_in():
     st.markdown(
         """
         <style>
-        /* Logged-in: pull greeting up to close the gap below nav */
         .clawd-dashboard-hero {
-          margin: -7.2rem 0 0.55rem 0;
+          margin: -7.8rem 0 0.4rem 0;
         }
         @media (min-width: 641px) and (max-width: 1024px) {
-          .clawd-dashboard-hero { margin: -9.5rem 0 0.55rem 0; }
+          .clawd-dashboard-hero { margin: -10.0rem 0 0.4rem 0; }
         }
         @media (max-width: 640px) {
-          .clawd-dashboard-hero { margin: -4.8rem 0 0.55rem 0; }
+          .clawd-dashboard-hero { margin: -5.2rem 0 0.4rem 0; }
+        }
+        /* Tighten Streamlit's default gap between stElementContainers */
+        [data-testid="stVerticalBlock"] > [data-testid="stElementContainer"] {
+          margin-bottom: 0 !important;
+          padding-bottom: 0 !important;
         }
         </style>
         <div class="clawd-dashboard-hero">
           <div style="font-size:clamp(22px,2.4vw,1.75rem);font-weight:800;letter-spacing:-0.02em;line-height:1.1;color:rgba(229,231,235,.98);">Welcome back.</div>
           <div style="color:rgba(148,163,184,.80);font-size:0.94rem;margin-top:3px;">What are you trading today?</div>
         </div>
+        <script>
+        (function () {
+          const APPLY_TO = (doc) => {
+            const ul = doc.querySelector('ul[data-testid="stSelectboxVirtualDropdown"]');
+            if (ul) {
+              ul.style.setProperty('background-color', '#0F172A', 'important');
+              ul.style.setProperty('color', '#E5E7EB', 'important');
+              ul.querySelectorAll('li, li *').forEach((el) => {
+                el.style.setProperty('color', '#E5E7EB', 'important');
+                el.style.setProperty('opacity', '1', 'important');
+              });
+            }
+          };
+          const obs = new MutationObserver(() => { try { APPLY_TO(document); } catch(e){} });
+          obs.observe(document.documentElement, { childList: true, subtree: true });
+          setTimeout(() => { try { APPLY_TO(document); } catch(e){} }, 500);
+        })();
+        </script>
         """,
         unsafe_allow_html=True,
     )
 else:
-    # Marketing hero for logged-out visitors
     st.markdown(
         """
         <div class="hero">
@@ -590,6 +577,24 @@ else:
           <div class="hero-title">Finding short-term opportunities shouldn't feel like a full-time job.</div>
           <div class="hero-subtitle">We turn noise into signals by analyzing social media sentiment and using market data to validate real momentum.</div>
         </div>
+        <script>
+        (function () {
+          const APPLY_TO = (doc) => {
+            const ul = doc.querySelector('ul[data-testid="stSelectboxVirtualDropdown"]');
+            if (ul) {
+              ul.style.setProperty('background-color', '#0F172A', 'important');
+              ul.style.setProperty('color', '#E5E7EB', 'important');
+              ul.querySelectorAll('li, li *').forEach((el) => {
+                el.style.setProperty('color', '#E5E7EB', 'important');
+                el.style.setProperty('opacity', '1', 'important');
+              });
+            }
+          };
+          const obs = new MutationObserver(() => { try { APPLY_TO(document); } catch(e){} });
+          obs.observe(document.documentElement, { childList: true, subtree: true });
+          setTimeout(() => { try { APPLY_TO(document); } catch(e){} }, 500);
+        })();
+        </script>
         """,
         unsafe_allow_html=True,
     )
