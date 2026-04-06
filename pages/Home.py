@@ -545,6 +545,10 @@ if is_logged_in():
         [data-testid="stVerticalBlock"] {
           gap: 0.55rem !important;
         }
+        /* Pull the action cards up toward the greeting */
+        .st-key-home_cap_grid {
+          margin-top: -2.8rem !important;
+        }
         </style>
         <div class="clawd-dashboard-hero">
           <div style="font-size:clamp(22px,2.4vw,1.75rem);font-weight:800;letter-spacing:-0.02em;line-height:1.1;color:rgba(229,231,235,.98);">Welcome back.</div>
