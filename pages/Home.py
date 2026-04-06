@@ -543,8 +543,10 @@ if is_logged_in():
           .clawd-dashboard-hero { margin: -7.0rem 0 0.4rem 0; }
         }
         @media (max-width: 640px) {
-          /* iPhone: fixed topbar is 52px, content already has padding-top:56px — just small pull */
-          .clawd-dashboard-hero { margin: -1.5rem 0 0.4rem 0; }
+          /* iPhone: topbar is fixed, content already padded — no negative pull needed */
+          .clawd-dashboard-hero { margin: 0.5rem 0 0.8rem 0; }
+          /* Cancel the card pull-up on mobile — cards must sit BELOW greeting */
+          .st-key-home_cap_grid { margin-top: 0 !important; }
         }
         [data-testid="stVerticalBlock"] > [data-testid="stElementContainer"],
         [data-testid="stVerticalBlock"] > [data-testid="stVerticalBlockBorderWrapper"] {
