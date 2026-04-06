@@ -534,10 +534,16 @@ if is_logged_in():
         @media (max-width: 640px) {
           .clawd-dashboard-hero { margin: -6.5rem 0 0.4rem 0; }
         }
-        /* Tighten Streamlit's default gap between stElementContainers */
-        [data-testid="stVerticalBlock"] > [data-testid="stElementContainer"] {
+        /* Tighten ALL block gaps on logged-in home */
+        [data-testid="stVerticalBlock"] > [data-testid="stElementContainer"],
+        [data-testid="stVerticalBlock"] > [data-testid="stVerticalBlockBorderWrapper"] {
           margin-bottom: 0 !important;
           padding-bottom: 0 !important;
+          gap: 0 !important;
+        }
+        /* Kill the default Streamlit vertical gap between blocks */
+        [data-testid="stVerticalBlock"] {
+          gap: 0.55rem !important;
         }
         </style>
         <div class="clawd-dashboard-hero">
