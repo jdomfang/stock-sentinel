@@ -319,7 +319,7 @@ if not try_restore_cached_session():
 
 def _switch_to_next_page() -> None:
     # Prefer an explicit destination set by a prior page (e.g. Home).
-    nxt = (st.session_state.pop("_after_auth_page", None) or "Discovery").strip().lower()
+    nxt = (st.session_state.pop("_after_auth_page", None) or "Home").strip().lower()
     if nxt in {"deep_analysis", "deep-analysis", "deep", "analysis"}:
         st.switch_page("pages/Deep_Analysis.py")
     elif nxt in {"home"}:
