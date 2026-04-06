@@ -556,12 +556,12 @@ components.html(
 from utils.auth import is_logged_in
 
 if is_logged_in():
-    # Dashboard greeting — clean, no marketing noise
+    # Dashboard greeting — tight, no wasted space
     st.markdown(
         """
-        <div class="hero">
-          <div class="hero-title" style="font-size:clamp(28px,3.2vw,2.2rem);margin-bottom:4px;">Welcome back.</div>
-          <div class="hero-subtitle">What are you trading today?</div>
+        <div style="margin:-9.8rem 0 0.6rem 0;">
+          <div style="font-size:clamp(22px,2.4vw,1.75rem);font-weight:800;letter-spacing:-0.02em;line-height:1.1;color:rgba(229,231,235,.98);">Welcome back.</div>
+          <div style="color:rgba(148,163,184,.80);font-size:0.94rem;margin-top:3px;">What are you trading today?</div>
         </div>
         """,
         unsafe_allow_html=True,
@@ -693,25 +693,25 @@ if is_logged_in():
     if scan_c is not None:
         st.markdown(
             f"""
-            <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin:0.25rem 0 1.2rem 0;">
+            <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin:0.5rem 0 0.9rem 0;">
               <div style="display:inline-flex;align-items:center;gap:8px;
                 background:linear-gradient(135deg,rgba(15,23,42,.92),rgba(2,6,23,.80));
-                border:1px solid rgba(56,189,248,.22);border-radius:14px;
-                padding:10px 18px;">
-                <span style="color:rgba(148,163,184,.85);font-size:0.80rem;font-weight:600;">SCAN CREDITS</span>
-                <span style="color:rgba(56,189,248,.98);font-size:1.35rem;font-weight:800;line-height:1;">{scan_c}</span>
+                border:1px solid rgba(56,189,248,.22);border-radius:12px;
+                padding:8px 14px;">
+                <span style="color:rgba(148,163,184,.80);font-size:0.76rem;font-weight:600;text-transform:uppercase;letter-spacing:0.04em;">Scan</span>
+                <span style="color:rgba(56,189,248,.98);font-size:1.20rem;font-weight:800;line-height:1;">{scan_c}</span>
               </div>
               <div style="display:inline-flex;align-items:center;gap:8px;
                 background:linear-gradient(135deg,rgba(15,23,42,.92),rgba(2,6,23,.80));
-                border:1px solid rgba(56,189,248,.22);border-radius:14px;
-                padding:10px 18px;">
-                <span style="color:rgba(148,163,184,.85);font-size:0.80rem;font-weight:600;">DEEP CREDITS</span>
-                <span style="color:rgba(56,189,248,.98);font-size:1.35rem;font-weight:800;line-height:1;">{deep_c}</span>
+                border:1px solid rgba(56,189,248,.22);border-radius:12px;
+                padding:8px 14px;">
+                <span style="color:rgba(148,163,184,.80);font-size:0.76rem;font-weight:600;text-transform:uppercase;letter-spacing:0.04em;">Analyze</span>
+                <span style="color:rgba(56,189,248,.98);font-size:1.20rem;font-weight:800;line-height:1;">{deep_c}</span>
               </div>
               <a href="/Auth" target="_self" style="
-                color:rgba(148,163,184,.75);font-size:0.82rem;font-weight:600;
-                text-decoration:none;border-bottom:1px solid rgba(148,163,184,.30);
-                padding-bottom:1px;">
+                color:rgba(148,163,184,.70);font-size:0.80rem;font-weight:600;
+                text-decoration:none;border-bottom:1px solid rgba(148,163,184,.25);
+                padding-bottom:1px;margin-left:2px;">
                 + Buy Credits
               </a>
             </div>
