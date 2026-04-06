@@ -536,17 +536,18 @@ if is_logged_in():
     st.markdown(
         """
         <style>
-        .clawd-dashboard-hero {
-          margin: -9.2rem 0 0.4rem 0;
+        /* Desktop only negative pull */
+        @media (min-width: 1025px) {
+          .clawd-dashboard-hero { margin: -9.2rem 0 0.4rem 0; }
+          .st-key-home_cap_grid { margin-top: -2.8rem !important; }
         }
         @media (min-width: 641px) and (max-width: 1024px) {
-          /* iPad: nav is ~52px, sits at ~80px from top — pull greeting up gently */
           .clawd-dashboard-hero { margin: -7.0rem 0 0.4rem 0; }
+          .st-key-home_cap_grid { margin-top: -1.5rem !important; }
         }
         @media (max-width: 640px) {
-          .clawd-dashboard-hero { margin: 0.8rem 0 0 0 !important; }
+          .clawd-dashboard-hero { margin: 0 0 0.6rem 0 !important; }
           .st-key-home_cap_grid { margin-top: 0 !important; }
-          [data-testid="stVerticalBlock"] { gap: 0.5rem !important; }
         }
         [data-testid="stVerticalBlock"] > [data-testid="stElementContainer"],
         [data-testid="stVerticalBlock"] > [data-testid="stVerticalBlockBorderWrapper"] {
@@ -706,19 +707,6 @@ with st.container(key="home_cap_grid"):
                         st.switch_page("pages/Deep_Analysis.py" if is_logged_in() else "pages/Auth.py")
 
 st.markdown("<div style='height: 0.1rem;'></div>", unsafe_allow_html=True)
-
-# Mobile spacer — pushes cards below greeting on iPhone (CSS margin unreliable in Streamlit)
-if is_logged_in():
-    st.markdown(
-        """<div style="display:none" class="mobile-spacer">
-        <style>
-        @media (max-width: 640px) {
-          .mobile-spacer { display: block !important; height: 5rem; }
-        }
-        </style>
-        </div>""",
-        unsafe_allow_html=True,
-    )
 
 # ─── TWO-MODE SPLIT ────────────────────────────────────────────────────────────
 if is_logged_in():
