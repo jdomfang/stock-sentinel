@@ -539,7 +539,6 @@ if is_logged_in():
         .clawd-dashboard-hero {
           margin: -9.2rem 0 0.4rem 0;
         }
-        .st-key-home_cap_grid { margin-top: -2.8rem !important; }
         [data-testid="stVerticalBlock"] > [data-testid="stElementContainer"],
         [data-testid="stVerticalBlock"] > [data-testid="stVerticalBlockBorderWrapper"] {
           margin-bottom: 0 !important;
@@ -553,25 +552,6 @@ if is_logged_in():
           .clawd-credits-row > div { width: 100% !important; justify-content: space-between !important; }
         }
         </style>
-        <script>
-        (function() {{
-          function fixMobile() {{
-            var w = window.innerWidth || document.documentElement.clientWidth;
-            var hero = document.querySelector('.clawd-dashboard-hero');
-            var grid = document.querySelector('[data-testid="stVerticalBlock"]');
-            var capGrid = document.querySelector('.st-key-home_cap_grid');
-            if (!hero) return;
-            if (w <= 768) {{
-              hero.style.setProperty('margin', '0.5rem 0 0.8rem 0', 'important');
-              if (capGrid) capGrid.style.setProperty('margin-top', '0', 'important');
-            }}
-          }}
-          fixMobile();
-          window.addEventListener('resize', fixMobile);
-          setTimeout(fixMobile, 300);
-          setTimeout(fixMobile, 800);
-        }})();
-        </script>
         """ + f"""
         <div class="clawd-dashboard-hero">
           <div style="font-size:clamp(32px,3.8vw,2.8rem);font-weight:850;letter-spacing:-0.035em;line-height:1.08;color:rgba(229,231,235,.98);">{_greeting}</div>
