@@ -522,6 +522,7 @@ st.markdown(
 from utils.auth import is_logged_in
 
 if is_logged_in():
+    _greeting = f"Welcome back, {_display}." if _display else "Welcome back."
     st.markdown(
         """
         <style>
@@ -534,54 +535,41 @@ if is_logged_in():
         @media (max-width: 640px) {
           .clawd-dashboard-hero { margin: -6.5rem 0 0.4rem 0; }
         }
-        /* Tighten ALL block gaps on logged-in home */
         [data-testid="stVerticalBlock"] > [data-testid="stElementContainer"],
         [data-testid="stVerticalBlock"] > [data-testid="stVerticalBlockBorderWrapper"] {
           margin-bottom: 0 !important;
           padding-bottom: 0 !important;
           gap: 0 !important;
         }
-        /* Kill the default Streamlit vertical gap between blocks */
-        [data-testid="stVerticalBlock"] {
-          gap: 0.55rem !important;
-        }
-        /* Pull the action cards up toward the greeting */
-        .st-key-home_cap_grid {
-          margin-top: -2.8rem !important;
-        }
-        /* Mobile: stack credits pills vertically, full width */
+        [data-testid="stVerticalBlock"] { gap: 0.55rem !important; }
+        .st-key-home_cap_grid { margin-top: -2.8rem !important; }
         @media (max-width: 640px) {
-          .clawd-credits-row {
-            flex-direction: column !important;
-            align-items: flex-start !important;
-          }
-          .clawd-credits-row > div {
-            width: 100% !important;
-            justify-content: space-between !important;
-          }
+          .clawd-credits-row { flex-direction: column !important; align-items: flex-start !important; }
+          .clawd-credits-row > div { width: 100% !important; justify-content: space-between !important; }
         }
         </style>
+        """ + f"""
         <div class="clawd-dashboard-hero">
-          <div style="font-size:clamp(32px,3.8vw,2.8rem);font-weight:850;letter-spacing:-0.035em;line-height:1.08;color:rgba(229,231,235,.98);">Welcome back{(", " + _display) if _display else ""}.</div>
+          <div style="font-size:clamp(32px,3.8vw,2.8rem);font-weight:850;letter-spacing:-0.035em;line-height:1.08;color:rgba(229,231,235,.98);">{_greeting}</div>
           <div style="color:rgba(148,163,184,.78);font-size:clamp(15px,1.35vw,1.05rem);line-height:1.45;margin-top:5px;">What are you trading today?</div>
         </div>
         <script>
-        (function () {
-          const APPLY_TO = (doc) => {
+        (function () {{
+          const APPLY_TO = (doc) => {{
             const ul = doc.querySelector('ul[data-testid="stSelectboxVirtualDropdown"]');
-            if (ul) {
+            if (ul) {{
               ul.style.setProperty('background-color', '#0F172A', 'important');
               ul.style.setProperty('color', '#E5E7EB', 'important');
-              ul.querySelectorAll('li, li *').forEach((el) => {
+              ul.querySelectorAll('li, li *').forEach((el) => {{
                 el.style.setProperty('color', '#E5E7EB', 'important');
                 el.style.setProperty('opacity', '1', 'important');
-              });
-            }
-          };
-          const obs = new MutationObserver(() => { try { APPLY_TO(document); } catch(e){} });
-          obs.observe(document.documentElement, { childList: true, subtree: true });
-          setTimeout(() => { try { APPLY_TO(document); } catch(e){} }, 500);
-        })();
+              }});
+            }}
+          }};
+          const obs = new MutationObserver(() => {{ try {{ APPLY_TO(document); }} catch(e){{}} }});
+          obs.observe(document.documentElement, {{ childList: true, subtree: true }});
+          setTimeout(() => {{ try {{ APPLY_TO(document); }} catch(e){{}} }}, 500);
+        }})();
         </script>
         """,
         unsafe_allow_html=True,
