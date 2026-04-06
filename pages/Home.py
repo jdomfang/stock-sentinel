@@ -526,9 +526,10 @@ if is_logged_in():
     _user = get_user() or {}
     _meta = (_user.get("user_metadata") if isinstance(_user, dict) else getattr(_user, "user_metadata", None)) or {}
     _email = (_user.get("email") if isinstance(_user, dict) else getattr(_user, "email", None)) or ""
+    _prefix = _email.split("@")[0] if _email else ""
+    _first = _prefix.replace(".", " ").replace("_", " ").split()[0].title() if _prefix else ""
     _display = (
-        _meta.get("full_name") or _meta.get("name") or _meta.get("first_name")
-        or (_email.split("@")[0].replace(".", " ").replace("_", " ").title() if _email else "")
+        _meta.get("full_name") or _meta.get("name") or _meta.get("first_name") or _first
     )
     _greeting = f"Welcome back, {_display}." if _display else "Welcome back."
 
@@ -543,19 +544,17 @@ if is_logged_in():
           .clawd-dashboard-hero { margin: -7.0rem 0 0.4rem 0; }
         }
         @media (max-width: 640px) {
-          /* Mobile: full natural flow, no negative margins */
           .clawd-dashboard-hero {
-            margin: 0.5rem 0 1.0rem 0 !important;
-            position: relative;
-            z-index: 1;
+            margin: 0.8rem 0 0.6rem 0 !important;
+            position: relative !important;
+            z-index: 10 !important;
           }
           .st-key-home_cap_grid {
-            margin-top: 0.5rem !important;
-            position: relative;
-            z-index: 1;
+            margin-top: 5.5rem !important;
+            position: relative !important;
+            z-index: 1 !important;
           }
-          /* Ensure stVerticalBlock gap is normal on mobile */
-          [data-testid="stVerticalBlock"] { gap: 1rem !important; }
+          [data-testid="stVerticalBlock"] { gap: 0.8rem !important; }
         }
         [data-testid="stVerticalBlock"] > [data-testid="stElementContainer"],
         [data-testid="stVerticalBlock"] > [data-testid="stVerticalBlockBorderWrapper"] {
