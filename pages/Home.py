@@ -556,10 +556,21 @@ components.html(
 from utils.auth import is_logged_in
 
 if is_logged_in():
-    # Dashboard greeting — tight, no wasted space
     st.markdown(
         """
-        <div style="margin:-9.8rem 0 0.6rem 0;">
+        <style>
+        /* Logged-in: pull greeting up to close the gap below nav */
+        .clawd-dashboard-hero {
+          margin: -7.2rem 0 0.55rem 0;
+        }
+        @media (min-width: 641px) and (max-width: 1024px) {
+          .clawd-dashboard-hero { margin: -9.5rem 0 0.55rem 0; }
+        }
+        @media (max-width: 640px) {
+          .clawd-dashboard-hero { margin: -4.8rem 0 0.55rem 0; }
+        }
+        </style>
+        <div class="clawd-dashboard-hero">
           <div style="font-size:clamp(22px,2.4vw,1.75rem);font-weight:800;letter-spacing:-0.02em;line-height:1.1;color:rgba(229,231,235,.98);">Welcome back.</div>
           <div style="color:rgba(148,163,184,.80);font-size:0.94rem;margin-top:3px;">What are you trading today?</div>
         </div>
@@ -667,7 +678,7 @@ with st.container(key="home_cap_grid"):
 
                         st.switch_page("pages/Deep_Analysis.py" if is_logged_in() else "pages/Auth.py")
 
-st.markdown("<div style='height: 0.5rem;'></div>", unsafe_allow_html=True)
+st.markdown("<div style='height: 0.1rem;'></div>", unsafe_allow_html=True)
 
 # ─── TWO-MODE SPLIT ────────────────────────────────────────────────────────────
 if is_logged_in():
