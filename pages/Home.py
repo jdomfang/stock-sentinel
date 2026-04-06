@@ -526,13 +526,13 @@ if is_logged_in():
         """
         <style>
         .clawd-dashboard-hero {
-          margin: -7.8rem 0 0.4rem 0;
+          margin: -9.2rem 0 0.4rem 0;
         }
         @media (min-width: 641px) and (max-width: 1024px) {
-          .clawd-dashboard-hero { margin: -10.0rem 0 0.4rem 0; }
+          .clawd-dashboard-hero { margin: -11.5rem 0 0.4rem 0; }
         }
         @media (max-width: 640px) {
-          .clawd-dashboard-hero { margin: -5.2rem 0 0.4rem 0; }
+          .clawd-dashboard-hero { margin: -6.5rem 0 0.4rem 0; }
         }
         /* Tighten Streamlit's default gap between stElementContainers */
         [data-testid="stVerticalBlock"] > [data-testid="stElementContainer"] {
@@ -714,14 +714,14 @@ if is_logged_in():
                 background:linear-gradient(135deg,rgba(15,23,42,.92),rgba(2,6,23,.80));
                 border:1px solid rgba(56,189,248,.22);border-radius:12px;
                 padding:8px 14px;">
-                <span style="color:rgba(148,163,184,.80);font-size:0.76rem;font-weight:600;text-transform:uppercase;letter-spacing:0.04em;">Scan</span>
+                <span style="color:rgba(148,163,184,.80);font-size:0.76rem;font-weight:600;text-transform:uppercase;letter-spacing:0.04em;">Scan Credits</span>
                 <span style="color:rgba(56,189,248,.98);font-size:1.20rem;font-weight:800;line-height:1;">{scan_c}</span>
               </div>
               <div style="display:inline-flex;align-items:center;gap:8px;
                 background:linear-gradient(135deg,rgba(15,23,42,.92),rgba(2,6,23,.80));
                 border:1px solid rgba(56,189,248,.22);border-radius:12px;
                 padding:8px 14px;">
-                <span style="color:rgba(148,163,184,.80);font-size:0.76rem;font-weight:600;text-transform:uppercase;letter-spacing:0.04em;">Analyze</span>
+                <span style="color:rgba(148,163,184,.80);font-size:0.76rem;font-weight:600;text-transform:uppercase;letter-spacing:0.04em;">Analyze Credits</span>
                 <span style="color:rgba(56,189,248,.98);font-size:1.20rem;font-weight:800;line-height:1;">{deep_c}</span>
               </div>
               <a href="/Auth" target="_self" style="
