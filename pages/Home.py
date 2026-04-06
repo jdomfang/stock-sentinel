@@ -544,17 +544,9 @@ if is_logged_in():
           .clawd-dashboard-hero { margin: -7.0rem 0 0.4rem 0; }
         }
         @media (max-width: 640px) {
-          .clawd-dashboard-hero {
-            margin: 0.8rem 0 0.6rem 0 !important;
-            position: relative !important;
-            z-index: 10 !important;
-          }
-          .st-key-home_cap_grid {
-            margin-top: 5.5rem !important;
-            position: relative !important;
-            z-index: 1 !important;
-          }
-          [data-testid="stVerticalBlock"] { gap: 0.8rem !important; }
+          .clawd-dashboard-hero { margin: 0.8rem 0 0 0 !important; }
+          .st-key-home_cap_grid { margin-top: 0 !important; }
+          [data-testid="stVerticalBlock"] { gap: 0.5rem !important; }
         }
         [data-testid="stVerticalBlock"] > [data-testid="stElementContainer"],
         [data-testid="stVerticalBlock"] > [data-testid="stVerticalBlockBorderWrapper"] {
@@ -714,6 +706,19 @@ with st.container(key="home_cap_grid"):
                         st.switch_page("pages/Deep_Analysis.py" if is_logged_in() else "pages/Auth.py")
 
 st.markdown("<div style='height: 0.1rem;'></div>", unsafe_allow_html=True)
+
+# Mobile spacer — pushes cards below greeting on iPhone (CSS margin unreliable in Streamlit)
+if is_logged_in():
+    st.markdown(
+        """<div style="display:none" class="mobile-spacer">
+        <style>
+        @media (max-width: 640px) {
+          .mobile-spacer { display: block !important; height: 5rem; }
+        }
+        </style>
+        </div>""",
+        unsafe_allow_html=True,
+    )
 
 # ─── TWO-MODE SPLIT ────────────────────────────────────────────────────────────
 if is_logged_in():
