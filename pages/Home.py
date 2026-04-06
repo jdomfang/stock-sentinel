@@ -522,7 +522,6 @@ st.markdown(
 from utils.auth import is_logged_in
 
 if is_logged_in():
-    _greeting = f"Welcome back, {_display}." if _display else "Welcome back."
     st.markdown(
         """
         <style>
@@ -721,6 +720,7 @@ if is_logged_in():
         _meta.get("full_name") or _meta.get("name") or _meta.get("first_name")
         or (_email.split("@")[0].replace(".", " ").replace("_", " ").title() if _email else "")
     )
+    _greeting = f"Welcome back, {_display}." if _display else "Welcome back."
 
     # Credits row
     if scan_c is not None:
