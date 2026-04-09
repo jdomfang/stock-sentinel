@@ -1240,19 +1240,14 @@ if st.session_state.df_valid is not None:
         # Never let UI extras break the page
         pass
 
-# ── Deep Analysis Panel (rendered ABOVE results table so it's always in view) ──
-if st.session_state.selected_ticker and st.session_state.deep_analysis_results:
-    _ticker = st.session_state.selected_ticker
-    _sector = (st.session_state.selected_sector or "")
-    _ai = generate_ai_summary(st.session_state.deep_analysis_results)
+def _render_deep_panel(ticker, sector, deep_results):
+    """Render the deep analysis panel inline below a ticker row."""
+    from utils.deep_analysis import ANALYSIS_PROMPTS
+    _ai = generate_ai_summary(deep_results)
 
-    # ── Build panel HTML payload (all content rendered into a string) ──
-    import io, contextlib
-
-    # Financial data
     _price, _proj, _hold, _pts = "Unavailable", "Unavailable", "Unavailable", 0
     try:
-        _sd = get_stock_data(_ticker)
+        _sd = get_stock_data(ticker)
         if _sd.get("error") is None and _sd.get("prices"):
             _prices = _sd["prices"]
             _pts = len(_prices)
@@ -1268,12 +1263,11 @@ if st.session_state.selected_ticker and st.session_state.deep_analysis_results:
         pass
 
     try:
-        _uids = {tid for _r in st.session_state.deep_analysis_results.values() for tid in (_r.get("tweet_ids") or [])}
+        _uids = {tid for _r in deep_results.values() for tid in (_r.get("tweet_ids") or [])}
         _mentions_ct = len(_uids)
     except Exception:
         _mentions_ct = 0
 
-    # Rec colors
     _rec = _ai.get("recommendation", "—")
     _conf = _ai.get("confidence", "—")
     _avg_sent = float(_ai.get("avg_sentiment", 0.0))
@@ -1281,7 +1275,7 @@ if st.session_state.selected_ticker and st.session_state.deep_analysis_results:
     _conf_color = "rgba(56,189,248,.90)" if _conf.lower()=="high" else "rgba(245,158,11,.90)" if _conf.lower()=="moderate" else "rgba(148,163,184,.80)"
     _sent_color = "rgba(56,189,248,.95)" if _avg_sent>=0.10 else "rgba(239,68,68,.88)" if _avg_sent<=-0.10 else "rgba(148,163,184,.85)"
     _sent_lbl = f"Bullish ({_avg_sent:+.2f})" if _avg_sent>=0.10 else f"Bearish ({_avg_sent:+.2f})" if _avg_sent<=-0.10 else f"Neutral ({_avg_sent:+.2f})"
-    _sector_lbl = (" · "+_sector.title()) if _sector and _sector.lower() not in ("unknown","") else ""
+    _sector_lbl = (" · "+sector.title()) if sector and sector.lower() not in ("unknown","") else ""
     _rec_sub = {"buy":"Strong upside signal","watch":"Hold — monitor closely","avoid":"Risk outweighs reward"}.get(_rec.lower(),"")
     _conf_sub = {"high":"Strong data backing","moderate":"Reasonable evidence","low":"Thin data — use caution"}.get(_conf.lower(),"")
     _bar_pct = min(100, int(abs(_avg_sent)*250 + {"high":30,"moderate":15,"low":0}.get(_conf.lower(),0)))
@@ -1291,77 +1285,53 @@ if st.session_state.selected_ticker and st.session_state.deep_analysis_results:
         return f'<div style="width:100%;height:4px;background:rgba(148,163,184,.12);border-radius:999px;margin-top:6px;"><div style="width:{pct}%;height:4px;background:{color};border-radius:999px;"></div></div>'
 
     _mc = "border-radius:12px;padding:14px 16px 12px 16px;background:rgba(15,23,42,.75);flex:1;min-width:0;display:flex;flex-direction:column;gap:4px;"
-
-    # Build rationale bullets HTML
     _rationale_html = "".join(f'<li style="margin-bottom:5px;color:rgba(229,231,235,.85);font-size:0.88rem;line-height:1.45;">{b}</li>' for b in _ai.get("rationale",[]))
 
-    # Price row
     _fc = "border-radius:10px;padding:10px 14px;background:rgba(15,23,42,.55);border:1px solid rgba(148,163,184,.12);flex:1;"
     _fl = "font-size:0.68rem;font-weight:700;letter-spacing:0.05em;text-transform:uppercase;color:rgba(148,163,184,.55);margin-bottom:3px;"
     _fv = "font-size:1.00rem;font-weight:800;color:rgba(248,250,252,.92);"
     _price_row = f'<div style="display:flex;gap:8px;margin-bottom:14px;"><div style="{_fc}"><div style="{_fl}">Last Price</div><div style="{_fv}">{_price}</div></div><div style="{_fc}"><div style="{_fl}">Proj. Gain 30d</div><div style="{_fv}">{_proj}</div></div><div style="{_fc}"><div style="{_fl}">Hold Period</div><div style="{_fv}">{_hold}</div></div></div>' if _price != "Unavailable" or _proj != "Unavailable" else ""
 
-    # Coverage table rows
-    from utils.deep_analysis import ANALYSIS_PROMPTS
     _tilt_color = {"Bullish":"rgba(56,189,248,.95)","Bearish":"rgba(239,68,68,.90)","Neutral":"rgba(148,163,184,.80)"}
     _cov_rows = ""
-    for _pn, _res in (st.session_state.deep_analysis_results or {}).items():
+    for _pn, _res in (deep_results or {}).items():
         _tf = (ANALYSIS_PROMPTS.get(_pn,{}) or {}).get("timeframe","")
         _ev = int(_res.get("mention_count",0) or 0)
         _ov = (_res.get("overall_sentiment") or "").lower()
-        _st2 = "Unavailable" if _ov=="error" else ("No Signal" if _ev==0 else ("Strong" if _ev>5 else "Weak"))
         _tl = "Unavailable" if _ov=="error" else ("Neutral" if _ev==0 else _ov.title())
         _tc = _tilt_color.get(_tl,"rgba(148,163,184,.80)")
         _cov_rows += f'<tr style="border-bottom:1px solid rgba(148,163,184,.08);"><td style="padding:8px 10px;color:rgba(229,231,235,.85);font-size:0.80rem;">{_pn}</td><td style="padding:8px 10px;color:rgba(148,163,184,.65);font-size:0.80rem;">{_tf}</td><td style="padding:8px 10px;text-align:center;color:rgba(148,163,184,.75);font-size:0.80rem;">{_ev}</td><td style="padding:8px 10px;font-size:0.80rem;font-weight:700;color:{_tc};">{_tl}</td></tr>'
 
-    _panel_html = f"""
-    <div id="clawd-deep-drawer" style="
-      width:100%;
+    _panel_html = f"""<div style="
+      width:100%;box-sizing:border-box;
       background:rgba(2,6,23,0.97);
       border:1px solid rgba(56,189,248,.25);
       border-radius:16px;
       box-shadow:0 8px 40px rgba(0,0,0,.55);
       overflow:hidden;
-      display:flex; flex-direction:column;
       font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;
     ">
-      <!-- Header -->
-      <div style="padding:18px 20px 14px 20px;border-bottom:1px solid rgba(56,189,248,.15);background:linear-gradient(180deg,rgba(56,189,248,.07),rgba(2,6,23,0));display:flex;align-items:center;justify-content:space-between;gap:12px;position:sticky;top:0;z-index:2;backdrop-filter:blur(12px);">
+      <div style="padding:16px 20px 12px 20px;border-bottom:1px solid rgba(56,189,248,.15);background:linear-gradient(180deg,rgba(56,189,248,.07),rgba(2,6,23,0));display:flex;align-items:center;justify-content:space-between;gap:12px;">
         <div>
           <div style="font-size:0.68rem;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:rgba(56,189,248,.75);">Deep Analysis{_sector_lbl}</div>
-          <div style="font-size:1.50rem;font-weight:850;letter-spacing:-0.02em;color:rgba(248,250,252,.98);">{_ticker}</div>
+          <div style="font-size:1.40rem;font-weight:850;letter-spacing:-0.02em;color:rgba(248,250,252,.98);">{ticker}</div>
         </div>
-        <div style="display:flex;align-items:center;gap:14px;">
-          <div style="text-align:right;">
-            <div style="font-size:0.68rem;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:rgba(148,163,184,.50);">Signal</div>
-            <div style="font-size:1.35rem;font-weight:850;color:{_rec_color};">{_rec}</div>
-            <div style="font-size:0.74rem;color:rgba(148,163,184,.60);">Confidence: {_conf}</div>
-          </div>
-
+        <div style="text-align:right;">
+          <div style="font-size:0.68rem;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:rgba(148,163,184,.50);">Signal</div>
+          <div style="font-size:1.25rem;font-weight:850;color:{_rec_color};">{_rec}</div>
+          <div style="font-size:0.72rem;color:rgba(148,163,184,.60);">Confidence: {_conf}</div>
         </div>
       </div>
-
-      <!-- Body -->
-      <div style="padding:16px 20px 24px 20px;flex:1;">
-
-        <!-- 3 metric cards -->
+      <div style="padding:16px 20px 20px 20px;">
         <div style="display:flex;gap:8px;margin-bottom:14px;">
-          <div style="{_mc}border:1px solid {_rec_color.replace('.95',',.28').replace('.90',',.25')};"><div style="font-size:0.68rem;font-weight:700;letter-spacing:0.06em;text-transform:uppercase;color:rgba(148,163,184,.55);">Recommendation</div><div style="font-size:1.10rem;font-weight:850;color:{_rec_color};">{_rec}</div><div style="font-size:0.72rem;color:rgba(148,163,184,.55);">{_rec_sub}</div>{_bar(_bar_pct,_rec_color)}</div>
-          <div style="{_mc}border:1px solid rgba(148,163,184,.15);"><div style="font-size:0.68rem;font-weight:700;letter-spacing:0.06em;text-transform:uppercase;color:rgba(148,163,184,.55);">Confidence</div><div style="font-size:1.10rem;font-weight:850;color:{_conf_color};">{_conf}</div><div style="font-size:0.72rem;color:rgba(148,163,184,.55);">{_conf_sub}</div>{_bar(_conf_bar,_conf_color)}</div>
-          <div style="{_mc}border:1px solid rgba(148,163,184,.15);"><div style="font-size:0.68rem;font-weight:700;letter-spacing:0.06em;text-transform:uppercase;color:rgba(148,163,184,.55);">Market Mood</div><div style="font-size:1.10rem;font-weight:850;color:{_sent_color};">{_sent_lbl.split(" ")[0]}</div><div style="font-size:0.72rem;color:rgba(148,163,184,.55);">Score {_avg_sent:+.3f}</div>{_bar(min(100,int(abs(_avg_sent)*280)),_sent_color)}</div>
+          <div style="{_mc}border:1px solid {_rec_color.replace('.95',',.28').replace('.90',',.25')};"><div style="font-size:0.68rem;font-weight:700;letter-spacing:0.06em;text-transform:uppercase;color:rgba(148,163,184,.55);">Recommendation</div><div style="font-size:1.05rem;font-weight:850;color:{_rec_color};">{_rec}</div><div style="font-size:0.72rem;color:rgba(148,163,184,.55);">{_rec_sub}</div>{_bar(_bar_pct,_rec_color)}</div>
+          <div style="{_mc}border:1px solid rgba(148,163,184,.15);"><div style="font-size:0.68rem;font-weight:700;letter-spacing:0.06em;text-transform:uppercase;color:rgba(148,163,184,.55);">Confidence</div><div style="font-size:1.05rem;font-weight:850;color:{_conf_color};">{_conf}</div><div style="font-size:0.72rem;color:rgba(148,163,184,.55);">{_conf_sub}</div>{_bar(_conf_bar,_conf_color)}</div>
+          <div style="{_mc}border:1px solid rgba(148,163,184,.15);"><div style="font-size:0.68rem;font-weight:700;letter-spacing:0.06em;text-transform:uppercase;color:rgba(148,163,184,.55);">Market Mood</div><div style="font-size:1.05rem;font-weight:850;color:{_sent_color};">{_sent_lbl.split(" ")[0]}</div><div style="font-size:0.72rem;color:rgba(148,163,184,.55);">Score {_avg_sent:+.3f}</div>{_bar(min(100,int(abs(_avg_sent)*280)),_sent_color)}</div>
         </div>
-
-        <!-- Price row -->
         {_price_row}
-
-        <!-- Data quality -->
         <div style="color:rgba(148,163,184,.45);font-size:0.72rem;margin-bottom:14px;">{_mentions_ct} posts analysed · {_pts} price points</div>
-
-        <!-- Rationale -->
         <div style="font-size:0.78rem;font-weight:700;color:rgba(148,163,184,.60);letter-spacing:0.05em;text-transform:uppercase;margin-bottom:8px;">Why this signal</div>
         <ul style="margin:0 0 18px 16px;padding:0;">{_rationale_html}</ul>
-
-        <!-- Coverage table -->
         <details style="margin-top:4px;">
           <summary style="cursor:pointer;font-size:0.80rem;font-weight:700;color:rgba(148,163,184,.60);letter-spacing:0.05em;text-transform:uppercase;padding:10px 0;list-style:none;display:flex;align-items:center;gap:8px;">
             <span style="color:rgba(56,189,248,.70);">▶</span> Full breakdown
@@ -1376,14 +1346,10 @@ if st.session_state.selected_ticker and st.session_state.deep_analysis_results:
             <tbody>{_cov_rows}</tbody>
           </table>
         </details>
-
       </div>
-    </div>
+    </div>"""
 
-
-    """
-
-    components.html(_panel_html, height=650, scrolling=True)
+    components.html(_panel_html, height=620, scrolling=True)
 
 # ── Results table ──
 if st.session_state.df_valid is not None:
@@ -1447,9 +1413,7 @@ if st.session_state.df_valid is not None:
             last_close_display = "N/A" if last_close is None else f"${float(last_close):.2f}"
 
             _is_selected = ticker_symbol == st.session_state.get("selected_ticker")
-            if _is_selected:
-                st.markdown("<div class='ticker-row' style='border:1px solid rgba(56,189,248,.40);background:rgba(56,189,248,.06);border-radius:10px;'>", unsafe_allow_html=True)
-            elif not _top_signal_shown and overall_sentiment.lower() == "bullish":
+            if not _top_signal_shown and overall_sentiment.lower() == "bullish":
                 st.markdown("<div class='ticker-row ticker-row--top-signal'>", unsafe_allow_html=True)
                 _top_signal_shown = True
             else:
@@ -1548,6 +1512,14 @@ if st.session_state.df_valid is not None:
                             unsafe_allow_html=True,
                         )
             st.markdown("</div>", unsafe_allow_html=True)
+
+            # ── Inline deep panel — renders immediately below this ticker's row ──
+            if _is_selected and st.session_state.get("deep_analysis_results"):
+                _render_deep_panel(
+                    ticker_symbol,
+                    st.session_state.get("selected_sector") or "",
+                    st.session_state.deep_analysis_results,
+                )
 
         st.caption(f"Click Deep Analyze on any ticker for catalysts, signals, and a Buy/Watch/Avoid recommendation.")
     else:
