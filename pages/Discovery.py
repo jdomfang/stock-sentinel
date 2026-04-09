@@ -1367,8 +1367,8 @@ def _render_deep_panel(ticker, sector, deep_results):
       </div>
     </div>"""
 
-    components.html(_panel_html, height=700, scrolling=True)
-    st.markdown('<div style="height:0"></div>', unsafe_allow_html=True)
+    components.html(_panel_html, height=750, scrolling=True)
+    st.markdown('<div style="margin-top:-2rem"></div>', unsafe_allow_html=True)
 
 # ── Results table ──
 if st.session_state.df_valid is not None:
