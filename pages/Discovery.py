@@ -1383,13 +1383,7 @@ if st.session_state.selected_ticker and st.session_state.deep_analysis_results:
 
     """
 
-    components.html(_panel_html, height=900, scrolling=True)
-
-    # Hidden Streamlit close button — triggered by drawer's ✕ via postMessage
-    if st.button("✕ Close panel", key="close_deep_panel", type="secondary"):
-        st.session_state.selected_ticker = None
-        st.session_state.deep_analysis_results = None
-        st.rerun()
+    components.html(_panel_html, height=650, scrolling=True)
 
 # ── Results table ──
 if st.session_state.df_valid is not None:
