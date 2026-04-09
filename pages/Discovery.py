@@ -1446,7 +1446,10 @@ if st.session_state.df_valid is not None:
             last_close = last_close_map.get(str(ticker_symbol).upper())
             last_close_display = "N/A" if last_close is None else f"${float(last_close):.2f}"
 
-            if not _top_signal_shown and overall_sentiment.lower() == "bullish":
+            _is_selected = ticker_symbol == st.session_state.get("selected_ticker")
+            if _is_selected:
+                st.markdown("<div class='ticker-row' style='border:1px solid rgba(56,189,248,.40);background:rgba(56,189,248,.06);border-radius:10px;'>", unsafe_allow_html=True)
+            elif not _top_signal_shown and overall_sentiment.lower() == "bullish":
                 st.markdown("<div class='ticker-row ticker-row--top-signal'>", unsafe_allow_html=True)
                 _top_signal_shown = True
             else:
