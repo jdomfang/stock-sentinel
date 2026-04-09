@@ -72,7 +72,7 @@ EXCLUDED_WORDS = {
 }
 
 
-@st.cache_resource
+@st.cache_resource(show_spinner=False)
 def load_sentiment_pipeline():
     """Load and cache the sentiment analysis pipeline.
 

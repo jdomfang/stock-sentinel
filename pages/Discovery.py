@@ -607,12 +607,10 @@ with st.container(key="discovery_scan_card"):
         if _default_sector not in SECTOR_OPTIONS:
             _default_sector = SECTOR_OPTIONS[0]
 
-        st.session_state.setdefault("discovery_sector", _default_sector)
-
         sector = st.selectbox(
             "Sector",
             options=SECTOR_OPTIONS,
-            index=SECTOR_OPTIONS.index(st.session_state.get("discovery_sector") or SECTOR_OPTIONS[0]),
+            index=SECTOR_OPTIONS.index(_default_sector),
             key="discovery_sector",
             label_visibility="collapsed",
         )
@@ -1531,12 +1529,13 @@ if st.session_state.df_valid is not None:
 
                     _disc_holder: dict = {}
                     _disc_done = _th.Event()
+                    _disc_sector = st.session_state.get("selected_sector") or ""
 
                     def _disc_run():
                         try:
                             _disc_holder["result"] = run_deep_analysis(
                                 ticker_symbol,
-                                st.session_state.selected_sector,
+                                _disc_sector,
                             )
                         except Exception as _e:
                             _disc_holder["error"] = str(_e)
