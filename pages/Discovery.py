@@ -1575,6 +1575,7 @@ if st.session_state.df_valid is not None:
                         st.session_state.deep_analysis_results = _disc_holder.get("result")
                         st.session_state.selected_ticker = ticker_symbol
                         st.session_state["_scroll_to_deep_panel"] = True
+                        st.rerun()
 
                     if _deep_error:
                         st.markdown(
