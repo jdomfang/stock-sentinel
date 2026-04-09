@@ -1316,14 +1316,14 @@ if st.session_state.selected_ticker and st.session_state.deep_analysis_results:
 
     _panel_html = f"""
     <div id="clawd-deep-drawer" style="
-      position:fixed; top:0; right:0; bottom:0; width:min(520px,100vw);
+      width:100%;
       background:rgba(2,6,23,0.97);
-      border-left:1px solid rgba(56,189,248,.25);
-      box-shadow:-12px 0 40px rgba(0,0,0,.55);
-      z-index:99999; overflow-y:auto;
-      transform:translateX(100%);
-      transition:transform 0.32s cubic-bezier(0.4,0,0.2,1);
+      border:1px solid rgba(56,189,248,.25);
+      border-radius:16px;
+      box-shadow:0 8px 40px rgba(0,0,0,.55);
+      overflow:hidden;
       display:flex; flex-direction:column;
+      font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;
     ">
       <!-- Header -->
       <div style="padding:18px 20px 14px 20px;border-bottom:1px solid rgba(56,189,248,.15);background:linear-gradient(180deg,rgba(56,189,248,.07),rgba(2,6,23,0));display:flex;align-items:center;justify-content:space-between;gap:12px;position:sticky;top:0;z-index:2;backdrop-filter:blur(12px);">
@@ -1337,12 +1337,7 @@ if st.session_state.selected_ticker and st.session_state.deep_analysis_results:
             <div style="font-size:1.35rem;font-weight:850;color:{_rec_color};">{_rec}</div>
             <div style="font-size:0.74rem;color:rgba(148,163,184,.60);">Confidence: {_conf}</div>
           </div>
-          <button onclick="window.clawdCloseDrawer()" style="
-            background:rgba(148,163,184,.10);border:1px solid rgba(148,163,184,.20);
-            border-radius:8px;color:rgba(229,231,235,.80);font-size:1.1rem;
-            width:32px;height:32px;cursor:pointer;display:flex;align-items:center;justify-content:center;
-            flex-shrink:0;
-          ">✕</button>
+
         </div>
       </div>
 
@@ -1385,39 +1380,10 @@ if st.session_state.selected_ticker and st.session_state.deep_analysis_results:
       </div>
     </div>
 
-    <!-- Backdrop -->
-    <div id="clawd-deep-backdrop" onclick="window.clawdCloseDrawer()" style="
-      position:fixed;inset:0;background:rgba(2,6,23,.55);
-      backdrop-filter:blur(2px);z-index:99998;
-      opacity:0;transition:opacity 0.32s ease;pointer-events:none;
-    "></div>
 
-    <script>
-    (function(){{
-      const doc = window.parent ? window.parent.document : document;
-      const drawer = doc.getElementById('clawd-deep-drawer');
-      const backdrop = doc.getElementById('clawd-deep-backdrop');
-
-      window.clawdCloseDrawer = function() {{
-        if(drawer) {{ drawer.style.transform = 'translateX(100%)'; }}
-        if(backdrop) {{ backdrop.style.opacity = '0'; backdrop.style.pointerEvents = 'none'; }}
-      }};
-
-      requestAnimationFrame(() => {{
-        requestAnimationFrame(() => {{
-          if(drawer) {{ drawer.style.transform = 'translateX(0)'; }}
-          if(backdrop) {{ backdrop.style.opacity = '1'; backdrop.style.pointerEvents = 'auto'; }}
-        }});
-      }});
-
-      doc.addEventListener('keydown', function(e) {{
-        if(e.key === 'Escape') window.clawdCloseDrawer();
-      }}, {{once:true}});
-    }})();
-    </script>
     """
 
-    components.html(_panel_html, height=0, scrolling=False)
+    components.html(_panel_html, height=900, scrolling=True)
 
     # Hidden Streamlit close button — triggered by drawer's ✕ via postMessage
     if st.button("✕ Close panel", key="close_deep_panel", type="secondary"):
