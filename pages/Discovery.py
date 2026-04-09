@@ -1293,40 +1293,82 @@ def _render_deep_panel(ticker, sector, deep_results):
     _price_row = f'<div style="display:flex;gap:8px;margin-bottom:14px;"><div style="{_fc}"><div style="{_fl}">Last Price</div><div style="{_fv}">{_price}</div></div><div style="{_fc}"><div style="{_fl}">Proj. Gain 30d</div><div style="{_fv}">{_proj}</div></div><div style="{_fc}"><div style="{_fl}">Hold Period</div><div style="{_fv}">{_hold}</div></div></div>' if _price != "Unavailable" or _proj != "Unavailable" else ""
 
     _tilt_color = {"Bullish":"rgba(56,189,248,.95)","Bearish":"rgba(239,68,68,.90)","Neutral":"rgba(148,163,184,.80)"}
-    _breakdown_sections = ""
+
+    # ── Coverage summary table (all signals at a glance) ──
+    _cov_rows = ""
     for _pn, _res in (deep_results or {}).items():
         _tf = (ANALYSIS_PROMPTS.get(_pn,{}) or {}).get("timeframe","")
         _ev = int(_res.get("mention_count",0) or 0)
         _ov = (_res.get("overall_sentiment") or "").lower()
+        _st2 = "Unavailable" if _ov=="error" else ("No Signal" if _ev==0 else ("Strong" if _ev>5 else "Weak"))
         _tl = "Unavailable" if _ov=="error" else ("Neutral" if _ev==0 else _ov.title())
         _tc = _tilt_color.get(_tl,"rgba(148,163,184,.80)")
-        _insights = _res.get("insights") or ""
+        _cov_rows += (
+            f'<tr style="border-bottom:1px solid rgba(148,163,184,.10);">'
+            f'<td style="padding:9px 10px;color:rgba(229,231,235,.90);font-size:0.80rem;">{_pn}</td>'
+            f'<td style="padding:9px 10px;color:rgba(148,163,184,.70);font-size:0.80rem;">{_tf}</td>'
+            f'<td style="padding:9px 10px;text-align:center;color:rgba(148,163,184,.80);font-size:0.80rem;">{_ev}</td>'
+            f'<td style="padding:9px 10px;color:rgba(148,163,184,.80);font-size:0.80rem;">{_st2}</td>'
+            f'<td style="padding:9px 10px;font-size:0.80rem;font-weight:700;color:{_tc};">{_tl}</td>'
+            f'</tr>'
+        )
+    _cov_table = (
+        f'<table style="width:100%;border-collapse:collapse;background:rgba(15,23,42,.60);border-radius:10px;overflow:hidden;margin-bottom:16px;">'
+        f'<thead><tr style="border-bottom:1px solid rgba(148,163,184,.20);">'
+        + "".join(f'<th style="padding:8px 10px;text-align:{"center" if h=="Evidence" else "left"};font-size:0.68rem;font-weight:700;letter-spacing:0.05em;text-transform:uppercase;color:rgba(148,163,184,.55);">{h}</th>' for h in ["Signal Type","Timeframe","Evidence","Strength","Tilt"])
+        + f'</tr></thead><tbody>{_cov_rows}</tbody></table>'
+    ) if _cov_rows else ""
+
+    # ── Detailed per-signal breakdown ──
+    _detail_sections = ""
+    for _pn, _res in (deep_results or {}).items():
+        _tf  = (ANALYSIS_PROMPTS.get(_pn,{}) or {}).get("timeframe","")
+        _ev  = int(_res.get("mention_count",0) or 0)
+        _ov  = (_res.get("overall_sentiment") or "neutral").lower()
+        _sc  = _res.get("sentiment_score", 0.0)
+        _ins = _res.get("insights") or ""
         _themes = _res.get("key_themes") or []
         _samples = _res.get("sample_tweets") or []
+        _tl = ("Neutral" if _ev==0 else _ov.title())
+        _tc = _tilt_color.get(_tl, "rgba(148,163,184,.80)")
+
+        _metrics = (
+            f'<div style="display:flex;gap:8px;margin:8px 0 6px 0;">'
+            f'<div style="flex:1;background:rgba(15,23,42,.55);border-radius:8px;padding:8px 10px;border:1px solid rgba(148,163,184,.10);">'
+            f'<div style="font-size:0.65rem;color:rgba(148,163,184,.55);text-transform:uppercase;letter-spacing:0.05em;">Sentiment Score</div>'
+            f'<div style="font-size:0.92rem;font-weight:700;color:rgba(248,250,252,.90);">{float(_sc):.3f}</div></div>'
+            f'<div style="flex:1;background:rgba(15,23,42,.55);border-radius:8px;padding:8px 10px;border:1px solid rgba(148,163,184,.10);">'
+            f'<div style="font-size:0.65rem;color:rgba(148,163,184,.55);text-transform:uppercase;letter-spacing:0.05em;">Overall</div>'
+            f'<div style="font-size:0.92rem;font-weight:700;color:{_tc};">{_tl}</div></div>'
+            f'<div style="flex:1;background:rgba(15,23,42,.55);border-radius:8px;padding:8px 10px;border:1px solid rgba(148,163,184,.10);">'
+            f'<div style="font-size:0.65rem;color:rgba(148,163,184,.55);text-transform:uppercase;letter-spacing:0.05em;">Mentions</div>'
+            f'<div style="font-size:0.92rem;font-weight:700;color:rgba(248,250,252,.90);">{_ev}</div></div>'
+            f'</div>'
+        )
 
         _themes_html = ""
         if _themes:
             _chips = "".join(f'<span style="display:inline-block;background:rgba(56,189,248,.10);border:1px solid rgba(56,189,248,.20);border-radius:999px;padding:2px 9px;font-size:0.70rem;color:rgba(148,163,184,.85);margin:2px 3px 2px 0;">{t}</span>' for t in _themes)
-            _themes_html = f'<div style="margin:6px 0 4px 0;">{_chips}</div>'
+            _themes_html = f'<div style="margin:6px 0 8px 0;"><span style="font-size:0.72rem;font-weight:700;color:rgba(148,163,184,.55);text-transform:uppercase;letter-spacing:0.05em;">Themes: </span>{_chips}</div>'
 
         _tweets_html = ""
         if _samples:
-            _tweet_items = "".join(f'<div style="border-left:2px solid rgba(56,189,248,.25);padding:5px 10px;margin-bottom:6px;color:rgba(229,231,235,.75);font-size:0.78rem;line-height:1.45;font-style:italic;">{t}</div>' for t in _samples)
-            _tweets_html = f'<div style="margin-top:8px;">{_tweet_items}</div>'
+            _tweet_items = "".join(f'<div style="border-left:2px solid rgba(56,189,248,.25);padding:5px 10px;margin-bottom:6px;color:rgba(229,231,235,.75);font-size:0.78rem;line-height:1.45;font-style:italic;">{i}. {t}</div>' for i, t in enumerate(_samples, 1))
+            _tweets_html = f'<div style="margin-top:6px;"><div style="font-size:0.72rem;font-weight:700;color:rgba(148,163,184,.55);text-transform:uppercase;letter-spacing:0.05em;margin-bottom:6px;">Sample posts:</div>{_tweet_items}</div>'
 
-        _breakdown_sections += f"""
-        <div style="border-bottom:1px solid rgba(148,163,184,.08);padding:12px 0;">
-          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px;">
-            <div style="font-size:0.82rem;font-weight:700;color:rgba(229,231,235,.90);">{_pn}</div>
-            <div style="display:flex;gap:10px;align-items:center;">
-              <span style="font-size:0.72rem;color:rgba(148,163,184,.55);">{_tf} · {_ev} posts</span>
-              <span style="font-size:0.78rem;font-weight:700;color:{_tc};">{_tl}</span>
-            </div>
-          </div>
-          {f'<div style="font-size:0.78rem;color:rgba(148,163,184,.65);margin-bottom:4px;">{_insights}</div>' if _insights else ""}
-          {_themes_html}
-          {_tweets_html}
-        </div>"""
+        _insights_html = f'<div style="font-size:0.78rem;color:rgba(148,163,184,.65);margin-bottom:4px;"><b>Insights:</b> {_ins}</div>' if _ins else ""
+        _detail_sections += (
+            f'<div style="border-top:1px solid rgba(148,163,184,.10);padding:12px 0;">'
+            f'<div style="display:flex;justify-content:space-between;align-items:center;">'
+            f'<span style="font-size:0.84rem;font-weight:700;color:rgba(229,231,235,.90);">{_pn}</span>'
+            f'<span style="font-size:0.72rem;color:rgba(148,163,184,.55);">{_tf}</span>'
+            f'</div>'
+            f'{_metrics}'
+            f'{_insights_html}'
+            f'{_themes_html}'
+            f'{_tweets_html}'
+            f'</div>'
+        )
 
     _panel_html = f"""<div style="
       width:100%;box-sizing:border-box;
@@ -1362,13 +1404,16 @@ def _render_deep_panel(ticker, sector, deep_results):
           <summary style="cursor:pointer;font-size:0.80rem;font-weight:700;color:rgba(148,163,184,.60);letter-spacing:0.05em;text-transform:uppercase;padding:10px 0;list-style:none;display:flex;align-items:center;gap:8px;">
             <span style="color:rgba(56,189,248,.70);">▶</span> Full breakdown
           </summary>
-          <div style="margin-top:4px;">{_breakdown_sections}</div>
+          <div style="margin-top:8px;">
+            {_cov_table}
+            <div style="font-size:0.78rem;font-weight:700;color:rgba(148,163,184,.60);letter-spacing:0.05em;text-transform:uppercase;margin-bottom:4px;">Detailed breakdown</div>
+            {_detail_sections}
+          </div>
         </details>
       </div>
     </div>"""
 
     components.html(_panel_html, height=750, scrolling=True)
-    st.markdown('<div style="margin-top:-2rem"></div>', unsafe_allow_html=True)
 
 # ── Results table ──
 if st.session_state.df_valid is not None:
