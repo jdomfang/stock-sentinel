@@ -297,6 +297,10 @@ if not try_restore_cached_session():
         st.query_params.clear()
         if restore_session_from_refresh_token(_rt_param):
             pass  # session restored; is_logged_in() check below handles redirect
+        else:
+            # Token expired/invalid — clear it from localStorage so we don't loop
+            from utils.auth import _clear_browser_cache
+            _clear_browser_cache()
     else:
         # First visit (or hard refresh) — ask JS to read localStorage and redirect
         # with the token as a query param so Python can see it.
