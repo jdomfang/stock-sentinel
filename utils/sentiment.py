@@ -228,3 +228,90 @@ def analyze_sentiment(text: str) -> Dict[str, any]:
             'sentiment': 'Neutral',
             'error': str(e)
         }
+
+
+_NEUTRAL_RESULT = {
+    'label': 'UNKNOWN',
+    'confidence': 0.0,
+    'score': 0.0,
+    'sentiment': 'Neutral',
+}
+
+
+def analyze_sentiment_batch(texts: List[str], batch_size: int = 24) -> List[Dict[str, any]]:
+    """Score many texts at once. Same output shape and order as analyze_sentiment.
+
+    Discovery scored tweets one at a time -- up to ~500 sequential single-item
+    forward passes per scan -- while deep_analysis already batched. Same model,
+    same box. On Streamlit Cloud's ~1GB tier that is the difference between a
+    scan completing and the process being killed mid-loop, which is exactly what
+    happened on 2026-08-01: the log stops mid-sentiment with no traceback, the
+    user's credit is spent, and nothing is delivered.
+
+    Two savings, neither of which changes a single output value:
+
+      * batching -- the HF pipeline takes a list and vectorizes the forward
+        pass, so N texts cost far less than N separate calls;
+      * dedup -- FinBERT is deterministic, so scoring an identical string twice
+        is pure waste. Sector scans are full of syndicated press-release copy;
+        one healthcare scan scored the same BioMedNewsBreaks post five times in
+        half a second. Callers still see one result per input, so mention counts
+        are unaffected -- duplicates share a forward pass, they do not merge.
+
+    Returns exactly len(texts) dicts, in input order.
+    """
+    if not texts:
+        return []
+
+    # Preserve the per-call truncation so batched and unbatched scoring agree.
+    prepared = [(t or "")[:512] for t in texts]
+
+    # Unique texts, first-seen order. dict preserves insertion order.
+    uniq: Dict[str, int] = {}
+    for t in prepared:
+        if t not in uniq:
+            uniq[t] = len(uniq)
+    unique_texts = list(uniq.keys())
+
+    scored: List[Dict[str, any]] = []
+    try:
+        sentiment_pipeline = load_sentiment_pipeline()
+        for i in range(0, len(unique_texts), batch_size):
+            chunk = unique_texts[i:i + batch_size]
+            for out in sentiment_pipeline(chunk):
+                label = out.get('label')
+                confidence = float(out.get('score', 0.0))
+                signed_score, trading_sentiment, label_norm = score_finbert_output(
+                    label=label, confidence=confidence, neutral_threshold=0.55,
+                )
+                scored.append({
+                    'label': label_norm,
+                    'confidence': confidence,
+                    'score': signed_score,
+                    'sentiment': trading_sentiment,
+                })
+    except Exception as e:
+        # A failed batch must not zero out the whole page. Fall back to the
+        # per-text path, which has its own error handling and degrades one
+        # result at a time instead of all of them.
+        logger.warning(
+            "batch sentiment failed (%s: %s); falling back to per-text scoring",
+            type(e).__name__, str(e)[:160],
+        )
+        scored = [analyze_sentiment(t) for t in unique_texts]
+
+    # A short batch would silently misalign results with inputs. Fail closed.
+    if len(scored) != len(unique_texts):
+        logger.error("batch sentiment returned %d results for %d texts; using neutral",
+                     len(scored), len(unique_texts))
+        return [dict(_NEUTRAL_RESULT) for _ in prepared]
+
+    # One log line per call rather than three per tweet. The old per-tweet DEBUG
+    # logging flooded Streamlit Cloud's buffer and truncated away the context
+    # that mattered when a scan actually died.
+    logger.info(
+        "🧠 Sentiment batch: %d texts, %d unique (%d duplicate passes avoided)",
+        len(prepared), len(unique_texts), len(prepared) - len(unique_texts),
+    )
+
+    return [dict(scored[uniq[t]]) for t in prepared]

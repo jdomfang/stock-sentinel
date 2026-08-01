@@ -14,7 +14,7 @@ import logging
 
 from utils.navigation import render_sidebar_navigation, render_top_nav
 from utils.ui import apply_theme, close_page, render_recommendation_panel, render_full_analysis_expander
-from utils.sentiment import extract_tickers, analyze_sentiment
+from utils.sentiment import extract_tickers, analyze_sentiment_batch
 from utils.finance import get_ticker_master_list, get_stock_data, get_last_close_prices_best_effort
 from utils.projections import simple_projection
 from utils.deep_analysis import ANALYSIS_PROMPTS, run_deep_analysis, generate_ai_summary
@@ -997,14 +997,23 @@ if scan_triggered:
 
                 total_sector_relevant += len(page_tweets)
 
-                # Incrementally process tweets for ticker extraction + sentiment
+                # Ticker extraction first (regex, cheap), then ONE batched
+                # sentiment call for the whole page. This used to score tweets
+                # one at a time -- up to ~500 sequential forward passes per scan
+                # -- which is what killed the 2026-08-01 healthcare scan mid-loop
+                # and spent a credit for nothing. Batching per page rather than
+                # per scan keeps peak memory bounded and preserves the
+                # between-page progress updates below.
+                _page_hits = []
                 for tweet in page_tweets:
                     text = tweet.get('text', '')
                     tickers = extract_tickers(text)
-                    if not tickers:
-                        continue
+                    if tickers:
+                        _page_hits.append((text, tickers))
 
-                    sentiment_result = analyze_sentiment(text)
+                _page_sentiments = analyze_sentiment_batch([t for t, _ in _page_hits])
+
+                for (text, tickers), sentiment_result in zip(_page_hits, _page_sentiments):
                     for ticker in tickers:
                         ticker_data[ticker]['mentions'] += 1
                         ticker_data[ticker]['sentiment_scores'].append(sentiment_result['score'])
