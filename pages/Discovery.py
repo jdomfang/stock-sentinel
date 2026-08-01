@@ -29,14 +29,13 @@ def _sentiment_pill(label: str) -> str:
     else:
         return f'<span style="background:rgba(148,163,184,.12);color:rgba(148,163,184,.92);border:1px solid rgba(148,163,184,.25);padding:3px 10px;border-radius:999px;font-size:0.83rem;font-weight:700;">{label or "Neutral"}</span>'
 
-# Set up logging - ensure it shows in Streamlit console
-logging.basicConfig(
-    level=logging.INFO,
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
-    force=True  # Override any existing configuration
-)
+# Logging is configured centrally. This page used to call basicConfig(force=True),
+# which meant whichever page a user landed on first won the root config for the
+# whole process -- and re-running it on every Streamlit rerun stacked handlers.
+from utils.obs import install as _install_logging, new_request_id
+
+_install_logging()
 logger = logging.getLogger(__name__)
-logger.setLevel(logging.INFO)
 
 # Sidebar navigation
 render_sidebar_navigation()
@@ -726,8 +725,16 @@ if scan_triggered:
         st.error("Please log in to scan.")
         st.stop()
 
+    # Open a request scope BEFORE the charge, so the debit, every downstream X
+    # and Supabase call, and any refund all log under one id -- and so the
+    # usage_events row carries it too. This is the correlation key that did not
+    # exist when a scan died mid-run and had to be reconstructed by timestamp.
+    _rid = new_request_id()
+    logger.info("scan requested sector=%s", sector)
+
     _credit = consume_credit("scan", {"sector": sector, "page": "discovery"})
     if not _credit.ok:
+        logger.info("scan refused reason=%s", _credit.reason)
         _upgrade_modal("You've used all your scan credits.", event_type="scan")
         st.stop()
 

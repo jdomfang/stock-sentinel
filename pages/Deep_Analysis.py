@@ -1,5 +1,11 @@
+import logging
 import streamlit as st
 from typing import Dict, List, Any
+
+from utils.obs import install as _install_logging, new_request_id, set_request_id as _set_request_id
+
+_install_logging()
+_da_logger = logging.getLogger(__name__)
 
 from utils.navigation import render_sidebar_navigation, render_top_nav
 from utils.ui import open_page, close_page, GENERIC_ERROR_TEXT, safe_ui, render_recommendation_panel, render_full_analysis_expander
@@ -139,8 +145,14 @@ if _run_clicked or (_autorun and _prefill):
     else:
         _run_ticker = (ticker or _prefill).strip().upper()
 
+        # Open the request scope before the charge so debit, work and refund
+        # share one id in the logs and in the usage_events row.
+        _rid = new_request_id()
+        _da_logger.info("deep_analyze requested ticker=%s", _run_ticker)
+
         _credit = consume_credit("deep_analyze", {"ticker": _run_ticker, "page": "deep_analysis"})
         if not _credit.ok:
+            _da_logger.info("deep_analyze refused reason=%s", _credit.reason)
             st.error(_credit.message)
             st.stop()
         # Multi-step progress display so user knows work is happening
@@ -159,9 +171,15 @@ if _run_clicked or (_autorun and _prefill):
         _done_flag = threading.Event()
 
         def _run():
+            # A new thread starts with a FRESH context, so the ContextVar holding
+            # the request id reverts to its default here. Without this line every
+            # log record produced by the actual analysis -- the majority of them --
+            # would be stamped "-" and the id would correlate nothing.
+            _set_request_id(_rid)
             try:
                 _result_holder["result"] = run_deep_analysis(_run_ticker, sector)
             except Exception as _e:
+                _da_logger.exception("deep_analyze failed ticker=%s", _run_ticker)
                 _result_holder["error"] = str(_e)
             finally:
                 _done_flag.set()

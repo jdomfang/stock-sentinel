@@ -6,6 +6,7 @@ from typing import NamedTuple
 
 import streamlit as st
 
+from utils.obs import get_request_id
 from utils.supabase_client import get_admin_client
 
 logger = logging.getLogger(__name__)
@@ -58,11 +59,16 @@ def consume_credit(event_type: str, metadata: dict | None = None) -> CreditResul
     balance-1 in a second round trip, so two browser tabs could both read N and
     both write N-1 -- one credit charged, two actions delivered.
 
-    A fresh request_id is generated per call rather than reused across reruns.
-    That gives idempotency if the same RPC is retried at the transport layer,
-    while avoiding the far worse failure of a *stale* key being replayed for a
-    genuinely new action, which the database would reject as a duplicate and the
-    caller would read as success -- a free scan.
+    The idempotency key is the caller's request id when one is in scope, so the
+    usage_events row and every log line from the same user action share it: a
+    ledger row leads back to the logs that produced it, and a log line leads
+    forward to the credit it moved. Without that link, "a credit was spent and
+    nothing was delivered" could only be investigated by timestamp.
+
+    Falls back to a fresh uuid when no scope is set, so a caller that forgets to
+    open one still gets transport-retry idempotency -- but never reuses a STALE
+    key for a genuinely new action, which the database would reject as a
+    duplicate and the caller would read as success. That is a free scan.
     """
     uid = _get_user_id()
     if not uid:
@@ -70,6 +76,9 @@ def consume_credit(event_type: str, metadata: dict | None = None) -> CreditResul
 
     if event_type not in ("scan", "deep_analyze"):
         return CreditResult(False, "Invalid event type", reason="invalid_event_type")
+
+    rid = get_request_id()
+    request_id = rid if rid and rid != "-" else str(uuid.uuid4())
 
     try:
         res = (
@@ -79,8 +88,11 @@ def consume_credit(event_type: str, metadata: dict | None = None) -> CreditResul
                 {
                     "p_user_id": uid,
                     "p_event_type": event_type,
+                    # consume_credit() merges p_request_id into the stored
+                    # metadata itself, so passing it twice would be two places
+                    # owning one fact.
                     "p_metadata": metadata or {},
-                    "p_request_id": str(uuid.uuid4()),
+                    "p_request_id": request_id,
                 },
             )
             .execute()
