@@ -48,6 +48,22 @@ _REQUEST_ID: contextvars.ContextVar[str] = contextvars.ContextVar(
 LOG_FORMAT = "%(asctime)s [%(request_id)s] %(levelname)s %(name)s: %(message)s"
 
 
+def _tag_sentry(rid: str) -> None:
+    """Mirror the request id onto Sentry, so an issue links to the ledger row.
+
+    Best-effort by design: observability must never be the thing that breaks a
+    scan. Sentry not installed, not configured, or failing all degrade to plain
+    logging rather than raising into the user's request.
+    """
+    try:
+        import sentry_sdk
+
+        if sentry_sdk.get_client().is_active():
+            sentry_sdk.set_tag("request_id", rid)
+    except Exception:
+        pass
+
+
 def new_request_id() -> str:
     """Start a new request scope and return its id.
 
@@ -57,12 +73,14 @@ def new_request_id() -> str:
     """
     rid = uuid.uuid4().hex[:8]
     _REQUEST_ID.set(rid)
+    _tag_sentry(rid)
     return rid
 
 
 def set_request_id(rid: str | None) -> None:
     """Adopt an existing id. Used to carry the scope into a worker thread."""
     _REQUEST_ID.set(rid or "-")
+    _tag_sentry(rid or "-")
 
 
 def get_request_id() -> str:
@@ -127,4 +145,63 @@ def install(level: int | None = None) -> None:
     logging.getLogger("urllib3").setLevel(logging.WARNING)
     logging.getLogger("httpcore").setLevel(logging.WARNING)
 
+    _init_sentry()
+
     _INSTALLED = True
+
+
+def _secret(name: str) -> str:
+    """Read config from the environment, falling back to Streamlit secrets.
+
+    Environment first so scripts and containers work without Streamlit, and so
+    Phase 1 can inject config the way a container expects. The st.secrets import
+    is guarded because this module must stay importable from cron scripts and
+    tests, where there is no Streamlit runtime.
+    """
+    val = os.getenv(name, "")
+    if val:
+        return val
+    try:
+        import streamlit as st
+
+        return str(st.secrets.get(name, "") or "")
+    except Exception:
+        return ""
+
+
+def _init_sentry() -> None:
+    """Start Sentry if a DSN is configured. Never raises.
+
+    Sentry catches what THREW. It will not catch the failure that actually cost
+    a credit on 2026-08-01: an OOM kill delivers SIGKILL, which runs no handler,
+    so there is no exception to capture. That gap is the orphan reaper's job.
+    What this does catch is everything with a stack trace -- including the
+    ImportError that took the Discovery page down after a deploy, which would
+    have arrived as an alert instead of being found by loading the page.
+    """
+    dsn = _secret("SENTRY_DSN")
+    if not dsn:
+        logging.getLogger(__name__).info("Sentry not configured (no SENTRY_DSN)")
+        return
+
+    try:
+        import sentry_sdk
+
+        sentry_sdk.init(
+            dsn=dsn,
+            environment=_secret("SENTRY_ENVIRONMENT") or "production",
+            # No performance tracing: the free tier's budget is better spent on
+            # errors, and a 1GB box does not need the extra instrumentation.
+            traces_sample_rate=0.0,
+            # Emails and auth tokens must not leave this infrastructure. The
+            # request id is the correlation key, and it is not personal data.
+            send_default_pii=False,
+        )
+        logging.getLogger(__name__).info("Sentry initialised")
+    except Exception as e:
+        # A misconfigured DSN must not take the app down. Losing error
+        # reporting is bad; refusing to serve users because error reporting is
+        # broken is worse.
+        logging.getLogger(__name__).warning(
+            "Sentry init failed (%s); continuing without it", type(e).__name__
+        )

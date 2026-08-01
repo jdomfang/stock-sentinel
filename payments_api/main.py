@@ -13,6 +13,36 @@ logger = logging.getLogger("payments_api")
 logging.basicConfig(level=logging.INFO)
 
 
+def _init_sentry() -> None:
+    """Report exceptions from the service that handles money.
+
+    This is the only component where a silent failure costs a real payment: a
+    webhook that raises returns 500, Stripe retries for ~3 days, and then stops.
+    Until now nothing reported that, so a broken grant path would surface as a
+    customer complaint days later. Never raises -- a misconfigured DSN must not
+    stop the service taking webhooks.
+    """
+    dsn = os.getenv("SENTRY_DSN", "")
+    if not dsn:
+        logger.info("Sentry not configured (no SENTRY_DSN)")
+        return
+    try:
+        import sentry_sdk
+
+        sentry_sdk.init(
+            dsn=dsn,
+            environment=os.getenv("RAILWAY_ENVIRONMENT_NAME") or os.getenv("ENV") or "production",
+            traces_sample_rate=0.0,
+            send_default_pii=False,  # card and customer data must not leave Stripe/Railway
+        )
+        logger.info("Sentry initialised")
+    except Exception as e:
+        logger.warning("Sentry init failed (%s); continuing without it", type(e).__name__)
+
+
+_init_sentry()
+
+
 # -------- Config --------
 
 def _env(name: str, default: str | None = None) -> str:

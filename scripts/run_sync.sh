@@ -28,6 +28,25 @@ elif [ -d "venv" ]; then
   set +u; source venv/bin/activate; set -u
 fi
 
+# Dead-man switch. A greppable FAILED line only helps someone already reading
+# the log -- this ran broken 43 times and nobody read it. healthchecks.io alerts
+# on ABSENCE, which is the one failure class logs and error trackers structurally
+# cannot catch: a job that silently stops running produces nothing to find.
+# Read from the environment, else from secrets.toml, so the URL is never in git.
+HC_URL="${HEALTHCHECK_PRICE_SYNC_URL:-}"
+if [ -z "$HC_URL" ] && [ -f "$REPO_DIR/.streamlit/secrets.toml" ]; then
+  HC_URL=$(grep '^HEALTHCHECK_PRICE_SYNC_URL' "$REPO_DIR/.streamlit/secrets.toml" 2>/dev/null \
+           | cut -d'=' -f2- | tr -d ' "'"'"'')
+fi
+
+# -m so a hung monitoring endpoint can never hold up or fail the sync itself.
+hc_ping() {
+  [ -n "$HC_URL" ] || return 0
+  curl -fsS -m 10 --retry 3 "$HC_URL$1" >/dev/null 2>&1 || true
+}
+
+hc_ping /start
+
 # `set -e` would abort before the failure could be logged, so capture the
 # status explicitly rather than letting the shell exit here.
 status=0
@@ -35,8 +54,12 @@ python3 scripts/sync_stock_prices.py >> "$LOG_FILE" 2>&1 || status=$?
 
 if [ "$status" -eq 0 ]; then
   echo "[$(date '+%Y-%m-%d %H:%M:%S %z')] SUCCESS: sync completed" >> "$LOG_FILE"
+  hc_ping ""
 else
   echo "[$(date '+%Y-%m-%d %H:%M:%S %z')] FAILED: sync exited $status" >> "$LOG_FILE"
+  # /fail flips the check red immediately rather than waiting for the grace
+  # period to lapse -- a known failure should not masquerade as "still running".
+  hc_ping /fail
 fi
 
 # Propagate to cron, which mails output to the local user on non-zero exit.
