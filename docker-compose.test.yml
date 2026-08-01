@@ -6,14 +6,16 @@
 #   docker compose -f docker-compose.test.yml up -d      # start
 #   docker compose -f docker-compose.test.yml down -v    # remove, including data
 #
-# postgres:15 is pinned to match Supabase rather than apt's 16. The behaviours
-# under test -- plpgsql subtransaction rollback, partial unique indexes, CHECK
-# constraints, row-level locking under READ COMMITTED -- are identical across
-# both, but pinning removes the version from the list of things to argue about.
+# Pinned to 17.6 because that is EXACTLY what production runs (confirmed by
+# querying it: `postgres 17.6`). The behaviours under test -- plpgsql
+# subtransaction rollback, partial unique indexes, CHECK constraints, row-level
+# locking under READ COMMITTED -- are stable across 15..17, but a version the
+# tests do not actually run on is an assumption, and assumptions are what the
+# three static-review rounds kept getting wrong. Re-pin if Supabase upgrades.
 
 services:
   postgres:
-    image: postgres:15
+    image: postgres:17.6
     container_name: sentinel-pg-test
     environment:
       # Bootstrap superuser is supabase_admin, NOT postgres -- so the stub can
