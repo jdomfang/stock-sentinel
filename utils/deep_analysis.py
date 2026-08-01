@@ -133,6 +133,29 @@ def _build_influencer_query(usernames: List[str], ticker: str, sector: str) -> s
 
 # ---- X API search ----
 
+def _x_api_error_message(response: requests.Response) -> str:
+    """Return a user-safe reason for an X API failure."""
+    status = response.status_code
+
+    try:
+        payload = response.json() or {}
+    except Exception:
+        payload = {}
+
+    title = str(payload.get("title") or "").strip()
+    detail = str(payload.get("detail") or "").strip()
+    problem_type = str(payload.get("type") or "").strip()
+
+    if status == 402 and ("credits-depleted" in problem_type or "credits depleted" in detail.lower()):
+        return "X API credits depleted. Add credits or upgrade the X developer plan for the token used by X_BEARER_TOKEN."
+
+    parts = [f"X API Error {status}"]
+    if title:
+        parts.append(title)
+    if detail:
+        parts.append(detail)
+    return ": ".join(parts)
+
 def search_x_tweets_page(
     query: str,
     max_results: int = 100,
@@ -176,8 +199,9 @@ def search_x_tweets_page(
         response = requests.get(url, headers=headers, params=params, timeout=30)
 
         if response.status_code != 200:
-            logger.info("📡 X API response status: %s", response.status_code)
-            return {"success": False, "error": f"API Error {response.status_code}", "tweets": []}
+            error_message = _x_api_error_message(response)
+            logger.info("📡 X API response status: %s error=%s", response.status_code, error_message)
+            return {"success": False, "error": error_message, "tweets": []}
 
         data = response.json() or {}
         tweets = data.get("data", []) or []
@@ -874,11 +898,14 @@ def run_deep_analysis(ticker: str, sector: str) -> Dict[str, Dict[str, Any]]:
 
         results[prompt_name] = analyze_tweets_for_prompt(tweets, prompt_name, ticker)
 
-    # Cache the final derived results (so future runs can re-render without new X calls)
-    try:
-        _cache_set(results)
-    except Exception:
-        pass
+    # Cache only successful derived results. External API failures such as depleted X
+    # credits should recover immediately after the billing/token issue is fixed.
+    has_errors = any((r.get("overall_sentiment") or "").lower() == "error" for r in results.values())
+    if not has_errors:
+        try:
+            _cache_set(results)
+        except Exception:
+            pass
 
     return results
 
