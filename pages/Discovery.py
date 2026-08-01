@@ -607,10 +607,18 @@ with st.container(key="discovery_scan_card"):
         if _default_sector not in SECTOR_OPTIONS:
             _default_sector = SECTOR_OPTIONS[0]
 
+        # Seed the key instead of passing index=. Streamlit renders a visible
+        # warning -- in the user's face, not the log -- when a keyed widget has
+        # BOTH a default and a value set through the Session State API, which is
+        # what the query-param handler above does. Session state is the single
+        # source of truth; the guard keeps a user's own selection intact on
+        # rerun and only repairs a missing or stale-invalid value.
+        if st.session_state.get("discovery_sector") not in SECTOR_OPTIONS:
+            st.session_state["discovery_sector"] = _default_sector
+
         sector = st.selectbox(
             "Sector",
             options=SECTOR_OPTIONS,
-            index=SECTOR_OPTIONS.index(_default_sector),
             key="discovery_sector",
             label_visibility="collapsed",
         )
