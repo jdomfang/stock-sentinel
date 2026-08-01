@@ -2,8 +2,11 @@
 Stock projections module.
 """
 
+import hashlib
+import struct
+
 import numpy as np
-from typing import Dict, List
+from typing import Dict, List, Optional
 import logging
 
 # Set up logging
@@ -11,15 +14,43 @@ logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
 
 
-def simple_projection(prices: List[float], sentiment_score: float, days: int = 30) -> Dict:
+def _derive_seed(prices: List[float], sentiment_score: float, days: int) -> int:
+    """Derive a stable seed from the simulation inputs.
+
+    A constant seed would make every ticker draw the identical random path,
+    correlating projections that should be independent. Hashing the inputs keeps
+    each ticker on its own stream while still giving the same answer for the same
+    question. hashlib rather than hash() because str/bytes hashing is salted per
+    process, which would reintroduce the very nondeterminism this removes.
+    """
+    h = hashlib.sha256()
+    for p in prices:
+        h.update(struct.pack("<d", float(p)))
+    h.update(struct.pack("<d", float(sentiment_score)))
+    h.update(struct.pack("<i", int(days)))
+    return int.from_bytes(h.digest()[:8], "little")
+
+
+def simple_projection(
+    prices: List[float],
+    sentiment_score: float,
+    days: int = 30,
+    seed: Optional[int] = None,
+) -> Dict:
     """
     Run a simple Monte Carlo simulation to project stock performance.
-    
+
     Args:
         prices: List of historical closing prices
         sentiment_score: Signed sentiment score in [-1, 1] (used to adjust expected returns)
         days: Number of days to project forward (default 30)
-        
+        seed: Explicit RNG seed. When None the seed is derived from the inputs, so
+            the same ticker with the same prices and sentiment always projects the
+            same numbers. This used to draw from the global np.random with no seed,
+            which meant Streamlit's rerun-per-interaction model showed the user a
+            different forecast every time they touched the page without changing
+            any input. Pass an explicit seed in tests.
+
     Returns:
         Dictionary with keys:
         - avg_gain: Average projected gain as percentage
@@ -70,19 +101,25 @@ def simple_projection(prices: List[float], sentiment_score: float, days: int = 3
         # Run Monte Carlo simulations
         num_simulations = 100
         target_gain = 0.05  # 5% target
-        
+
+        # Local Generator, not the global np.random: seeding the global RNG would
+        # silently change the draw sequence of every other caller in the process.
+        rng = np.random.default_rng(
+            seed if seed is not None else _derive_seed(prices, sentiment_score, days)
+        )
+
         final_gains = []
         days_to_target = []
-        
+
         for _ in range(num_simulations):
             # Start at last known price
             current_price = prices[-1]
-            
+
             # Simulate daily price movements
             reached_target = False
             for day in range(1, days + 1):
                 # Generate random return from normal distribution
-                daily_return = np.random.normal(adjusted_mean, std_return)
+                daily_return = rng.normal(adjusted_mean, std_return)
                 current_price *= (1 + daily_return)
                 
                 # Check if we've reached target
