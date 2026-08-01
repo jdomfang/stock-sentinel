@@ -96,7 +96,7 @@ if _intent_autostart and not st.session_state.get("_scan_autostart_consumed"):
 from utils.guard import require_active_account
 from utils.auth import refresh_session_if_needed, flush_pending_rt_save
 flush_pending_rt_save()
-from utils.credits import consume_credit
+from utils.credits import consume_credit, refund_credit
 
 _profile = require_active_account()
 
@@ -718,10 +718,15 @@ if scan_triggered:
         st.error("Please log in to scan.")
         st.stop()
 
-    ok, err = consume_credit("scan")
-    if not ok:
+    _credit = consume_credit("scan", {"sector": sector, "page": "discovery"})
+    if not _credit.ok:
         _upgrade_modal("You've used all your scan credits.", event_type="scan")
         st.stop()
+
+    # Set when X refuses to serve us. Drives the refund below: the user paid for
+    # a scan, so if the upstream never delivered any posts they must not be
+    # charged for it. Observed in production as a 402 credits-depleted.
+    _x_api_error: str | None = None
 
     try:
         # Load X Bearer Token from secrets
@@ -955,6 +960,7 @@ if scan_triggered:
                 res = search_x_tweets_page(query=query, max_results=PER_PAGE, timeframe="24h", next_token=next_token)
                 if not res.get('success'):
                     _api_err = res.get('error') or 'X API request failed'
+                    _x_api_error = _api_err
                     st.markdown(
                         f"""
                         <div style="border:1px solid rgba(245,158,11,.28);border-radius:14px;padding:18px 20px;
@@ -1038,7 +1044,14 @@ if scan_triggered:
         logger.info(f"🎯 Sector-relevant tweets processed (capped): {total_sector_relevant}")
 
         if total_sector_relevant == 0:
-            st.warning("No posts returned from X for this query.")
+            if _x_api_error:
+                # Upstream failure, zero posts: the user paid and got nothing.
+                if refund_credit("scan", _credit.event_id, f"x api: {_x_api_error[:120]}"):
+                    st.info("Your scan credit was not used.")
+            else:
+                # A genuinely empty result is an answer, not a failure -- the
+                # scan ran and the sector simply had no chatter. Still charged.
+                st.warning("No posts returned from X for this query.")
             st.stop()
 
         # (status message removed - results table speaks for itself)
@@ -1088,6 +1101,7 @@ if scan_triggered:
         # Note: detailed pagination + stop reasons are logged by utils.deep_analysis.search_x_tweets
 
     except KeyError:
+        refund_credit("scan", _credit.event_id, "missing API credentials")
         st.markdown(
             """
             <div style="border:1px solid rgba(239,68,68,.30);border-radius:16px;padding:24px;
@@ -1101,6 +1115,7 @@ if scan_triggered:
         )
 
     except requests.exceptions.RequestException:
+        refund_credit("scan", _credit.event_id, "network failure reaching X")
         st.markdown(
             """
             <div style="border:1px solid rgba(245,158,11,.28);border-radius:16px;padding:24px;
@@ -1115,6 +1130,7 @@ if scan_triggered:
 
     except Exception:
         logger.exception("Discovery scan failed")
+        refund_credit("scan", _credit.event_id, "unhandled scan error")
         st.markdown(
             """
             <div style="border:1px solid rgba(239,68,68,.25);border-radius:16px;padding:24px;
@@ -1495,8 +1511,11 @@ if st.session_state.df_valid is not None:
                 st.markdown(_sentiment_pill(overall_sentiment), unsafe_allow_html=True)
             with col5:
                 if st.button("Deep Analyze", key=f"deep_analyze_{ticker_symbol}"):
-                    ok, err = consume_credit("deep_analyze")
-                    if not ok:
+                    _dcredit = consume_credit(
+                        "deep_analyze",
+                        {"ticker": ticker_symbol, "sector": sector, "page": "discovery"},
+                    )
+                    if not _dcredit.ok:
                         _upgrade_modal(f"Unlock the full analysis for {ticker_symbol}.", event_type="deep_analyze")
                         st.stop()
 
@@ -1561,7 +1580,17 @@ if st.session_state.df_valid is not None:
                     _disc_prog.empty()
 
                     if "error" in _disc_holder:
-                        _deep_error = f"Analysis failed for {ticker_symbol}. Try again in a moment."
+                        # Charged before the work started; the work failed.
+                        if refund_credit("deep_analyze", _dcredit.event_id,
+                                         f"analysis failed: {str(_disc_holder['error'])[:120]}"):
+                            _deep_error = (f"Analysis failed for {ticker_symbol}. "
+                                           "Your credit was not used — try again in a moment.")
+                        else:
+                            _deep_error = f"Analysis failed for {ticker_symbol}. Try again in a moment."
+                    elif not _disc_holder.get("result"):
+                        refund_credit("deep_analyze", _dcredit.event_id, "analysis returned no results")
+                        _deep_error = (f"No results for {ticker_symbol}. "
+                                       "Your credit was not used — try again in a moment.")
                     else:
                         st.session_state.deep_analysis_results = _disc_holder.get("result")
                         st.session_state.selected_ticker = ticker_symbol

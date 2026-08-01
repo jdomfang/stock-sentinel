@@ -97,7 +97,7 @@ st.markdown(
 )
 
 from utils.guard import require_active_account
-from utils.credits import consume_credit
+from utils.credits import consume_credit, refund_credit
 from utils.scan_intent import get_query_params
 
 _profile = require_active_account()
@@ -131,14 +131,18 @@ sector = "unknown"
 
 # Main analysis button — or auto-triggered from Home
 if _run_clicked or (_autorun and _prefill):
-    ok, err = consume_credit("deep_analyze")
-    if not ok:
-        st.error(err)
-        st.stop()
+    # Validate BEFORE charging. This previously debited a credit and only then
+    # checked whether a ticker had been entered, so submitting an empty field
+    # cost the user a credit and delivered nothing.
     if not (ticker or _prefill).strip():
         st.error("Please enter a stock ticker.")
     else:
         _run_ticker = (ticker or _prefill).strip().upper()
+
+        _credit = consume_credit("deep_analyze", {"ticker": _run_ticker, "page": "deep_analysis"})
+        if not _credit.ok:
+            st.error(_credit.message)
+            st.stop()
         # Multi-step progress display so user knows work is happening
         _da_progress = st.progress(0)
         _da_status = st.empty()
@@ -190,19 +194,26 @@ if _run_clicked or (_autorun and _prefill):
         _da_progress.empty()
 
         if "error" in _result_holder:
+            # The credit was taken before the work began. The work failed, so
+            # give it back rather than charging for an upstream outage.
+            _refunded = refund_credit("deep_analyze", _credit.event_id,
+                                      f"analysis failed: {_result_holder['error'][:120]}")
             st.markdown(
                 '<div style="border:1px solid rgba(239,68,68,.30);border-radius:14px;padding:18px 20px;'
                 'background:rgba(239,68,68,.05);text-align:center;margin:0.5rem 0;">'
                 '<div style="font-size:1.2rem;margin-bottom:6px;">⚠️</div>'
                 '<div style="font-weight:700;color:rgba(248,113,113,.95);">Analysis failed</div>'
-                '<div style="color:rgba(148,163,184,.75);font-size:0.85rem;margin-top:4px;">Try again in a moment — this is usually temporary.</div>'
-                '</div>',
+                '<div style="color:rgba(148,163,184,.75);font-size:0.85rem;margin-top:4px;">'
+                + ("Your credit was not used — try again in a moment."
+                   if _refunded else "Try again in a moment — this is usually temporary.")
+                + '</div></div>',
                 unsafe_allow_html=True,
             )
             st.stop()
 
         analysis_results = _result_holder.get("result")
         if not analysis_results:
+            refund_credit("deep_analyze", _credit.event_id, "analysis returned no results")
             st.stop()
 
         ai_summary = generate_ai_summary(analysis_results)

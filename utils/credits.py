@@ -1,8 +1,46 @@
 from __future__ import annotations
 
+import logging
+import uuid
+from typing import NamedTuple
+
 import streamlit as st
 
 from utils.supabase_client import get_admin_client
+
+logger = logging.getLogger(__name__)
+
+
+class CreditResult(NamedTuple):
+    """Outcome of a credit mutation.
+
+    ok        -- the caller may proceed with the metered work
+    message   -- human-readable text, safe to show a user
+    event_id  -- usage_events id; REQUIRED to refund this debit later
+    remaining -- balance after the change, or None when nothing moved
+    reason    -- machine-readable code from the SQL function, for logging
+    """
+
+    ok: bool
+    message: str
+    event_id: str | None = None
+    remaining: int | None = None
+    reason: str = ""
+
+
+# SQL reason codes -> text a user should see.
+_MESSAGES = {
+    "no_scan_credits": "No scan credits remaining",
+    "no_deep_credits": "No Deep Analyze credits remaining",
+    "account_disabled": "Account disabled",
+    "profile_not_found": "Profile not found",
+    "invalid_event_type": "Invalid event type",
+    "missing_original_event_id": "Cannot refund without the original event",
+    "original_event_not_found": "Original event not found",
+    "original_event_mismatch": "Refund does not match the original event",
+    "original_event_not_a_debit": "That event was not a charge",
+    "already_refunded": "Already refunded",
+}
 
 
 def _get_user_id() -> str | None:
@@ -12,51 +50,110 @@ def _get_user_id() -> str | None:
     return getattr(user, "id", None)
 
 
-def consume_credit(event_type: str) -> tuple[bool, str]:
-    """Consume 1 credit of the given event type for the current user.
+def consume_credit(event_type: str, metadata: dict | None = None) -> CreditResult:
+    """Debit one credit and write the ledger row, atomically.
 
-    event_type: 'scan' | 'deep_analyze'
+    Delegates to public.consume_credit(), where the guard and the decrement are a
+    single statement. The previous implementation read the balance and wrote
+    balance-1 in a second round trip, so two browser tabs could both read N and
+    both write N-1 -- one credit charged, two actions delivered.
 
-    Uses the service-role client so we can reliably update + record usage.
+    A fresh request_id is generated per call rather than reused across reruns.
+    That gives idempotency if the same RPC is retried at the transport layer,
+    while avoiding the far worse failure of a *stale* key being replayed for a
+    genuinely new action, which the database would reject as a duplicate and the
+    caller would read as success -- a free scan.
     """
     uid = _get_user_id()
     if not uid:
-        return False, "Not logged in"
+        return CreditResult(False, "Not logged in", reason="not_logged_in")
 
     if event_type not in ("scan", "deep_analyze"):
-        return False, "Invalid event type"
+        return CreditResult(False, "Invalid event type", reason="invalid_event_type")
 
-    sb = get_admin_client()
-
-    # Load current profile
-    prof = sb.table("profiles").select("disabled,scan_credits,deep_credits").eq("user_id", uid).maybe_single().execute().data
-    if not prof:
-        return False, "Profile not found"
-    if prof.get("disabled"):
-        return False, "Account disabled"
-
-    if event_type == "scan":
-        if int(prof.get("scan_credits", 0)) <= 0:
-            return False, "No scan credits remaining"
-        new_scan = int(prof.get("scan_credits", 0)) - 1
-        sb.table("profiles").update({"scan_credits": new_scan}).eq("user_id", uid).execute()
-        sb.table("usage_events").insert({"user_id": uid, "event_type": "scan", "cost_scan_credits": 1, "cost_deep_credits": 0}).execute()
-        # Ensure nav credit badge updates immediately (navigation uses st.cache_data).
-        try:
-            st.cache_data.clear()
-        except Exception:
-            pass
-        return True, ""
-
-    # deep_analyze
-    if int(prof.get("deep_credits", 0)) <= 0:
-        return False, "No Deep Analyze credits remaining"
-    new_deep = int(prof.get("deep_credits", 0)) - 1
-    sb.table("profiles").update({"deep_credits": new_deep}).eq("user_id", uid).execute()
-    sb.table("usage_events").insert({"user_id": uid, "event_type": "deep_analyze", "cost_scan_credits": 0, "cost_deep_credits": 1}).execute()
-    # Ensure nav credit badge updates immediately (navigation uses st.cache_data).
     try:
-        st.cache_data.clear()
+        res = (
+            get_admin_client()
+            .rpc(
+                "consume_credit",
+                {
+                    "p_user_id": uid,
+                    "p_event_type": event_type,
+                    "p_metadata": metadata or {},
+                    "p_request_id": str(uuid.uuid4()),
+                },
+            )
+            .execute()
+            .data
+        )
     except Exception:
-        pass
-    return True, ""
+        # Never charge on an error we cannot interpret. The debit and the ledger
+        # row commit together or not at all, so a raised RPC means nothing moved.
+        logger.exception("consume_credit RPC failed user=%s type=%s", uid, event_type)
+        return CreditResult(False, "Could not verify your credits. Please try again.",
+                            reason="rpc_error")
+
+    if not isinstance(res, dict):
+        logger.error("consume_credit returned %r", res)
+        return CreditResult(False, "Could not verify your credits. Please try again.",
+                            reason="bad_response")
+
+    reason = res.get("reason") or ""
+
+    # duplicate_request means this exact call already succeeded. The point of an
+    # idempotency key is that a retry is lossless, so this IS success -- the
+    # ledger row and the debit already exist.
+    if res.get("ok"):
+        if reason == "duplicate_request":
+            logger.info("consume_credit replayed user=%s type=%s", uid, event_type)
+        return CreditResult(True, "", res.get("event_id"), res.get("remaining"), reason)
+
+    logger.info("consume_credit refused user=%s type=%s reason=%s", uid, event_type, reason)
+    return CreditResult(False, _MESSAGES.get(reason, "Could not use a credit"),
+                        None, res.get("remaining"), reason)
+
+
+def refund_credit(event_type: str, event_id: str | None, reason: str) -> bool:
+    """Return a credit charged for work that failed. Safe to call twice.
+
+    Called when a metered action is charged and then cannot be delivered -- the X
+    API is down, returns 402 credits-depleted, or the analysis raises. Without
+    this the user pays for an outage with no recourse.
+
+    Never raises: a failed refund must not replace the user's original error with
+    a second one. Returns False and logs instead.
+    """
+    uid = _get_user_id()
+    if not uid or not event_id:
+        return False
+
+    try:
+        res = (
+            get_admin_client()
+            .rpc(
+                "refund_credit",
+                {
+                    "p_user_id": uid,
+                    "p_event_type": event_type,
+                    "p_original_event_id": event_id,
+                    "p_reason": (reason or "")[:200],
+                },
+            )
+            .execute()
+            .data
+        )
+    except Exception:
+        logger.exception("refund_credit RPC FAILED user=%s event=%s -- credit NOT returned",
+                         uid, event_id)
+        return False
+
+    if isinstance(res, dict) and res.get("ok"):
+        logger.info("refunded %s credit user=%s event=%s reason=%s",
+                    event_type, uid, event_id, reason)
+        return True
+
+    got = res.get("reason") if isinstance(res, dict) else res
+    # already_refunded is the idempotent path, not a failure.
+    logger.log(logging.INFO if got == "already_refunded" else logging.ERROR,
+               "refund_credit not applied user=%s event=%s reason=%s", uid, event_id, got)
+    return got == "already_refunded"
