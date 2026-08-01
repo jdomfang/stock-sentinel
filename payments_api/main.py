@@ -72,14 +72,21 @@ def _mark_stripe_event_processed(*, event_id: str, user_id: str | None = None, s
 def _record_purchase(
     *,
     user_id: str,
-    event_id: str,
+    event_id: str | None,
     checkout_session_id: str | None,
     payment_intent_id: str | None,
     amount_total: int | None,
     currency: str | None,
     status: str | None,
+    scan_credits_granted: int = 0,
+    deep_credits_granted: int = 0,
 ) -> None:
-    """Best-effort purchase audit record."""
+    """Purchase audit record.
+
+    `amount_total` is money (cents); the *_granted columns are credits. Both are
+    needed: reconciliation is denominated in credits, and the credit counts live
+    only in Stripe session metadata otherwise.
+    """
     try:
         sb = _supabase_admin_client()
         sb.table("purchases").insert(
@@ -91,10 +98,19 @@ def _record_purchase(
                 "amount_total": amount_total,
                 "currency": currency,
                 "status": status,
+                "scan_credits_granted": int(scan_credits_granted),
+                "deep_credits_granted": int(deep_credits_granted),
             }
         ).execute()
     except Exception:
-        logger.info("purchases insert skipped/failed (non-fatal)")
+        # Log the actual error. This was previously a bare log line, which is how
+        # the missing `purchases` table went unnoticed from launch until the
+        # Phase 0 review: every insert failed with PGRST205 and said nothing.
+        logger.exception(
+            "purchases insert FAILED user_id=%s event_id=%s -- audit row lost",
+            user_id,
+            event_id,
+        )
 
 
 def _require_shared_secret(x_payments_shared_secret: str | None) -> None:
@@ -211,22 +227,45 @@ async def stripe_webhook(request: Request):
             scan_delta = int(meta.get("scan_credits") or 1)
             deep_delta = int(meta.get("deep_credits") or 1)
 
+            # Refuse rather than proceed unguarded. Stripe always sends an id, so
+            # this is theoretical -- but the safe default on a money path is to
+            # make Stripe retry, not to grant credits with no dedup at all.
             if not event_id:
-                logger.info("Stripe event missing id; skipping idempotency guard")
-            elif not _mark_stripe_event_processed(event_id=event_id, user_id=user_id, session_id=session_id):
+                logger.error("Stripe event missing id; refusing to process unguarded")
+                raise HTTPException(status_code=400, detail="Stripe event missing id")
+
+            if not _mark_stripe_event_processed(event_id=event_id, user_id=user_id, session_id=session_id):
                 logger.info("Duplicate Stripe event ignored event_id=%s type=%s", event_id, etype)
                 return {"ok": True}
 
             if user_id:
-                _apply_credit_delta(user_id=user_id, scan_delta=scan_delta, deep_delta=deep_delta, reason=etype)
+                try:
+                    _apply_credit_delta(user_id=user_id, scan_delta=scan_delta, deep_delta=deep_delta, reason=etype)
+                except Exception:
+                    # The guard row committed in its own transaction BEFORE this
+                    # ran. Leaving it in place would make Stripe's retry a no-op
+                    # and strand a paid customer with zero credits, recoverable
+                    # only by log archaeology. Release it so the retry can work.
+                    try:
+                        _supabase_admin_client().table("stripe_events_processed") \
+                            .delete().eq("event_id", event_id).execute()
+                    except Exception:
+                        logger.exception(
+                            "CRITICAL: paid purchase not granted and idempotency guard "
+                            "not released for event_id=%s user_id=%s -- MANUAL CREDIT "
+                            "GRANT REQUIRED", event_id, user_id,
+                        )
+                    raise
                 _record_purchase(
                     user_id=user_id,
-                    event_id=event_id or "",
+                    event_id=event_id or None,
                     checkout_session_id=session_id,
                     payment_intent_id=session.get("payment_intent"),
                     amount_total=session.get("amount_total"),
                     currency=session.get("currency"),
                     status=session.get("payment_status") or session.get("status"),
+                    scan_credits_granted=scan_delta,
+                    deep_credits_granted=deep_delta,
                 )
 
         elif etype in {"charge.refunded", "charge.dispute.created"}:
@@ -252,9 +291,17 @@ async def stripe_webhook(request: Request):
 
         # else: ignore other events
 
+    except HTTPException:
+        raise
     except Exception:
-        # Return 200 to prevent infinite retries, but log so we can debug.
         logger.exception("Error handling Stripe webhook event type=%s", etype)
+        # 200 suppresses Stripe's retry. That is acceptable for events we merely
+        # observe, but NOT for the one that grants credits against a completed
+        # payment: swallowing it strands a paying customer at zero credits with
+        # no retry and no alert. Let Stripe retry with backoff (~3 days) and
+        # surface the failure in the dashboard.
+        if etype == "checkout.session.completed":
+            return JSONResponse(status_code=500, content={"ok": False})
         return JSONResponse(status_code=200, content={"ok": True})
 
     return {"ok": True}
@@ -278,8 +325,33 @@ def _apply_credit_delta(*, user_id: str, scan_delta: int, deep_delta: int, reaso
     cur_scan = int(data.get("scan_credits") or 0)
     cur_deep = int(data.get("deep_credits") or 0)
 
-    new_scan = cur_scan + int(scan_delta)
-    new_deep = cur_deep + int(deep_delta)
+    # Clamp at zero. Revocation deltas (refund / dispute) are negative and were
+    # previously applied unclamped, writing a negative balance. The
+    # profiles_credits_non_negative CHECK added in migration
+    # 20260801020000_credit_integrity.sql rejects that, and the webhook handler
+    # swallows the error and still returns 200 to Stripe -- so an unclamped
+    # revocation would be lost silently on a money path.
+    #
+    # THIS CLAMP MUST BE DEPLOYED BEFORE THAT MIGRATION IS APPLIED.
+    raw_scan = cur_scan + int(scan_delta)
+    raw_deep = cur_deep + int(deep_delta)
+    new_scan = max(0, raw_scan)
+    new_deep = max(0, raw_deep)
+
+    # Clamping hides how much of a revocation could not be applied (the user had
+    # already spent the credits). Say so, loudly, rather than losing it.
+    if raw_scan < 0 or raw_deep < 0:
+        logger.warning(
+            "Credit revocation clamped at zero user_id=%s reason=%s "
+            "scan %s->%s (unapplied %s) deep %s->%s (unapplied %s)",
+            user_id, reason,
+            cur_scan, new_scan, min(0, raw_scan),
+            cur_deep, new_deep, min(0, raw_deep),
+        )
+
+    # What actually moved. The audit row below must record this, not the request.
+    applied_scan = new_scan - cur_scan
+    applied_deep = new_deep - cur_deep
 
     # If the profile row doesn't exist for some reason, create it.
     if not data:
@@ -303,14 +375,28 @@ def _apply_credit_delta(*, user_id: str, scan_delta: int, deep_delta: int, reaso
         sb.table("usage_events").insert(
             {
                 "user_id": user_id,
-                "event_type": "scan",  # satisfy schema; details in metadata
-                "cost_scan_credits": -int(scan_delta),
-                "cost_deep_credits": -int(deep_delta),
+                # NOT "scan". A grant/revocation written as a scan debit is
+                # indistinguishable from one, so refund_credit would happily
+                # "refund" it and mint a credit nobody paid for -- invisibly,
+                # because both rows carry the same negative cost. Requires the
+                # widened CHECK in 20260801020000_credit_integrity.sql.
+                "event_type": "purchase",
+                # Record what was APPLIED, not what was requested. When the clamp
+                # above bites, the balance moves by less than the requested delta;
+                # writing the requested value here would make the ledger and the
+                # balance disagree -- a revocation of 10 already-spent credits
+                # would be recorded as 10 further credits consumed, double-counting
+                # consumption that already has its own rows.
+                "cost_scan_credits": -int(applied_scan),
+                "cost_deep_credits": -int(applied_deep),
                 "metadata": {
                     "reason": reason,
                     "source": "stripe",
-                    "scan_delta": int(scan_delta),
+                    "scan_delta": int(scan_delta),      # requested
                     "deep_delta": int(deep_delta),
+                    "scan_applied": int(applied_scan),  # actually applied
+                    "deep_applied": int(applied_deep),
+                    "clamped": bool(raw_scan < 0 or raw_deep < 0),
                 },
             }
         ).execute()
