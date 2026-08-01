@@ -777,11 +777,20 @@ def get_cached_last_close_prices(tickers: list[str]) -> dict[str, float]:
     return out
 
 
-def fetch_and_cache_last_close_prices(tickers: list[str]) -> dict[str, float]:
+def fetch_and_cache_last_close_prices(
+    tickers: list[str], pace_seconds: float = 0.12
+) -> dict[str, float]:
     """Fetch last close prices from Polygon (daily aggregates), then upsert to Supabase.
 
     We use direct HTTP requests (instead of polygon client's built-in retry) so we can
     handle 429 rate limits cleanly and avoid MaxRetryError storms.
+
+    pace_seconds is the delay between requests. The 0.12s default is tuned for an
+    interactive scan of ~10 tickers, where the goal is only to avoid a burst. A
+    batch job walking hundreds of tickers must pass a much larger value: Polygon's
+    free tier allows ~5 requests/minute, and at 0.12s the backoff (3 attempts,
+    2/4/6s) is exhausted long before the window resets, so nearly every request
+    fails. Callers, not this function, know which regime they are in.
 
     Returns dict {TICKER: close_price} for any prices successfully fetched.
     """
@@ -801,7 +810,7 @@ def fetch_and_cache_last_close_prices(tickers: list[str]) -> dict[str, float]:
 
     for t in tickers_u:
         # Pacing to reduce burstiness (avoid Polygon 429s during Discovery scans)
-        time.sleep(0.12)
+        time.sleep(pace_seconds)
 
         url = f"https://api.polygon.io/v2/aggs/ticker/{t}/range/1/day/{start.isoformat()}/{end.isoformat()}"
         params = {

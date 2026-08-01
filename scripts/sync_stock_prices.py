@@ -17,8 +17,7 @@ from typing import List, Dict
 # Add parent dir to path so we can import utils
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from polygon import RESTClient
-from utils.supabase_client import get_admin_client
+from utils.finance import fetch_and_cache_last_close_prices
 
 # Configure logging
 logging.basicConfig(
@@ -29,6 +28,28 @@ logger = logging.getLogger(__name__)
 
 # Paths
 TICKER_MASTER_FILE = os.path.join(os.path.dirname(__file__), '..', 'data', 'tickers.json')
+
+
+def _get_polygon_key() -> str:
+    """Resolve the Polygon key the same way the app does.
+
+    Everything else in this process reads configuration from
+    .streamlit/secrets.toml via utils.supabase_client, so reading the Polygon
+    key from the environment alone made this script the one component with a
+    second, separate source of truth -- and it was pointed at a path that does
+    not exist (~/.streamlit/secrets.toml), so the nightly sync failed silently
+    from 2026-02-06 onward. Environment still wins when set, which keeps CI and
+    one-off overrides working.
+    """
+    env = os.environ.get("POLYGON_API_KEY")
+    if env:
+        return env
+    try:
+        import streamlit as st
+        return st.secrets.get("POLYGON_API_KEY", "") or ""
+    except Exception as e:
+        logger.warning(f"Could not read secrets.toml: {type(e).__name__}: {str(e)[:120]}")
+        return ""
 
 # Top 500 US stocks (S&P 500 + most-traded)
 TOP_500_TICKERS = [
@@ -78,95 +99,72 @@ def get_top_tickers(all_tickers: Dict[str, Dict], limit: int = 500) -> List[str]
     
     return tickers_to_fetch[:limit]
 
-def fetch_last_close(client: RESTClient, ticker: str) -> dict:
-    """Fetch last close price using daily aggregates (more widely entitled than snapshot)."""
-    end = datetime.utcnow().date()
-    start = end - timedelta(days=10)
-    try:
-        resp = client.get_aggs(
-            ticker=ticker,
-            multiplier=1,
-            timespan="day",
-            from_=start.isoformat(),
-            to=end.isoformat(),
-            limit=5,
-            sort="desc",
-        )
-        results = getattr(resp, "results", None) or []
-        if not results:
-            return {"ticker": ticker, "close_price": None, "error": "No data"}
-        close = getattr(results[0], "close", None)
-        if isinstance(close, (int, float)):
-            return {"ticker": ticker, "close_price": float(close), "error": None}
-        return {"ticker": ticker, "close_price": None, "error": "Invalid close"}
-    except Exception as e:
-        return {"ticker": ticker, "close_price": None, "error": str(e)[:160]}
-
-def sync_prices(limit: int = 500, workers: int = 10) -> None:
+def sync_prices(limit: int = 500, rate_per_min: float = 5.0) -> bool:
     """
     Sync prices for top stocks to Supabase.
-    
+
+    Returns True only if prices were actually written. Every failure path used
+    to `return` bare, so the process exited 0 and cron recorded a success --
+    43 consecutive failures went unnoticed for six months. The caller turns
+    False into a non-zero exit.
+
     Args:
         limit: Number of tickers to sync
-        workers: Number of concurrent API threads
+        rate_per_min: Polygon requests per minute. Free tier is ~5.
     """
     logger.info(f"Starting price sync for top {limit} stocks...")
-    
+
     # Load tickers
     all_tickers = load_all_tickers()
     if not all_tickers:
         logger.error("No tickers loaded, aborting")
-        return
-    
+        return False
+
+    if not _get_polygon_key():
+        logger.error(
+            "POLYGON_API_KEY not found in environment or .streamlit/secrets.toml"
+        )
+        return False
+
     tickers_to_fetch = get_top_tickers(all_tickers, limit)
-    logger.info(f"Fetching prices for {len(tickers_to_fetch)} tickers")
-    
-    # Get Polygon client
-    try:
-        api_key = os.environ.get("POLYGON_API_KEY")
-        if not api_key:
-            logger.error("POLYGON_API_KEY not found in environment")
-            return
-        client = RESTClient(api_key=api_key)
-    except Exception as e:
-        logger.error(f"Failed to create Polygon client: {e}")
-        return
-    
-    # Fetch prices (daily aggregates per ticker — more widely entitled than snapshot/batch endpoints)
-    results = []
-    failed = 0
-    success = 0
 
-    for idx, ticker in enumerate(tickers_to_fetch, start=1):
-        r = fetch_last_close(client, ticker)
-        results.append(r)
-        if r.get("error"):
-            failed += 1
-        else:
-            success += 1
-        if idx % 50 == 0:
-            logger.info(f"Fetched {idx}/{len(tickers_to_fetch)}...")
+    # Polygon's free tier allows ~5 requests/minute. Anything faster gets 429s
+    # that the 3-attempt backoff cannot outlast, which is what the unpaced loop
+    # here used to do. Derive the delay from the advertised rate.
+    pace = 60.0 / max(1.0, rate_per_min)
+    eta_min = (len(tickers_to_fetch) * pace) / 60.0
+    logger.info(
+        f"Fetching prices for {len(tickers_to_fetch)} tickers "
+        f"at {rate_per_min}/min ({pace:.1f}s apart, ETA ~{eta_min:.0f} min)"
+    )
 
-    logger.info(f"Polygon aggs fetch complete: {success} success, {failed} failed")
-    
-    # Update Supabase
-    logger.info("Updating Supabase stock_prices table...")
+    # Delegate to the app's implementation rather than keeping a second copy.
+    # It paces, backs off on 429, and upserts the correct columns
+    # (ticker, close_price, last_updated, currency). The copy that used to live
+    # here upserted the raw fetch dicts -- including an "error" key that is not
+    # a column -- so PostgREST rejected every batch and this table was never
+    # written by this script even once.
     try:
-        sb = get_admin_client()
-        
-        # Filter successful results
-        valid_results = [r for r in results if (r.get("close_price") is not None and not r.get("error"))]
-        
-        if valid_results:
-            # Upsert (insert or update)
-            for batch_start in range(0, len(valid_results), 100):
-                batch = valid_results[batch_start:batch_start + 100]
-                sb.table("stock_prices").upsert(batch).execute()
-                logger.info(f"Upserted {len(batch)} prices")
-        
-        logger.info(f"✅ Sync complete: {len(valid_results)} prices updated")
+        prices = fetch_and_cache_last_close_prices(tickers_to_fetch, pace_seconds=pace)
     except Exception as e:
-        logger.error(f"Failed to update Supabase: {e}")
+        logger.error(f"Price fetch/upsert failed: {type(e).__name__}: {e}")
+        return False
+
+    wanted, got = len(tickers_to_fetch), len(prices)
+    if got == 0:
+        logger.error(f"No prices fetched for any of {wanted} tickers, nothing written")
+        return False
+
+    logger.info(f"✅ Sync complete: {got}/{wanted} prices updated")
+    return True
 
 if __name__ == "__main__":
-    sync_prices()
+    # Tunable without editing code, so the free-tier rate limit can be raised
+    # the day the Polygon plan changes.
+    _limit = int(os.environ.get("SYNC_TICKER_LIMIT", "500"))
+    _rate = float(os.environ.get("SYNC_RATE_PER_MIN", "5"))
+
+    # Exit code is the only signal cron and run_sync.sh can see. Anything that
+    # prevented prices from being written must be non-zero, or the failure is
+    # invisible -- which is exactly how this ran broken from February to August.
+    sys.exit(0 if sync_prices(limit=_limit, rate_per_min=_rate) else 1)
