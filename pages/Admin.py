@@ -146,25 +146,65 @@ with c3:
 with c4:
     deep_credits = st.number_input("Deep credits", min_value=0, value=int(selected.get("deep_credits") or 0), step=1)
 
-if st.button("💾 Save changes", type="primary"):
-    def _save():
-        return (
-            sb.table("profiles")
-            .update(
-                {
-                    "disabled": bool(disabled),
-                    "role": role,
-                    "scan_credits": int(scan_credits),
-                    "deep_credits": int(deep_credits),
-                }
-            )
-            .eq("user_id", uid)
-            .execute()
-        )
+adjust_reason = st.text_input(
+    "Reason (recorded in the ledger)",
+    placeholder="e.g. refund for failed scan, promo grant, correction",
+    key="admin_adjust_reason",
+)
 
-    ok = safe_ui(_save, context="admin.save_profile")
-    if ok:
-        st.success("✅ Saved.")
-        st.rerun()
+# Reason codes from public.admin_adjust_credits -> text an admin should see.
+_ADJUST_MESSAGES = {
+    "not_admin": "Your account is not an enabled admin in the database.",
+    "cannot_demote_self": "You cannot remove your own admin role — that would lock you out.",
+    "cannot_disable_self": "You cannot disable your own account — that would lock you out.",
+    "invalid_credits": "Credits must be zero or greater.",
+    "invalid_role": "Role must be 'user' or 'admin'.",
+    "profile_not_found": "That profile no longer exists.",
+}
+
+if st.button("💾 Save changes", type="primary"):
+    # The actor is recorded in the ledger row, so the audit trail answers "who"
+    # and not merely "what". Without it an adjustment is anonymous.
+    actor_id = user.get("id") if isinstance(user, dict) else getattr(user, "id", None)
+
+    if not actor_id:
+        ui_error("Could not identify your account. Please log in again.")
+        st.stop()
+
+    def _save():
+        # Was a direct service-role UPDATE on profiles, which bypassed RLS and
+        # wrote nothing to usage_events -- so every credit granted here was
+        # invisible to the ledger (production drift was ~75 scan / 45 deep on
+        # this account alone). The RPC applies the change and records it in one
+        # transaction, and refuses the two edits that would lock the admin out.
+        return sb.rpc(
+            "admin_adjust_credits",
+            {
+                "p_actor_id": actor_id,
+                "p_user_id": uid,
+                "p_scan_credits": int(scan_credits),
+                "p_deep_credits": int(deep_credits),
+                "p_disabled": bool(disabled),
+                "p_role": role,
+                "p_reason": (adjust_reason or "admin adjustment").strip()[:200],
+            },
+        ).execute()
+
+    resp = safe_ui(_save, context="admin.save_profile")
+    if resp is not None:
+        result = getattr(resp, "data", None)
+        if not isinstance(result, dict):
+            ui_error("Unexpected response from the server. Nothing was changed.")
+        elif not result.get("ok"):
+            reason = result.get("reason") or "unknown"
+            ui_error(_ADJUST_MESSAGES.get(reason, f"Could not save changes ({reason})."))
+        else:
+            d_scan = result.get("delta_scan") or 0
+            d_deep = result.get("delta_deep") or 0
+            if d_scan or d_deep:
+                st.success(f"✅ Saved. Credits {d_scan:+d} scan / {d_deep:+d} deep — recorded in the ledger.")
+            else:
+                st.success("✅ Saved. No credit change, so no ledger entry.")
+            st.rerun()
 
 close_page()
