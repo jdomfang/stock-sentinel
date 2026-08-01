@@ -1,0 +1,55 @@
+# Throwaway Postgres for verifying the Phase 0 credit-integrity migration.
+#
+# TEST ONLY. Nothing in the application reads this file. It starts one disposable
+# database container and touches no existing service, config, or data.
+#
+#   docker compose -f docker-compose.test.yml up -d      # start
+#   docker compose -f docker-compose.test.yml down -v    # remove, including data
+#
+# postgres:15 is pinned to match Supabase rather than apt's 16. The behaviours
+# under test -- plpgsql subtransaction rollback, partial unique indexes, CHECK
+# constraints, row-level locking under READ COMMITTED -- are identical across
+# both, but pinning removes the version from the list of things to argue about.
+
+services:
+  postgres:
+    image: postgres:15
+    container_name: sentinel-pg-test
+    environment:
+      # Bootstrap superuser is supabase_admin, NOT postgres -- so the stub can
+      # create `postgres` as NOSUPERUSER NOBYPASSRLS, matching Supabase. With
+      # postgres as the bootstrap superuser the ownership tests are a false
+      # green: a superuser owner bypasses RLS regardless of the design.
+      POSTGRES_USER: supabase_admin
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: sentinel_test
+    command:
+      - postgres
+      # Verbose enough to see lock waits and constraint violations while
+      # debugging a failing concurrency test.
+      - -c
+      - log_statement=none
+      - -c
+      - log_lock_waits=on
+      - -c
+      - deadlock_timeout=200ms
+      # The concurrency suite opens a session per simulated tab.
+      - -c
+      - max_connections=100
+    ports:
+      # Host 5433 -> container 5432. Deliberately NOT 5432: if a local Postgres
+      # is ever installed alongside this, they must not fight over the port, and
+      # a test suite must never be one config slip away from a real database.
+      - "127.0.0.1:5433:5432"
+    volumes:
+      - ./supabase/migrations:/migrations:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U supabase_admin -d sentinel_test"]
+      interval: 2s
+      timeout: 3s
+      retries: 20
+      start_period: 3s
+    tmpfs:
+      # Data lives in RAM. Nothing survives `down`, and nothing is written to
+      # the repo working tree.
+      - /var/lib/postgresql/data
