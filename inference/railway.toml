@@ -1,0 +1,23 @@
+# Railway service config for the inference container.
+# Set the service's Root Directory to `inference` in the Railway UI; this file
+# is read relative to that.
+
+[build]
+builder = "DOCKERFILE"
+dockerfilePath = "Dockerfile"
+
+[deploy]
+# /health, NOT /ready. /ready loads 473MB of weights; a platform probe hitting
+# it during startup would make every deploy slow and could push a constrained
+# container into a restart loop. /health answers instantly and proves the
+# process is up, which is what a health check is for.
+healthcheckPath = "/health"
+healthcheckTimeout = 300
+
+# The model is loaded lazily and held for the life of the process, so a restart
+# costs a cold load on the next scan. Restart on failure only -- never on a
+# schedule, which would silently add latency to whichever scan came next.
+restartPolicyType = "ON_FAILURE"
+restartPolicyMaxRetries = 3
+
+numReplicas = 1
