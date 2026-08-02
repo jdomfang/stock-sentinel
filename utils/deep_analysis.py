@@ -8,7 +8,7 @@ import json
 import logging
 import hashlib
 
-from utils.sentiment import analyze_sentiment, load_sentiment_pipeline, score_finbert_output
+from utils.sentiment import analyze_sentiment, analyze_sentiment_batch
 
 logger = logging.getLogger(__name__)
 
@@ -359,19 +359,23 @@ def analyze_tweets_for_prompt(tweets: List[Dict[str, Any]], prompt_name: str, ti
     themes: List[str] = []
 
     try:
-        # HF pipeline supports list input; this is much faster than per-tweet calls.
-        sentiment_pipeline = load_sentiment_pipeline()
-        BATCH_SIZE = 24
-        batch_out_all = []
-        for i in range(0, len(texts), BATCH_SIZE):
-            batch_out_all.extend(sentiment_pipeline(texts[i:i+BATCH_SIZE]))
+        # Delegate to the shared scorer instead of driving the HF pipeline here.
+        # That routes this path through the inference service when INFERENCE_URL
+        # is set, which is the whole point: Discovery was switched over first,
+        # and while THIS path still called load_sentiment_pipeline() directly the
+        # portal kept loading 886MB of FinBERT for every deep analysis -- so the
+        # memory ceiling the extraction exists to remove was still there, and
+        # removing torch from requirements.txt would have killed this feature.
+        #
+        # analyze_sentiment_batch returns exactly one result per input, in input
+        # order (its dedup is internal and does not merge rows), so the zip below
+        # still aligns tweet-to-score. It also applies the same 0.55 threshold and
+        # 512-char truncation, and already returns the SIGNED score -- no need to
+        # call score_finbert_output again here.
+        scored = analyze_sentiment_batch(texts)
 
-        for tw, out in zip(filtered, batch_out_all):
-            label = out.get("label")
-            conf = float(out.get("score", 0.0))
-            signed, _trading_sent, _label_norm = score_finbert_output(label=label, confidence=conf, neutral_threshold=0.55)
-
-            sentiments.append(signed)
+        for tw, out in zip(filtered, scored):
+            sentiments.append(float(out.get("score", 0.0)))
 
             text_lower = (tw.get("text") or "").lower()
 
