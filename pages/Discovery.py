@@ -95,7 +95,7 @@ if _intent_autostart and not st.session_state.get("_scan_autostart_consumed"):
 from utils.guard import require_active_account
 from utils.auth import refresh_session_if_needed, flush_pending_rt_save
 flush_pending_rt_save()
-from utils.credits import consume_credit, refund_credit
+from utils.credits import consume_credit, refund_credit, complete_work
 
 _profile = require_active_account()
 
@@ -1202,8 +1202,11 @@ if scan_triggered:
         #
         # Still does NOT cover an OOM kill: SIGKILL runs no finally either. That
         # remains the orphan reaper's job.
-        if not _delivered:
+        if _delivered:
+            complete_work(_credit.event_id, "completed", f"sector={sector}")
+        else:
             refund_credit("scan", _credit.event_id, "scan did not complete")
+            complete_work(_credit.event_id, "failed", "aborted or errored")
 
     # Clear one-shot redirect flags after a scan attempt (success or failure).
     # This keeps refreshes from unexpectedly re-triggering autostart.
@@ -1690,9 +1693,14 @@ if st.session_state.df_valid is not None:
                         # itself raises RerunException -- so _ddelivered must be
                         # set BEFORE it, or a successful analysis would refund
                         # itself. Idempotent, so it no-ops after an explicit refund.
-                        if not _ddelivered:
+                        if _ddelivered:
+                            complete_work(_dcredit.event_id, "completed",
+                                          f"ticker={ticker_symbol}")
+                        else:
                             refund_credit("deep_analyze", _dcredit.event_id,
                                           "deep analysis did not complete")
+                            complete_work(_dcredit.event_id, "failed",
+                                          "aborted or errored")
             st.markdown("</div>", unsafe_allow_html=True)
 
             # ── Inline deep panel — renders immediately below this ticker's row ──

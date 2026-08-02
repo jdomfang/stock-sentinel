@@ -103,7 +103,7 @@ st.markdown(
 )
 
 from utils.guard import require_active_account
-from utils.credits import consume_credit, refund_credit
+from utils.credits import consume_credit, refund_credit, complete_work
 from utils.scan_intent import get_query_params
 
 _profile = require_active_account()
@@ -298,8 +298,11 @@ if _run_clicked or (_autorun and _prefill):
             # second attempt returns already_refunded and the more specific reason
             # recorded earlier wins. Does NOT cover an OOM kill -- SIGKILL runs no
             # finally either; that stays the orphan reaper's job.
-            if not _delivered:
+            if _delivered:
+                complete_work(_credit.event_id, "completed", f"ticker={_run_ticker}")
+            else:
                 refund_credit("deep_analyze", _credit.event_id,
                               "deep analysis did not complete")
+                complete_work(_credit.event_id, "failed", "aborted or errored")
 
 close_page()

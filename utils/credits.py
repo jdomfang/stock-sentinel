@@ -125,6 +125,41 @@ def consume_credit(event_type: str, metadata: dict | None = None) -> CreditResul
                         None, res.get("remaining"), reason)
 
 
+def complete_work(event_id: str | None, status: str = "completed", detail: str = "") -> bool:
+    """Close the lifecycle row opened alongside a debit. Never raises.
+
+    consume_credit() opens a work_runs row in the same transaction as the debit.
+    Closing it here is what distinguishes "paid and delivered" from "paid and
+    vanished" -- a distinction the ledger alone cannot make, because a debit
+    looks identical either way.
+
+    If this call fails, or never runs because the process was killed, the row
+    stays 'running' and reap_orphaned_work refunds it on its next pass. That is
+    the intended fallback, not a bug: the whole design assumes this call can be
+    lost, since the failure it exists to record is the process dying.
+    """
+    if not event_id:
+        return False
+    try:
+        res = (
+            get_admin_client()
+            .rpc(
+                "complete_work",
+                {"p_event_id": event_id, "p_status": status, "p_detail": (detail or "")[:300]},
+            )
+            .execute()
+            .data
+        )
+    except Exception:
+        # Downgraded to a warning: the reaper is the backstop, so a failure here
+        # costs a delayed refund, not a lost one.
+        logger.warning("complete_work failed event=%s status=%s -- reaper will handle it",
+                       event_id, status)
+        return False
+
+    return bool(isinstance(res, dict) and res.get("ok"))
+
+
 def refund_credit(event_type: str, event_id: str | None, reason: str) -> bool:
     """Return a credit charged for work that failed. Safe to call twice.
 
