@@ -1,0 +1,19 @@
+# Railway service config for the reaper.
+# Set the service's Root Directory to `worker` in the Railway UI.
+
+[build]
+builder = "DOCKERFILE"
+
+[deploy]
+# Run-and-exit, every 5 minutes. NOT a resident service: it makes one HTTP call
+# and stops, so it is billed in seconds per day rather than GB-months.
+cronSchedule = "*/5 * * * *"
+
+# NEVER restart. A cron job that restarts on exit becomes an accidental hot
+# loop -- it would call the reaper continuously instead of every 5 minutes.
+# A clean exit 0 is success; a non-zero exit is a failed run Railway records,
+# and the next scheduled tick retries anyway.
+restartPolicyType = "NEVER"
+
+# No healthcheckPath. This service exposes no HTTP server and exits immediately,
+# so a probe would always fail and mark every successful run as broken.
