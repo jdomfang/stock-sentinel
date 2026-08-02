@@ -35,8 +35,17 @@ fi
 # Read from the environment, else from secrets.toml, so the URL is never in git.
 HC_URL="${HEALTHCHECK_PRICE_SYNC_URL:-}"
 if [ -z "$HC_URL" ] && [ -f "$REPO_DIR/.streamlit/secrets.toml" ]; then
+  # `|| true` is load-bearing. Under `set -o pipefail` a grep that matches
+  # nothing makes the whole pipeline exit 1, the assignment inherits that
+  # status, and `set -e` kills the script HERE -- before the sync runs, before
+  # any ping, with nothing written to the log. That is silent failure: the exact
+  # six-month outage this file was rewritten to end, reintroduced by the rewrite.
+  # Monitoring config must never be able to stop the job it monitors.
   HC_URL=$(grep '^HEALTHCHECK_PRICE_SYNC_URL' "$REPO_DIR/.streamlit/secrets.toml" 2>/dev/null \
-           | cut -d'=' -f2- | tr -d ' "'"'"'')
+           | cut -d'=' -f2- | tr -d ' "'"'"'' || true)
+fi
+if [ -z "$HC_URL" ]; then
+  echo "[$(date '+%Y-%m-%d %H:%M:%S %z')] WARN: no healthcheck URL; running unmonitored" >> "$LOG_FILE"
 fi
 
 # -m so a hung monitoring endpoint can never hold up or fail the sync itself.

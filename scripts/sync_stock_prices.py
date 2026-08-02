@@ -145,7 +145,13 @@ def sync_prices(limit: int = 500, rate_per_min: float = 5.0) -> bool:
     # a column -- so PostgREST rejected every batch and this table was never
     # written by this script even once.
     try:
-        prices = fetch_and_cache_last_close_prices(tickers_to_fetch, pace_seconds=pace)
+        # strict=True: a failed write must raise, not be logged and swallowed.
+        # Without it every upsert could be rejected and this function would still
+        # return a non-empty dict, so the run reported SUCCESS and pinged the
+        # dead-man switch green with nothing written.
+        prices = fetch_and_cache_last_close_prices(
+            tickers_to_fetch, pace_seconds=pace, strict=True
+        )
     except Exception as e:
         logger.error(f"Price fetch/upsert failed: {type(e).__name__}: {e}")
         return False

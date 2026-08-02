@@ -778,7 +778,7 @@ def get_cached_last_close_prices(tickers: list[str]) -> dict[str, float]:
 
 
 def fetch_and_cache_last_close_prices(
-    tickers: list[str], pace_seconds: float = 0.12
+    tickers: list[str], pace_seconds: float = 0.12, strict: bool = False
 ) -> dict[str, float]:
     """Fetch last close prices from Polygon (daily aggregates), then upsert to Supabase.
 
@@ -791,6 +791,12 @@ def fetch_and_cache_last_close_prices(
     free tier allows ~5 requests/minute, and at 0.12s the backoff (3 attempts,
     2/4/6s) is exhausted long before the window resets, so nearly every request
     fails. Callers, not this function, know which regime they are in.
+
+    strict controls what happens when the Supabase write fails. Default False
+    keeps the interactive path best-effort -- a scan must not die because a cache
+    write did. Batch callers pass True: for them a silent write failure is the
+    whole bug, since the return value is non-empty either way and the caller
+    would otherwise report success.
 
     Returns dict {TICKER: close_price} for any prices successfully fetched.
     """
@@ -857,6 +863,14 @@ def fetch_and_cache_last_close_prices(
                 sb.table("stock_prices").upsert(up_rows[i : i + 200]).execute()
         except Exception as e:
             logger.warning(f"Supabase upsert stock_prices failed: {type(e).__name__}: {str(e)[:200]}")
+            # An interactive scan treats the cache as an optimisation and must
+            # not fail because a write failed. A batch job MUST fail: swallowing
+            # this made sync_prices() return True on a run where every upsert was
+            # rejected, so the log said SUCCESS and healthchecks.io got a green
+            # ping while nothing had been written. A dead-man switch that reports
+            # healthy during total failure is worse than no dead-man switch.
+            if strict:
+                raise
 
     return out
 
