@@ -30,4 +30,10 @@ EXPOSE 8000
 # so a second worker doubles the memory for no throughput gain on a CPU box
 # where inference is already the bottleneck. Scale by adding containers with
 # their own limits, not workers inside one.
-CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000", "--workers", "1"]
+# Bind to $PORT when the platform sets one. Railway assigns a port per deploy
+# and probes THAT port; a hardcoded 8000 builds and starts fine, then fails the
+# healthcheck because nothing is listening where the platform is looking. The
+# ${PORT:-8000} fallback keeps docker-compose and local runs working unchanged.
+# Shell form is required for the variable to expand -- exec form would pass the
+# literal string "${PORT:-8000}" to uvicorn.
+CMD ["sh", "-c", "uvicorn main:app --host 0.0.0.0 --port ${PORT:-8000} --workers 1"]
