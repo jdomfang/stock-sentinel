@@ -3,8 +3,13 @@
 # is read relative to that.
 
 [build]
+# No dockerfilePath. Railway resolves it against the REPOSITORY root, not the
+# service's Root Directory, so "Dockerfile" pointed at a /Dockerfile that does
+# not exist and the build failed in ~11s without ever running. Auto-detection
+# already finds inference/Dockerfile correctly once Root Directory is set --
+# which is why the Builder flipped to Dockerfile on its own before this file was
+# ever read. Setting it explicitly only created a way to be wrong.
 builder = "DOCKERFILE"
-dockerfilePath = "Dockerfile"
 
 [deploy]
 # /health, NOT /ready. /ready loads 473MB of weights; a platform probe hitting
