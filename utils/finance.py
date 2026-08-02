@@ -103,7 +103,7 @@ def download_ticker_master_list() -> Dict[str, Dict]:
     """
     try:
         # Get API key from secrets
-        api_key = st.secrets.get("POLYGON_API_KEY", os.getenv("POLYGON_API_KEY"))
+        api_key = _config("POLYGON_API_KEY")
         if not api_key:
             raise RuntimeError("POLYGON_API_KEY not found in secrets or env")
 
@@ -358,7 +358,7 @@ def validate_ticker(ticker: str) -> Dict:
 
     try:
         # Get API key from secrets
-        api_key = st.secrets.get("POLYGON_API_KEY", os.getenv("POLYGON_API_KEY"))
+        api_key = _config("POLYGON_API_KEY")
         if not api_key:
             raise RuntimeError("POLYGON_API_KEY not found in secrets or env")
         
@@ -554,7 +554,7 @@ def get_stock_data(ticker: str, days: int = 30) -> Dict:
 
     try:
         # Get API key from secrets
-        api_key = st.secrets.get("POLYGON_API_KEY", os.getenv("POLYGON_API_KEY"))
+        api_key = _config("POLYGON_API_KEY")
         if not api_key:
             raise RuntimeError("POLYGON_API_KEY not found in secrets or env")
         
@@ -737,10 +737,40 @@ def get_stock_data_batch(tickers: List[str], days: int = 30, max_workers: int = 
 # Price cache (last close prices)
 # ==============================
 
+
+def _config(name: str, default: str = "") -> str:
+    """Read config: environment first, then Streamlit secrets.
+
+    Four call sites read POLYGON_API_KEY three different ways: three did
+    st.secrets.get(name, os.getenv(name)) -- secrets first, env as fallback --
+    and _get_polygon_api_key read secrets ONLY. run_sync.sh meanwhile documents
+    "env wins over secrets.toml". So the documented override was silently
+    ignored: you set the variable, saw no error, and used the other key.
+
+    Environment first matches the documentation, matches utils.obs, and is what
+    a container expects. In production nothing changes -- Streamlit Cloud puts
+    the key in secrets, not env, so env is empty and it falls through.
+
+    The streamlit import is guarded so this module can eventually be imported
+    by a worker with no Streamlit installed.
+    """
+    v = os.getenv(name, "")
+    if v:
+        return v
+    try:
+        import streamlit as _st
+        return str(_st.secrets.get(name, "") or "") or default
+    except Exception:
+        return default
+
+
 def _get_polygon_api_key() -> str:
-    key = st.secrets.get("POLYGON_API_KEY", "")
+    key = _config("POLYGON_API_KEY")
     if not key:
-        raise RuntimeError("Missing POLYGON_API_KEY in secrets")
+        raise RuntimeError(
+            "Missing POLYGON_API_KEY (set the env var or add it to "
+            ".streamlit/secrets.toml)"
+        )
     return key
 
 
