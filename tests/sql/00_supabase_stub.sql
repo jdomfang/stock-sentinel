@@ -36,6 +36,13 @@ grant usage on schema public to anon, authenticated, service_role;
 -- ── auth schema ──────────────────────────────────────────────────────────────
 create schema if not exists auth;
 grant usage on schema auth to anon, authenticated, service_role;
+-- `postgres` too. The credit functions are SECURITY DEFINER owned by postgres
+-- with search_path='', so auth.uid() inside them executes AS postgres -- not as
+-- the calling role. Without this the guard raises "permission denied for schema
+-- auth" and every debit fails. Production must have the same grant, or
+-- 20260802010000 breaks the app; that migration pre-flights it and refuses to
+-- apply if it is missing.
+grant usage on schema auth to postgres;
 
 create table if not exists auth.users (
   id    uuid primary key default gen_random_uuid(),
