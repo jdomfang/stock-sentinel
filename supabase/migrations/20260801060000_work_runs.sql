@@ -95,7 +95,7 @@ create or replace function public.consume_credit(
   p_user_id    uuid,
   p_event_type text,
   p_metadata   jsonb default '{}'::jsonb,
-  p_request_id text default null
+  p_request_id text  default null
 )
 returns jsonb
 language plpgsql
@@ -105,9 +105,8 @@ as $$
 declare
   v_remaining integer;
   v_event_id  uuid;
-  v_metadata  jsonb;
   v_disabled  boolean;
-  v_exists    boolean;
+  v_metadata  jsonb;
 begin
   if p_event_type not in ('scan', 'deep_analyze') then
     return jsonb_build_object('ok', false, 'reason', 'invalid_event_type',
@@ -119,21 +118,36 @@ begin
     v_metadata := v_metadata || jsonb_build_object('request_id', p_request_id);
   end if;
 
+  -- The exception block MUST enclose the UPDATE, not just the INSERT.
+  -- A plpgsql subtransaction begins at this block's `begin`; anything executed
+  -- before it belongs to the parent and is NOT rolled back by the handler. With
+  -- the UPDATE outside, a duplicate request would commit the debit with no
+  -- ledger row and return normally -- a silent credit leak, strictly worse than
+  -- letting 23505 abort the whole transaction.
+  -- `profiles` has no unique constraint the UPDATE could violate (the PK is
+  -- user_id and is never modified), so widening the block cannot mis-catch.
   begin
     if p_event_type = 'scan' then
       update public.profiles
          set scan_credits = scan_credits - 1
-       where user_id = p_user_id and disabled = false and scan_credits > 0
+       where user_id = p_user_id
+         and disabled = false
+         and scan_credits > 0
       returning scan_credits into v_remaining;
     else
       update public.profiles
          set deep_credits = deep_credits - 1
-       where user_id = p_user_id and disabled = false and deep_credits > 0
+       where user_id = p_user_id
+         and disabled = false
+         and deep_credits > 0
       returning deep_credits into v_remaining;
     end if;
 
-    if not found then
-      select true, disabled into v_exists, v_disabled
+    -- Nothing was debited. Work out why so the caller can say something useful.
+    -- (Returning from inside the block exits normally: the subtransaction is
+    -- released, not rolled back. Nothing to undo on these paths anyway.)
+    if v_remaining is null then
+      select disabled into v_disabled
         from public.profiles where user_id = p_user_id;
 
       if not found then
@@ -159,15 +173,27 @@ begin
        v_metadata)
     returning id into v_event_id;
 
-    -- >>> THE ONLY ADDITION. Same transaction as the debit, so there is no
-    -- window in which a credit is spent with no record that work began.
+    -- >>> THE ONLY ADDITION vs 20260801020000. Same transaction as the debit,
+    -- so there is no window in which a credit is spent with no record that work
+    -- began. If this row is missing, the reaper cannot see the orphan.
     insert into public.work_runs (user_id, event_id, kind)
     values (p_user_id, v_event_id, p_event_type);
 
   exception
     when unique_violation then
-      if v_metadata ->> 'request_id' is null then raise; end if;
+      -- ONLY our own idempotency key may be swallowed here. usage_events also
+      -- carries usage_events_refund_of_key, which is driven by caller-supplied
+      -- metadata -- and reporting success for a conflict we did not cause would
+      -- hand the caller a free action against no debit. Anything else re-raises.
+      if v_metadata ->> 'request_id' is null then
+        raise;
+      end if;
 
+      -- Key on v_metadata, NOT p_request_id. A caller may embed request_id
+      -- inside p_metadata rather than passing the parameter; the partial index
+      -- still applies to that row, but p_request_id would be NULL here and
+      -- match nothing -- returning ok=true with a null event_id, i.e. a second
+      -- action delivered against a single debit.
       select id into v_event_id
         from public.usage_events
        where user_id = p_user_id
@@ -175,10 +201,16 @@ begin
          and metadata ? 'request_id'
          and metadata ->> 'request_id' = v_metadata ->> 'request_id';
 
-      if v_event_id is null then raise; end if;
+      -- Could not find the original: the conflict was not ours (or the snapshot
+      -- predates it under an isolation level above READ COMMITTED). Never
+      -- fabricate success -- let it propagate.
+      if v_event_id is null then
+        raise;
+      end if;
 
       select case when p_event_type = 'scan' then scan_credits else deep_credits end
-        into v_remaining from public.profiles where user_id = p_user_id;
+        into v_remaining
+        from public.profiles where user_id = p_user_id;
 
       return jsonb_build_object('ok', true, 'reason', 'duplicate_request',
                                 'remaining', v_remaining, 'event_id', v_event_id);
