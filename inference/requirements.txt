@@ -1,0 +1,9 @@
+# Pinned to what the app currently runs, so extracting the model cannot change a
+# single score. transformers/torch versions shift tokenisation and numerics in
+# ways that would move confidences across the 0.55 threshold -- and the whole
+# rollout plan depends on remote and local scoring being interchangeable.
+fastapi==0.115.6
+uvicorn[standard]==0.34.0
+pydantic==2.10.4
+transformers==4.47.1
+torch==2.5.1

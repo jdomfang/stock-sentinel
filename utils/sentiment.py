@@ -2,6 +2,7 @@
 Sentiment analysis module.
 """
 
+import os
 import re
 from typing import List, Dict
 import streamlit as st
@@ -238,6 +239,69 @@ _NEUTRAL_RESULT = {
 }
 
 
+def _inference_config() -> tuple[str, str]:
+    """(url, secret) for the inference service, or ('', '') when not configured.
+
+    Environment first so a container can inject it; Streamlit secrets as a
+    fallback so the portal works unchanged. Reading is cheap and per-call, which
+    means the service can be turned on or off without a redeploy -- the property
+    that makes this rollout reversible in seconds rather than a build cycle.
+    """
+    url = os.getenv("INFERENCE_URL", "")
+    secret = os.getenv("INFERENCE_SHARED_SECRET", "")
+    if not url:
+        try:
+            import streamlit as st
+            url = str(st.secrets.get("INFERENCE_URL", "") or "")
+            secret = secret or str(st.secrets.get("INFERENCE_SHARED_SECRET", "") or "")
+        except Exception:
+            pass
+    return url.rstrip("/"), secret
+
+
+def _remote_scorer():
+    """Return a callable that scores texts remotely, or None if not configured.
+
+    The callable returns None on failure rather than raising, so the caller
+    decides what to do -- during the rollout that means falling back to local,
+    and after torch is removed it means the scan fails and refunds.
+    """
+    url, secret = _inference_config()
+    if not url:
+        return None
+
+    def _call(texts: List[str]):
+        import json as _json
+        import urllib.error
+        import urllib.request
+
+        # 8s connect+read. A scan already spends most of its time on the X API;
+        # waiting longer on inference just moves a user-visible stall around,
+        # and the caller has a working fallback.
+        req = urllib.request.Request(
+            f"{url}/score",
+            data=_json.dumps({"texts": texts}).encode(),
+            headers={"Content-Type": "application/json", "X-Inference-Secret": secret},
+            method="POST",
+        )
+        try:
+            with urllib.request.urlopen(req, timeout=8) as resp:
+                payload = _json.loads(resp.read() or b"{}")
+            results = payload.get("results")
+            if not isinstance(results, list):
+                logger.error("inference returned no results list")
+                return None
+            return results
+        except urllib.error.HTTPError as e:
+            logger.error("inference HTTP %s: %s", e.code, e.read()[:200])
+            return None
+        except Exception as e:
+            logger.error("inference call failed: %s: %s", type(e).__name__, str(e)[:160])
+            return None
+
+    return _call
+
+
 def analyze_sentiment_batch(texts: List[str], batch_size: int = 24) -> List[Dict[str, any]]:
     """Score many texts at once. Same output shape and order as analyze_sentiment.
 
@@ -272,6 +336,32 @@ def analyze_sentiment_batch(texts: List[str], batch_size: int = 24) -> List[Dict
         if t not in uniq:
             uniq[t] = len(uniq)
     unique_texts = list(uniq.keys())
+
+    # Remote when configured, in-process otherwise. Both produce identical
+    # results -- the service reuses the same 0.55 threshold and the same
+    # truncation -- so the rollout is a config change, reversible without a
+    # deploy. The memory win does NOT arrive until torch and transformers leave
+    # requirements.txt; until then the portal still loads 886MB whether or not
+    # it uses it.
+    remote = _remote_scorer()
+    if remote is not None:
+        scored = remote(unique_texts)
+        if scored is not None:
+            if len(scored) != len(unique_texts):
+                logger.error("inference returned %d results for %d texts; using neutral",
+                             len(scored), len(unique_texts))
+                return [dict(_NEUTRAL_RESULT) for _ in prepared]
+            logger.info(
+                "🧠 Sentiment batch (remote): %d texts, %d unique (%d duplicate passes avoided)",
+                len(prepared), len(unique_texts), len(prepared) - len(unique_texts),
+            )
+            return [dict(scored[uniq[t]]) for t in prepared]
+        # remote returned None: it failed and said so. Fall through to local,
+        # which is correct DURING the rollout while torch is still installed.
+        # Once torch is removed this path raises ImportError and the caller
+        # refunds -- which is the intended end state: a failure the caller can
+        # act on, rather than a silently degraded scan.
+        logger.warning("inference service unavailable; scoring locally")
 
     scored: List[Dict[str, any]] = []
     try:

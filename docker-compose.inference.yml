@@ -1,0 +1,28 @@
+# Local inference service, for developing and verifying Track B before anything
+# is pointed at a hosted one.
+#
+#   INFERENCE_SHARED_SECRET=dev-secret docker compose -f docker-compose.inference.yml up --build
+#
+# Then point the app at it:
+#   INFERENCE_URL=http://127.0.0.1:8001 INFERENCE_SHARED_SECRET=dev-secret streamlit run app.py
+
+services:
+  inference:
+    build: ./inference
+    container_name: sentinel-inference
+    environment:
+      INFERENCE_SHARED_SECRET: ${INFERENCE_SHARED_SECRET:-dev-secret}
+      LOG_LEVEL: INFO
+    ports:
+      - "127.0.0.1:8001:8000"
+    # The number that matters. FinBERT measured at ~886MB resident in-process;
+    # 1.5g leaves headroom for the request without being generous enough to hide
+    # a leak. If the service OOMs here it dies ALONE and the caller gets a 503 it
+    # can refund -- which is the entire point of the extraction.
+    mem_limit: 1.5g
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsS http://localhost:8000/health || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
