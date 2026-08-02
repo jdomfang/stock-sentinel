@@ -32,7 +32,7 @@ def _sentiment_pill(label: str) -> str:
 # Logging is configured centrally. This page used to call basicConfig(force=True),
 # which meant whichever page a user landed on first won the root config for the
 # whole process -- and re-running it on every Streamlit rerun stacked handlers.
-from utils.obs import install as _install_logging, new_request_id
+from utils.obs import install as _install_logging, new_request_id, set_request_id as _set_request_id
 
 _install_logging()
 logger = logging.getLogger(__name__)
@@ -743,6 +743,20 @@ if scan_triggered:
     # charged for it. Observed in production as a 402 credits-depleted.
     _x_api_error: str | None = None
 
+    # Set to True the moment this scan has produced an answer the user can see.
+    # The `finally` below refunds whenever it is still False.
+    #
+    # This exists because every refund on this page used to live in an
+    # `except Exception`, and Streamlit's abort path does NOT raise Exception:
+    # StopException and RerunException both derive from BaseException. With
+    # runner.fastReruns on (the default), ANY new interaction stops the running
+    # script at its next yield point -- and st.progress()/st.markdown() inside
+    # the pagination loop are yield points. So the single most likely way a scan
+    # dies is a user clicking again because nothing looks like it is happening:
+    # the first run was killed with no refund, and the second run charged again.
+    # Two credits, one scan. `finally` runs on BaseException; `except` does not.
+    _delivered = False
+
     try:
         # Load X Bearer Token from secrets
         x_bearer_token = st.secrets["X_BEARER_TOKEN"]
@@ -1115,11 +1129,19 @@ if scan_triggered:
             st.session_state.selected_ticker = None
             st.session_state.deep_analysis_results = None
 
+            # Results are durable in session_state: the scan ran and produced an
+            # answer. An empty answer is still an answer -- the sector genuinely
+            # had no validated chatter -- so it is charged, as before.
+            _delivered = True
+
             if len(df_valid) == 0:
                 st.warning("⚠️ No validated stock tickers found. Try a different sector/time window.")
             else:
                 pass  # (status message removed)
         else:
+            # Posts were fetched and scored, they just contained no tickers.
+            # Work was done and an answer given, so this stays charged.
+            _delivered = True
             st.warning("⚠️ No stock tickers found in the posts. Try a different search query.")
 
         # Note: detailed pagination + stop reasons are logged by utils.deep_analysis.search_x_tweets
@@ -1166,6 +1188,22 @@ if scan_triggered:
             """,
             unsafe_allow_html=True,
         )
+
+    finally:
+        # The backstop. Runs on BaseException too, so it covers the paths every
+        # `except Exception` above misses: Streamlit stopping the script because
+        # the user clicked again, changed the sector, or navigated away.
+        #
+        # Safe to overlap with the explicit refunds above -- refund_credit is
+        # idempotent (the usage_events_refund_of unique index makes a second
+        # attempt return already_refunded), so the more specific reason recorded
+        # by an except block wins and this becomes a no-op. It only actually
+        # refunds when nothing else did.
+        #
+        # Still does NOT cover an OOM kill: SIGKILL runs no finally either. That
+        # remains the orphan reaper's job.
+        if not _delivered:
+            refund_credit("scan", _credit.event_id, "scan did not complete")
 
     # Clear one-shot redirect flags after a scan attempt (success or failure).
     # This keeps refreshes from unexpectedly re-triggering autostart.
@@ -1535,6 +1573,14 @@ if st.session_state.df_valid is not None:
                 st.markdown(_sentiment_pill(overall_sentiment), unsafe_allow_html=True)
             with col5:
                 if st.button("Deep Analyze", key=f"deep_analyze_{ticker_symbol}"):
+                    # Open a request scope BEFORE charging. Without this the
+                    # ContextVar still holds whatever id the last action on this
+                    # page set, and consume_credit reuses a non-"-" value as its
+                    # idempotency key -- a STALE key returns duplicate_request,
+                    # which credits.py maps to ok=True, delivering the analysis
+                    # with nothing debited. It also left every log line from this
+                    # path stamped "-", so the ledger row pointed at no logs.
+                    _drid = new_request_id()
                     _dcredit = consume_credit(
                         "deep_analyze",
                         {"ticker": ticker_symbol, "sector": sector, "page": "discovery"},
@@ -1543,91 +1589,110 @@ if st.session_state.df_valid is not None:
                         _upgrade_modal(f"Unlock the full analysis for {ticker_symbol}.", event_type="deep_analyze")
                         st.stop()
 
-                    # Silently refresh token before long operation to prevent session expiry mid-run
-                    refresh_session_if_needed()
+                    # Charged work: try/finally, not try/except. Streamlit's
+                    # abort raises StopException/RerunException, which derive
+                    # from BaseException and bypass every `except Exception`.
+                    _ddelivered = False
+                    try:
+                        # Silently refresh token before long operation to prevent session expiry mid-run
+                        refresh_session_if_needed()
 
-                    st.session_state.selected_ticker = ticker_symbol
-                    st.session_state.deep_analysis_results = None
-
-                    _deep_error = None
-                    _disc_prog = st.progress(0)
-                    _disc_status = st.empty()
-                    _disc_status.markdown(
-                        f'<div style="color:rgba(229,231,235,.85);font-size:0.92rem;font-weight:600;">'
-                        f'📡 Gathering market chatter for <b>{ticker_symbol}</b>...</div>',
-                        unsafe_allow_html=True,
-                    )
-                    _disc_prog.progress(10)
-
-                    import threading as _th, time as _tm
-
-                    _disc_holder: dict = {}
-                    _disc_done = _th.Event()
-                    _disc_sector = st.session_state.get("selected_sector") or ""
-
-                    def _disc_run():
-                        try:
-                            _disc_holder["result"] = run_deep_analysis(
-                                ticker_symbol,
-                                _disc_sector,
-                            )
-                        except Exception as _e:
-                            _disc_holder["error"] = str(_e)
-                            logger.exception(f"Deep analysis error for {ticker_symbol}")
-                        finally:
-                            _disc_done.set()
-
-                    _disc_thread = _th.Thread(target=_disc_run, daemon=True)
-                    _disc_thread.start()
-
-                    _disc_steps = [
-                        (20, "📰 Reading what traders are saying..."),
-                        (35, "📊 Weighing bullish vs bearish signals..."),
-                        (50, "🔍 Cross-referencing sentiment over time..."),
-                        (65, "📈 Running price projection models..."),
-                        (78, "⚡ Measuring signal strength..."),
-                        (88, "🔬 Building your recommendation..."),
-                    ]
-                    _disc_step_idx = 0
-                    while not _disc_done.wait(timeout=1.5):
-                        if _disc_step_idx < len(_disc_steps):
-                            _dp, _dm = _disc_steps[_disc_step_idx]
-                            _disc_prog.progress(_dp)
-                            _disc_status.markdown(
-                                f'<div style="color:rgba(229,231,235,.85);font-size:0.92rem;font-weight:600;">{_dm}</div>',
-                                unsafe_allow_html=True,
-                            )
-                            _disc_step_idx += 1
-
-                    _disc_prog.progress(100)
-                    _disc_status.empty()
-                    _disc_prog.empty()
-
-                    if "error" in _disc_holder:
-                        # Charged before the work started; the work failed.
-                        if refund_credit("deep_analyze", _dcredit.event_id,
-                                         f"analysis failed: {str(_disc_holder['error'])[:120]}"):
-                            _deep_error = (f"Analysis failed for {ticker_symbol}. "
-                                           "Your credit was not used — try again in a moment.")
-                        else:
-                            _deep_error = f"Analysis failed for {ticker_symbol}. Try again in a moment."
-                    elif not _disc_holder.get("result"):
-                        refund_credit("deep_analyze", _dcredit.event_id, "analysis returned no results")
-                        _deep_error = (f"No results for {ticker_symbol}. "
-                                       "Your credit was not used — try again in a moment.")
-                    else:
-                        st.session_state.deep_analysis_results = _disc_holder.get("result")
                         st.session_state.selected_ticker = ticker_symbol
-                        st.session_state["_scroll_to_deep_panel"] = True
-                        st.rerun()
+                        st.session_state.deep_analysis_results = None
 
-                    if _deep_error:
-                        st.markdown(
-                            f'<div style="border:1px solid rgba(239,68,68,.30);border-radius:12px;padding:14px 16px;'
-                            f'background:rgba(239,68,68,.06);color:rgba(248,113,113,.95);margin:0.5rem 0;">'
-                            f'⚠️ {_deep_error}</div>',
+                        _deep_error = None
+                        _disc_prog = st.progress(0)
+                        _disc_status = st.empty()
+                        _disc_status.markdown(
+                            f'<div style="color:rgba(229,231,235,.85);font-size:0.92rem;font-weight:600;">'
+                            f'📡 Gathering market chatter for <b>{ticker_symbol}</b>...</div>',
                             unsafe_allow_html=True,
                         )
+                        _disc_prog.progress(10)
+
+                        import threading as _th, time as _tm
+
+                        _disc_holder: dict = {}
+                        _disc_done = _th.Event()
+                        _disc_sector = st.session_state.get("selected_sector") or ""
+
+                        def _disc_run():
+                            # A new thread starts with an empty context, so the
+                            # request id reverts to "-" without this.
+                            _set_request_id(_drid)
+                            try:
+                                _disc_holder["result"] = run_deep_analysis(
+                                    ticker_symbol,
+                                    _disc_sector,
+                                )
+                            except Exception as _e:
+                                _disc_holder["error"] = str(_e)
+                                logger.exception(f"Deep analysis error for {ticker_symbol}")
+                            finally:
+                                _disc_done.set()
+
+                        _disc_thread = _th.Thread(target=_disc_run, daemon=True)
+                        _disc_thread.start()
+
+                        _disc_steps = [
+                            (20, "📰 Reading what traders are saying..."),
+                            (35, "📊 Weighing bullish vs bearish signals..."),
+                            (50, "🔍 Cross-referencing sentiment over time..."),
+                            (65, "📈 Running price projection models..."),
+                            (78, "⚡ Measuring signal strength..."),
+                            (88, "🔬 Building your recommendation..."),
+                        ]
+                        _disc_step_idx = 0
+                        while not _disc_done.wait(timeout=1.5):
+                            if _disc_step_idx < len(_disc_steps):
+                                _dp, _dm = _disc_steps[_disc_step_idx]
+                                _disc_prog.progress(_dp)
+                                _disc_status.markdown(
+                                    f'<div style="color:rgba(229,231,235,.85);font-size:0.92rem;font-weight:600;">{_dm}</div>',
+                                    unsafe_allow_html=True,
+                                )
+                                _disc_step_idx += 1
+
+                        _disc_prog.progress(100)
+                        _disc_status.empty()
+                        _disc_prog.empty()
+
+                        if "error" in _disc_holder:
+                            # Charged before the work started; the work failed.
+                            if refund_credit("deep_analyze", _dcredit.event_id,
+                                             f"analysis failed: {str(_disc_holder['error'])[:120]}"):
+                                _deep_error = (f"Analysis failed for {ticker_symbol}. "
+                                               "Your credit was not used — try again in a moment.")
+                            else:
+                                _deep_error = f"Analysis failed for {ticker_symbol}. Try again in a moment."
+                        elif not _disc_holder.get("result"):
+                            refund_credit("deep_analyze", _dcredit.event_id, "analysis returned no results")
+                            _deep_error = (f"No results for {ticker_symbol}. "
+                                           "Your credit was not used — try again in a moment.")
+                        else:
+                            st.session_state.deep_analysis_results = _disc_holder.get("result")
+                            st.session_state.selected_ticker = ticker_symbol
+                            st.session_state["_scroll_to_deep_panel"] = True
+                            # Set BEFORE st.rerun(): it raises RerunException, so
+                            # anything after it never runs.
+                            _ddelivered = True
+                            st.rerun()
+
+                        if _deep_error:
+                            st.markdown(
+                                f'<div style="border:1px solid rgba(239,68,68,.30);border-radius:12px;padding:14px 16px;'
+                                f'background:rgba(239,68,68,.06);color:rgba(248,113,113,.95);margin:0.5rem 0;">'
+                                f'⚠️ {_deep_error}</div>',
+                                unsafe_allow_html=True,
+                            )
+                    finally:
+                        # NOTE: the success path below calls st.rerun(), which
+                        # itself raises RerunException -- so _ddelivered must be
+                        # set BEFORE it, or a successful analysis would refund
+                        # itself. Idempotent, so it no-ops after an explicit refund.
+                        if not _ddelivered:
+                            refund_credit("deep_analyze", _dcredit.event_id,
+                                          "deep analysis did not complete")
             st.markdown("</div>", unsafe_allow_html=True)
 
             # ── Inline deep panel — renders immediately below this ticker's row ──
