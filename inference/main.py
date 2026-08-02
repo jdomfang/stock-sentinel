@@ -36,6 +36,17 @@ import os
 import time
 from typing import Any
 
+# MUST be set before torch/transformers are imported anywhere, because the
+# OpenMP runtime reads these at load time and ignores later changes.
+#
+# torch sizes its thread pool from the VISIBLE cpu count. A container that can
+# see 8 cores but is scheduled onto a fraction of one spawns 8 threads that
+# thrash over that fraction. Measured on Railway: 6.0s to score a single text
+# with the model already resident, against 0.15s for the same call locally --
+# a ~40x slowdown that is pure contention, not compute.
+os.environ.setdefault("OMP_NUM_THREADS", os.getenv("TORCH_THREADS", "1"))
+os.environ.setdefault("MKL_NUM_THREADS", os.getenv("TORCH_THREADS", "1"))
+
 from fastapi import FastAPI, Header, HTTPException
 from pydantic import BaseModel, Field
 
@@ -56,6 +67,17 @@ def _load():
     global _pipeline
     if _pipeline is None:
         from transformers import pipeline as hf_pipeline
+
+        # Belt and braces: the env vars above cover OpenMP, this covers torch's
+        # own intra-op pool. Both are needed -- setting only one still leaves the
+        # other defaulting to cpu_count().
+        try:
+            import torch
+            torch.set_num_threads(int(os.getenv("TORCH_THREADS", "1")))
+            logger.info("torch threads=%d (visible cpus=%s)",
+                        torch.get_num_threads(), os.cpu_count())
+        except Exception as e:
+            logger.warning("could not pin torch threads: %s", type(e).__name__)
 
         t0 = time.time()
         _pipeline = hf_pipeline("sentiment-analysis", model=MODEL_NAME, device=-1)

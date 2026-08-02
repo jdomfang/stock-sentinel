@@ -275,29 +275,46 @@ def _remote_scorer():
         import urllib.error
         import urllib.request
 
-        # 8s connect+read. A scan already spends most of its time on the X API;
-        # waiting longer on inference just moves a user-visible stall around,
-        # and the caller has a working fallback.
+        # 30s, and one retry. 8s was too tight: measured against the deployed
+        # service, the FIRST request after the container has been idle exceeds it
+        # and times out, while the very next one succeeds in under a second.
+        # While torch is installed that only causes a silent fall back to local
+        # scoring -- the service is paid for and unused. Once torch is removed it
+        # would refund a scan that was about to work.
+        #
+        # A scan already spends 15-30s on the X API, so 30s here does not change
+        # what the user experiences; it just stops a cold container being
+        # mistaken for a broken one.
         req = urllib.request.Request(
             f"{url}/score",
             data=_json.dumps({"texts": texts}).encode(),
             headers={"Content-Type": "application/json", "X-Inference-Secret": secret},
             method="POST",
         )
-        try:
-            with urllib.request.urlopen(req, timeout=8) as resp:
-                payload = _json.loads(resp.read() or b"{}")
-            results = payload.get("results")
-            if not isinstance(results, list):
-                logger.error("inference returned no results list")
+        last_err = None
+        for attempt in (1, 2):
+            try:
+                with urllib.request.urlopen(req, timeout=30) as resp:
+                    payload = _json.loads(resp.read() or b"{}")
+                results = payload.get("results")
+                if not isinstance(results, list):
+                    logger.error("inference returned no results list")
+                    return None
+                return results
+            except urllib.error.HTTPError as e:
+                # 4xx is a real rejection -- a bad secret or an oversized batch.
+                # Retrying cannot help and would double the latency of a
+                # misconfiguration, so fail fast.
+                logger.error("inference HTTP %s: %s", e.code, e.read()[:200])
                 return None
-            return results
-        except urllib.error.HTTPError as e:
-            logger.error("inference HTTP %s: %s", e.code, e.read()[:200])
-            return None
-        except Exception as e:
-            logger.error("inference call failed: %s: %s", type(e).__name__, str(e)[:160])
-            return None
+            except Exception as e:
+                last_err = e
+                if attempt == 1:
+                    logger.warning("inference attempt 1 failed (%s); retrying",
+                                   type(e).__name__)
+        logger.error("inference call failed after 2 attempts: %s: %s",
+                     type(last_err).__name__, str(last_err)[:160])
+        return None
 
     return _call
 
@@ -388,6 +405,24 @@ def analyze_sentiment_batch(texts: List[str], batch_size: int = 24) -> List[Dict
             "batch sentiment failed (%s: %s); falling back to per-text scoring",
             type(e).__name__, str(e)[:160],
         )
+
+        # But FIRST check the local model is actually usable. analyze_sentiment
+        # swallows its own errors and returns Neutral, so without this probe the
+        # combination "remote unreachable + torch not installed" produces a full
+        # page of Neutral(0.00) -- a scan that charges a credit, completes
+        # normally, and is indistinguishable from a sector with no real signal.
+        # Silent degradation dressed as success is the exact failure this
+        # codebase has spent its effort removing; scoring nothing must be an
+        # ERROR the caller can refund, not a result.
+        try:
+            load_sentiment_pipeline()
+        except Exception as local_err:
+            raise RuntimeError(
+                "Sentiment scoring unavailable: the inference service failed "
+                f"({type(e).__name__}) and no local model is installed "
+                f"({type(local_err).__name__})"
+            ) from local_err
+
         scored = [analyze_sentiment(t) for t in unique_texts]
 
     # A short batch would silently misalign results with inputs. Fail closed.
