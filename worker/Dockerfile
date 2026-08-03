@@ -9,6 +9,9 @@ FROM python:3.11-slim
 
 ENV PYTHONUNBUFFERED=1
 WORKDIR /app
-COPY reap.py .
+COPY reap.py probe_inference.py run_jobs.py .
 
-CMD ["python", "reap.py"]
+# One tick runs every job. Each reports to its own healthcheck, and a
+# failure in one does not stop the others -- the reaper is the safety net
+# for paid work and must run even if the inference probe is red.
+CMD ["python", "run_jobs.py"]
