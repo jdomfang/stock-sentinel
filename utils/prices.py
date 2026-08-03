@@ -129,6 +129,36 @@ def fetch_and_cache_last_close_prices(
     api_key = _require("POLYGON_API_KEY")
     out: dict[str, float] = {}
 
+    # Write as we go rather than once at the end. A 500-ticker run at Polygon's
+    # free-tier 5 req/min takes ~100 minutes, and the previous shape held every
+    # row in memory until the loop finished -- so ANY interruption in that window
+    # discarded 100% of the work after spending the entire fetch budget. That is
+    # not hypothetical: a Railway redeploy killed an in-progress run on
+    # 2026-08-03 and nothing was written.
+    #
+    # Flushing every 50 tickers caps the loss at ~10 minutes. The interactive
+    # path is unaffected: a ~10-ticker scan still flushes once, at the end.
+    flush_every = int(os.getenv("PRICE_FLUSH_EVERY", "50"))
+    pending: list[dict] = []
+    written = 0
+
+    def _flush() -> None:
+        nonlocal pending, written
+        if not pending:
+            return
+        rows, pending = pending, []
+        try:
+            _upsert_stock_prices(rows)
+            written += len(rows)
+            logger.info("stock_prices: wrote %d (%d total)", len(rows), written)
+        except Exception as e:
+            logger.warning("stock_prices upsert failed: %s: %s", type(e).__name__, str(e)[:200])
+            # Fail fast for a batch caller. A bad credential or a schema change
+            # fails identically on row 1 and row 500, so raising at the first
+            # flush saves ~90 minutes of fetching that cannot be written anyway.
+            if strict:
+                raise
+
     # A 10-day window so weekends and holidays still return a last close.
     end = datetime.utcnow().date()
     start = end - timedelta(days=10)
@@ -164,24 +194,25 @@ def fetch_and_cache_last_close_prices(
                 close = results[0].get("c")
                 if isinstance(close, (int, float)):
                     out[t] = float(close)
+                    pending.append({
+                        "ticker": t,
+                        "close_price": float(close),
+                        "last_updated": datetime.utcnow().isoformat(),
+                        "currency": "USD",
+                    })
                 break
             except Exception as e:
                 logger.warning("Polygon aggs failed for %s (attempt %d/3): %s: %s",
                                t, attempt, type(e).__name__, str(e)[:160])
                 time.sleep(1.0 * attempt)
 
-    if out:
-        now_iso = datetime.utcnow().isoformat()
-        up_rows = [
-            {"ticker": t, "close_price": out[t], "last_updated": now_iso, "currency": "USD"}
-            for t in out
-        ]
-        try:
-            for i in range(0, len(up_rows), 200):
-                _upsert_stock_prices(up_rows[i : i + 200])
-        except Exception as e:
-            logger.warning("stock_prices upsert failed: %s: %s", type(e).__name__, str(e)[:200])
-            if strict:
-                raise
+        # Flush OUTSIDE the Polygon retry block. Called inside it, a strict
+        # upsert failure was caught by `except Exception` above -- so it did not
+        # fail fast, and worse, a Supabase 401 was logged as "Polygon aggs
+        # failed", pointing at the wrong API entirely.
+        if len(pending) >= flush_every:
+            _flush()
+
+    _flush()  # whatever is left below the flush threshold
 
     return out
