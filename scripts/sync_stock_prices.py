@@ -17,7 +17,7 @@ from typing import List, Dict
 # Add parent dir to path so we can import utils
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from utils.finance import fetch_and_cache_last_close_prices
+from utils.prices import fetch_and_cache_last_close_prices
 
 # Configure logging
 logging.basicConfig(

@@ -807,103 +807,12 @@ def get_cached_last_close_prices(tickers: list[str]) -> dict[str, float]:
     return out
 
 
-def fetch_and_cache_last_close_prices(
-    tickers: list[str], pace_seconds: float = 0.12, strict: bool = False
-) -> dict[str, float]:
-    """Fetch last close prices from Polygon (daily aggregates), then upsert to Supabase.
-
-    We use direct HTTP requests (instead of polygon client's built-in retry) so we can
-    handle 429 rate limits cleanly and avoid MaxRetryError storms.
-
-    pace_seconds is the delay between requests. The 0.12s default is tuned for an
-    interactive scan of ~10 tickers, where the goal is only to avoid a burst. A
-    batch job walking hundreds of tickers must pass a much larger value: Polygon's
-    free tier allows ~5 requests/minute, and at 0.12s the backoff (3 attempts,
-    2/4/6s) is exhausted long before the window resets, so nearly every request
-    fails. Callers, not this function, know which regime they are in.
-
-    strict controls what happens when the Supabase write fails. Default False
-    keeps the interactive path best-effort -- a scan must not die because a cache
-    write did. Batch callers pass True: for them a silent write failure is the
-    whole bug, since the return value is non-empty either way and the caller
-    would otherwise report success.
-
-    Returns dict {TICKER: close_price} for any prices successfully fetched.
-    """
-    tickers_u = [t.upper().strip() for t in tickers if t]
-    tickers_u = list(dict.fromkeys(tickers_u))
-    if not tickers_u:
-        return {}
-
-    api_key = _get_polygon_api_key()
-    sb = get_admin_client()
-
-    out: dict[str, float] = {}
-
-    # Query a small window to survive weekends/holidays.
-    end = datetime.utcnow().date()
-    start = end - timedelta(days=10)
-
-    for t in tickers_u:
-        # Pacing to reduce burstiness (avoid Polygon 429s during Discovery scans)
-        time.sleep(pace_seconds)
-
-        url = f"https://api.polygon.io/v2/aggs/ticker/{t}/range/1/day/{start.isoformat()}/{end.isoformat()}"
-        params = {
-            "adjusted": "true",
-            "sort": "desc",
-            "limit": 1,
-            "apiKey": api_key,
-        }
-
-        for attempt in range(1, 4):
-            try:
-                r = requests.get(url, params=params, timeout=20)
-                if r.status_code == 429:
-                    # backoff and retry
-                    wait = 2.0 * attempt
-                    logger.warning(f"Polygon 429 for {t} (attempt {attempt}/3). Sleeping {wait:.1f}s")
-                    time.sleep(wait)
-                    continue
-                if r.status_code != 200:
-                    logger.warning(f"Polygon aggs HTTP {r.status_code} for {t}: {r.text[:200]}")
-                    break
-
-                payload = r.json() or {}
-                results = payload.get("results") or []
-                if not results:
-                    break
-                close = results[0].get("c")
-                if isinstance(close, (int, float)):
-                    out[t] = float(close)
-                break
-            except Exception as e:
-                logger.warning(f"Polygon aggs failed for {t} (attempt {attempt}/3): {type(e).__name__}: {str(e)[:160]}")
-                time.sleep(1.0 * attempt)
-
-    # Upsert
-    if out:
-        now_iso = datetime.utcnow().isoformat()
-        up_rows = [
-            {"ticker": t, "close_price": out[t], "last_updated": now_iso, "currency": "USD"}
-            for t in out
-        ]
-        try:
-            for i in range(0, len(up_rows), 200):
-                sb.table("stock_prices").upsert(up_rows[i : i + 200]).execute()
-        except Exception as e:
-            logger.warning(f"Supabase upsert stock_prices failed: {type(e).__name__}: {str(e)[:200]}")
-            # An interactive scan treats the cache as an optimisation and must
-            # not fail because a write failed. A batch job MUST fail: swallowing
-            # this made sync_prices() return True on a run where every upsert was
-            # rejected, so the log said SUCCESS and healthchecks.io got a green
-            # ping while nothing had been written. A dead-man switch that reports
-            # healthy during total failure is worse than no dead-man switch.
-            if strict:
-                raise
-
-    return out
-
+# Moved to utils.prices so the worker container can import it without Streamlit,
+# numpy, the Polygon SDK or filelock -- none of which this function ever needed.
+# Re-exported here because Discovery and scripts/ already import it from finance.
+# One implementation, imported twice: the six-month sync outage was caused by a
+# SECOND copy of this logic that upserted a non-existent column.
+from utils.prices import fetch_and_cache_last_close_prices  # noqa: E402,F401
 
 def get_last_close_prices_best_effort(tickers: list[str]) -> dict[str, float | None]:
     """Best-effort last close prices.
