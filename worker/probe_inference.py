@@ -80,6 +80,40 @@ def main() -> int:
 
     ping(hc, "/start")
 
+    # Distinguish a COLD container from a DEGRADED one. They look identical to a
+    # stopwatch and need opposite responses: a cold start is normal after any
+    # deploy, while steady-state slowness is the bug this probe exists to catch.
+    #
+    # Railway redeploys every service on every push to master, so a commit
+    # touching an unrelated folder restarts inference and drops its model. The
+    # worker's next tick then measured a cold load against the warm ceiling and
+    # marked itself CRASHED -- a false alarm that would train you to ignore it.
+    #
+    # /health reports whether the model is resident without loading it. If it is
+    # not, spend one UNTIMED call warming it, then measure the steady state.
+    try:
+        with urllib.request.urlopen(f"{url}/health", timeout=15) as r:
+            loaded = bool(json.loads(r.read() or b"{}").get("loaded"))
+    except Exception as e:
+        log(f"ERROR /health unreachable: {type(e).__name__}: {str(e)[:160]}")
+        ping(hc, "/fail")
+        return 1
+
+    if not loaded:
+        log("model not resident (cold container); warming before timing")
+        warm = urllib.request.Request(
+            f"{url}/score",
+            data=json.dumps({"texts": ["warm"]}).encode(),
+            headers={"Content-Type": "application/json", "X-Inference-Secret": secret},
+            method="POST",
+        )
+        try:
+            urllib.request.urlopen(warm, timeout=120).read()
+        except Exception as e:
+            log(f"ERROR warm-up failed: {type(e).__name__}: {str(e)[:160]}")
+            ping(hc, "/fail")
+            return 1
+
     req = urllib.request.Request(
         f"{url}/score",
         data=json.dumps({"texts": [CANARY_TEXT]}).encode(),
