@@ -48,10 +48,18 @@ DSN = "host=127.0.0.1 port=5433 dbname=sentinel_test user=supabase_admin passwor
 REPO = Path(__file__).resolve().parent.parent
 MIGRATIONS = [
     REPO / "tests/sql/00_supabase_stub.sql",
+    # The FULL production chain, in production order. Applying a subset used to
+    # be fine, but 20260802010000 extracts consume_credit from 20260801060000 --
+    # so it references public.work_runs, and a suite that skipped that migration
+    # installed a function pointing at a table it had never created. An audit had
+    # already flagged fixture-vs-production divergence as the thing that makes a
+    # green suite meaningless; this keeps them identical by construction.
     REPO / "supabase/migrations/20260801010000_purchases.sql",
     REPO / "supabase/migrations/20260801020000_credit_integrity.sql",
     REPO / "supabase/migrations/20260801030000_admin_adjust_credits.sql",
     REPO / "supabase/migrations/20260801050000_grant_credits.sql",
+    REPO / "supabase/migrations/20260801060000_work_runs.sql",
+    REPO / "supabase/migrations/20260802010000_caller_identity.sql",
 ]
 
 SIGS = {
