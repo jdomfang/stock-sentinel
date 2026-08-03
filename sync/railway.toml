@@ -1,0 +1,18 @@
+# Railway config for the nightly price sync.
+#   Root Directory : (repo root — leave blank)
+#   Dockerfile Path: sync/Dockerfile
+
+[build]
+builder = "DOCKERFILE"
+
+[deploy]
+# 01:00 UTC = 21:00 EDT / 20:00 EST -- after the US close either way, so it does
+# not need adjusting twice a year. Railway crons are UTC; the laptop crontab was
+# local time, which is a difference worth stating rather than discovering.
+cronSchedule = "0 1 * * *"
+
+# NEVER. A ~100 minute job that restarts on exit would run continuously and burn
+# the entire Polygon daily quota.
+restartPolicyType = "NEVER"
+
+# No healthcheckPath: this serves no HTTP and exits when done.
