@@ -8,7 +8,7 @@ import json
 import logging
 import hashlib
 
-from utils.sentiment import analyze_sentiment, analyze_sentiment_batch
+from utils.sentiment import analyze_sentiment_batch
 
 logger = logging.getLogger(__name__)
 
@@ -358,61 +358,54 @@ def analyze_tweets_for_prompt(tweets: List[Dict[str, Any]], prompt_name: str, ti
     sentiments: List[float] = []
     themes: List[str] = []
 
-    try:
-        # Delegate to the shared scorer instead of driving the HF pipeline here.
-        # That routes this path through the inference service when INFERENCE_URL
-        # is set, which is the whole point: Discovery was switched over first,
-        # and while THIS path still called load_sentiment_pipeline() directly the
-        # portal kept loading 886MB of FinBERT for every deep analysis -- so the
-        # memory ceiling the extraction exists to remove was still there, and
-        # removing torch from requirements.txt would have killed this feature.
-        #
-        # analyze_sentiment_batch returns exactly one result per input, in input
-        # order (its dedup is internal and does not merge rows), so the zip below
-        # still aligns tweet-to-score. It also applies the same 0.55 threshold and
-        # 512-char truncation, and already returns the SIGNED score -- no need to
-        # call score_finbert_output again here.
-        scored = analyze_sentiment_batch(texts)
+    # Scoring failures must PROPAGATE. analyze_sentiment_batch already falls back
+    # remote -> local internally and raises only when NEITHER is available; that
+    # has to reach the caller so the try/finally refunds the credit.
+    #
+    # This used to be wrapped in `except Exception:` with a per-tweet
+    # analyze_sentiment() fallback. That function swallows its own ImportError
+    # and returns Neutral, so once torch is removed from requirements.txt a
+    # deep analysis with the inference service down would have charged a credit
+    # and rendered a full page of Neutral(0.00) -- indistinguishable from a
+    # ticker with genuinely no signal. Same silent-degradation bug that was
+    # fixed inside analyze_sentiment_batch, still live one layer up.
+    #
+    # Theme extraction below is pure string matching on the tweet text and
+    # cannot fail in a way worth catching.
+    scored = analyze_sentiment_batch(texts)
 
-        for tw, out in zip(filtered, scored):
-            sentiments.append(float(out.get("score", 0.0)))
+    for tw, out in zip(filtered, scored):
+        sentiments.append(float(out.get("score", 0.0)))
 
-            text_lower = (tw.get("text") or "").lower()
+        text_lower = (tw.get("text") or "").lower()
 
-            if prompt_name == "Real-Time Market Sentiment":
-                if any(w in text_lower for w in ["bullish", "buy", "moon", "rocket", "long"]):
-                    themes.append("bullish")
-                if any(w in text_lower for w in ["bearish", "sell", "crash", "dump", "short"]):
-                    themes.append("bearish")
+        if prompt_name == "Real-Time Market Sentiment":
+            if any(w in text_lower for w in ["bullish", "buy", "moon", "rocket", "long"]):
+                themes.append("bullish")
+            if any(w in text_lower for w in ["bearish", "sell", "crash", "dump", "short"]):
+                themes.append("bearish")
 
-            elif prompt_name == "Sector Narrative & Trends":
-                if any(w in text_lower for w in ["trend", "emerging", "gaining", "traction", "rotation", "narrative"]):
-                    themes.append("trend")
+        elif prompt_name == "Sector Narrative & Trends":
+            if any(w in text_lower for w in ["trend", "emerging", "gaining", "traction", "rotation", "narrative"]):
+                themes.append("trend")
 
-            elif prompt_name == "Track Smart Money and Influencer Moves":
-                themes.append("influencer")
+        elif prompt_name == "Track Smart Money and Influencer Moves":
+            themes.append("influencer")
 
-            elif prompt_name == "Momentum (High Engagement)":
-                themes.append("momentum")
+        elif prompt_name == "Momentum (High Engagement)":
+            themes.append("momentum")
 
-            elif prompt_name == "Monitor Breaking News and Catalysts":
-                themes.append("catalyst")
+        elif prompt_name == "Monitor Breaking News and Catalysts":
+            themes.append("catalyst")
 
-            elif prompt_name == "Gauge Retail vs. Institutional Sentiment":
-                themes.append("positioning")
+        elif prompt_name == "Gauge Retail vs. Institutional Sentiment":
+            themes.append("positioning")
 
-            elif prompt_name == "Detect Early Warning Signs and Red Flags":
-                themes.append("risk")
+        elif prompt_name == "Detect Early Warning Signs and Red Flags":
+            themes.append("risk")
 
-            elif prompt_name == "Trading Intent / Watchlist Signals":
-                themes.append("trading_intent")
-
-    except Exception:
-        # Fallback to the slower, safer per-tweet sentiment path
-        for tw in filtered:
-            text = (tw.get("text") or "")
-            sr = analyze_sentiment(text)
-            sentiments.append(float(sr.get("score", 0.0)))
+        elif prompt_name == "Trading Intent / Watchlist Signals":
+            themes.append("trading_intent")
 
     # --- Sample tweet selection ---
     def _shorten(s: str) -> str:

@@ -1,6 +1,4 @@
 streamlit==1.40.0
-torch==2.5.1
-transformers==4.41.2
 pandas==2.2.2
 numpy==1.26.4
 requests==2.32.3
@@ -11,3 +9,15 @@ websockets==11.0.0
 setuptools>=69.0.0
 
 sentry-sdk==2.66.1
+
+# torch and transformers deliberately REMOVED. FinBERT runs in the `inference`
+# Railway service; utils.sentiment calls it over HTTP. They were ~2GB of the
+# install (torch alone ~1.6GB plus 12 nvidia-* CUDA packages that are pure
+# waste on a CPU box) and ~886MB resident once loaded, against a ~1GB tier --
+# which is what OOM-killed a scan mid-run on 2026-08-01.
+#
+# With them gone there is no local fallback, which is the INTENDED end state:
+# if inference is unreachable, analyze_sentiment_batch raises and the caller's
+# try/finally refunds the credit. A failure the user is told about beats a
+# silent fallback nobody notices -- the service ran 40x degraded for hours
+# precisely because the fallback hid it.
