@@ -17,7 +17,6 @@ import random
 import json
 import os
 from concurrent.futures import ThreadPoolExecutor, as_completed
-from filelock import FileLock, Timeout
 
 # Configure logging
 logger = logging.getLogger(__name__)
@@ -89,10 +88,6 @@ TICKER_MASTER_FILE = os.path.join(os.path.dirname(__file__), '..', 'data', 'tick
 # Optional: persist the master list in Supabase Storage so it survives app restarts
 TICKER_MASTER_BUCKET = os.getenv("TICKER_MASTER_BUCKET", "cache")
 TICKER_MASTER_OBJECT = os.getenv("TICKER_MASTER_OBJECT", "tickers/tickers.json")
-
-# Coarse lock to prevent concurrent refreshes within the same app instance
-TICKER_MASTER_LOCK_PATH = os.getenv("TICKER_MASTER_LOCK_PATH", "/tmp/ticker_master_refresh.lock")
-TICKER_MASTER_LOCK_TIMEOUT_S = int(os.getenv("TICKER_MASTER_LOCK_TIMEOUT_S", "5"))
 
 def download_ticker_master_list() -> Dict[str, Dict]:
     """
@@ -808,7 +803,7 @@ def get_cached_last_close_prices(tickers: list[str]) -> dict[str, float]:
 
 
 # Moved to utils.prices so the worker container can import it without Streamlit,
-# numpy, the Polygon SDK or filelock -- none of which this function ever needed.
+# numpy or the Polygon SDK -- none of which this function ever needed.
 # Re-exported here because Discovery and scripts/ already import it from finance.
 # One implementation, imported twice: the six-month sync outage was caused by a
 # SECOND copy of this logic that upserted a non-existent column.

@@ -6,7 +6,7 @@ The nightly price sync has been running from a laptop crontab and firing on 90
 of 176 nights -- 51%. Half the price data the product displays simply was not
 collected. Moving it to the worker container is the fix, but the worker's image
 is deliberately dependency-free and utils.finance cannot be imported there: it
-pulls in streamlit, numpy, the Polygon SDK and filelock at module scope.
+pulls in streamlit, numpy and the Polygon SDK at module scope.
 
 The function itself needed none of those -- only an HTTP client, a Supabase
 write and the clock. So it lives here, using urllib and PostgREST directly,
