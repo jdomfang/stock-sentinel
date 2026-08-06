@@ -9,6 +9,7 @@ import logging
 import hashlib
 
 from utils.sentiment import analyze_sentiment_batch
+from utils import corpus_cache
 
 logger = logging.getLogger(__name__)
 
@@ -91,20 +92,38 @@ def _load_influencer_usernames(limit: int = 40) -> List[str]:
     return out[: max(0, int(limit))]
 
 
-def _build_influencer_query(usernames: List[str], ticker: str, sector: str) -> str:
+def _build_influencer_query(usernames: List[str], ticker: str) -> str:
     """Build a `from:` query safely under X query-length limits.
 
     X recent search queries have a max length (~512). We keep headroom to avoid 400 errors.
 
     IMPORTANT: Parentheses must be balanced; otherwise X returns 400 with
     "mismatched input '<EOF>' expecting ')'".
+
+    WHY THERE IS NO SECTOR TERM ANY MORE
+
+    The tail used to be `({ticker} OR {sector})`. That OR meant a post qualified
+    if one of the twelve accounts merely said the SECTOR WORD -- so from
+    Discovery the query degenerated to "did any macro wire account say 'tech' in
+    72 hours", which for accounts that post dozens of times a day is close to
+    always, returning a full page of posts about nothing in particular. X bills
+    per POST RETURNED, so that page was billed in full to populate one of eight
+    panels. From pages/Deep_Analysis.py, which hardcodes sector="unknown", the
+    same line searched for the literal word "unknown".
+
+    The panel claims to show what smart money is saying about THIS TICKER. The
+    OR made most of its contents about neither the ticker nor smart money.
+
+    Removing it also makes the whole analysis sector-independent -- both corpora
+    now derive from the ticker alone -- which is what lets the cache key drop
+    sector so the two call sites stop invalidating each other's entries.
     """
 
     ticker = (ticker or "").strip().upper() or "NVDA"
-    sector = (sector or "").strip().lower() or "tech"
 
-    # Base filter we want regardless of influencer list.
-    tail = f"({ticker} OR {sector}) lang:en -is:retweet"
+    # Matches the ticker corpus's own form, so a cashtag post and a bare-symbol
+    # post are both eligible.
+    tail = f"(${ticker} OR {ticker}) lang:en -is:retweet"
 
     parts: List[str] = []
     MAX_LEN = 500  # leave headroom under 512
@@ -483,17 +502,37 @@ def run_deep_analysis(ticker: str, sector: str) -> Dict[str, Dict[str, Any]]:
     """
 
     t = (ticker or "").strip().upper()
-    s = (sector or "").strip().lower()
+
+    # `sector` is still accepted so both call sites keep working, but it no
+    # longer influences anything: the ticker corpus never referenced it, and the
+    # influencer query stopped referencing it when the `OR {sector}` tail was
+    # removed. Keeping it in the cache key was actively harmful -- see below.
 
     # ---- Cache helpers (session + disk) ----
     import os
     import time
 
-    CACHE_VERSION = "v3"  # bump to invalidate old cached schemas/logic
+    # v4: the influencer query changed (the `OR {sector}` tail is gone), so
+    # every v3 blob holds a panel built from a different, noisier corpus.
+    #
+    # Having to remember this bump is exactly why the new corpus cache hashes
+    # the query into its key instead. Forget it here and every user is served
+    # results from the old query until the TTL expires; there is no such
+    # failure mode in utils/corpus_cache.py.
+    CACHE_VERSION = "v4"
     CACHE_TTL_S = 45 * 60
 
     def _cache_key() -> str:
-        return f"deep_analysis:{CACHE_VERSION}:{t}:{s}:48h"
+        # Sector deliberately absent.
+        #
+        # It used to be part of this key while the DISK PATH below was
+        # {TICKER}_{VERSION}.json with no sector in it. So both call sites wrote
+        # the same file and then rejected each other's contents on read:
+        # pages/Deep_Analysis.py passes sector="unknown" (hardcoded) and
+        # pages/Discovery.py passes the real sector. Analysing NVDA from one
+        # page and then the other was a guaranteed miss in both directions --
+        # each read overwrote the file it had just failed to use.
+        return f"deep_analysis:{CACHE_VERSION}:{t}:48h"
 
     def _cache_dir() -> Path:
         root = Path(__file__).resolve().parents[1]
@@ -526,7 +565,7 @@ def run_deep_analysis(ticker: str, sector: str) -> Dict[str, Dict[str, Any]]:
             ts = float(blob.get("ts", 0))
             if not ts or (time.time() - ts) > CACHE_TTL_S:
                 return None
-            if blob.get("ticker") != t or blob.get("sector") != s:
+            if blob.get("ticker") != t:
                 return None
             return blob.get("results")
         except Exception:
@@ -537,7 +576,6 @@ def run_deep_analysis(ticker: str, sector: str) -> Dict[str, Dict[str, Any]]:
         blob = {
             "ts": time.time(),
             "ticker": t,
-            "sector": s,
             "cache_version": CACHE_VERSION,
             "results": results,
         }
@@ -562,7 +600,7 @@ def run_deep_analysis(ticker: str, sector: str) -> Dict[str, Dict[str, Any]]:
     )
 
     influencer_usernames = _load_influencer_usernames(limit=12)
-    influencer_query = _build_influencer_query(influencer_usernames, t, s) if influencer_usernames else None
+    influencer_query = _build_influencer_query(influencer_usernames, t) if influencer_usernames else None
 
     corpuses: Dict[str, List[Dict[str, Any]]] = {"ticker": [], "influencers": []}
     errors: Dict[str, str] = {}
@@ -571,7 +609,22 @@ def run_deep_analysis(ticker: str, sector: str) -> Dict[str, Dict[str, Any]]:
     def _fetch_influencers() -> Dict[str, Any]:
         if not influencer_query:
             return {"success": True, "tweets": []}
-        return search_x_tweets(query=influencer_query, timeframe="72h", max_results=100)
+
+        hit = corpus_cache.get("influencer", t, 72, influencer_query)
+        if hit is not None:
+            return {"success": True, "tweets": hit["tweets"]}
+
+        res = search_x_tweets(query=influencer_query, timeframe="72h", max_results=100)
+        if res.get("success"):
+            # Stored even when empty. The ACHR run returned zero posts, and
+            # without a negative entry the next user pays again to learn the
+            # same nothing -- which for this query is the common outcome, since
+            # a top-twelve macro account naming one mid-cap in 72h is rare.
+            corpus_cache.put(
+                "influencer", t, 72, influencer_query,
+                tweets=res.get("tweets") or [], pages_fetched=1,
+            )
+        return res
 
     logger.info("🧪 Deep Analyze: fetching corpora (ticker paginated + influencers)")
     logger.info("   • ticker_corpus: timeframe=48h per_page=100 safety_cap=300 (early-stop enabled)")
@@ -693,7 +746,18 @@ def run_deep_analysis(ticker: str, sector: str) -> Dict[str, Dict[str, Any]]:
 
             return True
 
-        while len(core) < SAFETY_CAP_TWEETS:
+        # A cached corpus skips pagination entirely. There is nothing to gate:
+        # the early-stop logic below exists only to decide whether to buy ANOTHER
+        # page, and a hit means every page this ticker needed was already bought.
+        _ticker_cached = corpus_cache.get("ticker", t, 48, ticker_query)
+        if _ticker_cached is not None:
+            core = list(_ticker_cached["tweets"])
+            logger.info(
+                "🧠 Deep Analyze ticker corpus from cache: %d posts, age %.0fs -- 0 posts billed",
+                len(core), _ticker_cached["age_s"],
+            )
+
+        while _ticker_cached is None and len(core) < SAFETY_CAP_TWEETS:
             pages += 1
             remaining = SAFETY_CAP_TWEETS - len(core)
 
@@ -754,6 +818,16 @@ def run_deep_analysis(ticker: str, sector: str) -> Dict[str, Dict[str, Any]]:
 
             if not next_token:
                 break
+
+        # Store only a corpus bought cleanly. One truncated by an X failure
+        # would be frozen in and replayed to everyone until it expired, turning
+        # a transient error into a sustained thin analysis.
+        if _ticker_cached is None and not errors.get("ticker") and core:
+            corpus_cache.put(
+                "ticker", t, 48, ticker_query,
+                tweets=core, pages_fetched=pages,
+                stop_reason="early_stop" if len(core) < SAFETY_CAP_TWEETS else "safety_cap",
+            )
 
         corpuses["ticker"] = core
 
