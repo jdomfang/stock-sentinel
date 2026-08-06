@@ -16,6 +16,7 @@ from utils.navigation import render_sidebar_navigation, render_top_nav
 from utils.ui import apply_theme, close_page, render_recommendation_panel, render_full_analysis_expander
 from utils.sentiment import extract_tickers, analyze_sentiment_batch
 from utils.finance import get_ticker_master_list, get_stock_data, get_last_close_prices_best_effort
+from utils import corpus_cache
 from utils.projections import simple_projection
 from utils.deep_analysis import ANALYSIS_PROMPTS, run_deep_analysis, generate_ai_summary
 
@@ -573,6 +574,8 @@ if "df_valid" not in st.session_state:
     st.session_state.df_valid = None
 if "df_unvalidated" not in st.session_state:
     st.session_state.df_unvalidated = None
+if "scan_corpus_age_s" not in st.session_state:
+    st.session_state.scan_corpus_age_s = 0.0
 
 # Scan controls (align with Home card styling)
 with st.container(key="discovery_scan_card"):
@@ -980,13 +983,60 @@ if scan_triggered:
         status_text = st.empty()
         status_text.markdown(f"**📡 Scanning X for {sector} momentum...**")
 
+        # ── Shared corpus cache ──────────────────────────────────────────────
+        # X bills per POST RETURNED, so the cost of this scan is the number of
+        # tweets it pulls. The result is not user-specific -- it is a function
+        # of (sector, 24h window) -- and there are only ten sectors, so one
+        # fetch can serve every user who scans that sector for the next six
+        # hours. Cost stops scaling with users and becomes bounded by the
+        # catalogue.
+        #
+        # The RAW corpus is cached, not the finished table: the tweets are what
+        # cost money, and re-scoring them is free. A sentiment fix can then be
+        # replayed over posts already paid for.
+        _cached = corpus_cache.get("sector", sector, 24, query)
+        _cached_pages: list[list[dict]] | None = None
+        if _cached is not None:
+            _t = _cached["tweets"]
+            _cached_pages = [_t[i:i + PER_PAGE] for i in range(0, len(_t), PER_PAGE)] or [[]]
+        _fetched_pages: list[list[dict]] = []
+
+        def _next_page(token: str | None) -> dict:
+            """Serve page N from the cached corpus, or buy it from X.
+
+            Replaying the corpus page by page rather than handing the loop one
+            flat list keeps the early-stop, the safety cap and the per-page
+            sentiment batching below completely untouched -- the same tweets
+            produce the same tickers, so a replayed scan stops exactly where
+            the original did.
+            """
+            idx = pages - 1  # `pages` is incremented before this is called
+            if _cached_pages is not None:
+                if idx < len(_cached_pages):
+                    return {
+                        "success": True,
+                        "tweets": _cached_pages[idx],
+                        # Synthetic: on a hit X is never called, so this token
+                        # only has to be truthy enough to drive the loop.
+                        "next_token": "cached" if idx + 1 < len(_cached_pages) else None,
+                    }
+                return {"success": True, "tweets": [], "next_token": None}
+
+            res = search_x_tweets_page(
+                query=query, max_results=PER_PAGE, timeframe="24h", next_token=token
+            )
+            if res.get("success"):
+                # Record what we bought so it can be stored once the scan ends.
+                _fetched_pages.append(res.get("tweets") or [])
+            return res
+
         with st.spinner(f"Searching {sector} stocks on X..."):
             pages = 0
             while total_sector_relevant < SAFETY_CAP_TWEETS:
                 pages += 1
                 # Page fetch (always 100 max)
                 progress_bar.progress(15); status_text.markdown(f"**📡 Scanning X for {sector} momentum...**")
-                res = search_x_tweets_page(query=query, max_results=PER_PAGE, timeframe="24h", next_token=next_token)
+                res = _next_page(next_token)
                 if not res.get('success'):
                     _api_err = res.get('error') or 'X API request failed'
                     _x_api_error = _api_err
@@ -1080,6 +1130,29 @@ if scan_triggered:
         progress_bar.progress(100); status_text.empty(); progress_bar.empty()
 
         logger.info(f"🎯 Sector-relevant tweets processed (capped): {total_sector_relevant}")
+
+        # Store what we bought, so the next scan of this sector is free.
+        #
+        # Only on a clean run: a corpus truncated by an X failure would be
+        # frozen in and served to everyone for the next six hours, turning one
+        # transient error into a sustained bad result. A genuinely EMPTY result
+        # is stored, though -- "this sector had no chatter" is a real answer
+        # that cost real money to learn, and without a negative entry the next
+        # user pays to learn it again.
+        if _cached is None and not _x_api_error:
+            corpus_cache.put(
+                "sector", sector, 24, query,
+                tweets=[t for pg in _fetched_pages for t in pg],
+                pages_fetched=len(_fetched_pages),
+                stop_reason=(
+                    "validated_target" if len(validated_set) >= TARGET_VALIDATED
+                    else "safety_cap" if total_sector_relevant >= SAFETY_CAP_TWEETS
+                    else "exhausted"
+                ),
+            )
+
+        # Age must survive the rerun that renders the table below.
+        st.session_state.scan_corpus_age_s = _cached["age_s"] if _cached else 0.0
 
         if total_sector_relevant == 0:
             if _x_api_error:
@@ -1507,6 +1580,21 @@ if st.session_state.df_valid is not None:
             f'{sector.title()} · {len(df_valid_display)} stocks</div>',
             unsafe_allow_html=True,
         )
+
+        # Say how old the chatter is whenever it did not come from X just now.
+        # The page badges "Real-time social sentiment", and a corpus may be up
+        # to six hours old -- unlabelled, that is a claim the product does not
+        # keep. Stale-but-labelled is honest; stale-and-silent is the failure
+        # mode this codebase keeps rediscovering.
+        _age_s = float(st.session_state.get("scan_corpus_age_s") or 0.0)
+        if _age_s >= 60:
+            _mins = int(_age_s // 60)
+            _age_label = f"{_mins // 60}h {_mins % 60}m" if _mins >= 60 else f"{_mins}m"
+            st.markdown(
+                f'<div style="color:rgba(148,163,184,.62);font-size:0.78rem;'
+                f'margin:-0.35rem 0 0.75rem 0;">Market chatter from {_age_label} ago</div>',
+                unsafe_allow_html=True,
+            )
 
         # Sort: Bullish first, then Neutral, then Bearish
         sentiment_order = {"bullish": 0, "neutral": 1, "bearish": 2}
