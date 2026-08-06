@@ -997,8 +997,7 @@ if scan_triggered:
         _cached = corpus_cache.get("sector", sector, 24, query)
         _cached_pages: list[list[dict]] | None = None
         if _cached is not None:
-            _t = _cached["tweets"]
-            _cached_pages = [_t[i:i + PER_PAGE] for i in range(0, len(_t), PER_PAGE)] or [[]]
+            _cached_pages = corpus_cache.chunk_pages(_cached["tweets"], PER_PAGE)
         _fetched_pages: list[list[dict]] = []
 
         def _next_page(token: str | None) -> dict:

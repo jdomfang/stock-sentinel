@@ -129,6 +129,26 @@ def make_key(kind: str, subject: str, timeframe_h: int, query: str) -> str:
     return f"{kind}:{(subject or '').strip().lower()}:{int(timeframe_h)}h:{qh}"
 
 
+def chunk_pages(tweets: list, per_page: int) -> list[list]:
+    """Split a cached corpus back into the pages it was originally fetched as.
+
+    Callers replay a corpus page by page rather than as one flat list so their
+    existing pagination -- early-stop gates, safety caps, per-page sentiment
+    batching -- keeps working untouched. The same tweets produce the same
+    tickers, so a replayed scan stops exactly where the original did.
+
+    An EMPTY corpus returns one empty page rather than no pages. Callers loop
+    "fetch a page, break if it is empty", so zero pages would spin instead of
+    terminating, and a cached "this sector had no chatter" has to replay as
+    that same immediate stop.
+    """
+    if per_page < 1:
+        per_page = 1
+    if not tweets:
+        return [[]]
+    return [tweets[i:i + per_page] for i in range(0, len(tweets), per_page)]
+
+
 def get(
     kind: str,
     subject: str,

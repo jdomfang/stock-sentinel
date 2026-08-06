@@ -245,6 +245,36 @@ def test_a_broken_cache_never_breaks_a_paid_scan():
         corpus_cache._config = original
 
 
+def test_replaying_a_corpus_reproduces_the_original_pages():
+    print("\nreplay: a cached corpus is served back as the pages it was bought as")
+    corpus = [{"id": str(i)} for i in range(178)]  # the observed ACHR corpus size
+
+    pages = corpus_cache.chunk_pages(corpus, 100)
+    check("page count matches what was fetched", len(pages) == 2, f"got {len(pages)}")
+    check("full pages are full", len(pages[0]) == 100, f"got {len(pages[0])}")
+    check("the last page holds the remainder", len(pages[1]) == 78, f"got {len(pages[1])}")
+
+    # The property that matters: replay must lose nothing and reorder nothing,
+    # or a cache hit silently returns a different shortlist than the scan the
+    # user paid for.
+    check("no post is lost or reordered",
+          [t for pg in pages for t in pg] == corpus)
+
+    # Callers loop "fetch a page, break if empty". Zero pages would spin.
+    check("an empty corpus replays as one empty page",
+          corpus_cache.chunk_pages([], 100) == [[]])
+
+    check("a single short page stays one page",
+          len(corpus_cache.chunk_pages(corpus[:40], 100)) == 1)
+
+    # An exact multiple must not produce a trailing empty page, which would cost
+    # the caller an extra loop iteration and, on a miss, a real X request.
+    exact = [{"id": str(i)} for i in range(200)]
+    check("an exact multiple yields no trailing empty page",
+          [len(p) for p in corpus_cache.chunk_pages(exact, 100)] == [100, 100],
+          str([len(p) for p in corpus_cache.chunk_pages(exact, 100)]))
+
+
 def test_an_empty_corpus_is_storable():
     print("\nnegative caching: 'no chatter' is an answer worth keeping")
     # The ACHR influencer query returned zero posts. Without a stored empty,
@@ -280,6 +310,7 @@ def main() -> int:
     c.close()
 
     test_the_key_cannot_drift_from_its_query()
+    test_replaying_a_corpus_reproduces_the_original_pages()
     test_a_broken_cache_never_breaks_a_paid_scan()
     test_an_empty_corpus_is_storable()
 
