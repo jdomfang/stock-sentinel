@@ -2,10 +2,10 @@
 # set the Railway service's Root Directory to the repo root and its
 # Dockerfile Path to sync/Dockerfile.
 #
-# It needs utils/prices.py and data/tickers.json, which live outside this
-# folder. The existing `worker` service builds from worker/ and is left
-# untouched: it is green and running, and widening its context to fix a
-# different service is how a working thing gets broken.
+# It needs utils/prices.py, which lives outside this folder. The existing
+# `worker` service builds from worker/ and is left untouched: it is green and
+# running, and widening its context to fix a different service is how a working
+# thing gets broken.
 FROM python:3.11-slim
 
 ENV PYTHONUNBUFFERED=1
@@ -13,11 +13,16 @@ WORKDIR /app
 
 # No pip install. utils/prices.py is stdlib-only by design, which is the whole
 # reason it was extracted from utils.finance -- that module pulls streamlit,
-# numpy, the Polygon SDK and filelock, none of which this job needs.
+# numpy and the Polygon SDK, none of which this job needs.
+#
+# data/tickers.json is deliberately NOT copied any more. The old per-ticker
+# sync read its work list from that file in alphabetical order, which is what
+# made the cache 60% tickers starting with "A". The grouped endpoint returns the
+# whole market, and the symbols worth keeping come from ticker_master in
+# Supabase -- the same list the app scans against.
 COPY utils/prices.py            utils/
 COPY utils/__init__.py          utils/
 COPY scripts/sync_stock_prices.py scripts/
-COPY data/tickers.json          data/
 COPY sync/run_sync.py           ./
 
 CMD ["python", "run_sync.py"]

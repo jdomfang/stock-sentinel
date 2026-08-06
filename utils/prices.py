@@ -97,6 +97,212 @@ def _upsert_stock_prices(rows: list[dict]) -> None:
             raise RuntimeError(f"stock_prices upsert HTTP {r.status}")
 
 
+def _fetch_ticker_master_symbols() -> set[str]:
+    """Every symbol the app actually scans against. Empty set if unreadable."""
+    base = _require("SUPABASE_URL").rstrip("/")
+    key = _require("SUPABASE_SERVICE_ROLE_KEY")
+    out: set[str] = set()
+    offset = 0
+    while True:
+        qs = urllib.parse.urlencode({"select": "symbol", "offset": offset, "limit": 1000})
+        req = urllib.request.Request(
+            f"{base}/rest/v1/ticker_master?{qs}",
+            headers={"apikey": key, "Authorization": f"Bearer {key}"},
+        )
+        with urllib.request.urlopen(req, timeout=30) as r:
+            rows = json.loads(r.read() or b"[]")
+        out.update((row.get("symbol") or "").upper() for row in rows if row.get("symbol"))
+        if len(rows) < 1000:
+            return out
+        offset += 1000
+
+
+def fetch_and_cache_grouped_daily(
+    start_date=None,
+    max_lookback_days: int = 7,
+    max_gap_days: int = 5,
+    restrict_to_master: bool = True,
+    chunk_size: int = 500,
+) -> tuple[str, int]:
+    """Fetch EVERY US ticker's last close in one request, then upsert.
+
+    WHY THIS REPLACES THE PER-TICKER LOOP
+
+    fetch_and_cache_last_close_prices asks Polygon one question per ticker. At
+    the free tier's 5 requests/minute, 500 tickers takes ~100 minutes and the
+    full 7,065-symbol universe would take 23.5 HOURS -- so a nightly full sync
+    was arithmetically impossible, and the job settled for 500 chosen by
+    position in a file. The result: 643 tickers cached, 387 of them starting
+    with the letter "A".
+
+    Polygon's grouped daily bars endpoint returns the whole market for one date
+    in a SINGLE request. Measured 2026-08-05 against the production key: 1 call,
+    0.5s, 12,408 tickers, covering 6,007 of ticker_master (85%). Same free tier.
+
+    WHY THE WALK-BACK
+
+    This endpoint takes one date and has no "latest" mode: ask for a Saturday
+    and you get resultsCount=0, not Friday's closes. Crucially a weekday HOLIDAY
+    is indistinguishable from a weekend -- verified, Memorial Day Monday
+    2026-05-25 returned 0 exactly as the Sunday before it did, while Friday
+    2026-05-22 returned 12,202.
+
+    That is the whole reason this walks back instead of consulting a calendar.
+    A hardcoded holiday list needs ten federal dates plus Good Friday plus
+    irregular closures (the market shut for two days during Hurricane Sandy),
+    must be maintained every year, and fails SILENTLY when it goes stale. A
+    calendar library would add a dependency to a module that is deliberately
+    stdlib-only so the sync container can import it. Asking Polygon and letting
+    an empty response mean "closed" needs no maintenance and cannot go stale.
+
+    The per-ticker path already does this, expressed as a 10-day range with
+    sort=desc -- the stepping just moves to our side because grouped takes a
+    single date.
+
+    THE GUARD
+
+    Walking back is safe; walking back silently is not. If Polygon starts
+    returning empty for recent dates, an unguarded loop happily writes week-old
+    prices while the dead-man switch pings green -- the exact shape of the 43
+    unnoticed sync failures. So the search is bounded (max_lookback_days), the
+    date landed on is always logged, and a gap wider than any real market
+    closure (max_gap_days) raises instead of quietly succeeding.
+
+    Returns (bar_date_iso, rows_written). Raises on any failure, because the
+    caller turns an exception into a non-zero exit and a red dead-man switch.
+    """
+    api_key = _require("POLYGON_API_KEY")
+
+    # The job runs at 01:00 UTC, which is the previous EVENING in New York --
+    # after the 16:00 ET close. So the trading day we want is yesterday's date.
+    if start_date is None:
+        start_date = datetime.utcnow().date() - timedelta(days=1)
+
+    day = start_date
+    payload = None
+    last_refusal = ""
+    for _ in range(max_lookback_days):
+        qs = urllib.parse.urlencode({"adjusted": "true", "apiKey": api_key})
+        url = (
+            "https://api.polygon.io/v2/aggs/grouped/locale/us/market/stocks/"
+            f"{day.isoformat()}?{qs}"
+        )
+
+        refused = False
+        for attempt in range(1, 4):
+            status, body = _get_json(url, timeout=90)
+            if status == 429:
+                wait = 15.0 * attempt
+                logger.warning("Polygon 429 on grouped %s (attempt %d/3). Sleeping %.0fs",
+                               day, attempt, wait)
+                time.sleep(wait)
+                continue
+            if status == 403:
+                refused = True
+                # The free tier refuses the CURRENT day until its end-of-day
+                # data is published: "Attempted to request today's data before
+                # end of day." That is a not-yet, not a failure, and it is the
+                # normal answer for the first date this job asks about -- the
+                # job runs at 01:00 UTC, which is still the same trading day in
+                # New York. So it steps back exactly like a closed market.
+                #
+                # A bad or unentitled API key also returns 403. That is NOT
+                # swallowed: every date will refuse, the loop exhausts its
+                # lookback, and the final error carries this message rather
+                # than a misleading "market was closed all week".
+                last_refusal = f"HTTP 403 {str(body)[:160]}"
+                break
+            if status != 200:
+                raise RuntimeError(
+                    f"Polygon grouped HTTP {status} for {day}: {str(body)[:200]}"
+                )
+            break
+        else:
+            raise RuntimeError(f"Polygon grouped rate-limited for {day} after 3 attempts")
+
+        if refused:
+            logger.info("grouped: %s not available on this plan yet "
+                        "(end-of-day data not published); stepping back", day)
+            day = day - timedelta(days=1)
+            continue
+
+        count = int((body or {}).get("resultsCount") or 0)
+        if count > 0:
+            payload = body
+            break
+
+        # Zero rows means the market was closed. Weekend or holiday -- we do not
+        # need to know which, only that there is nothing to collect.
+        logger.info("grouped: %s was not a trading day (0 rows); stepping back", day)
+        day = day - timedelta(days=1)
+
+    if payload is None:
+        raise RuntimeError(
+            f"No trading day found in {max_lookback_days} days back from {start_date}. "
+            + (f"Last upstream refusal: {last_refusal}"
+               if last_refusal else "Polygon returned empty for every date.")
+        )
+
+    gap = (start_date - day).days
+    if gap > max_gap_days:
+        raise RuntimeError(
+            f"Last trading day resolved to {day}, {gap} days before {start_date}. "
+            f"No real market closure is that long -- refusing to write prices that "
+            f"stale rather than reporting success."
+        )
+    if gap > 2:
+        logger.warning("grouped: last trading day is %s, %d days back "
+                       "(holiday weekend, or something is wrong)", day, gap)
+
+    results = payload.get("results") or []
+    logger.info("grouped: %s returned %d tickers in one request", day, len(results))
+
+    keep: set[str] | None = None
+    if restrict_to_master:
+        try:
+            keep = _fetch_ticker_master_symbols()
+            logger.info("grouped: restricting to %d ticker_master symbols", len(keep))
+        except Exception as e:
+            # Not fatal. Writing the extra instruments is harmless; writing
+            # nothing is not.
+            logger.warning("grouped: ticker_master unreadable (%s); writing all tickers",
+                           type(e).__name__)
+            keep = None
+
+    now_iso = datetime.utcnow().isoformat()
+    rows: list[dict] = []
+    for r in results:
+        sym = (r.get("T") or "").upper()
+        close = r.get("c")
+        if not sym or not isinstance(close, (int, float)):
+            continue
+        if keep is not None and sym not in keep:
+            continue
+        rows.append({
+            "ticker": sym,
+            "close_price": float(close),
+            # Deliberately the WRITE time, matching the per-ticker path. Mixing
+            # semantics between the two writers would be worse than either
+            # choice. The bar's own date is logged and returned instead; giving
+            # it a column of its own is a schema change worth making separately.
+            "last_updated": now_iso,
+            "currency": "USD",
+        })
+
+    if not rows:
+        raise RuntimeError(f"grouped {day} returned {len(results)} tickers but none matched")
+
+    written = 0
+    for i in range(0, len(rows), chunk_size):
+        chunk = rows[i:i + chunk_size]
+        _upsert_stock_prices(chunk)
+        written += len(chunk)
+        logger.info("stock_prices: wrote %d (%d/%d)", len(chunk), written, len(rows))
+
+    logger.info("✅ grouped sync complete: %d prices from %s", written, day)
+    return day.isoformat(), written
+
+
 def fetch_and_cache_last_close_prices(
     tickers: list[str], pace_seconds: float = 0.12, strict: bool = False
 ) -> dict[str, float]:

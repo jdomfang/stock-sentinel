@@ -11,9 +11,12 @@ This is the same sync_prices() the laptop ran, unchanged. What changes is where
 it runs and that it now reports to a dead-man switch that means something,
 because the host does not sleep.
 
-RUNTIME. ~500 tickers at Polygon's free-tier 5 req/min is roughly 100 minutes.
-That is expected, not a hang -- and it is why this is its own Railway service
-with a nightly cron rather than a job inside the 5-minute worker tick.
+RUNTIME. Seconds, not the ~100 minutes this took while it asked Polygon about
+one ticker at a time. The grouped daily bars endpoint returns the whole market
+for a date in a single request, so the job is now dominated by the chunked
+upsert rather than by rate limiting. It stays its own Railway service because
+its schedule (nightly, after the US close) has nothing to do with the worker's
+5-minute tick.
 """
 
 from __future__ import annotations
@@ -43,15 +46,13 @@ def ping(suffix: str = "") -> None:
 
 
 def main() -> int:
-    limit = int(os.environ.get("SYNC_TICKER_LIMIT", "500"))
-    rate = float(os.environ.get("SYNC_RATE_PER_MIN", "5"))
+    lookback = int(os.environ.get("SYNC_MAX_LOOKBACK_DAYS", "7"))
 
     ping("/start")
-    print(f"price sync starting: {limit} tickers at {rate}/min "
-          f"(ETA ~{limit * (60.0 / max(rate, 1)) / 60:.0f} min)", flush=True)
+    print("price sync starting: whole US market in one grouped request", flush=True)
 
     try:
-        ok = sync_prices(limit=limit, rate_per_min=rate)
+        ok = sync_prices(max_lookback_days=lookback)
     except Exception as e:
         print(f"ERROR sync raised: {type(e).__name__}: {e}", flush=True)
         ping("/fail")
