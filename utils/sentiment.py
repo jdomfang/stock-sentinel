@@ -103,30 +103,51 @@ def load_sentiment_pipeline():
     )
 
 
-def extract_tickers(text: str) -> List[str]:
-    """
-    Extract potential stock tickers from text using improved filtering.
-    Prioritizes $-prefixed tickers (explicit stock mentions) over bare uppercase words.
-    Applies length-based filtering to prefer 3-4 letter tickers.
+MAX_BARE_TICKERS_PER_POST = 5
 
-    Args:
-        text: The text to extract tickers from (e.g., tweet text)
+
+def extract_tickers_detailed(text: str) -> Dict[str, any]:
+    """Extract tickers AND report where each one came from.
+
+    Same algorithm as extract_tickers has always used -- this IS that
+    implementation, and extract_tickers is now a one-line wrapper over it, so
+    the two cannot drift apart. What is new is that the caller can tell a
+    CASHTAG match ($CAT, unambiguous) from a BARE uppercase match (CAT, which
+    is also an English word).
+
+    That distinction is the whole point. 17 of 20 ordinary words tested are
+    real listed symbols -- AIR is AAR Corp, RAIL is FreightCar America, BOOM is
+    DMC Global -- and all three validate as Industrials, so a post reading
+    "RAIL AND AIR FREIGHT VOLUMES RISING" can produce two fake recommendations
+    that are indistinguishable from real ones in the UI. Provenance is what
+    makes them countable, and a symbol that NEVER appears with a $ anywhere in
+    a corpus is a strong phantom suspect.
 
     Returns:
-        List of unique potential stock ticker symbols
+        cashtag           distinct $-prefixed symbols, first-seen order
+        bare              distinct bare-word symbols that survived the top-N cut
+        cashtag_counts    {symbol: occurrences} across the whole text
+        bare_counts       {symbol: occurrences} within the returned slice
+        legacy            the EXACT list extract_tickers has always returned
     """
-    tickers = []
+    tickers: List[str] = []
     seen = set()
+    cashtag_counts: Dict[str, int] = {}
 
     # Step 1: Extract $-prefixed tickers (highest priority - explicit mentions)
     dollar_prefixed_pattern = r'\$([A-Z]{2,5})\b'
     dollar_matches = re.findall(dollar_prefixed_pattern, text)
 
     for match in dollar_matches:
-        if match not in EXCLUDED_WORDS and match not in seen:
+        if match in EXCLUDED_WORDS:
+            continue
+        cashtag_counts[match] = cashtag_counts.get(match, 0) + 1
+        if match not in seen:
             tickers.append(match)
             seen.add(match)
             logger.debug(f"💰 Found $-prefixed ticker: ${match}")
+
+    cashtags = list(tickers)
 
     # Step 2: Extract bare uppercase tickers with stricter filtering
     bare_ticker_pattern = r'\b([A-Z]{2,5})\b'
@@ -140,17 +161,65 @@ def extract_tickers(text: str) -> List[str]:
             length_score = 1.0 if 3 <= len(match) <= 4 else 0.5
             scored_tickers.append((match, length_score))
 
-    # Sort by score (higher first) and add top candidates
+    # Sort by score (higher first) and add top candidates. Stable, so equal
+    # scores keep first-seen order.
     scored_tickers.sort(key=lambda x: x[1], reverse=True)
 
-    # Add top bare tickers (limit to avoid too many false positives)
-    for ticker, score in scored_tickers[:5]:  # Max 5 additional bare tickers
+    # KNOWN DEFECT, PRESERVED DELIBERATELY.
+    #
+    # The scoring loop above tests `match not in seen` but never ADDS to seen,
+    # so a bare word repeated in one post appears in scored_tickers repeatedly
+    # and is appended here repeatedly:
+    #
+    #   "RAIL and AIR rising. RAIL volumes up, AIR up, RAIL again."
+    #     -> ['RAIL', 'AIR', 'RAIL', 'AIR', 'RAIL']
+    #
+    # pages/Discovery.py does `ticker_data[t]['mentions'] += 1` per element, so
+    # repetition inflates both the mention count and the sentiment sample --
+    # and mentions drive the validation ranking. Repeating a bare word promotes
+    # that ticker. Cashtags are immune, because Step 1 dedupes immediately, so
+    # the inflation applies ONLY to the path that also generates phantoms.
+    #
+    # It is NOT fixed here on purpose: this change exists to MEASURE the
+    # pipeline, and a measurement pass that silently alters ranking would make
+    # its own baseline unreadable. bare_counts below records the duplication so
+    # it is visible in the metrics, and fixing it is a separate, deliberate
+    # change with its own before/after.
+    bare_counts: Dict[str, int] = {}
+    bare_distinct: List[str] = []
+    for ticker, score in scored_tickers[:MAX_BARE_TICKERS_PER_POST]:
         tickers.append(ticker)
         seen.add(ticker)
+        bare_counts[ticker] = bare_counts.get(ticker, 0) + 1
+        if ticker not in bare_distinct:
+            bare_distinct.append(ticker)
         logger.debug(f"📈 Added bare ticker: {ticker} (score: {score})")
 
     logger.debug(f"📝 Final extracted tickers: {tickers}")
-    return tickers
+    return {
+        "cashtag": cashtags,
+        "bare": bare_distinct,
+        "cashtag_counts": cashtag_counts,
+        "bare_counts": bare_counts,
+        "legacy": tickers,
+    }
+
+
+def extract_tickers(text: str) -> List[str]:
+    """
+    Extract potential stock tickers from text using improved filtering.
+    Prioritizes $-prefixed tickers (explicit stock mentions) over bare uppercase words.
+    Applies length-based filtering to prefer 3-4 letter tickers.
+
+    Args:
+        text: The text to extract tickers from (e.g., tweet text)
+
+    Returns:
+        List of potential stock ticker symbols. NOTE: may contain duplicates
+        when a bare word repeats -- see the defect note in
+        extract_tickers_detailed, whose `legacy` field this returns verbatim.
+    """
+    return extract_tickers_detailed(text)["legacy"]
 
 
 def score_finbert_output(label: str, confidence: float, neutral_threshold: float = 0.55) -> tuple[float, str, str]:

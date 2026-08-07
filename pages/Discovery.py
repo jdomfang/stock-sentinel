@@ -14,7 +14,8 @@ import logging
 
 from utils.navigation import render_sidebar_navigation, render_top_nav
 from utils.ui import apply_theme, close_page, render_recommendation_panel, render_full_analysis_expander
-from utils.sentiment import extract_tickers, analyze_sentiment_batch
+from utils.sentiment import extract_tickers_detailed, analyze_sentiment_batch
+from utils import x_metrics
 from utils.finance import get_ticker_master_list, get_stock_data, get_last_close_prices_best_effort
 from utils import corpus_cache
 from utils.projections import simple_projection
@@ -1000,6 +1001,56 @@ if scan_triggered:
             _cached_pages = corpus_cache.chunk_pages(_cached["tweets"], PER_PAGE)
         _fetched_pages: list[list[dict]] = []
 
+        # Effectiveness telemetry. Every number it reports is derived from posts
+        # already paid for, so this adds no X spend and no API calls.
+        _tally = x_metrics.ScanTally()
+        # A mutable holder, not a bare flag: this block is module-level Streamlit
+        # script code, so a nested def cannot rebind an enclosing name.
+        _metrics_state = {"written": False}
+
+        def _is_valid_ticker(sym: str) -> bool:
+            """The SAME rule _try_validate_from_current_ranking applies.
+
+            Passed into the tally so an uncapped validatable count can be
+            computed. It must mirror the real predicate exactly, or the headline
+            measurement diverges from what the scan actually accepts.
+            """
+            info = ticker_master_list.get((sym or "").upper())
+            if not info or not selected_nasdaq_sectors:
+                return False
+            return (info.get("sector") or "").strip() in selected_nasdaq_sectors
+
+        def _record_metrics(displayed: list[str]) -> None:
+            """One row per scan, written whichever way the scan ends.
+
+            Called on the empty-result path too: a scan that bought 99 posts and
+            displayed nothing is 100% waste, and that is precisely the data
+            point worth having. Recording only successful scans would bias the
+            waste number downward exactly where it matters most.
+            """
+            if _metrics_state["written"]:
+                return          # one row per scan, whichever path got here first
+            _metrics_state["written"] = True
+            x_metrics.record_scan(
+                event_id=getattr(_credit, "event_id", None),
+                subject=sector,
+                query=query,
+                tally=_tally,
+                validated=validated_set,
+                displayed=displayed,
+                posts_billed=sum(len(p) for p in _fetched_pages),
+                pages_fetched=len(_fetched_pages),
+                from_cache=_cached is not None,
+                # Uncapped validation, so the 10-cap cannot hide the answer.
+                is_valid=_is_valid_ticker,
+                stop_reason=(
+                    "validated_target" if len(validated_set) >= TARGET_VALIDATED
+                    else "safety_cap" if total_sector_relevant >= SAFETY_CAP_TWEETS
+                    else "exhausted"
+                ),
+                corpus_key=corpus_cache.make_key("sector", sector, 24, query),
+            )
+
         def _next_page(token: str | None) -> dict:
             """Serve page N from the cached corpus, or buy it from X.
 
@@ -1085,7 +1136,14 @@ if scan_triggered:
                 _page_hits = []
                 for tweet in page_tweets:
                     text = tweet.get('text', '')
-                    tickers = extract_tickers(text)
+                    # _detailed reports WHERE each symbol came from -- $CAT is
+                    # unambiguous, bare CAT is also an English word. `legacy` is
+                    # the exact list extract_tickers has always returned, so
+                    # measuring changes nothing about what the scan does.
+                    _d = extract_tickers_detailed(text)
+                    _tally.record(_d["cashtag"], _d["bare"],
+                                  _d["cashtag_counts"], _d["bare_counts"])
+                    tickers = _d["legacy"]
                     if tickers:
                         _page_hits.append((text, tickers))
 
@@ -1154,6 +1212,7 @@ if scan_triggered:
         st.session_state.scan_corpus_age_s = _cached["age_s"] if _cached else 0.0
 
         if total_sector_relevant == 0:
+            _record_metrics([])
             if _x_api_error:
                 # Upstream failure, zero posts: the user paid and got nothing.
                 if refund_credit("scan", _credit.event_id, f"x api: {_x_api_error[:120]}"):
@@ -1195,6 +1254,11 @@ if scan_triggered:
             df_valid = df_valid.drop(columns=['Valid'])
             df_valid = df_valid.head(TARGET_VALIDATED)
 
+            # Classification needs the FINAL top-10: whether a post
+            # "contributed" depends on which tickers actually got displayed,
+            # which is not known until here.
+            _record_metrics([str(t) for t in df_valid["Ticker"].tolist()])
+
             st.session_state.df_valid = df_valid
             st.session_state.df_unvalidated = None  # not shown
             st.session_state.selected_sector = sector
@@ -1213,6 +1277,13 @@ if scan_triggered:
         else:
             # Posts were fetched and scored, they just contained no tickers.
             # Work was done and an answer given, so this stays charged.
+            #
+            # Metrics MUST be recorded here. This is a 100%-waste scan -- every
+            # post bought, nothing usable out -- and it is the single most
+            # informative data point about query quality. Recording only scans
+            # that produced a table would bias the waste number downward exactly
+            # where it matters most.
+            _record_metrics([])
             _delivered = True
             st.warning("⚠️ No stock tickers found in the posts. Try a different search query.")
 
@@ -1274,6 +1345,18 @@ if scan_triggered:
         #
         # Still does NOT cover an OOM kill: SIGKILL runs no finally either. That
         # remains the orphan reaper's job.
+        # Record the buy even when the scan died. The single most likely way a
+        # scan ends is the user clicking again mid-run, which raises
+        # StopException (a BaseException) and skips every explicit call site
+        # above -- and those aborted runs are the MOST wasteful, since 100% of
+        # the posts were bought and 0% were used. Excluding exactly the worst
+        # cases would bias the waste number downward in the flattering
+        # direction. record_scan cannot raise, so this is safe in a finally.
+        try:
+            _record_metrics([])
+        except Exception:
+            pass
+
         if _delivered:
             complete_work(_credit.event_id, "completed", f"sector={sector}")
         else:
