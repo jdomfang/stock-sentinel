@@ -195,12 +195,28 @@ def test_phantom_suspects_use_bare_share_not_a_binary_test():
     check("40 bare mentions are not excused by 1 cashtag",
           s2["_suspect_symbols"] == ["CAT"], str(s2["ticker_provenance"]))
 
-    # And the other direction: a genuine low-mention ticker that simply nobody
-    # wrote with a $ must not be branded a fabrication on 1-2 mentions.
-    t3 = build([([], ["HON"]), ([], ["HON"])])
-    s3 = t3.finalize(validated={"HON"}, displayed=["HON"])
-    check("two bare mentions is too little evidence to accuse",
-          s3["_suspect_symbols"] == [], str(s3["_suspect_symbols"]))
+    # RECALIBRATED AGAINST PRODUCTION DATA. The first version of this rule
+    # required bare >= 3, which was tuned against a hypothetical "RAIL x40"
+    # case. The first three real scans showed mention counts are 1-2, so that
+    # floor could never fire -- it reported zero suspects while DOW sat in the
+    # industrials table with cashtag=0, bare=2, and "the Dow" essentially never
+    # means Dow Inc. Only data could have caught that; no reviewer knew the
+    # distribution.
+    #
+    # The rule is now recall-oriented on purpose: this is a REVIEW QUEUE, and a
+    # fabricated pick shown to a paying user costs more than clearing a false
+    # alarm. Genuine low-mention tickers land here too, and that is accepted.
+    t3 = build([([], ["DOW"]), ([], ["DOW"])])
+    s3 = t3.finalize(validated={"DOW"}, displayed=["DOW"])
+    check("bare-only evidence is queued even at two mentions",
+          s3["_suspect_symbols"] == ["DOW"], str(s3["_suspect_symbols"]))
+
+    # Independent confirmation clears it: someone wrote $SYM, so the text was
+    # demonstrably about the security.
+    t4 = build([([], ["HON"]), (["HON"], [])])
+    s4 = t4.finalize(validated={"HON"}, displayed=["HON"])
+    check("a single cashtag clears a low-mention ticker",
+          s4["_suspect_symbols"] == [], str(s4["_suspect_symbols"]))
 
 
 def test_cashtag_mentions_are_counted_per_post_not_per_dollar_sign():

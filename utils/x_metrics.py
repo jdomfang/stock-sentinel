@@ -179,24 +179,37 @@ class ScanTally:
                 "displayed": up in shown_set,
             }
 
-        # PHANTOM SUSPECTS -- a bare-SHARE rule, not "never seen with a $".
+        # PHANTOM SUSPECTS. This is a REVIEW QUEUE, not a verdict -- tuned for
+        # recall, because a fabricated recommendation shown to a paying user
+        # costs more than a analyst-minute spent clearing a false alarm.
         #
-        # The binary test fails in both directions. A genuine ticker mentioned
-        # in one or two posts is flagged whenever nobody happened to use a
-        # cashtag, which is roughly a coin flip for ranks 6-10 where mention
-        # counts are 1-3. And worse, a single legitimate $CAT anywhere
-        # whitewashes unlimited bare "CAT" inflation elsewhere -- exactly the
-        # mixed case the duplicate defect inflates hardest.
+        # CALIBRATED AGAINST REAL DATA, after a first attempt got it wrong.
+        # The original rule required bare >= 3, tuned against a hypothetical
+        # "RAIL x40" case. The first three production scans showed real mention
+        # counts are 1 or 2 -- so that threshold could essentially never fire,
+        # and it reported zero suspects while DOW sat in the industrials table
+        # with cashtag=0, bare=2. "The Dow" is ubiquitous in market chatter and
+        # virtually never means Dow Inc. A threshold no reviewer could have
+        # checked, because only the data knew the distribution.
         #
-        # The share catches both: overwhelmingly bare evidence, on enough
-        # mentions to mean something.
+        # Two rules now:
+        #   no cashtag at all   -- nobody wrote $SYM anywhere in the corpus, so
+        #                          there is no independent confirmation that the
+        #                          text was about the security. At m=1-2 this
+        #                          does flag some genuine tickers; that is the
+        #                          intended trade for a queue.
+        #   overwhelmingly bare -- one stray $SYM must not whitewash heavy bare
+        #                          inflation, which is what the duplicate defect
+        #                          amplifies hardest.
         suspects = []
         for t in shown:
             p = provenance.get(t)
             if not p:
                 continue  # absent entry is an internal inconsistency, not a phantom
             bare, cash = p.get("bare", 0), p.get("cashtag", 0)
-            if bare >= 3 and bare / max(1, bare + cash) > 0.9:
+            if bare >= 1 and cash == 0:
+                suspects.append(t)
+            elif bare >= 3 and bare / max(1, bare + cash) > 0.9:
                 suspects.append(t)
 
         return {
