@@ -303,6 +303,78 @@ def test_it_writes_in_chunks_and_skips_junk():
         restore(SAVED)
 
 
+def test_duplicate_symbols_from_polygon_are_collapsed():
+    print("\nupsert: Polygon returns some symbols twice, and that broke production")
+    # 2026-08-07: the grouped feed returned BCPC and TPC twice out of 12,406.
+    # PostgREST's merge-duplicates upsert is ON CONFLICT DO UPDATE, and Postgres
+    # refuses when a key repeats in one statement -- HTTP 500. The first
+    # duplicate sat at index 699, so chunk 1 committed and chunk 2 died,
+    # discarding 5,480 good prices because of 2 bad rows.
+    poly = Polygon({"2026-08-04"}, tickers=0)
+
+    def dupes(url, timeout=20):
+        poly.asked.append("2026-08-04")
+        return 200, {"resultsCount": 4, "results": [
+            {"T": "AAA", "c": 1.0, "v": 100},
+            {"T": "BCPC", "c": 2.0, "v": 500},     # duplicate, higher volume
+            {"T": "CCC", "c": 3.0, "v": 100},
+            {"T": "BCPC", "c": 9.9, "v": 5},       # duplicate, thinner venue
+        ]}
+
+    written = install(poly)
+    prices._get_json = dupes
+    try:
+        _, n = prices.fetch_and_cache_grouped_daily(
+            start_date=date(2026, 8, 4), restrict_to_master=False,
+        )
+        rows = [r for c in written for r in c]
+        syms = [r["ticker"] for r in rows]
+        check("each symbol appears exactly once", len(syms) == len(set(syms)), str(syms))
+        check("nothing else is dropped", n == 3, str(n))
+        # The primary listing wins, not simply the last row seen.
+        bcpc = [r for r in rows if r["ticker"] == "BCPC"][0]
+        check("the higher-volume row survives", bcpc["close_price"] == 2.0,
+              str(bcpc["close_price"]))
+    finally:
+        restore(SAVED)
+
+
+def test_one_bad_chunk_does_not_discard_the_others():
+    print("\nupsert: a failing chunk must not abandon the remaining ones")
+    poly = Polygon({"2026-08-04"}, tickers=0)
+
+    def many(url, timeout=20):
+        poly.asked.append("2026-08-04")
+        return 200, {"resultsCount": 5, "results":
+                     [{"T": f"S{i}", "c": float(i), "v": 1} for i in range(5)]}
+
+    prices._config = lambda name, default="": "fake-key"
+    prices._get_json = many
+    prices._fetch_ticker_master_symbols = lambda: set()
+
+    attempted = []
+    def flaky(chunk):
+        attempted.append(len(chunk))
+        if len(attempted) == 2:
+            raise RuntimeError("simulated PostgREST 500")
+    prices._upsert_stock_prices = flaky
+
+    try:
+        raised = ""
+        try:
+            prices.fetch_and_cache_grouped_daily(
+                start_date=date(2026, 8, 4), restrict_to_master=False, chunk_size=2,
+            )
+        except RuntimeError as e:
+            raised = str(e)
+        check("every chunk was attempted despite the failure", len(attempted) == 3,
+              str(attempted))
+        check("the run still reports failure", "chunks failed" in raised, raised[:90])
+        check("and says how much did get written", "/5 rows written" in raised, raised[:120])
+    finally:
+        restore(SAVED)
+
+
 def test_a_day_with_no_usable_rows_is_an_error():
     print("\nwrites: 'returned data but none of it usable' must not report success")
     poly = Polygon({"2026-08-04"}, tickers=3)
@@ -334,6 +406,8 @@ def main() -> int:
     test_it_keeps_only_symbols_the_app_scans()
     test_an_unreadable_ticker_master_does_not_stop_the_sync()
     test_it_writes_in_chunks_and_skips_junk()
+    test_duplicate_symbols_from_polygon_are_collapsed()
+    test_one_bad_chunk_does_not_discard_the_others()
     test_a_day_with_no_usable_rows_is_an_error()
 
     print("\n" + "=" * 74)

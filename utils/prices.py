@@ -270,7 +270,24 @@ def fetch_and_cache_grouped_daily(
             keep = None
 
     now_iso = datetime.utcnow().isoformat()
-    rows: list[dict] = []
+
+    # DEDUPE BY TICKER BEFORE BUILDING ROWS.
+    #
+    # Polygon's grouped feed returns a small number of symbols TWICE -- 2 of
+    # 12,406 on 2026-08-05 (BCPC and TPC). PostgREST's merge-duplicates upsert
+    # becomes ON CONFLICT DO UPDATE, and Postgres refuses when the same key
+    # appears twice in one statement ("cannot affect row a second time"),
+    # which surfaces as HTTP 500.
+    #
+    # That is exactly what killed the 2026-08-07 run: the first duplicate sits
+    # at index 699, so chunk 1 committed and chunk 2 died. Two bad rows cost
+    # 5,480 prices.
+    #
+    # The survivor is the higher-VOLUME row, which is the primary listing when
+    # a symbol appears on more than one venue. Volume is already in the
+    # response even though we do not store it.
+    best: dict[str, dict] = {}
+    dupes = 0
     for r in results:
         sym = (r.get("T") or "").upper()
         close = r.get("c")
@@ -278,6 +295,19 @@ def fetch_and_cache_grouped_daily(
             continue
         if keep is not None and sym not in keep:
             continue
+        prev = best.get(sym)
+        if prev is None:
+            best[sym] = r
+        else:
+            dupes += 1
+            if (r.get("v") or 0) > (prev.get("v") or 0):
+                best[sym] = r
+    if dupes:
+        logger.info("grouped: collapsed %d duplicate symbol row(s) from Polygon", dupes)
+
+    rows: list[dict] = []
+    for sym, r in best.items():
+        close = r.get("c")
         rows.append({
             "ticker": sym,
             "close_price": float(close),
@@ -292,12 +322,33 @@ def fetch_and_cache_grouped_daily(
     if not rows:
         raise RuntimeError(f"grouped {day} returned {len(results)} tickers but none matched")
 
+    # Every chunk is attempted, even after one fails.
+    #
+    # The 2026-08-07 run raised on chunk 2 and abandoned chunks 3-12, so a
+    # defect affecting 2 rows discarded 5,480 good ones. Chunks commit
+    # independently, so there is no consistency argument for stopping -- the
+    # only thing an early abort protects is the log.
+    #
+    # The run still FAILS if anything failed: a partial sync that reported
+    # success is how this job ran broken 43 times unnoticed.
     written = 0
+    failures: list[str] = []
     for i in range(0, len(rows), chunk_size):
         chunk = rows[i:i + chunk_size]
-        _upsert_stock_prices(chunk)
-        written += len(chunk)
-        logger.info("stock_prices: wrote %d (%d/%d)", len(chunk), written, len(rows))
+        try:
+            _upsert_stock_prices(chunk)
+            written += len(chunk)
+            logger.info("stock_prices: wrote %d (%d/%d)", len(chunk), written, len(rows))
+        except Exception as e:
+            failures.append(f"rows {i}-{i + len(chunk) - 1}: {type(e).__name__}: {str(e)[:120]}")
+            logger.warning("stock_prices chunk at %d failed: %s: %s",
+                           i, type(e).__name__, str(e)[:160])
+
+    if failures:
+        raise RuntimeError(
+            f"{len(failures)} of {(len(rows) + chunk_size - 1) // chunk_size} chunks failed "
+            f"({written}/{len(rows)} rows written). First: {failures[0]}"
+        )
 
     logger.info("✅ grouped sync complete: %d prices from %s", written, day)
     return day.isoformat(), written
