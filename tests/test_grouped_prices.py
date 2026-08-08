@@ -256,8 +256,12 @@ def test_it_keeps_only_symbols_the_app_scans():
         check("only master symbols are written", n == 3, str(n))
         check("the right ones", sorted(r["ticker"] for r in rows) == ["TK0", "TK2", "TK4"],
               str([r["ticker"] for r in rows]))
-        check("rows carry the columns stock_prices expects",
-              all(set(r) == {"ticker", "close_price", "last_updated", "currency"} for r in rows))
+        # Pinned deliberately: an unexpected key means a PostgREST 400 on every
+        # chunk, and a MISSING one means a column silently stops being written.
+        # `volume` joined this set when it was added for sector-query ranking.
+        check("rows carry exactly the columns stock_prices expects",
+              all(set(r) == {"ticker", "close_price", "volume", "last_updated", "currency"}
+                  for r in rows), str(set(rows[0]) if rows else {}))
     finally:
         restore(SAVED)
 
@@ -339,6 +343,38 @@ def test_duplicate_symbols_from_polygon_are_collapsed():
         restore(SAVED)
 
 
+def test_volume_is_captured_from_the_response_we_already_fetch():
+    print("\nwrites: volume rides along in the same call as the close")
+    # Ranking a sector's tickers by liquidity was previously called unbuildable
+    # because no volume data existed. It was in the response all along, in `v`,
+    # and being discarded. Nullable on purpose: a selector must distinguish
+    # "unknown" from "did not trade".
+    poly = Polygon({"2026-08-04"}, tickers=0)
+
+    def with_volume(url, timeout=20):
+        poly.asked.append("2026-08-04")
+        return 200, {"resultsCount": 3, "results": [
+            {"T": "AAA", "c": 10.0, "v": 1_500_000},
+            {"T": "BBB", "c": 20.0, "v": 0},          # traded zero shares
+            {"T": "CCC", "c": 30.0},                  # Polygon omitted volume
+        ]}
+
+    written = install(poly)
+    prices._get_json = with_volume
+    try:
+        prices.fetch_and_cache_grouped_daily(
+            start_date=date(2026, 8, 4), restrict_to_master=False)
+        by = {r["ticker"]: r for r in (r for c in written for r in c)}
+        check("volume is stored", by["AAA"]["volume"] == 1_500_000, str(by["AAA"]))
+        check("zero volume is kept as zero, not dropped", by["BBB"]["volume"] == 0,
+              str(by["BBB"]))
+        check("a missing field becomes null, not zero", by["CCC"]["volume"] is None,
+              str(by["CCC"]))
+        check("close_price is unaffected", by["AAA"]["close_price"] == 10.0)
+    finally:
+        restore(SAVED)
+
+
 def test_one_bad_chunk_does_not_discard_the_others():
     print("\nupsert: a failing chunk must not abandon the remaining ones")
     poly = Polygon({"2026-08-04"}, tickers=0)
@@ -407,6 +443,7 @@ def main() -> int:
     test_an_unreadable_ticker_master_does_not_stop_the_sync()
     test_it_writes_in_chunks_and_skips_junk()
     test_duplicate_symbols_from_polygon_are_collapsed()
+    test_volume_is_captured_from_the_response_we_already_fetch()
     test_one_bad_chunk_does_not_discard_the_others()
     test_a_day_with_no_usable_rows_is_an_error()
 

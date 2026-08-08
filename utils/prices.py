@@ -308,9 +308,16 @@ def fetch_and_cache_grouped_daily(
     rows: list[dict] = []
     for sym, r in best.items():
         close = r.get("c")
+        # `v` is the day's share volume, in the SAME response we already parse
+        # for the close. It was previously discarded, which is why ranking
+        # tickers by liquidity looked impossible and the sector queries stayed
+        # hand-written jargon. Null (not zero) when Polygon omits it -- a
+        # selector must be able to tell "unknown" from "did not trade".
+        vol = r.get("v")
         rows.append({
             "ticker": sym,
             "close_price": float(close),
+            "volume": int(vol) if isinstance(vol, (int, float)) else None,
             # Deliberately the WRITE time, matching the per-ticker path. Mixing
             # semantics between the two writers would be worse than either
             # choice. The bar's own date is logged and returned instead; giving
@@ -451,9 +458,15 @@ def fetch_and_cache_last_close_prices(
                 close = results[0].get("c")
                 if isinstance(close, (int, float)):
                     out[t] = float(close)
+                    # Volume too, so a row written by this interactive path is
+                    # not missing a field the nightly grouped path populates.
+                    # Otherwise the selector's liquidity ranking would silently
+                    # skip exactly the tickers users scanned most recently.
+                    vol = results[0].get("v")
                     pending.append({
                         "ticker": t,
                         "close_price": float(close),
+                        "volume": int(vol) if isinstance(vol, (int, float)) else None,
                         "last_updated": datetime.utcnow().isoformat(),
                         "currency": "USD",
                     })
