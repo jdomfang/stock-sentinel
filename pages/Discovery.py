@@ -679,6 +679,35 @@ if (_profile or {}).get("role") == "admin":
             "from this sector's own tickers, ranked by dollar volume. Both are "
             "recorded separately in x_call_metrics, so they can be compared."
         )
+        # Verify BEFORE spending a credit. The mode a scan actually used is only
+        # discoverable afterwards, from the query_hash on its telemetry row --
+        # which is how a scan meant to test cashtag mode silently ran on the
+        # topic query instead. This shows the exact hash the next scan will
+        # record, so it can be confirmed rather than assumed. Behind a button:
+        # generating baskets reads ticker_master and stock_prices, and that
+        # should not happen on every page render.
+        if st.button("Preview the query this sector will use", key="_preview_q"):
+            import hashlib as _hl
+            try:
+                _bk = sector_query.build_baskets(sector, "cashtag") if _query_mode == "cashtag" else []
+                if _query_mode == "cashtag" and _bk:
+                    _q = "cashtag-baskets|" + "|".join(_bk)
+                    st.success(
+                        f"CASHTAG mode · {len(_bk)} baskets · "
+                        f"{sum(b.count('$') for b in _bk)} tickers · "
+                        f"query_hash `{_hl.sha256(_q.encode()).hexdigest()[:12]}`"
+                    )
+                    for _i, _b in enumerate(_bk, 1):
+                        st.code(f"basket {_i} ({_b.count('$')} tickers, {len(_b)} chars)\n{_b}",
+                                language=None)
+                elif _query_mode == "cashtag":
+                    st.error("No baskets could be generated — the scan would FALL BACK "
+                             "to the topic query. Check ticker_master / stock_prices.")
+                else:
+                    st.info("TOPIC mode — the existing hand-written query. "
+                            "Switch above to preview cashtag mode.")
+            except Exception as _e:
+                st.error(f"Basket generation failed: {type(_e).__name__}: {_e}")
 
 scan_triggered = bool(scan_clicked or _autostart_scan)
 
