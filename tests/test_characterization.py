@@ -119,9 +119,20 @@ def test_extract_tickers() -> None:
           ["AAPL", "MSFT"])
     check("no tickers", extract_tickers("no tickers here at all"), [])
 
-    # Length bounds: 2..5 uppercase. $A is too short and is dropped; a 13-letter
-    # run matches nothing because \b cannot fall inside it.
-    check("length bounds", extract_tickers("$TOOLONGTICKER and $A and $AB"), ["AB"])
+    # Length bounds: 1..5 uppercase for CASHTAGS. A 13-letter run still matches
+    # nothing because \b cannot fall inside it.
+    #
+    # CHANGED DELIBERATELY. The lower bound was 2, which made all 21
+    # single-letter symbols in ticker_master unextractable -- $T (AT&T), $F
+    # (Ford), $V (Visa), $C (Citigroup), $D (Dominion). Measured on a live
+    # utilities corpus: $D was in the query we sent, X returned posts mentioning
+    # it, and extraction silently discarded posts we had already paid for. In
+    # Telecommunications $T is plausibly the most-discussed name in the sector
+    # and was invisible to every scan ever run.
+    #
+    # Only the cashtag pattern moved. Bare words stay at 2+, because at one
+    # character every "A" and "I" in ordinary English becomes a candidate.
+    check("length bounds", extract_tickers("$TOOLONGTICKER and $A and $AB"), ["A", "AB"])
 
     # QUIRK, and an expensive one. Bare uppercase words are treated as ticker
     # candidates, and the 366-entry exclusion list does not contain common

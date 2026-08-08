@@ -48,13 +48,19 @@ def check(name: str, cond: bool, detail: str = "") -> None:
 
 
 def legacy_extract(text):
-    """The implementation as it stood before extract_tickers_detailed existed.
+    """An independent restatement of the extraction algorithm.
 
-    Kept verbatim, including the duplicate-emitting defect, because the point
-    is equivalence with what shipped -- not with what it should have been.
+    Kept as a second implementation -- including the duplicate-emitting defect,
+    because the point is equivalence with what SHIPS, not with what it should
+    have been. Any accidental drift in the real function shows up here.
+
+    The cashtag bound is {1,5}, deliberately widened from {2,5}: ticker_master
+    holds 21 single-letter symbols and the old bound made $T, $F, $V, $C and $D
+    unextractable. That was a real defect, not a style choice -- $D appeared in
+    a live corpus, in posts we had paid for, and was silently discarded.
     """
     tickers, seen = [], set()
-    for m in re.findall(r'\$([A-Z]{2,5})\b', text):
+    for m in re.findall(r'\$([A-Z]{1,5})\b', text):
         if m not in EXCLUDED_WORDS and m not in seen:
             tickers.append(m); seen.add(m)
     scored = []
@@ -100,6 +106,35 @@ def test_extraction_is_unchanged():
     dupes = extract_tickers("RAIL and AIR rising. RAIL up, AIR up, RAIL again.")
     check("the known duplicate defect is preserved, not quietly fixed",
           dupes == ['RAIL', 'AIR', 'RAIL', 'AIR', 'RAIL'], str(dupes))
+
+
+def test_single_letter_cashtags_are_extracted():
+    print("\ncashtags: one-letter tickers are real and were being dropped")
+    # 21 single-letter symbols exist in ticker_master. $T is AT&T, likely the
+    # single most-discussed name in Telecommunications, and it was invisible to
+    # every scan ever run. Measured: $D (Dominion) appeared in a live utilities
+    # corpus we had paid for and was silently discarded by the {2,5} bound.
+    for sym in ["T", "F", "V", "C", "D"]:
+        got = extract_tickers_detailed(f"${sym} looks strong today")["cashtag"]
+        check(f"${sym} is extracted", got == [sym], str(got))
+
+    # Currency amounts must NOT match: the character after $ is a digit, so the
+    # pattern never engages. This is what makes widening to one char safe.
+    for txt in ["revenue of $5B this quarter", "$10M raised", "$1T market cap"]:
+        d = extract_tickers_detailed(txt)
+        check(f"{txt!r} yields no cashtag", d["cashtag"] == [], str(d["cashtag"]))
+
+    # Bare single letters must still be refused -- at one character every "A"
+    # and "I" in ordinary English would become a ticker candidate.
+    d = extract_tickers_detailed("A T V C D are all letters")
+    check("bare single letters are still refused",
+          not any(len(t) == 1 for t in d["bare"]), str(d["bare"]))
+
+    # Upper bound stays 5: the 73 longer symbols are preferred shares written
+    # like AHRT^A, which no [A-Z] class can match at any length.
+    d = extract_tickers_detailed("$TOOLONG should not match as written")
+    check("six or more letters is not a cashtag", "TOOLONG" not in d["cashtag"],
+          str(d["cashtag"]))
 
 
 def test_provenance_separates_cashtags_from_bare_words():
@@ -348,6 +383,7 @@ def main() -> int:
     print("=" * 74)
 
     test_extraction_is_unchanged()
+    test_single_letter_cashtags_are_extracted()
     test_provenance_separates_cashtags_from_bare_words()
     test_every_post_lands_in_exactly_one_bucket()
     test_the_bare_word_variant_is_derivable_without_running_it()

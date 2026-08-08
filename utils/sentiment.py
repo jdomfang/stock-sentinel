@@ -135,7 +135,26 @@ def extract_tickers_detailed(text: str) -> Dict[str, any]:
     cashtag_counts: Dict[str, int] = {}
 
     # Step 1: Extract $-prefixed tickers (highest priority - explicit mentions)
-    dollar_prefixed_pattern = r'\$([A-Z]{2,5})\b'
+    #
+    # ONE character minimum, not two. ticker_master holds 21 single-letter
+    # symbols -- $F (Ford), $T (AT&T), $V (Visa), $C (Citi), $D (Dominion) --
+    # and the old {2,5} bound made every one of them unextractable. Measured on
+    # a live utilities corpus: $D was in the query we sent, X returned posts
+    # mentioning it, and extraction silently dropped them. The scan paid for
+    # those posts and threw them away.
+    #
+    # Safe to widen HERE because a cashtag is an explicit claim that the token
+    # is a ticker, and validation still requires a ticker_master hit in the
+    # right sector. "$5B" and "$10M" cannot match -- the character after $ is a
+    # digit, so the pattern does not engage.
+    #
+    # NOT widened for bare words below: at one character every "A" and "I" in
+    # ordinary English would become a ticker candidate.
+    #
+    # Upper bound stays 5. The 73 symbols longer than that are preferred shares
+    # written like AHRT^A, which contain a caret and cannot be matched by an
+    # [A-Z] class at any length.
+    dollar_prefixed_pattern = r'\$([A-Z]{1,5})\b'
     dollar_matches = re.findall(dollar_prefixed_pattern, text)
 
     for match in dollar_matches:
