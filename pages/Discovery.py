@@ -9,7 +9,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 import requests
 import json
 import pandas as pd
-from collections import defaultdict
+from collections import defaultdict, deque
 import logging
 
 from utils.navigation import render_sidebar_navigation, render_top_nav
@@ -18,6 +18,7 @@ from utils.sentiment import extract_tickers_detailed, analyze_sentiment_batch
 from utils import x_metrics
 from utils.finance import get_ticker_master_list, get_stock_data, get_last_close_prices_best_effort
 from utils import corpus_cache
+from utils import sector_query
 from utils.projections import simple_projection
 from utils.deep_analysis import ANALYSIS_PROMPTS, run_deep_analysis, generate_ai_summary
 
@@ -648,6 +649,37 @@ with st.container(key="discovery_scan_card"):
 # Keep cap aligned with deep analysis helper (max_pages=5 => ~500 tweets)
 max_results = 500
 
+# Posts per basket request. Small on purpose: X's minimum is 10, requests are
+# free, and only returned posts are billed -- so fetching 25 four times costs
+# exactly what fetching 100 once costs, while letting the loop stop the moment
+# it has what it needs. This is the one number here worth tuning from real data.
+BASKET_PER_PAGE = 25
+
+# Admin-only A/B switch between the hand-written topic query and generated
+# in-sector cashtag baskets. Defaults to "topic" -- the existing behaviour --
+# for everyone, including admins, so nothing changes until it is deliberately
+# flipped. The telemetry keys on a hash of the query, so the two modes separate
+# themselves in x_call_metrics with no extra setup.
+_query_mode = st.session_state.get("scan_query_mode", "topic")
+if (_profile or {}).get("role") == "admin":
+    with st.expander("🧪 Admin: scan query mode", expanded=False):
+        _query_mode = st.radio(
+            "Retrieval strategy",
+            options=["topic", "cashtag"],
+            index=0 if _query_mode == "topic" else 1,
+            format_func=lambda m: (
+                "Topic words (current)" if m == "topic"
+                else "Generated in-sector cashtags (experimental)"
+            ),
+            horizontal=True,
+            key="scan_query_mode",
+        )
+        st.caption(
+            "Topic mode is the shipped behaviour. Cashtag mode builds the query "
+            "from this sector's own tickers, ranked by dollar volume. Both are "
+            "recorded separately in x_call_metrics, so they can be compared."
+        )
+
 scan_triggered = bool(scan_clicked or _autostart_scan)
 
 # Scan button
@@ -904,22 +936,14 @@ if scan_triggered:
             st.stop()
 
         # Nasdaq sector strings (stored in Supabase) for strict matching.
-        # Keep UI sector keys unchanged; map them to the exact sector strings present in ticker_master.
-        ui_to_nasdaq_sectors = {
-            "tech": {"Technology"},
-            "healthcare": {"Health Care"},
-            "energy": {"Energy"},
-            "finance": {"Finance"},
-            # UI has a single "consumer" bucket; Nasdaq splits this into two sectors.
-            "consumer": {"Consumer Discretionary", "Consumer Staples"},
-            "utilities": {"Utilities"},
-            "real estate": {"Real Estate"},
-            "industrials": {"Industrials"},
-            # Nasdaq uses "Basic Materials" (not "Materials")
-            "materials": {"Basic Materials"},
-            # Nasdaq dataset we ingested uses "Telecommunications" (not "Communication Services")
-            "communication": {"Telecommunications"},
-        }
+        #
+        # Imported rather than defined here. The query generator and this
+        # validation step must agree on what "utilities" means, and two
+        # hand-maintained copies of the same mapping would silently diverge --
+        # the generator would ask about one set of tickers while validation
+        # accepted another. tests/test_sector_query.py pins the contents to
+        # exactly what this block held before it moved.
+        ui_to_nasdaq_sectors = sector_query.UI_TO_NASDAQ
         selected_nasdaq_sectors = ui_to_nasdaq_sectors.get((sector or "").lower(), set())
 
         # Aggregate data by ticker (incremental across pages)
@@ -984,6 +1008,33 @@ if scan_triggered:
         status_text = st.empty()
         status_text.markdown(f"**📡 Scanning X for {sector} momentum...**")
 
+        # ── Query mode: hand-written topic words, or generated cashtags ──────
+        #
+        # OPT-IN. Defaults to the existing topic query, so nothing changes for
+        # anyone who does not deliberately switch. If basket generation fails
+        # for ANY reason -- Supabase unreachable, an unmapped sector, an empty
+        # universe -- it falls back to the topic query rather than erroring: a
+        # scan the user paid for must not die because an experiment could not
+        # build its input.
+        _baskets: list[str] = []
+        if _query_mode == "cashtag":
+            try:
+                _baskets = sector_query.build_baskets(sector, "cashtag")
+            except Exception as _e:
+                logger.warning("basket generation failed (%s); using topic query",
+                               type(_e).__name__)
+                _baskets = []
+            if _baskets:
+                # One identity for the whole basket set, so the corpus cache and
+                # the telemetry's query_hash treat it as a distinct query
+                # version -- which is what lets the two modes be compared
+                # without setting anything up.
+                query = "cashtag-baskets|" + "|".join(_baskets)
+                logger.info("🧺 Using %d generated cashtag basket(s) for %s",
+                            len(_baskets), sector)
+            else:
+                logger.info("🧺 No baskets generated; falling back to topic query")
+
         # ── Shared corpus cache ──────────────────────────────────────────────
         # X bills per POST RETURNED, so the cost of this scan is the number of
         # tweets it pulls. The result is not user-specific -- it is a function
@@ -998,7 +1049,12 @@ if scan_triggered:
         _cached = corpus_cache.get("sector", sector, 24, query)
         _cached_pages: list[list[dict]] | None = None
         if _cached is not None:
-            _cached_pages = corpus_cache.chunk_pages(_cached["tweets"], PER_PAGE)
+            # Replay at the SAME page size the corpus was bought at, or the
+            # early-stop gates fire at different points than they did live and
+            # a cache hit can produce a different top-10 than the scan that
+            # paid for it. Basket mode buys in BASKET_PER_PAGE chunks.
+            _replay_size = BASKET_PER_PAGE if _baskets else PER_PAGE
+            _cached_pages = corpus_cache.chunk_pages(_cached["tweets"], _replay_size)
         _fetched_pages: list[list[dict]] = []
 
         # Effectiveness telemetry. Every number it reports is derived from posts
@@ -1072,6 +1128,12 @@ if scan_triggered:
                     }
                 return {"success": True, "tweets": [], "next_token": None}
 
+            if _fetcher is not None:
+                res = _fetcher.next_page()
+                # The outer loop only asks "is there more work?", so hand it a
+                # sentinel rather than a token belonging to one specific basket.
+                return dict(res, next_token="more" if res.get("has_more") else None)
+
             res = search_x_tweets_page(
                 query=query, max_results=PER_PAGE, timeframe="24h", next_token=token
             )
@@ -1079,6 +1141,18 @@ if scan_triggered:
                 # Record what we bought so it can be stored once the scan ends.
                 _fetched_pages.append(res.get("tweets") or [])
             return res
+
+        _fetcher = None
+        if _baskets:
+            _fetcher = sector_query.BasketFetcher(
+                _baskets,
+                fetch=lambda q, n, tok: search_x_tweets_page(
+                    query=q, max_results=n, timeframe="24h", next_token=tok),
+                per_page=BASKET_PER_PAGE,
+            )
+            # The fetcher owns the pages it bought; _fetched_pages is what the
+            # corpus write and posts_billed read, so point them at the same list.
+            _fetched_pages = _fetcher.pages
 
         with st.spinner(f"Searching {sector} stocks on X..."):
             pages = 0
@@ -1108,10 +1182,35 @@ if scan_triggered:
                 progress_bar.progress(45); status_text.markdown("**🔍 Filtering noise, validating tickers...**")
 
                 if not page_tweets:
+                    # In BASKET mode an empty page is normal, not the end.
+                    # sector_universe sorts by dollar volume, so baskets 2..N
+                    # hold only quiet names -- returning zero is the expected
+                    # case for them. Breaking here would abandon every basket
+                    # after the first quiet one, which silently defeats the whole
+                    # point of covering the sector. Keep going while the fetcher
+                    # still has work.
+                    #
+                    # Gated on _baskets: in TOPIC mode this must stay a break.
+                    # An empty page does not increment total_sector_relevant, so
+                    # `continue` there would spin forever against the
+                    # `while total_sector_relevant < SAFETY_CAP_TWEETS` guard.
+                    # BasketFetcher is bounded by its own max_requests, so the
+                    # basket path always terminates.
+                    if _baskets and next_token:
+                        continue
                     break
 
-                # Sector relevance filter (if applicable)
-                page_tweets = _sector_relevant(page_tweets)
+                # Sector relevance filter.
+                #
+                # SKIPPED in basket mode. This filter substring-matches tweets
+                # against the sector's TOPIC WORDS, and a post reading
+                # "$NEE up 3% on the open" contains none of them -- it would be
+                # discarded despite being exactly what we asked for and paid
+                # for. Today the filter is a passthrough because every sector
+                # has a v2 topic block, but relying on that coupling is how a
+                # future edit silently empties every cashtag scan.
+                if not _baskets:
+                    page_tweets = _sector_relevant(page_tweets)
                 if not page_tweets:
                     if not next_token:
                         break
