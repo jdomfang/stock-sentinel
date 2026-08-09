@@ -645,69 +645,24 @@ with st.container(key="discovery_scan_card"):
             unsafe_allow_html=True,
         )
 
-# Code-only setting (X API supports 100 per request; pagination will fetch more)
-# Keep cap aligned with deep analysis helper (max_pages=5 => ~500 tweets)
-max_results = 500
-
 # Posts per basket request. Small on purpose: X's minimum is 10, requests are
 # free, and only returned posts are billed -- so fetching 25 four times costs
 # exactly what fetching 100 once costs, while letting the loop stop the moment
 # it has what it needs. This is the one number here worth tuning from real data.
 BASKET_PER_PAGE = 25
 
-# Admin-only A/B switch between the hand-written topic query and generated
-# in-sector cashtag baskets. Defaults to "topic" -- the existing behaviour --
-# for everyone, including admins, so nothing changes until it is deliberately
-# flipped. The telemetry keys on a hash of the query, so the two modes separate
-# themselves in x_call_metrics with no extra setup.
-_query_mode = st.session_state.get("scan_query_mode", "topic")
-if (_profile or {}).get("role") == "admin":
-    with st.expander("🧪 Admin: scan query mode", expanded=False):
-        _query_mode = st.radio(
-            "Retrieval strategy",
-            options=["topic", "cashtag"],
-            index=0 if _query_mode == "topic" else 1,
-            format_func=lambda m: (
-                "Topic words (current)" if m == "topic"
-                else "Generated in-sector cashtags (experimental)"
-            ),
-            horizontal=True,
-            key="scan_query_mode",
-        )
-        st.caption(
-            "Topic mode is the shipped behaviour. Cashtag mode builds the query "
-            "from this sector's own tickers, ranked by dollar volume. Both are "
-            "recorded separately in x_call_metrics, so they can be compared."
-        )
-        # Verify BEFORE spending a credit. The mode a scan actually used is only
-        # discoverable afterwards, from the query_hash on its telemetry row --
-        # which is how a scan meant to test cashtag mode silently ran on the
-        # topic query instead. This shows the exact hash the next scan will
-        # record, so it can be confirmed rather than assumed. Behind a button:
-        # generating baskets reads ticker_master and stock_prices, and that
-        # should not happen on every page render.
-        if st.button("Preview the query this sector will use", key="_preview_q"):
-            import hashlib as _hl
-            try:
-                _bk = sector_query.build_baskets(sector, "cashtag") if _query_mode == "cashtag" else []
-                if _query_mode == "cashtag" and _bk:
-                    _q = "cashtag-baskets|" + "|".join(_bk)
-                    st.success(
-                        f"CASHTAG mode · {len(_bk)} baskets · "
-                        f"{sum(b.count('$') for b in _bk)} tickers · "
-                        f"query_hash `{_hl.sha256(_q.encode()).hexdigest()[:12]}`"
-                    )
-                    for _i, _b in enumerate(_bk, 1):
-                        st.code(f"basket {_i} ({_b.count('$')} tickers, {len(_b)} chars)\n{_b}",
-                                language=None)
-                elif _query_mode == "cashtag":
-                    st.error("No baskets could be generated — the scan would FALL BACK "
-                             "to the topic query. Check ticker_master / stock_prices.")
-                else:
-                    st.info("TOPIC mode — the existing hand-written query. "
-                            "Switch above to preview cashtag mode.")
-            except Exception as _e:
-                st.error(f"Basket generation failed: {type(_e).__name__}: {_e}")
+# Basket retrieval is the only path. The hand-written topic queries it
+# replaced were measured head-to-head on two sectors, same hour, equal spend:
+#
+#                  topic precision   basket precision   tickers   n>=3
+#   utilities             4%               86%          10 -> 56   1 -> 16
+#   technology           23%               88%          29 -> 68   4 -> 18
+#
+# Basket precision is also STABLE across sectors (86-88%) where topic swung
+# 6x depending on whether a sector's jargon happened to discriminate. There is
+# deliberately no fallback to topic mode: falling back would silently hand the
+# user a scan we have measured as four times worse. A scan that cannot build
+# its query fails and refunds instead.
 
 scan_triggered = bool(scan_clicked or _autostart_scan)
 
@@ -825,128 +780,11 @@ if scan_triggered:
     try:
         # Load X Bearer Token from secrets
         x_bearer_token = st.secrets["X_BEARER_TOKEN"]
-
-        # Construct search query with sector-specific keywords (Free-tier compatible)
-        # Note: Advanced operators like min_faves, filter:, and since: require Basic tier or higher
-        # Using only basic operators: Boolean, lang, and -is:retweet for Free tier
-
-        # Add sector-specific keywords to improve relevance (legacy v1).
-        sector_keywords = {
-            'tech': 'technology OR software OR AI OR chip OR semiconductor OR cloud OR internet',
-            'healthcare': 'healthcare OR medical OR pharma OR biotechnology OR drug OR clinical OR FDA',
-            'energy': 'energy OR oil OR gas OR renewable OR solar OR wind OR fossil OR petroleum',
-            'finance': 'finance OR bank OR financial OR investment OR lending OR credit OR wealth',
-            'consumer': 'consumer OR retail OR e-commerce OR shopping OR consumer goods OR discretionary',
-            'utilities': 'utilities OR electric OR power OR water OR gas OR infrastructure OR telecom',
-            'real estate': 'real estate OR property OR REIT OR housing OR commercial OR residential',
-            'industrials': 'industrials OR manufacturing OR industrial OR aerospace OR defense OR construction',
-            'materials': 'materials OR mining OR chemical OR steel OR cement OR commodity OR metals',
-            'communication': 'communication OR telecom OR media OR entertainment OR broadcasting OR wireless'
-        }
-
-        # v2 sector topic blocks: broader retrieval + skip fragile post-fetch substring filtering.
-        # Keep each topic list short enough to stay under X query length limits (single request).
-        # NOTE: A bare "$" token can trigger X query parse errors (400). Keep intent simple.
-        INVEST_INTENT = "(stock OR stocks OR shares)"
-        SECTOR_TOPIC_V2 = {
-            "materials": (
-                '"materials sector" OR "basic materials" OR "materials stocks" OR XLB '
-                'OR mining OR metals OR chemicals OR fertilizer '
-                'OR steel OR cement OR copper OR gold OR "iron ore"'
-            ),
-            "tech": (
-                '"technology sector" OR "tech sector" OR "tech stocks" OR "software stocks" '
-                'OR software OR SaaS OR "cloud computing" OR cloud OR "data center" '
-                'OR AI OR "artificial intelligence" OR "machine learning" OR ML '
-                'OR semiconductor OR semiconductors OR chip OR chips OR GPU '
-                'OR cybersecurity OR "zero trust" '
-                'OR XLK OR SMH OR HACK OR CLOU'
-            ),
-            "healthcare": (
-                '"healthcare sector" OR "health care sector" OR "healthcare stocks" OR "biotech stocks" '
-                'OR healthcare OR "health care" OR pharma OR pharmaceutical OR biotech OR biotechnology '
-                'OR "drug approval" OR FDA OR "clinical trial" OR "phase 1" OR "phase 2" OR "phase 3" '
-                'OR "medical device" OR medtech OR "gene therapy" OR "cell therapy" '
-                'OR hospital OR hospitals OR insurer OR insurers OR "managed care" '
-                'OR XLV OR XBI OR IBB'
-            ),
-            "energy": (
-                '"energy sector" OR "energy stocks" OR oil OR crude OR WTI OR brent '
-                'OR gas OR "natural gas" OR LNG OR "liquefied natural gas" '
-                'OR refinery OR refining OR "oilfield services" OR "rig count" OR shale OR "E&P" '
-                'OR pipeline OR pipelines OR midstream '
-                'OR OPEC OR "production cut" '
-                'OR renewable OR renewables OR solar OR wind OR "clean energy" '
-                'OR XLE OR XOP OR OIH OR TAN OR ICLN'
-            ),
-            "finance": (
-                '"financial sector" OR "finance sector" OR "financial stocks" OR "bank stocks" '
-                'OR finance OR financial OR bank OR banks OR banking '
-                'OR "interest rates" OR yield OR "yield curve" '
-                'OR NIM OR "net interest margin" OR "loan growth" OR credit OR "credit quality" '
-                'OR brokerage OR "asset manager" '
-                'OR fintech OR payments '
-                'OR XLF OR KRE OR KBE'
-            ),
-            "consumer": (
-                '"consumer sector" OR "consumer stocks" '
-                'OR consumer OR retail OR "e-commerce" OR ecommerce '
-                'OR discretionary OR "consumer discretionary" '
-                'OR staples OR "consumer staples" '
-                'OR restaurants OR travel OR airlines OR cruise '
-                'OR autos OR "EV" OR "electric vehicle" '
-                'OR grocery OR beverage '
-                'OR XLY OR XLP'
-            ),
-            "utilities": (
-                '"utilities sector" OR "utilities stocks" '
-                'OR utilities OR utility OR "electric utility" OR "power grid" OR grid '
-                'OR "rate case" OR "regulated utility" OR "regulated utilities" '
-                'OR transmission OR distribution '
-                'OR "power demand" OR "electric demand" '
-                'OR XLU'
-            ),
-            "real estate": (
-                '"real estate sector" OR "real estate stocks" OR REIT OR REITs '
-                'OR "commercial real estate" OR CRE OR "office" OR "industrial REIT" '
-                'OR multifamily OR apartments OR "single family rental" '
-                'OR "cap rate" OR "cap rates" OR refinancing OR "maturity wall" '
-                'OR "mortgage rates" OR "housing market" '
-                'OR XLRE OR VNQ'
-            ),
-            "industrials": (
-                '"industrials sector" OR "industrial sector" OR "industrials stocks" OR "industrial stocks" '
-                'OR industrial OR industrials OR manufacturing OR factory OR factories '
-                'OR aerospace OR "aerospace and defense" OR defense OR "defense stocks" '
-                'OR machinery OR "heavy equipment" OR logistics OR freight OR shipping '
-                'OR "supply chain" OR "backlog" OR "bookings" OR "orders" '
-                'OR PMI OR "ISM" '
-                'OR XLI OR ITA'
-            ),
-            "communication": (
-                '"communication services" OR "communications sector" OR "telecom sector" OR "media stocks" '
-                'OR communication OR communications OR telecom OR wireless OR 5G OR broadband '
-                'OR streaming OR "ad revenue" OR advertising OR "ad spend" '
-                'OR media OR entertainment '
-                'OR "social media" OR "online advertising" '
-                'OR XLC'
-            ),
-        }
-
-        sector_key = sector.lower()
-        use_v2 = sector_key in SECTOR_TOPIC_V2
-
-        if use_v2:
-            query = f"({SECTOR_TOPIC_V2[sector_key]}) {INVEST_INTENT} lang:en -is:retweet"
-        else:
-            sector_terms = sector_keywords.get(sector_key, sector)
-            query = f"({sector} OR {sector_terms}) stock (bullish OR opportunity OR catalyst OR growth OR earnings) -bearish lang:en -is:retweet"
-
-        logger.info(f"🔍 Starting X search for sector: {sector}")
-        logger.info(f"🧠 Using query mode: {'v2' if use_v2 else 'v1'}")
-        logger.info(f"🧹 Post-filter enabled: {not use_v2}")
-        logger.info(f"📝 Search query: {query}")
-        logger.info(f"📊 Max results requested: {max_results}")
+        # The query is generated from this sector's tickers further down; the
+        # hand-written topic-word blocks that used to live here are gone. They
+        # were measured at 4% precision in utilities and 23% in technology,
+        # against 86-88% for generated baskets in the same hours.
+        sector_key = (sector or '').strip().lower()
 
         # Goal-driven scan:
         # - Scan page 1
@@ -988,17 +826,7 @@ if scan_triggered:
         company_by_ticker = {}
 
         next_token = None
-        total_sector_relevant = 0
-
-        def _sector_relevant(page_tweets):
-            if use_v2:
-                return page_tweets
-            out = []
-            for tw in page_tweets:
-                text = (tw.get('text', '') or '').lower()
-                if any(keyword.lower() in text for keyword in sector_terms.split(' OR ')) or sector.lower() in text:
-                    out.append(tw)
-            return out
+        total_posts = 0
 
         def _try_validate_from_current_ranking():
             """Validate tickers in mention-rank order until we have 10 validated or no more candidates."""
@@ -1037,32 +865,47 @@ if scan_triggered:
         status_text = st.empty()
         status_text.markdown(f"**📡 Scanning X for {sector} momentum...**")
 
-        # ── Query mode: hand-written topic words, or generated cashtags ──────
+        # ── Build the query from this sector's own tickers ───────────────────
         #
-        # OPT-IN. Defaults to the existing topic query, so nothing changes for
-        # anyone who does not deliberately switch. If basket generation fails
-        # for ANY reason -- Supabase unreachable, an unmapped sector, an empty
-        # universe -- it falls back to the topic query rather than erroring: a
-        # scan the user paid for must not die because an experiment could not
-        # build its input.
+        # NO FALLBACK, DELIBERATELY. If the baskets cannot be built we refund
+        # and stop rather than quietly running the old topic query, which was
+        # measured at a quarter of this precision. Falling back would hand the
+        # user a scan we know is bad without telling them -- the exact silent
+        # degradation this codebase keeps paying for.
         _baskets: list[str] = []
-        if _query_mode == "cashtag":
-            try:
-                _baskets = sector_query.build_baskets(sector, "cashtag")
-            except Exception as _e:
-                logger.warning("basket generation failed (%s); using topic query",
-                               type(_e).__name__)
-                _baskets = []
-            if _baskets:
-                # One identity for the whole basket set, so the corpus cache and
-                # the telemetry's query_hash treat it as a distinct query
-                # version -- which is what lets the two modes be compared
-                # without setting anything up.
-                query = "cashtag-baskets|" + "|".join(_baskets)
-                logger.info("🧺 Using %d generated cashtag basket(s) for %s",
-                            len(_baskets), sector)
-            else:
-                logger.info("🧺 No baskets generated; falling back to topic query")
+        _basket_error: str | None = None
+        try:
+            _baskets = sector_query.build_baskets(sector, "cashtag")
+        except Exception as _e:
+            _basket_error = f"{type(_e).__name__}: {str(_e)[:160]}"
+            logger.exception("basket generation failed for %s", sector)
+
+        if not _baskets:
+            # The credit is returned here. The try/finally below would also
+            # refund, but naming the reason makes the ledger row diagnosable
+            # instead of "aborted or errored".
+            reason = _basket_error or f"no live tickers for sector {sector!r}"
+            logger.error("cannot build a query for %s: %s", sector, reason)
+            refund_credit("scan", _credit.event_id, f"query build failed: {reason[:120]}")
+            st.markdown(
+                """
+                <div style="border:1px solid rgba(245,158,11,.28);border-radius:14px;padding:18px 20px;
+                  background:rgba(245,158,11,.05);margin:0.5rem 0;text-align:center;">
+                  <div style="font-size:1.2rem;margin-bottom:6px;">🧺</div>
+                  <div style="font-weight:700;color:rgba(251,191,36,.95);font-size:0.95rem;margin-bottom:4px;">Could not build the scan for this sector</div>
+                  <div style="color:rgba(148,163,184,.75);font-size:0.82rem;">Your credit was not used. This is usually temporary — try again shortly.</div>
+                </div>
+                """,
+                unsafe_allow_html=True,
+            )
+            st.stop()
+
+        # One identity for the whole basket set, so the corpus cache key and the
+        # telemetry's query_hash change whenever the generated query changes --
+        # which happens nightly as dollar-volume rankings shift.
+        query = "cashtag-baskets|" + "|".join(_baskets)
+        logger.info("🧺 %d basket(s), %d tickers, sector=%s",
+                    len(_baskets), sum(b.count("$") for b in _baskets), sector)
 
         # ── Shared corpus cache ──────────────────────────────────────────────
         # X bills per POST RETURNED, so the cost of this scan is the number of
@@ -1130,7 +973,7 @@ if scan_triggered:
                 is_valid=_is_valid_ticker,
                 stop_reason=(
                     "validated_target" if len(validated_set) >= TARGET_VALIDATED
-                    else "safety_cap" if total_sector_relevant >= SAFETY_CAP_TWEETS
+                    else "safety_cap" if total_posts >= SAFETY_CAP_TWEETS
                     else "exhausted"
                 ),
                 corpus_key=corpus_cache.make_key("sector", sector, 24, query),
@@ -1185,7 +1028,7 @@ if scan_triggered:
 
         with st.spinner(f"Searching {sector} stocks on X..."):
             pages = 0
-            while total_sector_relevant < SAFETY_CAP_TWEETS:
+            while total_posts < SAFETY_CAP_TWEETS:
                 pages += 1
                 # Page fetch (always 100 max)
                 progress_bar.progress(15); status_text.markdown(f"**📡 Scanning X for {sector} momentum...**")
@@ -1219,40 +1062,29 @@ if scan_triggered:
                     # point of covering the sector. Keep going while the fetcher
                     # still has work.
                     #
-                    # Gated on _baskets: in TOPIC mode this must stay a break.
-                    # An empty page does not increment total_sector_relevant, so
-                    # `continue` there would spin forever against the
-                    # `while total_sector_relevant < SAFETY_CAP_TWEETS` guard.
-                    # BasketFetcher is bounded by its own max_requests, so the
-                    # basket path always terminates.
-                    if _baskets and next_token:
+                    # An empty page does not increment total_posts, so `continue`
+                    # relies entirely on BasketFetcher's own max_requests bound
+                    # to terminate -- the `while total_posts < SAFETY_CAP_TWEETS`
+                    # guard above cannot stop this path on its own.
+                    if next_token:
                         continue
                     break
 
-                # Sector relevance filter.
-                #
-                # SKIPPED in basket mode. This filter substring-matches tweets
-                # against the sector's TOPIC WORDS, and a post reading
-                # "$NEE up 3% on the open" contains none of them -- it would be
-                # discarded despite being exactly what we asked for and paid
-                # for. Today the filter is a passthrough because every sector
-                # has a v2 topic block, but relying on that coupling is how a
-                # future edit silently empties every cashtag scan.
-                if not _baskets:
-                    page_tweets = _sector_relevant(page_tweets)
-                if not page_tweets:
-                    if not next_token:
-                        break
-                    continue
+                # The sector-relevance post-filter is gone with topic mode. It
+                # substring-matched tweets against a sector's TOPIC WORDS, and a
+                # post reading "$NEE up 3% on the open" contains none of them --
+                # it would have discarded exactly what we asked and paid for.
+                # Relevance is now guaranteed by the query itself: every post
+                # matched a cashtag we named.
 
-                # Enforce safety cap at *sector-relevant* tweet level
-                remaining = SAFETY_CAP_TWEETS - total_sector_relevant
+                # Enforce safety cap at processed-post level
+                remaining = SAFETY_CAP_TWEETS - total_posts
                 if remaining <= 0:
                     break
                 if len(page_tweets) > remaining:
                     page_tweets = page_tweets[:remaining]
 
-                total_sector_relevant += len(page_tweets)
+                total_posts += len(page_tweets)
 
                 # Ticker extraction first (regex, cheap), then ONE batched
                 # sentiment call for the whole page. This used to score tweets
@@ -1300,7 +1132,7 @@ if scan_triggered:
                 logger.info(
                     "📄 Discovery pagination pages=%s sector_tweets=%s validated=%s has_next=%s",
                     pages,
-                    total_sector_relevant,
+                    total_posts,
                     len(validated_set),
                     bool(next_token),
                 )
@@ -1314,7 +1146,7 @@ if scan_triggered:
 
         progress_bar.progress(100); status_text.empty(); progress_bar.empty()
 
-        logger.info(f"🎯 Sector-relevant tweets processed (capped): {total_sector_relevant}")
+        logger.info(f"🎯 Posts processed (capped): {total_posts}")
 
         # Store what we bought, so the next scan of this sector is free.
         #
@@ -1331,7 +1163,7 @@ if scan_triggered:
                 pages_fetched=len(_fetched_pages),
                 stop_reason=(
                     "validated_target" if len(validated_set) >= TARGET_VALIDATED
-                    else "safety_cap" if total_sector_relevant >= SAFETY_CAP_TWEETS
+                    else "safety_cap" if total_posts >= SAFETY_CAP_TWEETS
                     else "exhausted"
                 ),
             )
@@ -1339,7 +1171,7 @@ if scan_triggered:
         # Age must survive the rerun that renders the table below.
         st.session_state.scan_corpus_age_s = _cached["age_s"] if _cached else 0.0
 
-        if total_sector_relevant == 0:
+        if total_posts == 0:
             _record_metrics([])
             if _x_api_error:
                 # Upstream failure, zero posts: the user paid and got nothing.
