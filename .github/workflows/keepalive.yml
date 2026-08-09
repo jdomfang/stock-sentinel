@@ -1,0 +1,64 @@
+# Stops the Streamlit Community Cloud app sleeping, and wakes it if it did.
+#
+# Community Cloud sleeps any app with no traffic for 12 hours, and waking is
+# gated behind a click in a real browser (see .github/scripts/keepalive.py for
+# why curl cannot do it). This visits every 6 hours -- half the timeout, leaving
+# room for GitHub's schedule delays, which routinely run 20+ minutes late.
+#
+# Free: this repo is public, so Actions minutes are unlimited.
+#
+# NOTE: GitHub disables scheduled workflows after 60 days with no commits to the
+# repo. You get an email and re-enable it with one click.
+
+name: keepalive
+
+on:
+  schedule:
+    # 00:17, 06:17, 12:17, 18:17 UTC. Off the hour on purpose -- the top of the
+    # hour is when every cron on GitHub fires at once and gets queued.
+    - cron: "17 */6 * * *"
+  # Also gives you a "Run workflow" button: one click to wake the app from a
+  # phone, without hunting for the Zzzz page.
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+# Never let a delayed run overlap a manual one.
+concurrency:
+  group: keepalive
+  cancel-in-progress: false
+
+jobs:
+  visit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    env:
+      APP_URL: https://stock-sentinel-xntrfnwvh3bga8igwmaynf.streamlit.app/
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install headless Chromium
+        run: |
+          python -m pip install --quiet --upgrade pip
+          python -m pip install --quiet playwright==1.49.0
+          python -m playwright install --with-deps chromium
+
+      - name: Visit the app
+        run: python .github/scripts/keepalive.py
+
+      # Only written when something went wrong, so this is how you find out
+      # whether Streamlit changed the wake button's wording.
+      - name: Upload screenshot
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: keepalive-page
+          path: keepalive-page.png
+          if-no-files-found: ignore
+          retention-days: 14

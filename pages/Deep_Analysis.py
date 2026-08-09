@@ -247,6 +247,11 @@ if _run_clicked or (_autorun and _prefill):
 
             # Financial data (best-effort)
             current_price, projected_gain, hold_days, price_points = "Unavailable", "Unavailable", "Unavailable", 0
+            # Captured for the verdict log, which needs the RAW numbers rather
+            # than the formatted strings above. Declared out here because the
+            # block below is best-effort and may not run at all.
+            _last_close: float | None = None
+            _proj: dict = {}
             try:
                 stock_data = get_stock_data(_run_ticker)
                 if stock_data.get("error") is None and stock_data.get("prices"):
@@ -255,7 +260,9 @@ if _run_clicked or (_autorun and _prefill):
                     lp = prices[-1]
                     if isinstance(lp, (int, float)):
                         current_price = f"${lp:.2f}"
+                        _last_close = float(lp)
                     proj = simple_projection(prices, ai_summary["avg_sentiment"], days=30)
+                    _proj = proj or {}
                     if proj.get("error") is None:
                         p10, p90 = proj.get("gain_p10"), proj.get("gain_p90")
                         projected_gain = f"{p10:.1f}–{p90:.1f}%" if (p10 is not None and p90 is not None) else f"{float(proj.get('avg_gain',0)):.1f}%"
@@ -288,6 +295,31 @@ if _run_clicked or (_autorun and _prefill):
             # has what they paid for, so anything that fails after this point is a
             # presentation bug, not a delivery failure.
             _delivered = True
+
+            # Written AFTER delivery, and unable to affect it. This is the only
+            # record that this call was ever made: X's index is 7 days deep and
+            # cannot be backfilled, so a verdict not written now can never be
+            # scored against what the stock actually did.
+            try:
+                from utils import verdict_log
+                from utils.sentiment import MODEL_NAME
+                verdict_log.record(
+                    _run_ticker,
+                    ai_summary.get("recommendation", ""),
+                    sector=sector,
+                    confidence=ai_summary.get("confidence"),
+                    avg_sentiment=ai_summary.get("avg_sentiment"),
+                    total_mentions=_total_mentions,
+                    price_at_verdict=_last_close,
+                    projected_p10=_proj.get("gain_p10"),
+                    projected_p90=_proj.get("gain_p90"),
+                    suggested_hold_days=_proj.get("suggested_hold_days"),
+                    success_rate=_proj.get("success_rate"),
+                    event_id=getattr(_credit, "event_id", None),
+                    model=MODEL_NAME,
+                )
+            except Exception:
+                _da_logger.warning("verdict_log call failed", exc_info=True)
 
             render_full_analysis_expander(analysis_results)
         finally:

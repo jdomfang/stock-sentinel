@@ -97,6 +97,33 @@ def _upsert_stock_prices(rows: list[dict]) -> None:
             raise RuntimeError(f"stock_prices upsert HTTP {r.status}")
 
 
+def _upsert_price_history(rows: list[dict]) -> None:
+    """Upsert into public.price_history. Raises on failure; caller swallows.
+
+    Separate from _upsert_stock_prices on purpose. The snapshot table is what
+    the running app reads today; history is new and nothing depends on it yet.
+    A defect here must never be able to fail the price sync that Discovery and
+    Deep Analyze both rely on -- so the caller logs and continues, and only the
+    snapshot write can fail the job.
+    """
+    base = _require("SUPABASE_URL").rstrip("/")
+    key = _require("SUPABASE_SERVICE_ROLE_KEY")
+    req = urllib.request.Request(
+        f"{base}/rest/v1/price_history",
+        data=json.dumps(rows).encode(),
+        headers={
+            "Content-Type": "application/json",
+            "apikey": key,
+            "Authorization": f"Bearer {key}",
+            "Prefer": "resolution=merge-duplicates,return=minimal",
+        },
+        method="POST",
+    )
+    with urllib.request.urlopen(req, timeout=30) as r:
+        if r.status not in (200, 201, 204):
+            raise RuntimeError(f"price_history upsert HTTP {r.status}")
+
+
 def _fetch_ticker_master_symbols() -> set[str]:
     """Every symbol the app actually scans against. Empty set if unreadable."""
     base = _require("SUPABASE_URL").rstrip("/")
@@ -306,6 +333,7 @@ def fetch_and_cache_grouped_daily(
         logger.info("grouped: collapsed %d duplicate symbol row(s) from Polygon", dupes)
 
     rows: list[dict] = []
+    hist: list[dict] = []
     for sym, r in best.items():
         close = r.get("c")
         # `v` is the day's share volume, in the SAME response we already parse
@@ -324,6 +352,15 @@ def fetch_and_cache_grouped_daily(
             # it a column of its own is a schema change worth making separately.
             "last_updated": now_iso,
             "currency": "USD",
+        })
+        # The same bar, filed under the date it actually belongs to. The
+        # snapshot above answers "what is it worth now"; this answers "what has
+        # it done", which nothing in this system could answer before.
+        hist.append({
+            "ticker": sym,
+            "trade_date": day.isoformat(),
+            "close": float(close),
+            "volume": int(vol) if isinstance(vol, (int, float)) else None,
         })
 
     if not rows:
@@ -350,6 +387,20 @@ def fetch_and_cache_grouped_daily(
             failures.append(f"rows {i}-{i + len(chunk) - 1}: {type(e).__name__}: {str(e)[:120]}")
             logger.warning("stock_prices chunk at %d failed: %s: %s",
                            i, type(e).__name__, str(e)[:160])
+
+    # History, attempted regardless of how the snapshot went and unable to
+    # affect the outcome. Every day this succeeds is a day of series that
+    # cannot be reconstructed later; every day it fails costs only that day.
+    hist_written = 0
+    for i in range(0, len(hist), chunk_size):
+        try:
+            _upsert_price_history(hist[i:i + chunk_size])
+            hist_written += len(hist[i:i + chunk_size])
+        except Exception as e:
+            logger.warning("price_history chunk at %d failed (non-fatal): %s: %s",
+                           i, type(e).__name__, str(e)[:160])
+    if hist_written:
+        logger.info("📈 price_history: stored %d bars for %s", hist_written, day)
 
     if failures:
         raise RuntimeError(
