@@ -784,7 +784,6 @@ if scan_triggered:
         # hand-written topic-word blocks that used to live here are gone. They
         # were measured at 4% precision in utilities and 23% in technology,
         # against 86-88% for generated baskets in the same hours.
-        sector_key = (sector or '').strip().lower()
 
         # Goal-driven scan:
         # - Scan page 1
@@ -820,6 +819,12 @@ if scan_triggered:
             'sentiments': [],
             'sample_tweets': []
         })
+
+        # Tweet ids already counted. Baskets overlap -- a post naming tickers
+        # from two baskets is returned by both requests -- so without this a
+        # single post inflates its tickers' mention counts, and mentions decide
+        # the displayed top 10.
+        _seen_post_ids: set = set()
 
         validated_set = set()
         checked_set = set()
@@ -861,6 +866,14 @@ if scan_triggered:
                 validated_set.add(ticker)
                 company_by_ticker[ticker] = ticker_info.get('name', ticker)
 
+        # A no-op placeholder so the try/finally below always has something
+        # callable. The real closure is defined after the corpus cache, which
+        # is AFTER the query-build failure path can st.stop() -- without this,
+        # the finally raises NameError into a bare except and the failure is
+        # invisible. Overwritten with the real recorder further down.
+        def _record_metrics(displayed: list[str]) -> None:
+            return None
+
         progress_bar = st.progress(0)
         status_text = st.empty()
         status_text.markdown(f"**📡 Scanning X for {sector} momentum...**")
@@ -886,14 +899,29 @@ if scan_triggered:
             # instead of "aborted or errored".
             reason = _basket_error or f"no live tickers for sector {sector!r}"
             logger.error("cannot build a query for %s: %s", sector, reason)
-            refund_credit("scan", _credit.event_id, f"query build failed: {reason[:120]}")
+
+            # Clear the progress chrome, or a 0% bar and "Scanning X for
+            # finance momentum..." sit above the error panel forever.
+            progress_bar.empty()
+            status_text.empty()
+
+            # Only promise a refund that actually happened. refund_credit
+            # returns False without raising when its RPC fails, and telling a
+            # user in writing that they were not charged when they were is
+            # worse than the original failure. The try/finally below is the
+            # backstop either way.
+            _refunded = refund_credit(
+                "scan", _credit.event_id, f"query build failed: {reason[:120]}")
+            _credit_line = ("Your credit was not used."
+                            if _refunded
+                            else "We are returning your credit; it may take a moment to appear.")
             st.markdown(
-                """
+                f"""
                 <div style="border:1px solid rgba(245,158,11,.28);border-radius:14px;padding:18px 20px;
                   background:rgba(245,158,11,.05);margin:0.5rem 0;text-align:center;">
                   <div style="font-size:1.2rem;margin-bottom:6px;">🧺</div>
                   <div style="font-weight:700;color:rgba(251,191,36,.95);font-size:0.95rem;margin-bottom:4px;">Could not build the scan for this sector</div>
-                  <div style="color:rgba(148,163,184,.75);font-size:0.82rem;">Your credit was not used. This is usually temporary — try again shortly.</div>
+                  <div style="color:rgba(148,163,184,.75);font-size:0.82rem;">{_credit_line} This is usually temporary — try again shortly.</div>
                 </div>
                 """,
                 unsafe_allow_html=True,
@@ -1021,6 +1049,11 @@ if scan_triggered:
                 fetch=lambda q, n, tok: search_x_tweets_page(
                     query=q, max_results=n, timeframe="24h", next_token=tok),
                 per_page=BASKET_PER_PAGE,
+                # Enough for one full pass over every basket plus some depth.
+                # The default of 20 could not cover finance (27 baskets),
+                # consumer (22) or healthcare (20) even once, so their tail
+                # tickers were unreachable regardless of budget.
+                max_requests=len(_baskets) + 6,
             )
             # The fetcher owns the pages it bought; _fetched_pages is what the
             # corpus write and posts_billed read, so point them at the same list.
@@ -1078,6 +1111,35 @@ if scan_triggered:
                 # matched a cashtag we named.
 
                 # Enforce safety cap at processed-post level
+                # DROP POSTS ALREADY SEEN IN ANOTHER BASKET.
+                #
+                # A single topic query paginating with next_token could never
+                # return the same post twice. Baskets can: a post naming $NVDA
+                # (basket 1) and a quieter name (basket 3) matches both queries
+                # and comes back from both requests. Without this, that post
+                # increments ticker_data[t]['mentions'] twice and contributes
+                # its sentiment twice -- and mentions is the sort key that
+                # decides which ten tickers the user sees.
+                #
+                # The duplicate is still BILLED; X charged for both copies. This
+                # only stops it being counted twice.
+                _fresh = []
+                for tw in page_tweets:
+                    tid = tw.get("id")
+                    if tid is not None and tid in _seen_post_ids:
+                        continue
+                    if tid is not None:
+                        _seen_post_ids.add(tid)
+                    _fresh.append(tw)
+                if len(_fresh) != len(page_tweets):
+                    logger.info("deduped %d post(s) already seen in another basket",
+                                len(page_tweets) - len(_fresh))
+                page_tweets = _fresh
+                if not page_tweets:
+                    if next_token:
+                        continue
+                    break
+
                 remaining = SAFETY_CAP_TWEETS - total_posts
                 if remaining <= 0:
                     break
@@ -1130,7 +1192,7 @@ if scan_triggered:
                 _try_validate_from_current_ranking()
 
                 logger.info(
-                    "📄 Discovery pagination pages=%s sector_tweets=%s validated=%s has_next=%s",
+                    "📄 Discovery pagination pages=%s posts=%s validated=%s has_next=%s",
                     pages,
                     total_posts,
                     len(validated_set),
@@ -1320,8 +1382,22 @@ if scan_triggered:
         if _delivered:
             complete_work(_credit.event_id, "completed", f"sector={sector}")
         else:
-            refund_credit("scan", _credit.event_id, "scan did not complete")
-            complete_work(_credit.event_id, "failed", "aborted or errored")
+            # Close the run ONLY if the refund actually landed.
+            #
+            # refund_credit returns False and does not raise when its RPC fails.
+            # Closing the run regardless would set work_runs.status='failed',
+            # and reap_orphaned_work only scans status='running' -- so a user
+            # charged during a Supabase blip would be silently stranded, with
+            # the one backstop designed to catch that case disarmed.
+            #
+            # This is exactly the choice reap_orphaned_work makes for itself:
+            # when its own refund fails it leaves the row 'running' so the next
+            # pass retries. Left open, the reaper picks this up in <=15 minutes.
+            if refund_credit("scan", _credit.event_id, "scan did not complete"):
+                complete_work(_credit.event_id, "failed", "aborted or errored")
+            else:
+                logger.error("refund failed for event %s; leaving work_run open "
+                             "so the reaper retries", _credit.event_id)
 
     # Clear one-shot redirect flags after a scan attempt (success or failure).
     # This keeps refreshes from unexpectedly re-triggering autostart.
