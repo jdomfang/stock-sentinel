@@ -301,6 +301,52 @@ def test_pages_are_what_the_scan_bills_for():
           all(c[1] == 25 for c in x.calls), str([c[1] for c in x.calls]))
 
 
+def test_the_first_pass_gate():
+    print("\nfull pass: the scan must not stop before every basket is sampled")
+    # Baskets are volume-ordered and volume does not predict chatter. Measured
+    # on utilities, four of the six loudest tickers were outside basket 1 --
+    # $AVA (14 mentions, basket 2) and $AWX (12, basket 4). A scan that stops
+    # once basket 1 fills ten slots returns exactly the names that are NOT
+    # unusual, which is the opposite of the feature's purpose.
+    x = FakeX({f"b{i}": [posts(5)] for i in range(4)})
+    f = sq.BasketFetcher([f"b{i}" for i in range(4)], fetch=x, per_page=25)
+    check("not done before any fetch", f.first_pass_done is False)
+    for i in range(3):
+        f.next_page()
+        check(f"still not done after {i+1}/4 baskets", f.first_pass_done is False)
+    f.next_page()
+    check("done once every basket has a page", f.first_pass_done is True)
+
+
+def test_parallel_prefetch_covers_every_basket_once():
+    print("\nparallel: wide sectors fetch their first pass concurrently")
+    # Finance has 27 baskets; serialising them is ~30s of a paid scan inside the
+    # window where a re-click aborts the run.
+    x = FakeX({f"b{i}": [posts(3, f"p{i}")] for i in range(8)})
+    f = sq.BasketFetcher([f"b{i}" for i in range(8)], fetch=x, per_page=25)
+    f.prefetch_first_pass()
+    check("every basket was fetched exactly once",
+          sorted(c[0] for c in x.calls) == sorted(f"b{i}" for i in range(8)),
+          str(sorted(c[0] for c in x.calls)))
+    check("first pass reported complete", f.first_pass_done is True)
+    delivered = []
+    while not f.exhausted:
+        r = f.next_page()
+        if r.get("tweets"): delivered.append(len(r["tweets"]))
+    check("prefetched pages are delivered, not refetched",
+          len(x.calls) == 8, f"{len(x.calls)} calls")
+    check("all posts reach the caller", sum(delivered) == 24, str(sum(delivered)))
+
+
+def test_small_sectors_are_not_parallelised():
+    print("\nparallel: 3 baskets or fewer stay sequential")
+    x = FakeX({f"b{i}": [posts(2)] for i in range(3)})
+    f = sq.BasketFetcher([f"b{i}" for i in range(3)], fetch=x, per_page=25)
+    f.prefetch_first_pass()
+    check("no requests made by prefetch", x.calls == [], str(x.calls))
+    check("first pass not yet done", f.first_pass_done is False)
+
+
 def test_no_baskets_is_inert():
     print("\nfetcher: an empty basket list makes no calls at all")
     x = FakeX({})
@@ -328,6 +374,9 @@ def main() -> int:
     test_it_cannot_run_away()
     test_a_failing_basket_propagates()
     test_pages_are_what_the_scan_bills_for()
+    test_the_first_pass_gate()
+    test_parallel_prefetch_covers_every_basket_once()
+    test_small_sectors_are_not_parallelised()
     test_no_baskets_is_inert()
     print("\n" + "=" * 74)
     print(f"  {len(PASSED)} passed, {len(FAILED)} failed")

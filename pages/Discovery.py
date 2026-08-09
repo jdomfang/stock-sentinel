@@ -23,14 +23,27 @@ from utils.projections import simple_projection
 from utils.deep_analysis import ANALYSIS_PROMPTS, run_deep_analysis, generate_ai_summary
 
 
+# Verdicts we are willing to assert. Anything else is a statement about how
+# little evidence there is, and must not be dressed like a conclusion --
+# 52% of tickers were previously getting a bold Bullish/Bearish badge from a
+# SINGLE post, indistinguishable from one backed by fourteen.
+_ASSERTED = {"bullish", "bearish", "neutral"}
+
+
 def _sentiment_pill(label: str) -> str:
     label = (label or "").strip()
-    if label.lower() == "bullish":
+    low = label.lower()
+    if low == "bullish":
         return '<span style="background:rgba(56,189,248,.18);color:rgba(56,189,248,.98);border:1px solid rgba(56,189,248,.35);padding:3px 10px;border-radius:999px;font-size:0.83rem;font-weight:700;">Bullish</span>'
-    elif label.lower() == "bearish":
+    if low == "bearish":
         return '<span style="background:rgba(239,68,68,.15);color:rgba(248,113,113,.98);border:1px solid rgba(239,68,68,.30);padding:3px 10px;border-radius:999px;font-size:0.83rem;font-weight:700;">Bearish</span>'
-    else:
+    if low in _ASSERTED:
         return f'<span style="background:rgba(148,163,184,.12);color:rgba(148,163,184,.92);border:1px solid rgba(148,163,184,.25);padding:3px 10px;border-radius:999px;font-size:0.83rem;font-weight:700;">{label or "Neutral"}</span>'
+    # Low-evidence: no border, no bold, muted. It reads as a caveat rather than
+    # a call, which is what "one post said something" actually is. The ticker
+    # still appears -- discovery is the product; the false confidence is not.
+    return (f'<span style="color:rgba(148,163,184,.62);font-size:0.78rem;'
+            f'font-style:italic;">{label or "Neutral"}</span>')
 
 # Logging is configured centrally. This page used to call basicConfig(force=True),
 # which meant whichever page a user landed on first won the root config for the
@@ -651,6 +664,12 @@ with st.container(key="discovery_scan_card"):
 # it has what it needs. This is the one number here worth tuning from real data.
 BASKET_PER_PAGE = 25
 
+# |mean margin| below this reads as Neutral. A PLACEHOLDER: nobody has labelled
+# a sample of these posts yet, so this is a starting point to be tuned from
+# ground truth, not a measured boundary. Deliberately not derived from the old
+# 0.55 confidence threshold, which applied to a different quantity.
+SENTIMENT_MARGIN = 0.15
+
 # Basket retrieval is the only path. The hand-written topic queries it
 # replaced were measured head-to-head on two sectors, same hour, equal spend:
 #
@@ -815,8 +834,11 @@ if scan_triggered:
         # Aggregate data by ticker (incremental across pages)
         ticker_data = defaultdict(lambda: {
             'mentions': 0,
-            'sentiment_scores': [],
-            'sentiments': [],
+            # P(positive) - P(negative) per scoring post. Continuous and signed,
+            # so aggregating it cannot tie the way a vote over discrete labels
+            # does, and it keeps the difference between a 0.48/0.44 coin flip
+            # and a 0.90/0.05 conviction that a single label collapses.
+            'margins': [],
             'sample_tweets': []
         })
 
@@ -825,6 +847,10 @@ if scan_triggered:
         # single post inflates its tickers' mention counts, and mentions decide
         # the displayed top 10.
         _seen_post_ids: set = set()
+
+        # (text, tickers) for every ticker-bearing post, kept so sentiment can
+        # run ONCE after the ranking rather than per page during the fetch.
+        _scored_corpus: list = []
 
         validated_set = set()
         checked_set = set()
@@ -1055,6 +1081,11 @@ if scan_triggered:
                 # tickers were unreachable regardless of budget.
                 max_requests=len(_baskets) + 6,
             )
+            # Baskets are independent queries, so a wide sector's first pass
+            # goes out concurrently. Finance has 27 baskets; serialising them
+            # is ~30s of a paid scan spent inside the window where a user
+            # re-click aborts the run. No-op at 3 baskets or fewer.
+            _fetcher.prefetch_first_pass()
             # The fetcher owns the pages it bought; _fetched_pages is what the
             # corpus write and posts_billed read, so point them at the same list.
             _fetched_pages = _fetcher.pages
@@ -1155,34 +1186,29 @@ if scan_triggered:
                 # and spent a credit for nothing. Batching per page rather than
                 # per scan keeps peak memory bounded and preserves the
                 # between-page progress updates below.
-                _page_hits = []
+                # EXTRACTION ONLY. No sentiment here.
+                #
+                # Ranking is by mention count and validation is a ticker_master
+                # lookup -- neither needs FinBERT. Scoring inside this loop meant
+                # scoring every ticker-bearing post to display ten tickers:
+                # measured at 119 of 138 posts in utilities, 86 of 98 in tech,
+                # about 17 and 12 seconds of inference respectively. Deferring it
+                # until the top ten is known cuts that by 42-45% and removes it
+                # from the fetch path entirely.
                 for tweet in page_tweets:
                     text = tweet.get('text', '')
                     # _detailed reports WHERE each symbol came from -- $CAT is
                     # unambiguous, bare CAT is also an English word. `legacy` is
-                    # the exact list extract_tickers has always returned, so
-                    # measuring changes nothing about what the scan does.
+                    # the exact list extract_tickers has always returned.
                     _d = extract_tickers_detailed(text)
                     _tally.record(_d["cashtag"], _d["bare"],
                                   _d["cashtag_counts"], _d["bare_counts"])
                     tickers = _d["legacy"]
-                    if tickers:
-                        _page_hits.append((text, tickers))
-
-                _page_sentiments = analyze_sentiment_batch([t for t, _ in _page_hits])
-
-                for (text, tickers), sentiment_result in zip(_page_hits, _page_sentiments):
+                    if not tickers:
+                        continue
+                    _scored_corpus.append((text, tickers))
                     for ticker in tickers:
                         ticker_data[ticker]['mentions'] += 1
-                        ticker_data[ticker]['sentiment_scores'].append(sentiment_result['score'])
-                        ticker_data[ticker]['sentiments'].append(sentiment_result['sentiment'])
-
-                        if 'raw_labels' not in ticker_data[ticker]:
-                            ticker_data[ticker]['raw_labels'] = []
-                        ticker_data[ticker]['raw_labels'].append(
-                            f"{sentiment_result['label']}:{sentiment_result['score']:.3f}"
-                        )
-
                         if len(ticker_data[ticker]['sample_tweets']) < 3:
                             short_text = text[:150] + "..." if len(text) > 150 else text
                             ticker_data[ticker]['sample_tweets'].append(short_text)
@@ -1192,15 +1218,24 @@ if scan_triggered:
                 _try_validate_from_current_ranking()
 
                 logger.info(
-                    "📄 Discovery pagination pages=%s posts=%s validated=%s has_next=%s",
+                    "📄 Discovery pagination pages=%s posts=%s validated=%s first_pass=%s",
                     pages,
                     total_posts,
                     len(validated_set),
-                    bool(next_token),
+                    _fetcher.first_pass_done if _fetcher else True,
                 )
 
-                # Stop early if page 1 (or subsequent pages) already yields 10 validated
-                if len(validated_set) >= TARGET_VALIDATED:
+                # STOP ONLY AFTER EVERY BASKET HAS BEEN SAMPLED.
+                #
+                # Baskets are ordered by dollar volume, and dollar volume does
+                # not predict chatter. Measured on utilities: four of the six
+                # most-discussed tickers sat outside basket 1 -- $AVA (14
+                # mentions, basket 2) and $AWX (12, basket 4) would never have
+                # been seen by a scan that stopped once basket 1 filled ten
+                # slots. Stopping on the ticker target alone returns exactly the
+                # names that are NOT unusual.
+                _first_pass = _fetcher.first_pass_done if _fetcher else True
+                if _first_pass and len(validated_set) >= TARGET_VALIDATED:
                     break
 
                 if not next_token:
@@ -1247,22 +1282,78 @@ if scan_triggered:
 
         # (status message removed - results table speaks for itself)
 
+        # ── Sentiment, once, on the shortlist only ───────────────────────────
+        #
+        # Ranking never used sentiment: it is mention count, and validation is a
+        # table lookup. So the ten tickers are already decided here, and only
+        # their posts need scoring. Measured: 119 of 138 posts scored before,
+        # 69 after (utilities); 86 of 98 before, 47 after (tech) -- 42-45% less
+        # inference for an identical result set.
+        _shortlist = [t for t, _ in sorted(
+            ((t, d['mentions']) for t, d in ticker_data.items() if t in validated_set),
+            key=lambda kv: -kv[1],
+        )[:TARGET_VALIDATED]]
+        _shortlist_set = set(_shortlist)
+
+        _relevant = [(text, tks) for text, tks in _scored_corpus
+                     if any(t in _shortlist_set for t in tks)]
+        if _relevant:
+            progress_bar.progress(85)
+            status_text.markdown("**🧠 Reading the mood on your shortlist...**")
+        logger.info("🧠 scoring %d of %d ticker-bearing posts (shortlist of %d)",
+                    len(_relevant), len(_scored_corpus), len(_shortlist))
+
+        _sent = analyze_sentiment_batch([t for t, _ in _relevant]) if _relevant else []
+
+        # SINGLE-TICKER POSTS ONLY DRIVE DIRECTION.
+        #
+        # FinBERT scores the whole post and is never told which ticker the
+        # question is about, so a post naming two tickers gives both the same
+        # verdict -- "Virginia Gov's skepticism threatens $NEE's $D" is one
+        # sentiment stamped on two companies whose fortunes the post treats as
+        # opposed. Measured at 13% of ticker-bearing posts. They still count as
+        # ATTENTION, which is what the scan is actually for; they just do not
+        # get a vote on direction.
+        for (text, tks), res in zip(_relevant, _sent):
+            in_list = [t for t in tks if t in _shortlist_set]
+            if len(tks) > 1:
+                continue
+            for ticker in in_list:
+                ticker_data[ticker]['margins'].append(float(res.get('margin') or 0.0))
+
         # Convert to final DataFrame
         if ticker_data:
             rows = []
             for ticker, info in ticker_data.items():
-                if not info.get('sentiment_scores'):
-                    continue
-                avg_sentiment = sum(info['sentiment_scores']) / len(info['sentiment_scores'])
-                sentiment_counts = {}
-                for s in info['sentiments']:
-                    sentiment_counts[s] = sentiment_counts.get(s, 0) + 1
-                overall_sentiment = max(sentiment_counts, key=sentiment_counts.get)
+                margins = info.get('margins') or []
+                n = len(margins)
+                mean_margin = (sum(margins) / n) if n else 0.0
+
+                # EVIDENCE FLOOR. The old pill was a plurality vote over
+                # discrete labels, which (a) tied on corpus order -- $ET came
+                # back {Neutral: 2, Bearish: 2} and the winner was whichever
+                # post arrived first -- and (b) rendered the same bold badge for
+                # one post as for fourteen, which was 52% of tickers. A mean
+                # margin cannot tie, and the floor stops a single post being
+                # presented as a verdict.
+                if n == 0:
+                    overall_sentiment = 'Unscored'
+                elif n == 1:
+                    overall_sentiment = 'Single mention'
+                elif n == 2:
+                    overall_sentiment = 'Limited signal'
+                elif mean_margin >= SENTIMENT_MARGIN:
+                    overall_sentiment = 'Bullish'
+                elif mean_margin <= -SENTIMENT_MARGIN:
+                    overall_sentiment = 'Bearish'
+                else:
+                    overall_sentiment = 'Neutral'
 
                 rows.append({
                     'Ticker': ticker,
                     'Mentions': info['mentions'],
-                    'Avg Sentiment Score': round(avg_sentiment, 3),
+                    'Avg Sentiment Score': round(mean_margin, 3),
+                    'Evidence': n,
                     'Overall Sentiment': overall_sentiment,
                     'Sample Tweets': ' | '.join(info['sample_tweets']),
                     'Company Name': company_by_ticker.get(ticker, 'N/A'),
@@ -1689,7 +1780,7 @@ def _render_deep_panel(ticker, sector, deep_results):
 
 # ── Results table ──
 if st.session_state.df_valid is not None:
-    df_valid_display = st.session_state.df_valid.drop(columns=["Mentions", "Sample Tweets"], errors="ignore")
+    df_valid_display = st.session_state.df_valid.drop(columns=["Mentions", "Sample Tweets", "Evidence"], errors="ignore")
 
     if len(df_valid_display) > 0:
         st.markdown(
@@ -1714,10 +1805,13 @@ if st.session_state.df_valid is not None:
                 unsafe_allow_html=True,
             )
 
-        # Sort: Bullish first, then Neutral, then Bearish
-        sentiment_order = {"bullish": 0, "neutral": 1, "bearish": 2}
+        # Bullish, Neutral, Bearish, then everything we could not assert.
+        # Low-evidence rows sort last so the shortlist leads with the names the
+        # scan can actually say something about.
+        sentiment_order = {"bullish": 0, "neutral": 1, "bearish": 2,
+                           "limited signal": 3, "single mention": 4, "unscored": 5}
         df_valid_display = df_valid_display.copy()
-        df_valid_display["_sort"] = df_valid_display["Overall Sentiment"].str.lower().map(lambda x: sentiment_order.get(x, 1))
+        df_valid_display["_sort"] = df_valid_display["Overall Sentiment"].str.lower().map(lambda x: sentiment_order.get(x, 3))
         df_valid_display = df_valid_display.sort_values("_sort").drop(columns=["_sort"])
         df_valid_display = df_valid_display.reset_index(drop=True)
 

@@ -319,12 +319,39 @@ def analyze_sentiment(text: str) -> Dict[str, any]:
         }
 
 
+# Part of the sentiment-cache key. A stored distribution belongs to the model
+# that produced it, so swapping this must miss every cached row rather than
+# serve the previous model's opinions. Matches inference/main.py's default.
+MODEL_NAME = os.getenv("MODEL_NAME", "ProsusAI/finbert")
+
 _NEUTRAL_RESULT = {
     'label': 'UNKNOWN',
     'confidence': 0.0,
     'score': 0.0,
     'sentiment': 'Neutral',
+    'p_positive': 0.0,
+    'p_negative': 0.0,
+    'p_neutral': 0.0,
+    'margin': 0.0,
 }
+
+# Every result carries the full class distribution. Callers that aggregate
+# should prefer `margin` (P_positive - P_negative) over `sentiment`: it is
+# continuous, so it cannot tie, and it distinguishes a 0.48/0.44 coin-flip from
+# a 0.90/0.05 conviction that the discrete label collapses into one bucket.
+#
+# Defaulted rather than required, because an inference service deployed before
+# this change returns only {label, confidence, score, sentiment}. A missing
+# distribution degrades to margin 0.0 (reads as Neutral) instead of a KeyError
+# mid-scan.
+_DIST_KEYS = ('p_positive', 'p_negative', 'p_neutral', 'margin')
+
+
+def _with_distribution(d: dict) -> dict:
+    out = dict(d)
+    for k in _DIST_KEYS:
+        out.setdefault(k, 0.0)
+    return out
 
 
 def _inference_config() -> tuple[str, str]:
@@ -442,25 +469,41 @@ def analyze_sentiment_batch(texts: List[str], batch_size: int = 24) -> List[Dict
             uniq[t] = len(uniq)
     unique_texts = list(uniq.keys())
 
+    # ALREADY-SCORED TEXT IS NOT RE-SCORED.
+    #
+    # FinBERT is deterministic, so a stored distribution for the identical
+    # string at the identical model version IS the answer. Dedup above only
+    # covers repeats within this one call; this covers repeats across pages,
+    # across scans, and across Deep Analyze's keyword buckets. A repeat sector
+    # scan inside the corpus-cache window previously cost zero X posts and still
+    # paid the full inference bill re-scoring the posts it had just replayed.
+    #
+    # Never raises: an unreachable cache returns {} and everything is scored.
+    from utils import sentiment_cache as _sc
+    _cached = _sc.get_many(unique_texts, MODEL_NAME)
+    _to_score = [t for t in unique_texts if t not in _cached]
+
     # Remote when configured, in-process otherwise. Both produce identical
     # results -- the service reuses the same 0.55 threshold and the same
     # truncation -- so the rollout is a config change, reversible without a
-    # deploy. The memory win does NOT arrive until torch and transformers leave
-    # requirements.txt; until then the portal still loads 886MB whether or not
-    # it uses it.
+    # deploy.
     remote = _remote_scorer()
     if remote is not None:
-        scored = remote(unique_texts)
+        scored = remote(_to_score) if _to_score else []
         if scored is not None:
-            if len(scored) != len(unique_texts):
+            if len(scored) != len(_to_score):
                 logger.error("inference returned %d results for %d texts; using neutral",
-                             len(scored), len(unique_texts))
+                             len(scored), len(_to_score))
                 return [dict(_NEUTRAL_RESULT) for _ in prepared]
+            fresh = {t: d for t, d in zip(_to_score, scored)}
+            if fresh:
+                _sc.put_many(fresh, MODEL_NAME)
+            by_text = {**_cached, **fresh}
             logger.info(
-                "🧠 Sentiment batch (remote): %d texts, %d unique (%d duplicate passes avoided)",
-                len(prepared), len(unique_texts), len(prepared) - len(unique_texts),
+                "🧠 Sentiment batch (remote): %d texts, %d unique, %d cached, %d scored",
+                len(prepared), len(unique_texts), len(_cached), len(_to_score),
             )
-            return [dict(scored[uniq[t]]) for t in prepared]
+            return [_with_distribution(by_text[t]) for t in prepared]
         # remote returned None: it failed and said so. Fall through to local,
         # which is correct DURING the rollout while torch is still installed.
         # Once torch is removed this path raises ImportError and the caller
@@ -479,12 +522,16 @@ def analyze_sentiment_batch(texts: List[str], batch_size: int = 24) -> List[Dict
                 signed_score, trading_sentiment, label_norm = score_finbert_output(
                     label=label, confidence=confidence, neutral_threshold=0.55,
                 )
-                scored.append({
+                # The local path exists only for a torch-installed dev box; it
+                # has no distribution to report, so callers see margin 0.0 and
+                # fall back to the discrete label. Not worth widening: the
+                # portal has no torch, so this never runs in production.
+                scored.append(_with_distribution({
                     'label': label_norm,
                     'confidence': confidence,
                     'score': signed_score,
                     'sentiment': trading_sentiment,
-                })
+                }))
     except Exception as e:
         # A failed batch must not zero out the whole page. Fall back to the
         # per-text path, which has its own error handling and degrades one

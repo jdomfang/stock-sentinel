@@ -53,6 +53,7 @@ one basket rather than two, and is billed once instead of twice.
 from __future__ import annotations
 
 from collections import deque
+from concurrent.futures import ThreadPoolExecutor, as_completed
 
 import json
 import logging
@@ -241,42 +242,106 @@ class BasketFetcher:
     extracted to make visible.
     """
 
+    # Above this many baskets, the first pass is fetched CONCURRENTLY. Baskets
+    # are independent queries, so serialising them buys nothing but latency --
+    # and finance has 27, which at ~1s each is half a minute of a paid scan
+    # spent where a user re-click aborts the run.
+    PARALLEL_ABOVE = 3
+
     def __init__(self, baskets: list[str], fetch, per_page: int = 25,
-                 max_requests: int = 20):
+                 max_requests: int = 20, max_workers: int = 6):
         self.baskets = list(baskets)
         self.fetch = fetch
         self.per_page = per_page
-        # Requests are free in billing terms, but each is a serial round trip
-        # inside a window where a user re-click aborts the scan. Bounded so a
-        # wide sector cannot stretch that window indefinitely.
+        # Requests are free in billing terms, but each is a round trip inside a
+        # window where a user re-click aborts the scan. Bounded so a wide sector
+        # cannot stretch that window indefinitely.
         self.max_requests = max_requests
+        self.max_workers = max_workers
         self.requests = 0
         self.pages: list[list[dict]] = []
         self._queue = deque((i, None) for i in range(len(self.baskets)))
+        self._ready: deque = deque()          # pages already fetched, undelivered
+        self._first_pass_fetched = 0
 
     @property
     def exhausted(self) -> bool:
+        if self._ready:
+            return False
         return not self._queue or self.requests >= self.max_requests
 
+    @property
+    def first_pass_done(self) -> bool:
+        """True once EVERY basket has been sampled at least once.
+
+        The caller must not stop on a ticker target before this: baskets are
+        ordered by dollar volume, and dollar volume turned out not to predict
+        chatter. Measured on utilities, four of the six most-discussed tickers
+        were outside basket 1 -- $AVA (14 mentions, basket 2) and $AWX (12,
+        basket 4) would never have been seen by a scan that stopped after the
+        first basket filled its ten slots.
+        """
+        return self._first_pass_fetched >= len(self.baskets)
+
+    def prefetch_first_pass(self) -> None:
+        """Fetch page 1 of every basket concurrently. No-op for small sectors.
+
+        Results are queued and delivered one page at a time by next_page(), so
+        the caller's loop shape is unchanged -- it still processes a page,
+        validates, and decides whether to continue.
+        """
+        if len(self.baskets) <= self.PARALLEL_ABOVE or self._first_pass_fetched:
+            return
+        n = min(len(self.baskets), self.max_requests)
+        logger.info("🧺 prefetching %d baskets concurrently (%d workers)",
+                    n, self.max_workers)
+        with ThreadPoolExecutor(max_workers=self.max_workers) as ex:
+            futures = {ex.submit(self.fetch, self.baskets[i], self.per_page, None): i
+                       for i in range(n)}
+            for fut in as_completed(futures):
+                i = futures[fut]
+                self.requests += 1
+                try:
+                    res = fut.result()
+                except Exception as e:
+                    logger.warning("basket %d fetch raised: %s", i + 1, type(e).__name__)
+                    res = {"success": False, "error": f"{type(e).__name__}"}
+                self._first_pass_fetched += 1
+                self._ready.append((i, res))
+        # Everything queued for a first page has now had one.
+        self._queue = deque(item for item in self._queue if item[1] is not None)
+
     def next_page(self) -> dict:
-        """Fetch one page. Returns the raw result plus a `has_more` flag."""
+        """Fetch or deliver one page. Returns the result plus a `has_more` flag."""
+        if self._ready:
+            idx, res = self._ready.popleft()
+            return self._accept(idx, res, counted=True)
+
         if self.exhausted:
             return {"success": True, "tweets": [], "has_more": False}
 
         idx, token = self._queue.popleft()
         self.requests += 1
-        res = self.fetch(self.baskets[idx], self.per_page, token)
+        if token is None:
+            self._first_pass_fetched += 1
+        try:
+            res = self.fetch(self.baskets[idx], self.per_page, token)
+        except Exception as e:
+            logger.warning("basket %d fetch raised: %s", idx + 1, type(e).__name__)
+            return {"success": False, "error": f"{type(e).__name__}", "has_more": False}
+        return self._accept(idx, res, counted=True)
+
+    def _accept(self, idx: int, res: dict, counted: bool) -> dict:
         if not res.get("success"):
             return dict(res, has_more=False)
-
         tweets = res.get("tweets") or []
         self.pages.append(tweets)
         nt = res.get("next_token")
         if nt:
             self._queue.append((idx, nt))
-
-        logger.info("🧺 basket %d/%d: %d posts, more=%s, remaining=%d",
-                    idx + 1, len(self.baskets), len(tweets), bool(nt), len(self._queue))
+        logger.info("🧺 basket %d/%d: %d posts, more=%s, pending=%d",
+                    idx + 1, len(self.baskets), len(tweets), bool(nt),
+                    len(self._ready) + len(self._queue))
         return dict(res, tweets=tweets, has_more=not self.exhausted)
 
 

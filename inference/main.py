@@ -80,7 +80,17 @@ def _load():
             logger.warning("could not pin torch threads: %s", type(e).__name__)
 
         t0 = time.time()
-        _pipeline = hf_pipeline("sentiment-analysis", model=MODEL_NAME, device=-1)
+        # top_k=None returns ALL THREE class probabilities, not just the argmax.
+        #
+        # Without it the pipeline yields one {label, score} pair and the other
+        # two probabilities are computed and thrown away inside this container.
+        # That loss is invisible downstream and expensive: "positive 0.48 /
+        # negative 0.44" and "positive 0.90 / negative 0.05" both arrive as
+        # POSITIVE with a confidence, so genuine ambiguity is indistinguishable
+        # from conviction. Callers can now use the margin (P_pos - P_neg),
+        # which also removes the tie-breaking that plurality voting needed.
+        _pipeline = hf_pipeline("sentiment-analysis", model=MODEL_NAME,
+                                device=-1, top_k=None)
         logger.info("loaded %s in %.1fs", MODEL_NAME, time.time() - t0)
     return _pipeline
 
@@ -167,14 +177,31 @@ def score(
         out: list[dict[str, Any]] = []
         for i in range(0, len(prepared), BATCH_SIZE):
             for r in pipe(prepared[i : i + BATCH_SIZE]):
+                # With top_k=None each result is a LIST of {label, score} across
+                # all classes. The pre-top_k shape was a single dict; accept
+                # both so a pinned-transformers rollback cannot silently change
+                # every recommendation.
+                scores = r if isinstance(r, list) else [r]
+                probs = {str(d.get("label", "")).strip().upper(): float(d.get("score", 0.0))
+                         for d in scores}
+                top = max(scores, key=lambda d: float(d.get("score", 0.0)))
+                confidence = float(top.get("score", 0.0))
+
                 signed, sentiment, label_norm = score_finbert_output(
-                    label=r.get("label"), confidence=float(r.get("score", 0.0))
+                    label=top.get("label"), confidence=confidence
                 )
                 out.append({
                     "label": label_norm,
-                    "confidence": float(r.get("score", 0.0)),
+                    "confidence": confidence,
                     "score": signed,
                     "sentiment": sentiment,
+                    # The full distribution. `margin` is P(positive) - P(negative):
+                    # continuous, signed, and free of the ties that a vote over
+                    # discrete labels cannot avoid.
+                    "p_positive": probs.get("POSITIVE", 0.0),
+                    "p_negative": probs.get("NEGATIVE", 0.0),
+                    "p_neutral": probs.get("NEUTRAL", 0.0),
+                    "margin": probs.get("POSITIVE", 0.0) - probs.get("NEGATIVE", 0.0),
                 })
     except Exception as e:
         # 503, not 500: this is "try again", and it is the signal that lets the
