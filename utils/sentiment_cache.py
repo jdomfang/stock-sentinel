@@ -79,6 +79,48 @@ def text_key(text: str) -> str:
     return hashlib.sha256((text or "").encode("utf-8")).hexdigest()
 
 
+# Duplicated from utils.sentiment.score_finbert_output rather than imported:
+# utils.sentiment imports THIS module, so importing back would be circular. The
+# behaviour is pinned on both sides by tests/test_characterization.py, the same
+# arrangement inference/main.py already uses.
+NEUTRAL_THRESHOLD = 0.55
+
+
+def _from_distribution(p_pos: float, p_neg: float, p_neu: float) -> dict[str, Any]:
+    """Rebuild a full result from stored probabilities.
+
+    EVERY field is derived, including `score`. An earlier version hardcoded
+    score = 0.0, which was invisible to the sector scan (it reads `margin`) and
+    silently destroyed Deep Analyze, which aggregates on `score` alone: one
+    corpus is re-scored across 8 keyword buckets, so bucket 1 populated the
+    cache and buckets 2-8 read back 0.0 and collapsed to Neutral. A paid
+    analysis would have returned a fabricated verdict with no error anywhere.
+
+    Deriving rather than storing also means a changed threshold cannot serve a
+    stale label: the probabilities are the source of truth.
+    """
+    pairs = (("POSITIVE", p_pos), ("NEGATIVE", p_neg), ("NEUTRAL", p_neu))
+    label, confidence = max(pairs, key=lambda kv: kv[1])
+
+    if confidence < NEUTRAL_THRESHOLD or label == "NEUTRAL":
+        signed, sentiment = 0.0, "Neutral"
+    elif label == "POSITIVE":
+        signed, sentiment = confidence, "Bullish"
+    else:
+        signed, sentiment = -confidence, "Bearish"
+
+    return {
+        "label": label,
+        "confidence": confidence,
+        "score": signed,
+        "sentiment": sentiment,
+        "p_positive": p_pos,
+        "p_negative": p_neg,
+        "p_neutral": p_neu,
+        "margin": p_pos - p_neg,
+    }
+
+
 def get_many(texts: Iterable[str], model: str) -> dict[str, dict[str, Any]]:
     """Return {text: distribution} for whatever is already cached.
 
@@ -118,18 +160,8 @@ def get_many(texts: Iterable[str], model: str) -> dict[str, dict[str, Any]]:
                 continue
             p_pos = float(row.get("p_positive") or 0.0)
             p_neg = float(row.get("p_negative") or 0.0)
-            found[t] = {
-                "label": row.get("label") or "UNKNOWN",
-                "sentiment": row.get("sentiment") or "Neutral",
-                "p_positive": p_pos,
-                "p_negative": p_neg,
-                "p_neutral": float(row.get("p_neutral") or 0.0),
-                "margin": p_pos - p_neg,
-                # Rebuilt from the distribution rather than stored, so a changed
-                # threshold cannot serve a stale derived value.
-                "confidence": max(p_pos, p_neg, float(row.get("p_neutral") or 0.0)),
-                "score": 0.0,
-            }
+            p_neu = float(row.get("p_neutral") or 0.0)
+            found[t] = _from_distribution(p_pos, p_neg, p_neu)
     if found:
         logger.info("sentiment_cache: %d/%d texts already scored",
                     len(found), len(wanted))

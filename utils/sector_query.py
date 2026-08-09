@@ -262,7 +262,13 @@ class BasketFetcher:
         self.pages: list[list[dict]] = []
         self._queue = deque((i, None) for i in range(len(self.baskets)))
         self._ready: deque = deque()          # pages already fetched, undelivered
-        self._first_pass_fetched = 0
+        # Basket indices whose results have been DELIVERED to the caller. Not
+        # "fetched": a prefetched page sitting in _ready has been paid for but
+        # the caller has not seen its tickers yet, so treating it as sampled
+        # lets the caller stop before processing it -- which made the whole
+        # full-pass guarantee a no-op for every sector wide enough to trigger
+        # the prefetch, i.e. 8 of 10.
+        self._delivered: set = set()
 
     @property
     def exhausted(self) -> bool:
@@ -281,18 +287,24 @@ class BasketFetcher:
         basket 4) would never have been seen by a scan that stopped after the
         first basket filled its ten slots.
         """
-        return self._first_pass_fetched >= len(self.baskets)
+        return len(self._delivered) >= len(self.baskets)
 
-    def prefetch_first_pass(self) -> None:
+    def prefetch_first_pass(self, post_budget: int | None = None) -> None:
         """Fetch page 1 of every basket concurrently. No-op for small sectors.
 
         Results are queued and delivered one page at a time by next_page(), so
         the caller's loop shape is unchanged -- it still processes a page,
         validates, and decides whether to continue.
         """
-        if len(self.baskets) <= self.PARALLEL_ABOVE or self._first_pass_fetched:
+        if len(self.baskets) <= self.PARALLEL_ABOVE or self.requests:
             return
         n = min(len(self.baskets), self.max_requests)
+        # Never buy more than the caller can process. Requests here are issued
+        # BEFORE the caller's own post cap is consulted, so without this a wide
+        # sector bills far past it -- finance is 28 baskets x 25 posts = 700
+        # against a 300-post cap.
+        if post_budget is not None:
+            n = min(n, max(1, -(-post_budget // self.per_page)))
         logger.info("🧺 prefetching %d baskets concurrently (%d workers)",
                     n, self.max_workers)
         with ThreadPoolExecutor(max_workers=self.max_workers) as ex:
@@ -306,10 +318,12 @@ class BasketFetcher:
                 except Exception as e:
                     logger.warning("basket %d fetch raised: %s", i + 1, type(e).__name__)
                     res = {"success": False, "error": f"{type(e).__name__}"}
-                self._first_pass_fetched += 1
                 self._ready.append((i, res))
-        # Everything queued for a first page has now had one.
-        self._queue = deque(item for item in self._queue if item[1] is not None)
+        # Drop only the first-page entries we actually issued. Filtering on
+        # `token is not None` dropped ALL of them, orphaning baskets n..len-1
+        # whenever n was truncated -- they could then never be fetched and
+        # first_pass_done could never become true.
+        self._queue = deque(item for item in self._queue if item[0] >= n)
 
     def next_page(self) -> dict:
         """Fetch or deliver one page. Returns the result plus a `has_more` flag."""
@@ -322,8 +336,6 @@ class BasketFetcher:
 
         idx, token = self._queue.popleft()
         self.requests += 1
-        if token is None:
-            self._first_pass_fetched += 1
         try:
             res = self.fetch(self.baskets[idx], self.per_page, token)
         except Exception as e:
@@ -332,8 +344,15 @@ class BasketFetcher:
         return self._accept(idx, res, counted=True)
 
     def _accept(self, idx: int, res: dict, counted: bool) -> dict:
+        # Sampled means DELIVERED. Counting a failed page keeps first_pass_done
+        # honest about coverage attempted rather than stalling forever.
+        self._delivered.add(idx)
         if not res.get("success"):
-            return dict(res, has_more=False)
+            # Salvage: other prefetched pages are already bought and paid for.
+            # Reporting has_more lets the caller record the error and keep
+            # processing them instead of discarding a whole sector because one
+            # concurrent request came back 429 first.
+            return dict(res, has_more=bool(self._ready))
         tweets = res.get("tweets") or []
         self.pages.append(tweets)
         nt = res.get("next_token")

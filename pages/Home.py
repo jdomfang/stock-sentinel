@@ -10,14 +10,25 @@ from utils.ui import apply_theme, close_page, render_recommendation_panel
 from utils.deep_analysis import generate_ai_summary
 
 
+# Verdicts this page is willing to assert. Discovery's evidence floor also emits
+# "Single mention", "Limited signal" and "Unscored", and a demo snapshot can
+# carry those here -- rendering them as bold bordered pills would present "one
+# post said something" exactly like a conclusion, which is what the floor exists
+# to prevent. Kept in step with pages/Discovery.py::_ASSERTED.
+_ASSERTED = {"bullish", "bearish", "neutral"}
+
+
 def _sentiment_pill(label: str) -> str:
     label = (label or "").strip()
-    if label.lower() == "bullish":
+    low = label.lower()
+    if low == "bullish":
         return '<span style="background:rgba(56,189,248,.18);color:rgba(56,189,248,.98);border:1px solid rgba(56,189,248,.35);padding:3px 10px;border-radius:999px;font-size:0.83rem;font-weight:700;">Bullish</span>'
-    elif label.lower() == "bearish":
+    if low == "bearish":
         return '<span style="background:rgba(239,68,68,.15);color:rgba(248,113,113,.98);border:1px solid rgba(239,68,68,.30);padding:3px 10px;border-radius:999px;font-size:0.83rem;font-weight:700;">Bearish</span>'
-    else:
+    if low in _ASSERTED:
         return f'<span style="background:rgba(148,163,184,.12);color:rgba(148,163,184,.92);border:1px solid rgba(148,163,184,.25);padding:3px 10px;border-radius:999px;font-size:0.83rem;font-weight:700;">{label or "Neutral"}</span>'
+    return (f'<span style="color:rgba(148,163,184,.62);font-size:0.78rem;'
+            f'font-style:italic;">{label or "Neutral"}</span>')
 
 
 def _load_demo_scan() -> pd.DataFrame:

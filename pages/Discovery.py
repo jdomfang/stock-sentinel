@@ -1069,7 +1069,13 @@ if scan_triggered:
             return res
 
         _fetcher = None
-        if _baskets:
+        # NOT on a corpus-cache hit. _next_page returns cached pages and never
+        # consults the fetcher, but prefetch_first_pass() goes to the network
+        # the moment it is constructed -- so a replayed scan was buying an
+        # entire sector (up to 700 posts in finance) and throwing it away, with
+        # posts_billed still reporting 0 because nothing was delivered. The
+        # whole point of the corpus cache is that a repeat scan costs nothing.
+        if _baskets and _cached_pages is None:
             _fetcher = sector_query.BasketFetcher(
                 _baskets,
                 fetch=lambda q, n, tok: search_x_tweets_page(
@@ -1085,7 +1091,7 @@ if scan_triggered:
             # goes out concurrently. Finance has 27 baskets; serialising them
             # is ~30s of a paid scan spent inside the window where a user
             # re-click aborts the run. No-op at 3 baskets or fewer.
-            _fetcher.prefetch_first_pass()
+            _fetcher.prefetch_first_pass(post_budget=SAFETY_CAP_TWEETS)
             # The fetcher owns the pages it bought; _fetched_pages is what the
             # corpus write and posts_billed read, so point them at the same list.
             _fetched_pages = _fetcher.pages
@@ -1206,7 +1212,7 @@ if scan_triggered:
                     tickers = _d["legacy"]
                     if not tickers:
                         continue
-                    _scored_corpus.append((text, tickers))
+                    _scored_corpus.append((text, tickers, _d["cashtag"]))
                     for ticker in tickers:
                         ticker_data[ticker]['mentions'] += 1
                         if len(ticker_data[ticker]['sample_tweets']) < 3:
@@ -1295,7 +1301,7 @@ if scan_triggered:
         )[:TARGET_VALIDATED]]
         _shortlist_set = set(_shortlist)
 
-        _relevant = [(text, tks) for text, tks in _scored_corpus
+        _relevant = [(text, tks, cash) for text, tks, cash in _scored_corpus
                      if any(t in _shortlist_set for t in tks)]
         if _relevant:
             progress_bar.progress(85)
@@ -1303,7 +1309,14 @@ if scan_triggered:
         logger.info("🧠 scoring %d of %d ticker-bearing posts (shortlist of %d)",
                     len(_relevant), len(_scored_corpus), len(_shortlist))
 
-        _sent = analyze_sentiment_batch([t for t, _ in _relevant]) if _relevant else []
+        try:
+            _sent = analyze_sentiment_batch([t for t, _, _ in _relevant]) if _relevant else []
+        finally:
+            # Re-armed at 85% above; clear it either way or the results table
+            # renders beneath a progress bar frozen mid-scan, which is exactly
+            # the "nothing is happening" signal that makes users re-click.
+            progress_bar.empty()
+            status_text.empty()
 
         # SINGLE-TICKER POSTS ONLY DRIVE DIRECTION.
         #
@@ -1314,11 +1327,23 @@ if scan_triggered:
         # opposed. Measured at 13% of ticker-bearing posts. They still count as
         # ATTENTION, which is what the scan is actually for; they just do not
         # get a vote on direction.
-        for (text, tks), res in zip(_relevant, _sent):
-            in_list = [t for t in tks if t in _shortlist_set]
-            if len(tks) > 1:
+        for (text, tks, cash), res in zip(_relevant, _sent):
+            # Attribute only when the post has exactly ONE unambiguous subject.
+            #
+            # Gating on the full `legacy` list was far too aggressive: it
+            # carries up to 5 BARE uppercase words on top of the cashtags, so
+            # "one shortlist cashtag + any capitalised token" counted as
+            # multi-ticker. Measured on the cached corpora that excluded 63% of
+            # utilities and 47% of tech posts -- 4x the 13% this rule is meant
+            # to catch -- and left 7 of 10 rows unscored.
+            #
+            # A cashtag is an explicit claim about a security; a bare word is a
+            # guess. Exactly one distinct cashtag means exactly one subject.
+            uniq_cash = {c for c in cash}
+            if len(uniq_cash) != 1:
                 continue
-            for ticker in in_list:
+            ticker = next(iter(uniq_cash))
+            if ticker in _shortlist_set:
                 ticker_data[ticker]['margins'].append(float(res.get('margin') or 0.0))
 
         # Convert to final DataFrame
@@ -1513,7 +1538,7 @@ if ADMIN_MODE:
                     out_dir = Path(__file__).resolve().parents[1] / "data" / "education"
                     out_dir.mkdir(parents=True, exist_ok=True)
 
-                    df_out = st.session_state.df_valid.drop(columns=["Valid", "Mentions", "Sample Tweets"], errors="ignore")
+                    df_out = st.session_state.df_valid.drop(columns=["Valid", "Mentions", "Sample Tweets", "Evidence"], errors="ignore")
 
                     payload = {
                         "sector": st.session_state.get("selected_sector") or "",
@@ -1559,13 +1584,31 @@ if st.session_state.df_valid is not None:
         total_valid = int(len(dfv)) if dfv is not None else 0
         total_other = int(len(dfn)) if dfn is not None else 0
         total_unique = total_valid + total_other
-        avg_sent = float(dfv["Avg Sentiment Score"].mean()) if (dfv is not None and "Avg Sentiment Score" in dfv.columns and len(dfv) > 0) else 0.0
+        # Average only over rows that CLEARED the evidence floor.
+        #
+        # Averaging everything let this headline assert "Bullish (0.20)" over a
+        # table where most rows say "Single mention", and it averaged in the 0.0
+        # of every Unscored ticker -- dragging the number toward Neutral for a
+        # reason that has nothing to do with sentiment.
+        _dfv_scored = None
+        if dfv is not None and "Avg Sentiment Score" in dfv.columns and len(dfv) > 0:
+            if "Evidence" in dfv.columns:
+                _dfv_scored = dfv[dfv["Evidence"] >= 3]
+            else:
+                _dfv_scored = dfv
+        avg_sent = (float(_dfv_scored["Avg Sentiment Score"].mean())
+                    if _dfv_scored is not None and len(_dfv_scored) > 0 else 0.0)
+        _n_scored = 0 if _dfv_scored is None else len(_dfv_scored)
 
-        if avg_sent >= 0.15:
+        if _n_scored == 0:
+            sent_label = "Not enough signal"
+            sent_color = "rgba(148,163,184,.75)"
+            sent_border = "rgba(148,163,184,.20)"
+        elif avg_sent >= SENTIMENT_MARGIN:
             sent_label = f"Bullish ({avg_sent:.2f})"
             sent_color = "rgba(56,189,248,.95)"
             sent_border = "rgba(56,189,248,.28)"
-        elif avg_sent <= -0.10:
+        elif avg_sent <= -SENTIMENT_MARGIN:
             sent_label = f"Bearish ({avg_sent:.2f})"
             sent_color = "rgba(239,68,68,.90)"
             sent_border = "rgba(239,68,68,.25)"

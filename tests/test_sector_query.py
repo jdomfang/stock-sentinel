@@ -328,7 +328,12 @@ def test_parallel_prefetch_covers_every_basket_once():
     check("every basket was fetched exactly once",
           sorted(c[0] for c in x.calls) == sorted(f"b{i}" for i in range(8)),
           str(sorted(c[0] for c in x.calls)))
-    check("first pass reported complete", f.first_pass_done is True)
+    # NOT complete yet: prefetch has PAID for these pages but the caller has
+    # not seen their tickers. Counting them as sampled at fetch time let the
+    # scan stop before processing baskets 2..N -- exactly what the full pass
+    # exists to prevent, while still being billed for every basket.
+    check("first pass NOT complete until pages are delivered",
+          f.first_pass_done is False)
     delivered = []
     while not f.exhausted:
         r = f.next_page()
@@ -336,6 +341,7 @@ def test_parallel_prefetch_covers_every_basket_once():
     check("prefetched pages are delivered, not refetched",
           len(x.calls) == 8, f"{len(x.calls)} calls")
     check("all posts reach the caller", sum(delivered) == 24, str(sum(delivered)))
+    check("first pass complete once every page is delivered", f.first_pass_done is True)
 
 
 def test_small_sectors_are_not_parallelised():

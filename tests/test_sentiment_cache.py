@@ -76,6 +76,16 @@ def test_a_zeroed_distribution_is_never_stored():
         sc.urllib.request.urlopen = original_put
         sc._endpoint = _REAL_ENDPOINT
 
+# Below the neutral threshold the signed score must be 0.0 and the label
+# Neutral -- same rule the live scorer applies.
+weak = sc._from_distribution(0.40, 0.35, 0.25)
+check("sub-threshold confidence scores 0.0", weak["score"] == 0.0, str(weak))
+check("sub-threshold reads Neutral", weak["sentiment"] == "Neutral", str(weak))
+check("but the margin survives", abs(weak["margin"] - 0.05) < 1e-9, str(weak))
+bear = sc._from_distribution(0.10, 0.80, 0.10)
+check("negative gives a negative score", abs(bear["score"] + 0.80) < 1e-9, str(bear))
+check("negative reads Bearish", bear["sentiment"] == "Bearish", str(bear))
+
 
 _REAL_ENDPOINT = sc._endpoint
 
@@ -135,6 +145,16 @@ def test_margin_is_recomputed_not_trusted():
         check("margin = p_pos - p_neg", abs(d.get("margin", 0) - 0.5) < 1e-9, str(d))
         check("confidence is the max probability",
               abs(d.get("confidence", 0) - 0.7) < 1e-9, str(d))
+        # THE FIELD THAT NEARLY BROKE DEEP ANALYZE. It aggregates on `score`
+        # alone, and an earlier version hardcoded 0.0 here -- invisible to the
+        # sector scan (which reads `margin`) but it would have collapsed every
+        # prompt bucket after the first to a fabricated Neutral, on a paid run,
+        # with no error anywhere.
+        check("score is the signed confidence, not zero",
+              abs(d.get("score", 0) - 0.7) < 1e-9, str(d.get("score")))
+        check("sentiment is derived, not defaulted", d.get("sentiment") == "Bullish", str(d))
+        check("label is derived from the distribution", d.get("label") == "POSITIVE", str(d))
+
     finally:
         sc.urllib.request.urlopen = saved
         sc._config = lambda n, d="": ""
