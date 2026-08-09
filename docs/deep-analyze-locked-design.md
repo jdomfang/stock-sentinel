@@ -11,11 +11,25 @@ they turn out wrong we know what to look at.
 
 ## Scope note
 
-**Discovery (sector scan) and Deep Analyze are independent features.** A user
-reaches Deep Analyze by typing a ticker, not by handing off from a shortlist.
-Any recommendation premised on a Discovery→Deep Analyze pipeline does not
-apply. This makes thin-ticker handling harder, not easier: input is
-unscreened across ~7,000 symbols.
+**Discovery and Deep Analyze are independent in data, connected in
+navigation.**
+
+Deep Analyze never consumes a scan's corpus. Given a ticker it runs its own
+retrieval and fetches whatever evidence it needs. There is no data dependency
+in either direction.
+
+There are two entry paths, and they differ in what is known beforehand:
+
+| path | what we know before the credit is spent |
+|---|---|
+| user types a ticker | nothing — unscreened across ~7,000 symbols |
+| **Deep Analyze** button on a scan row ([Discovery.py:1921](../pages/Discovery.py#L1921)) | Discovery's own cashtag mention count for that ticker |
+
+So a readiness signal is possible on the second path only. Discovery already
+records per-ticker provenance — the last materials scan showed its top ticker
+at 7 cashtag mentions across the entire sector — which is exactly the number
+that predicts whether Deep Analyze can adjudicate. Nothing equivalent exists
+for free-text entry.
 
 ## The evidence base
 
@@ -145,7 +159,15 @@ agreement. **High is unavailable until labels and outcomes exist.**
 | a 50-post cap on social spend | confounds the proof-of-value test it is meant to enable |
 | alias query without the finance OR-list | untestable offline — our corpus is pre-filtered |
 | cutting the newswire corpus | reversed; see above |
-| "Deep Analyze readiness" surfaced on Discovery results | premised on a handoff between the two features. They are independent |
+| — | — |
+
+## Reopened
+
+**"Deep Analyze readiness" on scan rows.** Briefly moved here on the mistaken
+belief that no path connects the two features. A per-row Deep Analyze button
+exists, Discovery already holds the mention counts, and the signal costs
+nothing — so it applies to that path. It does nothing for free-text entry,
+which is the harder half.
 
 ## Open, blocking
 
