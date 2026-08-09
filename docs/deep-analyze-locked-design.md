@@ -135,6 +135,85 @@ controls, not as calibrated truth.
   display `success_rate`. *Measured:* on live TSLA the interface would show
   "hold 6 days" attached to a −21% forecast, with 25% success hidden.
 
+- **`social_direction` averages DIRECTIONALLY eligible posts only** — those
+  carrying `directional_view` with `|margin| >= 0.15`. Neutral risk/catalyst
+  posts never enter it; they route to their own modules.
+  ```
+  evidence_weight = min(1, sqrt(directional_cluster_count / 5))
+  quality_weight  = min(1, quality / 0.40)
+  social_direction = raw * evidence_weight * quality_weight
+  ```
+
+### The alias finding
+
+*Measured, and unanticipated.* Including company-alias matches — a decision we
+locked purely on **recall** grounds — materially moves **direction**:
+
+```
+12 cashtag-matched directional posts    mean margin  +0.244
+ 4 alias-matched  directional posts     mean margin  -0.528  (derived)
+16 combined                             mean margin  +0.051  -> neutral
+```
+
+Prose coverage of a stock that had just fallen 21.7% reads far more bearish
+than trader cashtag chatter about the same stock in the same window. Read as
+the alias supplying true signal that cashtag-only retrieval was missing — but
+it means a recall decision silently became a direction decision, and alias vs
+cashtag may warrant separate treatment.
+
+## Risk
+
+Semantic, not lexical. Substring matching alone produced 3 "risk items" in
+Arm A, **all three false positives**, which was enough to force Avoid before
+direction was ever consulted.
+
+```
+risk_candidate  = text contains a risk-lexicon term
+risk_confirmed  = severe term (dilution, offering, bankruptcy, delisting,
+                  lawsuit, investigation, fraud, SEC, recall, downgrade,
+                  guidance cut)
+                  OR negative construction (concern, warning, red flag,
+                  downside, pressure, miss, weak, cut, lowers, probe,
+                  threatens, rejected, denied)
+                  AND NOT negated (no concern, no risk, risk/reward,
+                  worth the risk, de-risked, risk is priced in)
+
+risk_high = severe_clusters >= 1
+            OR (soft_clusters >= 3 AND soft_rate >= 20%)
+```
+
+*Measured:* under this rule Arm A's three hits resolve to one negation
+(`"would reset risk/reward nicely"`) and two candidates with no confirming
+term. `risk_high` becomes False, and the verdict moves Avoid → Watch.
+
+## Price
+
+No stored history exists, but **the projection already makes a live 30-day
+price call** — that data is present at verdict time and is currently consumed
+only afterwards. Provisional veto until history accumulates:
+
+```
+Buy is blocked to Watch if
+    20d_return <= -15%  AND  volume_ratio >= 1.5  AND  no strong catalyst
+```
+
+If that live call is ever unavailable, price stays neutral and nothing
+price-based prevents a Buy. The panel's position on shipping Buy under that
+constraint: *"I would be uncomfortable."*
+
+## Cross-feature evidence
+
+`discovery_seed` — a distinct channel, never merged silently into the ticker
+corpus:
+
+- only from a recent scan; only posts carrying the target cashtag; ≤3
+  cashtags; same eligibility rules; deduped by post id and text hash
+- **may lift confidence Low → Moderate. May never alone produce Buy or Avoid**
+  — a basket query matching any of ~55 cashtags over-selects multi-ticker list
+  posts, so the channel is structurally biased against subject status
+- provenance disclosed in the UI, because the same ticker would otherwise be
+  adjudicated from different evidence depending on entry path
+
 ## Confidence
 
 Not post volume. Quality, independent evidence clusters, cross-channel
@@ -169,16 +248,36 @@ exists, Discovery already holds the mention counts, and the signal costs
 nothing — so it applies to that path. It does nothing for free-text entry,
 which is the harder half.
 
-## Open, blocking
+## Where the fully-corrected cascade lands today
 
-1. `social_direction` — all eligible posts, or directionally eligible only?
-2. `risk_high = ≥2 items` fires on substring matches; "great risk/reward"
-   counts as a risk item. *Measured:* 3 items in Arm A produced **Avoid**
-   before direction was consulted. Risks replacing "always Watch" with
-   "always Avoid".
-3. With `price_volume` neutral by default, nothing stops a Buy on a stock that
-   just fell 21.7%.
-4. Thin tickers, now that input is unscreened across ~7,000 symbols.
+```
+A genuine TSLA   quality 0.409 ≥ 0.30 · risk FALSE · social +0.051 neutral
+                 · catalyst present                        -> Watch / Moderate
+B spam           quality 0.000                             -> Watch / Low
+C wrong-entity   quality 0.062                             -> Watch / Low
+```
+
+Separation is real but sits on **confidence, not verdict**. An earlier
+three-way split (A→Avoid) came from the lexical risk rule and did not survive
+its own repair.
+
+## Open
+
+1. **`target_subject_status` production algorithm.** Rules given for
+   wrong-entity, comparison and mentioned_only; "primary" still leans on text
+   cues (`"$TSLA breaks out"`) with no concrete implementation.
+2. **Catalyst severity is undefined.** Risk got a two-stage semantic rule with
+   a negation list; catalyst remains "≥1 eligible item" on substring matching
+   — the same false-positive shape that made risk fire on `risk/reward`.
+3. **Calibration is unpriced and unaffordable as specified.** 30 corpora × ~100
+   posts ≈ **3,000 X posts**, roughly 2.4× total spend to date (1,260).
+4. **Newswire channel weighting**, and its actual cost — still never measured.
+5. **Thin tickers on the typed-ticker path**, where nothing is known before the
+   credit is spent.
+6. **Confidence combination.** Tiers are defined; the mapping from module
+   outputs to a tier is not.
+7. **Behaviour when the live price call fails**, now that a price veto depends
+   on it.
 
 ## The standing pre-ship checklist
 
