@@ -248,6 +248,51 @@ exists, Discovery already holds the mention counts, and the signal costs
 nothing — so it applies to that path. It does nothing for free-text entry,
 which is the harder half.
 
+## What each verdict displays
+
+Every verdict shares one spine; the difference is what sits on top.
+
+```
+ticker · price · verdict · confidence
+EVIDENCE CHECK          which pillars passed, which failed, with values
+MOVEMENT PROFILE        how far it travels — BOTH directions, always
+PROVENANCE              posts bought, usable, discarded and why
+WHAT WOULD CHANGE THIS  the specific unmet condition
+```
+
+**BUY** — names the catalyst and its source; shows both sentiment channels
+agreeing; the **only** verdict whose scenario band is tilted by evidence;
+carries an explicit invalidation condition and a review window.
+
+**AVOID** — names the disqualifying item in full, with source and date, and
+its severity. **No scenario band**: a tilted band under an Avoid reads as a
+short-side price target the system has no basis for. States what would remove
+the Avoid.
+
+**WATCH / Moderate** — real evidence that does not line up. Shows every pillar
+that passed alongside the ones that failed, and names exactly what stands
+between it and a Buy.
+
+**WATCH / Low** — a different product from the above, and must not look the
+same. "Not neutral conviction — insufficient clean evidence about this
+company." Leads with provenance: how many posts were bought, how many were
+discarded, and why. Showing these two states identically is how the old system
+gave a spam corpus Moderate confidence.
+
+### The downside column is non-negotiable
+
+Volatility is symmetric. `+5% reached in 69% of paths` without `-5% reached in
+69% of paths` will be read as a 69% win rate. It is a statement about how far
+the stock travels — a sizing input, not an edge. Surfacing the upside alone
+recreates the false-confidence problem the rebuild exists to remove.
+
+### Time-to-target
+
+Computed from realised volatility with no directional claim, and currently
+discarded: the old code calculated `success_rate` on every run and never
+displayed it, showing "hold 6 days" while hiding that 25% of paths reached the
+target. Measured on TSLA: +5% touched in 69% of normal paths, median day 5.
+
 ## Where the fully-corrected cascade lands today
 
 ```
