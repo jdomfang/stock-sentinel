@@ -406,7 +406,12 @@ def build_ledger(
         # from the truncated strings analyze_sentiment_batch actually scores,
         # and could not distinguish two different posts sharing text.
         dist = (scores or {}).get(str(pid)) or {}
-        scored = bool(dist)
+        _pp = float(dist.get("p_positive") or 0.0)
+        _pn = float(dist.get("p_negative") or 0.0)
+        _pu = float(dist.get("p_neutral") or 0.0)
+        # An all-zero distribution is what a failed or pre-distribution scorer
+        # returns. It is ABSENT, not neutral.
+        scored = bool(dist) and (_pp + _pn + _pu) > 0.0
         if not scored:
             unscored += 1
         p_pos = float(dist.get("p_positive") or 0.0)

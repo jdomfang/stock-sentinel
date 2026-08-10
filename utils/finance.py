@@ -622,6 +622,17 @@ def get_stock_data(ticker: str, days: int = 30) -> Dict:
         
         # Extract closing prices
         prices = [float(agg.close) for agg in aggs]
+
+        # VOLUME, which the same bars have always carried and this function
+        # always discarded. Without it the price veto is structurally dead: it
+        # requires BOTH a decline and a volume spike, so a permanently absent
+        # volume ratio meant `caution` could never be True. The pillar then
+        # printed a green "Price not contradicting" beside "-43.5% over 21
+        # sessions" -- the exact contradiction the readout exists to prevent.
+        volumes = []
+        for agg in aggs:
+            v = getattr(agg, "volume", None)
+            volumes.append(float(v) if isinstance(v, (int, float)) else 0.0)
         
         # Calculate daily returns
         returns = []
@@ -637,6 +648,7 @@ def get_stock_data(ticker: str, days: int = 30) -> Dict:
         
         result = {
             'prices': prices,
+            'volumes': volumes,
             'volatility': round(volatility, 2),
             'error': None
         }

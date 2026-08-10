@@ -711,3 +711,84 @@ def render_deep_panel_header(ticker: str, sector: str, rec: str, conf: str, avg_
 def render_full_analysis_expander_label() -> str:
     """Return styled label HTML for the Full Analysis Details expander trigger."""
     return "📊 View full analysis breakdown ›"
+
+
+def render_evidence_check(v, ticker: str = "") -> None:
+    """The pillar readout: which gates passed, which failed, what would change it.
+
+    This is the part of the page that makes a Watch worth a credit. The old
+    output said "Watch / Moderate" with prose beneath that could contradict the
+    numbers above it; here every line is cascade state, so the explanation and
+    the decision cannot disagree.
+
+    Four states, deliberately rendered differently. Watch/Moderate means "we
+    found real evidence and it does not line up" -- a finding. Watch/Low means
+    "we could not find enough to judge" -- a different product entirely, and
+    showing them identically is how a corpus of 100 spam posts once earned
+    Moderate confidence.
+    """
+    import html as _html
+
+    import streamlit as st
+
+    tone = {"Buy": ("56,189,248", "🟢"), "Avoid": ("239,68,68", "🔴"),
+            "Watch": ("148,163,184", "🟡")}.get(v.recommendation, ("148,163,184", "🟡"))
+    rgb, dot = tone
+    thin = v.confidence == "Low"
+
+    rows = []
+    for p in v.pillars:
+        mark = "✅" if p.passed else "❌"
+        colour = "rgba(226,232,240,.88)" if p.passed else "rgba(248,113,113,.95)"
+        # Built OUTSIDE the f-string. A backslash inside an f-string
+        # expression is a SyntaxError before Python 3.12, and runtime.txt pins
+        # 3.11 -- so this line took down every page that imports this module,
+        # invisibly, because the dev box is 3.12 and no test imports ui.py.
+        needs = "" if p.passed else (
+            "<br><span style='opacity:.7;'>needs: "
+            + _html.escape(p.requirement) + "</span>")
+        rows.append(
+            f"<tr>"
+            f"<td style='padding:5px 10px 5px 0;vertical-align:top;'>{mark}</td>"
+            f"<td style='padding:5px 14px 5px 0;color:{colour};white-space:nowrap;'>"
+            f"{_html.escape(p.name)}</td>"
+            f"<td style='padding:5px 0;color:rgba(148,163,184,.85);font-size:0.86rem;'>"
+            f"{_html.escape(str(p.value))}{needs}"
+            f"</td></tr>"
+        )
+
+    change = ""
+    if v.would_change:
+        items = "".join(f"<li style='margin:2px 0;'>{_html.escape(c)}</li>"
+                        for c in v.would_change)
+        label = ("What would make this a Buy" if v.recommendation == "Watch"
+                 else "What would change this")
+        change = (f"<div style='margin-top:14px;padding-top:12px;"
+                  f"border-top:1px solid rgba(148,163,184,.16);'>"
+                  f"<div style='font-weight:700;font-size:0.86rem;margin-bottom:5px;'>"
+                  f"{label}</div>"
+                  f"<ul style='margin:0;padding-left:18px;color:rgba(148,163,184,.9);"
+                  f"font-size:0.88rem;'>{items}</ul></div>")
+
+    notes = ""
+    if getattr(v, "confidence_notes", None):
+        notes = ("<div style='margin-top:8px;color:rgba(148,163,184,.65);"
+                 "font-size:0.8rem;font-style:italic;'>"
+                 + _html.escape(" · ".join(v.confidence_notes)) + "</div>")
+
+    st.markdown(
+        f"<div style='border:1px solid rgba({rgb},.28);border-radius:14px;"
+        f"padding:16px 20px;margin:0.75rem 0;background:rgba({rgb},.04);'>"
+        f"<div style='display:flex;align-items:baseline;gap:10px;margin-bottom:2px;'>"
+        f"<span style='font-size:1.05rem;font-weight:800;'>{dot} "
+        f"{_html.escape(ticker) + ' — ' if ticker else ''}{v.recommendation}</span>"
+        f"<span style='color:rgba(148,163,184,.8);font-size:0.86rem;'>"
+        f"{v.confidence} confidence</span></div>"
+        # Watch/Low leads with the reason, because "we could not judge" is the
+        # message -- not a hedged verdict.
+        f"<div style='color:rgba(203,213,225,{'.95' if thin else '.8'});"
+        f"font-size:0.9rem;margin-bottom:12px;'>{_html.escape(v.reason)}</div>"
+        f"<table style='width:100%;border-collapse:collapse;'>{''.join(rows)}</table>"
+        f"{change}{notes}</div>",
+        unsafe_allow_html=True,
+    )

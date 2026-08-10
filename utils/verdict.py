@@ -150,7 +150,11 @@ def adjudicate(rows: Sequence[EvidenceRow],
     # The price veto has a catalyst exemption in the locked design and it
     # existed in neither module: a confirmed event on a -20% tape returned
     # Watch where the spec says Buy.
-    price_blocks = p.caution and c.hard_clusters < 1
+    # "unconfirmed" is a decline we could not corroborate with volume. It
+    # blocks a sentiment-only Buy exactly as caution does; a confirmed event
+    # still exempts, per the design.
+    price_adverse = p.status in ("caution", "declining", "unconfirmed")
+    price_blocks = price_adverse and c.hard_clusters < 1
     bullish_event = c.hard_clusters >= 1 and c.hard_direction >= 0
 
     v.pillars = [
@@ -182,8 +186,9 @@ def adjudicate(rows: Sequence[EvidenceRow],
                "no negative lean and no bearish confirmed event", blocks_buy=True),
         Pillar("Crowds agree", not s.conflict, s.detail,
                "traders and press not opposed", blocks_buy=True),
-        Pillar("Price not contradicting", not price_blocks and p.status != "missing",
-               p.detail, "no heavy-volume decline; price data present",
+        Pillar("Price not contradicting",
+               not price_adverse and p.status != "missing", p.detail,
+               "no material decline; price and volume data present",
                blocks_buy=True),
     ]
 

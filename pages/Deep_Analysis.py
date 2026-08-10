@@ -10,7 +10,7 @@ _install_logging()
 _da_logger = logging.getLogger(__name__)
 
 from utils.navigation import render_sidebar_navigation, render_top_nav
-from utils.ui import open_page, close_page, GENERIC_ERROR_TEXT, safe_ui, render_recommendation_panel, render_full_analysis_expander
+from utils.ui import open_page, close_page, GENERIC_ERROR_TEXT, safe_ui, render_recommendation_panel, render_full_analysis_expander, render_evidence_check
 import streamlit.components.v1 as _components
 from utils.finance import get_stock_data
 from utils.projections import simple_projection
@@ -183,6 +183,11 @@ if _run_clicked or (_autorun and _prefill):
             import threading, time as _time
 
             _result_holder: dict = {}
+            # Filled by run_deep_analysis with the RAW corpora, so the evidence
+            # ledger can be built from posts. Stays empty on a result-cache hit,
+            # in which case the page falls back to the previous adjudicator --
+            # a degradation, not a failure.
+            _corpus_sink: dict = {}
             _done_flag = threading.Event()
 
             def _run():
@@ -192,7 +197,8 @@ if _run_clicked or (_autorun and _prefill):
                 # would be stamped "-" and the id would correlate nothing.
                 _set_request_id(_rid)
                 try:
-                    _result_holder["result"] = run_deep_analysis(_run_ticker, sector)
+                    _result_holder["result"] = run_deep_analysis(
+                        _run_ticker, sector, sink=_corpus_sink)
                 except Exception as _e:
                     _da_logger.exception("deep_analyze failed ticker=%s", _run_ticker)
                     _result_holder["error"] = str(_e)
@@ -249,32 +255,110 @@ if _run_clicked or (_autorun and _prefill):
                 refund_credit("deep_analyze", _credit.event_id, "analysis returned no results")
                 st.stop()
 
-            ai_summary = generate_ai_summary(analysis_results)
-
-            # Financial data (best-effort)
-            current_price, projected_gain, hold_days, price_points = "Unavailable", "Unavailable", "Unavailable", 0
-            # Captured for the verdict log, which needs the RAW numbers rather
-            # than the formatted strings above. Declared out here because the
-            # block below is best-effort and may not run at all.
+            # Prices first: the adjudicator's price veto consumes them, and the
+            # projection below reuses the same series. Previously fetched after
+            # the summary, which would have left the veto permanently blind and
+            # therefore -- since it fails closed -- Buy permanently unreachable.
+            current_price, projected_gain, hold_days, price_points = (
+                "Unavailable", "Unavailable", "Unavailable", 0)
             _last_close: float | None = None
             _proj: dict = {}
+            prices_for_verdict: list | None = None
+            volumes_for_verdict: list | None = None
             try:
-                stock_data = get_stock_data(_run_ticker)
-                if stock_data.get("error") is None and stock_data.get("prices"):
-                    prices = stock_data["prices"]
-                    price_points = len(prices)
-                    lp = prices[-1]
-                    if isinstance(lp, (int, float)):
-                        current_price = f"${lp:.2f}"
-                        _last_close = float(lp)
-                    # Evidence-count proxy for the quality gate until the real
-                    # quality module exists. A tilt applied to a corpus that has
-                    # not been shown to be about this company is the same error
-                    # in a different place.
-                    _q_ok = len({str(_tid)
-                                 for _r in analysis_results.values()
-                                 for _tid in (_r.get("tweet_ids") or [])}) >= 8
-                    proj = simple_projection(prices, ai_summary["avg_sentiment"],
+                _sd = get_stock_data(_run_ticker)
+                if _sd.get("error") is None and _sd.get("prices"):
+                    prices_for_verdict = _sd["prices"]
+                    volumes_for_verdict = _sd.get("volumes") or None
+                    price_points = len(prices_for_verdict)
+                    _lp = prices_for_verdict[-1]
+                    if isinstance(_lp, (int, float)):
+                        current_price = f"${_lp:.2f}"
+                        _last_close = float(_lp)
+            except Exception:
+                _da_logger.warning("price fetch failed", exc_info=True)
+
+            # ---- Adjudicate from the evidence ledger ----
+            #
+            # Falls back to the previous adjudicator if anything here fails. The
+            # ledger path is new; the credit has already been taken; and a
+            # delivered analysis must not become an error because a new code
+            # path raised.
+            _verdict = None
+            ai_summary = None
+            _building = st.empty()
+            try:
+                if _corpus_sink.get("ticker_corpus") is not None:
+                    # Keep an indicator alive. The progress bar is cleared by
+                    # now, and scoring both raw corpora is not instant: pass one
+                    # only scored posts that named the ticker, so every post
+                    # that did not is a genuinely new inference here.
+                    _building.markdown(
+                        '<div style="color:rgba(148,163,184,.85);font-size:0.9rem;">'
+                        '🧾 building the evidence ledger…</div>',
+                        unsafe_allow_html=True)
+                    from utils.evidence import build_ledger
+                    from utils.sentiment import analyze_sentiment_batch as _score
+                    from utils.verdict import adjudicate
+
+                    _alias_used = _corpus_sink.get("alias") or ""
+                    _ledger = []
+                    for _key, _chan in (("ticker_corpus", "social_base"),
+                                        ("influencer_corpus", "newswire")):
+                        _posts = _corpus_sink.get(_key) or []
+                        if not _posts:
+                            continue
+                        # Re-scoring is near-free: these exact texts were scored
+                        # moments ago and sentiment_cache serves them by hash.
+                        _texts = [(x.get("text") or "")[:512] for x in _posts]
+                        _dists = _score(_texts)
+                        _by_id = {}
+                        for _x, _d in zip(_posts, _dists):
+                            _pid = _x.get("id")
+                            if _pid is not None:
+                                _by_id[str(_pid)] = _d
+                        _seen = {r.post_id for r in _ledger}
+                        _new = build_ledger(_posts, _run_ticker, alias=_alias_used,
+                                            channel=_chan, scores=_by_id)
+                        # Both queries share the subject clause over overlapping
+                        # windows, so one post can land in both corpora and be
+                        # counted as two independent voices.
+                        _ledger += [r for r in _new if r.post_id not in _seen]
+                    if _ledger:
+                        _verdict = adjudicate(_ledger, prices_for_verdict,
+                                              volumes_for_verdict)
+            except Exception:
+                _da_logger.warning("ledger adjudication failed; using legacy path",
+                                   exc_info=True)
+                _verdict = None
+            finally:
+                _building.empty()
+
+            if _verdict is not None:
+                ai_summary = {
+                    "recommendation": _verdict.recommendation,
+                    "confidence": _verdict.confidence,
+                    "avg_sentiment": _verdict.social.direction,
+                    # The reason only. would_change belongs to the evidence
+                    # check below; duplicating it here printed "more independent
+                    # voices, not more posts" as a REASON for the signal.
+                    "rationale": [_verdict.reason],
+                }
+            else:
+                ai_summary = generate_ai_summary(analysis_results)
+
+            # Projection, from the prices already fetched above.
+            try:
+                if prices_for_verdict:
+                    # The real quality gate now, rather than an evidence-count
+                    # proxy: a tilt applied to a corpus not shown to be about
+                    # this company is the same error in a different place.
+                    _q_ok = (_verdict.quality.tier in ("moderate", "high")
+                             if _verdict is not None else
+                             len({str(_tid) for _r in analysis_results.values()
+                                  for _tid in (_r.get("tweet_ids") or [])}) >= 8)
+                    proj = simple_projection(prices_for_verdict,
+                                             ai_summary["avg_sentiment"],
                                              days=30, quality_ok=_q_ok)
                     _proj = proj or {}
                     if proj.get("error") is None:
@@ -323,6 +407,15 @@ if _run_clicked or (_autorun and _prefill):
             # presentation bug, not a delivery failure.
             _delivered = True
 
+            # EVIDENCE CHECK. Which gates passed, which failed, and what would
+            # change the call. Generated from cascade state, so it cannot
+            # contradict the verdict above it.
+            if _verdict is not None:
+                try:
+                    render_evidence_check(_verdict, _run_ticker)
+                except Exception:
+                    _da_logger.warning("evidence check render failed", exc_info=True)
+
             # MOVEMENT PROFILE. The part of this page that speaks directly to a
             # short-term trader -- a target and a horizon -- computed from
             # realised volatility with no forecast in it. Both directions are
@@ -370,6 +463,9 @@ if _run_clicked or (_autorun and _prefill):
                     sector=sector,
                     confidence=ai_summary.get("confidence"),
                     avg_sentiment=ai_summary.get("avg_sentiment"),
+                    red_flag_rate=(_verdict.risk.soft_rate if _verdict else None),
+                    disagreement=(1.0 if (_verdict and _verdict.social.conflict) else 0.0)
+                                 if _verdict else None,
                     total_mentions=_total_mentions,
                     price_at_verdict=_last_close,
                     projected_p10=_proj.get("gain_p10"),

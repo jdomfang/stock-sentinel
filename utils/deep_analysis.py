@@ -564,7 +564,8 @@ def _engagement_filter(tweets: List[Dict[str, Any]], min_likes: int = 10, min_re
     return out
 
 
-def run_deep_analysis(ticker: str, sector: str) -> Dict[str, Dict[str, Any]]:
+def run_deep_analysis(ticker: str, sector: str,
+                      sink: Dict[str, Any] | None = None) -> Dict[str, Dict[str, Any]]:
     """Deep analyze with low X API usage and early-stop + caching.
 
     Changes vs original:
@@ -664,7 +665,10 @@ def run_deep_analysis(ticker: str, sector: str) -> Dict[str, Dict[str, Any]]:
         except Exception:
             pass
 
-    cached = _cache_get()
+    # A caller that wants the ledger needs POSTS, which the result cache does
+    # not hold. Serving it a cached summary silently downgrades that run to the
+    # legacy adjudicator -- so the cache is bypassed when a sink is supplied.
+    cached = None if sink is not None else _cache_get()
     if cached:
         logger.info("🧠 Deep Analyze cache hit: %s", _cache_key())
         return cached
@@ -939,6 +943,19 @@ def run_deep_analysis(ticker: str, sector: str) -> Dict[str, Dict[str, Any]]:
     influencers = corpuses["influencers"]
 
     logger.info("🧾 Deep Analyze corpora summary: ticker=%s influencer=%s", len(core), len(influencers))
+
+    # Hand the RAW corpora to any caller that asks for them, so the evidence
+    # ledger can be built from posts rather than reconstructed from the eight
+    # angle summaries -- which is impossible, since the angles discard the
+    # per-post detail the ledger exists to record.
+    #
+    # An optional out-parameter rather than an extra return value or a new key
+    # in `results`: every existing caller keeps working untouched, and a stray
+    # key in `results` would be read as a ninth angle by generate_ai_summary.
+    if sink is not None:
+        sink["ticker_corpus"] = core
+        sink["influencer_corpus"] = influencers
+        sink["alias"] = _alias
 
     catalyst_keywords = [
         "breaking",

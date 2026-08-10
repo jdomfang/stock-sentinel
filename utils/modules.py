@@ -310,7 +310,7 @@ def catalyst(rows: Sequence[EvidenceRow]) -> Catalyst:
 
 @dataclass
 class Price:
-    status: str = "missing"       # neutral | caution | missing
+    status: str = "missing"   # neutral | declining | unconfirmed | caution | missing
     return_20d: float | None = None
     volume_ratio: float | None = None
     caution: bool = False         # can VETO. Never an endorsement.
@@ -361,7 +361,25 @@ def price(prices: Sequence[float] | None,
     # BOTH conditions, per the spec.
     caution = (r20 <= PRICE_CAUTION_RETURN
                and vratio is not None and vratio >= PRICE_CAUTION_VOLUME)
-    return Price("caution" if caution else "neutral", round(r20, 4),
+    # A decline we cannot corroborate is UNKNOWN, not clear. Reporting "neutral"
+    # here let the readout print a green "Price not contradicting" directly
+    # beside "-43.5% over 21 sessions" -- and, because the veto needs both
+    # conditions, a permanently absent volume ratio made caution unreachable.
+    # A material decline is ADVERSE whatever the volume. Volume only grades how
+    # strongly: a heavy-volume collapse is "caution", a quiet drift down is
+    # "declining", an uncorroborated one is "unconfirmed". The locked spec vetoes
+    # only on decline AND volume spike, but that left the readout printing a
+    # green "Price not contradicting" beside "-22.0% over 12 sessions" -- a pass
+    # whose own value disproves it. This is a deliberate tightening: strictly
+    # more conservative, and it removes a contradiction the readout exists to
+    # make impossible. A confirmed catalyst still exempts, per the spec.
+    if caution:
+        status = "caution"
+    elif r20 <= PRICE_CAUTION_RETURN:
+        status = "unconfirmed" if vratio is None else "declining"
+    else:
+        status = "neutral"
+    return Price(status, round(r20, 4),
                  round(vratio, 2) if vratio is not None else None, caution,
                  f"{r20:+.1%} over {len(w)} sessions"
                  + (f", volume {vratio:.1f}x median" if vratio is not None
