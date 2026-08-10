@@ -1397,6 +1397,25 @@ if scan_triggered:
             # which is not known until here.
             _record_metrics([str(t) for t in df_valid["Ticker"].tolist()])
 
+            # Every valid ticker, not just the displayed ten. These are the
+            # observations that will eventually answer whether this sentiment
+            # measurement predicts anything -- Deep Analyze has run four times
+            # in its history and cannot supply them, while one scan yields ~10
+            # for posts already bought. Paired with the price at scan time,
+            # because neither the posts nor the price can be recovered later.
+            try:
+                from utils import scan_log
+                from utils.sentiment import MODEL_NAME as _mn
+                scan_log.record(
+                    sector, rows,
+                    [str(t) for t in df_valid["Ticker"].tolist()],
+                    event_id=getattr(_credit, "event_id", None),
+                    corpus_key=corpus_cache.make_key("sector", sector, 24, query),
+                    model=_mn,
+                )
+            except Exception:
+                logger.warning("scan_log call failed", exc_info=True)
+
             st.session_state.df_valid = df_valid
             st.session_state.df_unvalidated = None  # not shown
             st.session_state.selected_sector = sector
