@@ -1,4 +1,6 @@
+import html
 import logging
+import re
 import streamlit as st
 from typing import Dict, List, Any
 
@@ -111,6 +113,10 @@ _profile = require_active_account()
 # If we arrived via Home → Auth redirect, the ticker may be in query params.
 _qp = get_query_params()
 _qp_ticker = (_qp.get("ticker") or "").strip().upper()
+# From a URL, so it bypasses the text input's max_chars and reaches
+# several unsafe_allow_html interpolations. Restrict at the source.
+if not re.fullmatch(r"[A-Z0-9.\-]{1,6}", _qp_ticker or ""):
+    _qp_ticker = ""
 if _qp_ticker and not st.session_state.get("prefill_deep_ticker"):
     st.session_state["prefill_deep_ticker"] = _qp_ticker
 
@@ -261,12 +267,33 @@ if _run_clicked or (_autorun and _prefill):
                     if isinstance(lp, (int, float)):
                         current_price = f"${lp:.2f}"
                         _last_close = float(lp)
-                    proj = simple_projection(prices, ai_summary["avg_sentiment"], days=30)
+                    # Evidence-count proxy for the quality gate until the real
+                    # quality module exists. A tilt applied to a corpus that has
+                    # not been shown to be about this company is the same error
+                    # in a different place.
+                    _q_ok = len({str(_tid)
+                                 for _r in analysis_results.values()
+                                 for _tid in (_r.get("tweet_ids") or [])}) >= 8
+                    proj = simple_projection(prices, ai_summary["avg_sentiment"],
+                                             days=30, quality_ok=_q_ok)
                     _proj = proj or {}
                     if proj.get("error") is None:
-                        p10, p90 = proj.get("gain_p10"), proj.get("gain_p90")
-                        projected_gain = f"{p10:.1f}–{p90:.1f}%" if (p10 is not None and p90 is not None) else f"{float(proj.get('avg_gain',0)):.1f}%"
-                        hold_days = f"{int(proj.get('suggested_hold_days', 0))} days"
+                        # The SCENARIO RANGE, not a percentile band dressed as a
+                        # forecast. Centre is zero plus any evidence tilt.
+                        projected_gain = (f"{proj['scenario_bear']:.1f}% to "
+                                          f"{proj['scenario_bull']:.1f}%")
+                        # "Suggested hold: 12 days" was the mean day on which
+                        # the WINNING simulations first touched +5%, with the
+                        # paths that never got there simply dropped. On live
+                        # TSLA that printed "hold 6 days" beside a -21%
+                        # forecast, and the 25% hit-rate was never shown.
+                        # Bare window only. The hit rate is shown in the
+                        # movement-profile table beneath, where the DOWN column
+                        # sits beside it -- publishing "+5% in 66% of paths"
+                        # alone reads as a 66% win rate, which is exactly what
+                        # _movement_profile's own docstring forbids.
+                        _lo, _hi = proj.get("review_window_days", (14, 28))
+                        hold_days = f"{_lo//7}–{_hi//7} weeks"
             except Exception:
                 pass
 
@@ -295,6 +322,40 @@ if _run_clicked or (_autorun and _prefill):
             # has what they paid for, so anything that fails after this point is a
             # presentation bug, not a delivery failure.
             _delivered = True
+
+            # MOVEMENT PROFILE. The part of this page that speaks directly to a
+            # short-term trader -- a target and a horizon -- computed from
+            # realised volatility with no forecast in it. Both directions are
+            # shown together and always: volatility is symmetric, so publishing
+            # "+5% in 66% of paths" alone would be read as a 66% win rate.
+            try:
+                _mp = (_proj or {}).get("movement_profile") or {}
+                if _mp:
+                    _parts = []
+                    for _k, _v in _mp.items():
+                        _ud = _v.get("up_median_day")
+                        _dd = _v.get("down_median_day")
+                        _up = f"{_v['up_rate']:.0%} up" + (f" &middot; day {_ud}" if _ud else "")
+                        _dn = f"{_v['down_rate']:.0%} down" + (f" &middot; day {_dd}" if _dd else "")
+                        _parts.append(
+                            f"<tr><td style='padding:6px 14px 6px 0;'>&plusmn;{_k}</td>"
+                            f"<td style='padding:6px 14px;color:rgba(56,189,248,.95);'>{_up}</td>"
+                            f"<td style='padding:6px 0 6px 14px;color:rgba(248,113,113,.95);'>{_dn}</td></tr>"
+                        )
+                    _tk = html.escape(str(_run_ticker))
+                    st.markdown(
+                        "<div style='border:1px solid rgba(148,163,184,.22);border-radius:14px;"
+                        "padding:16px 20px;margin:0.75rem 0;'>"
+                        "<div style='font-weight:700;margin-bottom:2px;'>Movement profile</div>"
+                        "<div style='color:rgba(148,163,184,.8);font-size:0.82rem;margin-bottom:10px;'>"
+                        f"How far {_tk} normally travels in 30 days, from its own recent "
+                        f"volatility (&plusmn;{_proj.get('band', 0):.1f}%). Not a forecast &mdash; the "
+                        "same volatility carries it both ways.</div>"
+                        f"<table style='font-size:0.9rem;'>{''.join(_parts)}</table></div>",
+                        unsafe_allow_html=True,
+                    )
+            except Exception:
+                _da_logger.warning("movement profile render failed", exc_info=True)
 
             # Written AFTER delivery, and unable to affect it. This is the only
             # record that this call was ever made: X's index is 7 days deep and

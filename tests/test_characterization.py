@@ -180,12 +180,12 @@ def test_generate_ai_summary() -> None:
     # duplicate, so it earns less say. Lose this and duplicate press-release
     # spam starts driving recommendations.
     disjoint = {
-        "a": {"tweet_ids": ["1", "2", "3"], "sentiment_score": 0.7, "overall_sentiment": "bullish"},
-        "b": {"tweet_ids": ["4", "5"], "sentiment_score": -0.2, "overall_sentiment": "bearish"},
+        "a": {"tweet_ids": ["1", "2", "3"], "sentiment_score": 0.7, "overall_sentiment": "bullish", "mention_count": 3},
+        "b": {"tweet_ids": ["4", "5"], "sentiment_score": -0.2, "overall_sentiment": "bearish", "mention_count": 2},
     }
     overlap = {
-        "a": {"tweet_ids": ["1", "2", "3"], "sentiment_score": 0.7, "overall_sentiment": "bullish"},
-        "b": {"tweet_ids": ["3", "4"], "sentiment_score": -0.2, "overall_sentiment": "bearish"},
+        "a": {"tweet_ids": ["1", "2", "3"], "sentiment_score": 0.7, "overall_sentiment": "bullish", "mention_count": 3},
+        "b": {"tweet_ids": ["3", "4"], "sentiment_score": -0.2, "overall_sentiment": "bearish", "mention_count": 2},
     }
     close("dedup: disjoint ids weight 3/2", generate_ai_summary(disjoint)["avg_sentiment"], 0.34)
     close("dedup: shared id drops weight to 1", generate_ai_summary(overlap)["avg_sentiment"], 0.475)
@@ -193,7 +193,7 @@ def test_generate_ai_summary() -> None:
     # Thresholds for the actual verdict. Four prompts, ten unique tweets each.
     strong_bull = {
         f"p{i}": {"tweet_ids": [str(j) for j in range(i * 10, i * 10 + 10)],
-                  "sentiment_score": 0.85, "overall_sentiment": "bullish"}
+                  "sentiment_score": 0.85, "overall_sentiment": "bullish", "mention_count": 10}
         for i in range(4)
     }
     out = generate_ai_summary(strong_bull)
@@ -203,7 +203,7 @@ def test_generate_ai_summary() -> None:
 
     strong_bear = {
         f"p{i}": {"tweet_ids": [str(j) for j in range(i * 10, i * 10 + 10)],
-                  "sentiment_score": -0.8, "overall_sentiment": "bearish"}
+                  "sentiment_score": -0.8, "overall_sentiment": "bearish", "mention_count": 10}
         for i in range(4)
     }
     out = generate_ai_summary(strong_bear)
@@ -212,7 +212,7 @@ def test_generate_ai_summary() -> None:
     close("strong bearish avg", out["avg_sentiment"], -0.80)
 
     # A confident score on thin evidence must NOT read as high confidence.
-    thin = {"a": {"tweet_ids": ["1"], "sentiment_score": 0.7, "overall_sentiment": "bullish"}}
+    thin = {"a": {"tweet_ids": ["1"], "sentiment_score": 0.7, "overall_sentiment": "bullish", "mention_count": 1}}
     check("thin evidence is not High confidence",
           generate_ai_summary(thin)["confidence"] != "High", True)
 
@@ -236,9 +236,19 @@ def test_simple_projection_determinism() -> None:
 
     # Different tickers must not replay one shared random path. A constant seed
     # would pass the test above and silently correlate every projection.
-    other = simple_projection([p * 1.07 for p in prices], 0.35)
-    check("different prices give different output",
-          other["avg_gain"] != runs[0]["avg_gain"], True)
+    #
+    # Probed by changing the SHAPE of the series. Scaling every close by a
+    # constant no longer changes anything, and that is now correct rather than
+    # broken: the model reads volatility, and 1.07 * every price leaves the
+    # return series bit-identical. A stock is no more volatile at $107 than at
+    # $100. The old version centred on recent drift, which is why level used to
+    # leak into the answer.
+    other = simple_projection([p * (1.0 + 0.02 * (i % 3)) for i, p in enumerate(prices)], 0.35)
+    check("different price SHAPE gives different output",
+          other["band"] != runs[0]["band"], True)
+    scaled = simple_projection([p * 1.07 for p in prices], 0.35)
+    check("uniform scaling is deliberately invariant",
+          scaled["band"] == runs[0]["band"], True)
 
     # Sentiment still has to move the drift, or the seeding broke the model.
     bear = simple_projection(prices, -1.0)

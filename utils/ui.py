@@ -482,8 +482,15 @@ def render_recommendation_panel(
         st.markdown(
             f'<div style="display:flex;gap:8px;margin-bottom:14px;flex-wrap:nowrap;">'
             f'<div style="{_fc}"><div style="{_fl}">Last Price</div><div style="{_fv}">{current_price}</div></div>'
-            f'<div style="{_fc}"><div style="{_fl}">Proj. Gain 30d</div><div style="{_fv}">{projected_gain}</div></div>'
-            f'<div style="{_fc}"><div style="{_fl}">Hold Period</div><div style="{_fv}">{hold_days}</div></div>'
+            # "Proj. Gain 30d" promised a forecast. The value beneath it is a
+            # symmetric volatility range centred on zero -- the model makes no
+            # directional claim at all -- so the label was the last place the
+            # old promise survived.
+            f'<div style="{_fc}"><div style="{_fl}">30d range (vol)</div><div style="{_fv}">{projected_gain}</div></div>'
+            # "Hold Period" invited the reading "hold this long and you are up".
+            # The number was the median day on which the WINNING simulations
+            # first touched +5%, with the paths that never got there dropped.
+            f'<div style="{_fc}"><div style="{_fl}">Review window</div><div style="{_fv}">{hold_days}</div></div>'
             f'</div>',
             unsafe_allow_html=True,
         )

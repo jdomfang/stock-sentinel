@@ -31,135 +31,165 @@ def _derive_seed(prices: List[float], sentiment_score: float, days: int) -> int:
     return int.from_bytes(h.digest()[:8], "little")
 
 
+def _movement_profile(daily_vol: float, drift_per_day: float, days: int,
+                      targets, rng) -> Dict:
+    """How often this stock reaches a target, and how soon. Both directions.
+
+    This answers the question a short-term trader actually asks -- "what target
+    and what horizon" -- and it answers it from realised volatility, with no
+    forecast involved. The old code computed exactly this and threw it away:
+    success_rate was calculated on every run and never displayed, so the UI
+    showed "hold 6 days" while concealing that only 25% of simulated paths ever
+    reached the target.
+
+    The DOWN column is not optional. Volatility is symmetric, so a target
+    reached in 69% of paths upward is reached in roughly 69% downward too.
+    Publishing the up column alone would be read as a 69% win rate, which is
+    the precise species of false confidence this rebuild exists to remove.
+    """
+    n_sims = 2000
+    out = {}
+    for tgt in targets:
+        up_days, down_days = [], []
+        for _ in range(n_sims):
+            px, hit_up, hit_dn = 1.0, None, None
+            for d in range(1, days + 1):
+                px *= (1.0 + rng.normal(drift_per_day, daily_vol))
+                chg = px - 1.0
+                if hit_up is None and chg >= tgt:
+                    hit_up = d
+                if hit_dn is None and chg <= -tgt:
+                    hit_dn = d
+                if hit_up is not None and hit_dn is not None:
+                    break
+            up_days.append(hit_up)
+            down_days.append(hit_dn)
+        up = [d for d in up_days if d]
+        dn = [d for d in down_days if d]
+        out[f"{tgt:.0%}"] = {
+            "target": tgt,
+            "up_rate": len(up) / n_sims,
+            "up_median_day": int(np.median(up)) if up else None,
+            "down_rate": len(dn) / n_sims,
+            "down_median_day": int(np.median(dn)) if dn else None,
+        }
+    return out
+
+
 def simple_projection(
     prices: List[float],
     sentiment_score: float,
     days: int = 30,
     seed: Optional[int] = None,
+    quality_ok: bool = True,
+    targets=(0.03, 0.05, 0.08),
 ) -> Dict:
-    """
-    Run a simple Monte Carlo simulation to project stock performance.
+    """A volatility scenario range and a movement profile. NOT a price target.
 
-    Args:
-        prices: List of historical closing prices
-        sentiment_score: Signed sentiment score in [-1, 1] (used to adjust expected returns)
-        days: Number of days to project forward (default 30)
-        seed: Explicit RNG seed. When None the seed is derived from the inputs, so
-            the same ticker with the same prices and sentiment always projects the
-            same numbers. This used to draw from the global np.random with no seed,
-            which meant Streamlit's rerun-per-interaction model showed the user a
-            different forecast every time they touched the page without changing
-            any input. Pass an explicit seed in tests.
+    WHAT CHANGED AND WHY
 
-    Returns:
-        Dictionary with keys:
-        - avg_gain: Average projected gain as percentage
-        - gain_p10: 10th percentile projected gain (%)
-        - gain_p90: 90th percentile projected gain (%)
-        - suggested_hold_days: Average days to reach +5% target
-        - success_rate: Percentage of simulations reaching +5% within timeframe
+    base_return is ZERO. The previous version centred the simulation on the
+    recent trend, which is a claim that trends persist. Two reasons not to make
+    it: drift cannot be estimated from ~20 observations (the noise dwarfs the
+    signal), and at a one-month horizon short-term reversal is at least as well
+    documented as continuation. Measured consequence of the old behaviour: TSLA
+    had fallen 21.7%, and the projection duly forecast a further ~20% fall.
+
+    The sentiment adjustment is ADDITIVE, not multiplicative. It used to be
+    `mean_return * (1 + 0.25 * sentiment)`, which SCALES the existing trend
+    rather than tilting it -- so on a falling stock, bullish sentiment made the
+    forecast worse. Measured: maximum bullish sentiment moved TSLA's projection
+    from -20.6% to -25.4% and cut its chance of reaching +5% from 28% to 16%.
+    Additive means bullish evidence lifts the centre regardless of which way the
+    stock has been going, which is what the feature was always supposed to do.
+
+    quality_ok gates the tilt. Phase 1 passes an evidence-count proxy; the
+    quality module replaces it without changing this signature.
+
+    Returns the legacy keys (avg_gain, gain_p10, gain_p90, suggested_hold_days,
+    success_rate) so existing callers keep working, plus the scenario band and
+    the movement profile.
     """
     try:
-        # Need at least 5 data points for meaningful projection
         if len(prices) < 5:
             return {
-                'avg_gain': 0.0,
-                'suggested_hold_days': 0,
-                'success_rate': 0.0,
-                'error': 'Insufficient price data'
+                'avg_gain': 0.0, 'suggested_hold_days': 0, 'success_rate': 0.0,
+                'error': 'Insufficient price data',
             }
-        
-        # Calculate historical returns
-        returns = []
-        for i in range(1, len(prices)):
-            daily_return = (prices[i] - prices[i-1]) / prices[i-1]
-            returns.append(daily_return)
-        
-        # Calculate historical statistics (winsorize returns to reduce outlier blowups)
-        returns = np.array(returns, dtype=float)
+
+        arr = np.asarray(prices, dtype=float)
+        # A zero or non-finite close used to raise ZeroDivisionError from the
+        # Python loop and land in the handler below. NumPy instead propagates
+        # NaN with error=None, so the page rendered "nan% to nan%" under a
+        # confident label and verdict_log stored NaN into the projection fields.
+        if not np.all(np.isfinite(arr)) or np.any(arr <= 0):
+            return {'avg_gain': 0.0, 'suggested_hold_days': 0, 'success_rate': 0.0,
+                    'error': 'Invalid price data'}
+        if int(days) <= 0:
+            return {'avg_gain': 0.0, 'suggested_hold_days': 0, 'success_rate': 0.0,
+                    'error': 'Invalid horizon'}
+        returns = np.diff(arr) / arr[:-1]
+
+        # Winsorise, then cap. A single gap or bad print would otherwise set the
+        # width of the whole band.
         lo, hi = np.percentile(returns, [2, 98])
         returns = np.clip(returns, lo, hi)
+        daily_vol = min(float(np.std(returns)), 0.12)
+        if not np.isfinite(daily_vol):
+            return {'avg_gain': 0.0, 'suggested_hold_days': 0,
+                    'success_rate': 0.0, 'error': 'Invalid price data'}
 
-        mean_return = float(np.mean(returns))
-        std_return = float(np.std(returns))
-        # Hard cap volatility to avoid absurd simulations on noisy tickers
-        std_return = min(std_return, 0.12)  # ~12% daily std cap
+        # Volatility scales with the SQUARE ROOT of time. A stock moving 1% a
+        # day does not move 21% over 21 days; it moves about 4.6%.
+        band = daily_vol * float(np.sqrt(days))
 
-        logger.debug(f"📊 Historical stats: {len(prices)} prices, mean_return={mean_return:.6f}, std_return={std_return:.6f}")
+        s = float(max(-1.0, min(1.0, sentiment_score or 0.0)))
+        # Normalised BEFORE seeding: the raw value may be None, and
+        # struct.pack('<d', float(None)) raises inside _derive_seed.
+        sentiment_score = s
+        tilt = (0.25 * s * band) if quality_ok else 0.0
+        centre = 0.0 + tilt
 
-        # Adjust mean return based on sentiment.
-        # sentiment_score is expected to be in [-1, 1] (negative=bearish, positive=bullish).
-        # Keep this effect small to avoid absurd projections.
-        sentiment_score = float(max(-1.0, min(1.0, sentiment_score)))
-        sentiment_multiplier = 1.0 + (0.25 * sentiment_score)  # +/- 25% drift adjustment
-        adjusted_mean = mean_return * sentiment_multiplier
-
-        logger.debug(
-            f"🎭 Sentiment adjustment: score={sentiment_score:.3f}, multiplier={sentiment_multiplier:.3f}, adjusted_mean={adjusted_mean:.6f}"
+        logger.info(
+            "🔮 band=%.1f%% centre=%+.1f%% (tilt %+.2f%%, sentiment %+.3f, quality_ok=%s)",
+            band * 100, centre * 100, tilt * 100, s, quality_ok,
         )
-        
-        # Run Monte Carlo simulations
-        num_simulations = 100
-        target_gain = 0.05  # 5% target
 
-        # Local Generator, not the global np.random: seeding the global RNG would
-        # silently change the draw sequence of every other caller in the process.
         rng = np.random.default_rng(
             seed if seed is not None else _derive_seed(prices, sentiment_score, days)
         )
+        profile = _movement_profile(daily_vol, centre / days, days, targets, rng)
 
-        final_gains = []
-        days_to_target = []
-
-        for _ in range(num_simulations):
-            # Start at last known price
-            current_price = prices[-1]
-
-            # Simulate daily price movements
-            reached_target = False
-            for day in range(1, days + 1):
-                # Generate random return from normal distribution
-                daily_return = rng.normal(adjusted_mean, std_return)
-                current_price *= (1 + daily_return)
-                
-                # Check if we've reached target
-                gain = (current_price - prices[-1]) / prices[-1]
-                if not reached_target and gain >= target_gain:
-                    days_to_target.append(day)
-                    reached_target = True
-            
-            # Record final gain for this simulation
-            final_gain = (current_price - prices[-1]) / prices[-1]
-            final_gains.append(final_gain)
-        
-        # Calculate statistics
-        avg_gain = float(np.mean(final_gains)) * 100  # Convert to percentage
-        gain_p10 = float(np.percentile(final_gains, 10)) * 100
-        gain_p90 = float(np.percentile(final_gains, 90)) * 100
-        success_rate = (len(days_to_target) / num_simulations) * 100
-        
-        # Calculate suggested hold time
-        if days_to_target:
-            suggested_hold = int(np.mean(days_to_target))
-        else:
-            # If target not reached, suggest full period
-            suggested_hold = days
-        
-        logger.info(f"🔮 Projection results: avg_gain={avg_gain:.1f}%, hold_days={suggested_hold}, success_rate={success_rate:.1f}% ({len(days_to_target)}/{num_simulations} simulations)")
-
+        # Degrading to 0.0 here would print "+5% reached in 0% of paths"
+        # as a confident statement rather than an absent measurement.
+        five = profile.get("5%") or (next(iter(profile.values()), {}))
         return {
-            'avg_gain': round(avg_gain, 2),
-            'gain_p10': round(gain_p10, 2),
-            'gain_p90': round(gain_p90, 2),
-            'suggested_hold_days': suggested_hold,
-            'success_rate': round(success_rate, 1),
-            'error': None
+            # Scenario range. Provisional, and explicitly not a price target.
+            'band': round(band * 100, 2),
+            'scenario_bear': round((centre - band) * 100, 2),
+            'scenario_base': round(centre * 100, 2),
+            'scenario_bull': round((centre + band) * 100, 2),
+            'sentiment_tilt': round(tilt * 100, 2),
+            'quality_gated': not quality_ok,
+
+            'movement_profile': profile,
+
+            # Legacy keys, now honest.
+            'avg_gain': round(centre * 100, 2),
+            # The SAME +/-1 sigma band the interface renders. These were
+            # +/-1.2816 sigma, so verdict_log stored -- and any future scoring of
+            # verdicts would be measured against -- a range wider than the one
+            # the user was ever shown.
+            'gain_p10': round((centre - band) * 100, 2),
+            'gain_p90': round((centre + band) * 100, 2),
+            'success_rate': round(five.get('up_rate', 0.0) * 100, 1),
+            'suggested_hold_days': five.get('up_median_day') or days,
+            'review_window_days': (14, 28),
+            'error': None,
         }
-        
+
     except Exception as e:
         return {
-            'avg_gain': 0.0,
-            'suggested_hold_days': 0,
-            'success_rate': 0.0,
-            'error': f"Projection error: {str(e)}"
+            'avg_gain': 0.0, 'suggested_hold_days': 0, 'success_rate': 0.0,
+            'error': f"Projection error: {str(e)}",
         }

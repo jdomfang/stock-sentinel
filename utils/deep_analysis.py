@@ -7,6 +7,7 @@ from pathlib import Path
 import json
 import logging
 import hashlib
+import functools
 
 from utils.sentiment import analyze_sentiment_batch
 from utils import corpus_cache
@@ -92,7 +93,50 @@ def _load_influencer_usernames(limit: int = 40) -> List[str]:
     return out[: max(0, int(limit))]
 
 
-def _build_influencer_query(usernames: List[str], ticker: str) -> str:
+@functools.lru_cache(maxsize=512)
+def _company_alias(ticker: str) -> str:
+    """Query-safe company name for a ticker, or "" if none is usable.
+
+    Never raises and never blocks a scan: an unreachable lookup degrades to
+    cashtag-only retrieval, which is exactly what ran before this existed.
+
+    MEMOISED, and that is a correctness property rather than a speed one. The
+    corpus cache keys on a hash of the query TEXT, so a lookup that succeeds on
+    one call and fails on the next flips the query between
+    `($TSLA OR "Tesla") ...` and `$TSLA ...` -- two different hashes, a
+    guaranteed cache miss, and up to 300 billed posts re-bought for nothing.
+    Answering identically for the life of the process is worth more here than
+    recovering from a transient failure mid-run.
+    """
+    t = (ticker or "").strip().upper()
+    if not t:
+        return ""
+    try:
+        import urllib.parse
+        import urllib.request
+
+        from utils.sector_query import _config as _sq_config
+        from utils.sector_query import company_alias as _alias_of
+
+        base = _sq_config("SUPABASE_URL").rstrip("/")
+        key = _sq_config("SUPABASE_SERVICE_ROLE_KEY")
+        if not base or not key:
+            return ""
+        qs = urllib.parse.urlencode({"select": "name", "symbol": f"eq.{t}", "limit": 1})
+        req = urllib.request.Request(
+            f"{base}/rest/v1/ticker_master?{qs}",
+            headers={"apikey": key, "Authorization": f"Bearer {key}"},
+        )
+        with urllib.request.urlopen(req, timeout=4) as r:
+            rows = json.loads(r.read() or b"[]")
+        return _alias_of(rows[0].get("name", "")) if rows else ""
+    except Exception as e:
+        logger.warning("company alias lookup failed for %s: %s: %s",
+                       t, type(e).__name__, str(e)[:120])
+        return ""
+
+
+def _build_influencer_query(usernames: List[str], ticker: str, alias: str = "") -> str:
     """Build a `from:` query safely under X query-length limits.
 
     X recent search queries have a max length (~512). We keep headroom to avoid 400 errors.
@@ -121,9 +165,14 @@ def _build_influencer_query(usernames: List[str], ticker: str) -> str:
 
     ticker = (ticker or "").strip().upper() or "NVDA"
 
-    # Matches the ticker corpus's own form, so a cashtag post and a bare-symbol
-    # post are both eligible.
-    tail = f"(${ticker} OR {ticker}) lang:en -is:retweet"
+    # Matches the ticker corpus's own form: cashtag or company name, never the
+    # bare token. The risk here is not lower than in the ticker corpus, it is
+    # higher -- this list is Reuters, Bloomberg and WSJ Markets, general
+    # newswires that genuinely do file about Members of Parliament. And the
+    # alias matters more on this channel than on any other, because newswire
+    # copy is prose: "Tesla reports Q3 deliveries" carries no cashtag at all.
+    _subj = f"(${ticker} OR \"{alias}\")" if alias else f"${ticker}"
+    tail = f"{_subj} lang:en -is:retweet"
 
     parts: List[str] = []
     MAX_LEN = 500  # leave headroom under 512
@@ -310,7 +359,7 @@ def search_x_tweets(query: str, max_results: int = 100, timeframe: str = "24h") 
 
 # ---- Bucketing + analysis ----
 
-def _mentions_ticker(text: str, ticker: str) -> bool:
+def _mentions_ticker(text: str, ticker: str, alias: str = "") -> bool:
     """Return True if the tweet text mentions the ticker as a token (optionally $-prefixed).
 
     Avoids substring false-positives (e.g., ticker "IN" matching "INTO").
@@ -324,10 +373,30 @@ def _mentions_ticker(text: str, ticker: str) -> bool:
     s = (text or "")
     # Token boundary match: (^|\W)\$?TICKER(\W|$)
     pattern = rf"(^|\W)\$?{re.escape(t)}(\W|$)"
-    return re.search(pattern, s, flags=re.IGNORECASE) is not None
+    if re.search(pattern, s, flags=re.IGNORECASE) is not None:
+        return True
+
+    # The company name counts as a mention of the company.
+    #
+    # Without this the alias arm added to retrieval is pure cost: we pay for
+    # "Tesla reports Q3 deliveries", then discard it here because it carries no
+    # $TSLA. Seven of the eight angles are ticker-scoped, so alias-only posts --
+    # the entire reason the alias was added, and the whole yield of the newswire
+    # channel, whose copy is prose -- would be bought and thrown away.
+    #
+    # The bug hides from casual testing: "MP Materials" contains the token "MP"
+    # and "Meta Platforms" matches META case-insensitively, so the aliases one
+    # reaches for first pass anyway. Tesla/TSLA, Apple/AAPL, Amazon/AMZN do not.
+    if alias:
+        a = alias.strip()
+        if a:
+            return re.search(rf"(^|\W){re.escape(a)}(\W|$)", s,
+                             flags=re.IGNORECASE) is not None
+    return False
 
 
-def analyze_tweets_for_prompt(tweets: List[Dict[str, Any]], prompt_name: str, ticker: str) -> Dict[str, Any]:
+def analyze_tweets_for_prompt(tweets: List[Dict[str, Any]], prompt_name: str, ticker: str,
+                              alias: str = "") -> Dict[str, Any]:
     """Analyze tweets for a specific prompt and return insights.
 
     Notes:
@@ -356,7 +425,7 @@ def analyze_tweets_for_prompt(tweets: List[Dict[str, Any]], prompt_name: str, ti
     filtered: List[Dict[str, Any]] = []
     for tw in tweets:
         text = (tw.get("text") or "")
-        if ticker_scoped and not _mentions_ticker(text, ticker):
+        if ticker_scoped and not _mentions_ticker(text, ticker, alias):
             continue
         filtered.append(tw)
 
@@ -467,6 +536,13 @@ def analyze_tweets_for_prompt(tweets: List[Dict[str, Any]], prompt_name: str, ti
         "sample_tweets": sample_tweets,
         "mention_count": len(sentiments),
         "tweet_ids": tweet_ids,
+        # PER-POST scores, so the adjudicator can average posts rather than
+        # angle means. These were computed here and discarded; reconstructing a
+        # post-level mean from angle means is impossible, which is why the first
+        # attempt at it silently reduced to "angle 1's mean" -- angle 1 is the
+        # whole corpus and is iterated first, so every subset angle became a
+        # no-op and the result still depended on declaration order.
+        "post_scores": dict(zip(tweet_ids, sentiments)),
     }
 
 
@@ -594,13 +670,33 @@ def run_deep_analysis(ticker: str, sector: str) -> Dict[str, Dict[str, Any]]:
         return cached
 
     # ---- Call definitions ----
+    #
+    # The bare-symbol arm is gone. Measured on two retained corpora: posts that
+    # matched ONLY the bare token contributed ZERO usable evidence in both,
+    # while consuming 37% of one arm's spend and 82% of the other's. In the MP
+    # Materials corpus those 69 posts were about Members of Parliament, the
+    # Indian state of Madhya Pradesh, and an unrelated bot's label -- and every
+    # one of them passed the downstream ticker-attribution filter as valid.
+    #
+    # The company name replaces it. That is not merely a recall change: 10 TSLA
+    # and 4 MP posts matched the name with no cashtag present, and the TSLA ones
+    # averaged -0.53 against +0.24 for the cashtag posts. Press prose and trader
+    # chatter sample different populations, so the alias buys evidence the
+    # cashtag query structurally cannot reach.
+    #
+    # The finance OR-list stays. Every post we have retained passed through it,
+    # so a query without it is untested rather than rejected -- and the one arm
+    # we ran without it was captured by a 100-account spam campaign.
+    _alias = _company_alias(t)
+    _subject = f"(${t} OR \"{_alias}\")" if _alias else f"${t}"
     ticker_query = (
-        f"(${t} OR {t}) (stock OR stocks OR shares OR price OR chart OR earnings OR news OR catalyst "
+        f"{_subject} (stock OR stocks OR shares OR price OR chart OR earnings OR news OR catalyst "
         f"OR bullish OR bearish OR risk OR watchlist OR trading OR options OR #FinTwit) lang:en -is:retweet"
     )
+    logger.info("🔎 ticker query subject=%s alias=%s", _subject, _alias or "(none)")
 
     influencer_usernames = _load_influencer_usernames(limit=12)
-    influencer_query = _build_influencer_query(influencer_usernames, t) if influencer_usernames else None
+    influencer_query = _build_influencer_query(influencer_usernames, t, _alias) if influencer_usernames else None
 
     corpuses: Dict[str, List[Dict[str, Any]]] = {"ticker": [], "influencers": []}
     errors: Dict[str, str] = {}
@@ -686,18 +782,18 @@ def run_deep_analysis(ticker: str, sector: str) -> Dict[str, Dict[str, Any]]:
 
         # Reuse the same keyword lists as the full run (defined below), but keep local copies here.
         # These are used for cheap (non-FinBERT) gating.
+        # Same exclusion as the scored bucket: "risk" is a retrieval term, so
+        # counting it here measures the query rather than the stock.
         risk_keywords_gate = [
-            "risk",
-            "warning",
-            "concern",
             "red flag",
             "dilution",
-            "offering",
             "bankruptcy",
             "delisting",
             "investigation",
             "fraud",
             "lawsuit",
+            "downgrade",
+            "guidance cut",
         ]
         momentum_keywords_gate = ["viral", "trending", "momentum", "breakout", "squeeze", "runner", "rip", "ripping"]
         watchlist_keywords_gate = [
@@ -862,18 +958,31 @@ def run_deep_analysis(ticker: str, sector: str) -> Dict[str, Dict[str, Any]]:
         "pt ",
     ]
     retail_keywords = ["retail", "institutional", "fintwit", "#fintwit", "fund", "hedge", "whale"]
+    # BARE "risk" IS NOT A RED FLAG.
+    #
+    # The retrieval query itself contains `OR risk` as a search term, so the
+    # corpus is deliberately seeded with posts containing that word -- and this
+    # bucket then counted every one of them as a warning sign. Measured on the
+    # genuine TSLA corpus, all three "risk items" were false positives, the
+    # first being the literal phrase "would reset risk/reward nicely".
+    #
+    # That was harmless while red_flag_rate was structurally 0.0 and the
+    # Avoid-on-risk rule could never fire. Repairing the rate makes the rule
+    # live, so a corpus of ordinary risk-management chatter would have crossed
+    # the 0.35 threshold and returned Avoid with no negative sentiment anywhere.
+    # The threshold itself has never been calibrated against a non-zero metric.
     risk_keywords = [
-        "risk",
-        "warning",
-        "concern",
         "red flag",
         "dilution",
-        "offering",
         "bankruptcy",
         "delisting",
         "investigation",
         "fraud",
         "lawsuit",
+        "downgrade",
+        "guidance cut",
+        "recall",
+        "probe",
     ]
     watchlist_keywords = [
         "watchlist",
@@ -967,7 +1076,7 @@ def run_deep_analysis(ticker: str, sector: str) -> Dict[str, Dict[str, Any]]:
             }
             continue
 
-        results[prompt_name] = analyze_tweets_for_prompt(tweets, prompt_name, ticker)
+        results[prompt_name] = analyze_tweets_for_prompt(tweets, prompt_name, ticker, _alias)
 
     # Cache only successful derived results. External API failures such as depleted X
     # credits should recover immediately after the billing/token issue is fixed.
@@ -990,37 +1099,63 @@ def generate_ai_summary(analysis_results: Dict[str, Dict]) -> Dict[str, Any]:
     - Downweight mixed/unstable reads via a simple disagreement proxy.
     """
 
-    total_weighted_sentiment = 0.0
-    total_weight = 0
-
     bullish_prompts = 0
     bearish_prompts = 0
     neutral_prompts = 0
     error_prompts = 0
 
-    # Dedupe across prompts to avoid confidence inflation.
     unique_ids: set[str] = set()
 
     red_flag_sentiment = 0.0
-    red_flag_mentions = 0
+    red_flag_ids: set[str] = set()
 
     # For a simple disagreement proxy
     prompt_sentiments: List[float] = []
 
+    # Post-level sentiment, replacing the angle-weighted mean.
+    #
+    # The old weighting was first-contribution dedupe: an angle's weight was the
+    # number of ids it was the FIRST to claim. Angle 1 is the entire corpus and
+    # is iterated first, so it claimed every id and every later angle -- all
+    # subsets of it -- got weight max(0,1) = 1. The result depended on
+    # declaration order, and the seven remaining angles contributed ~1/N each
+    # while appearing to be co-equal signals.
+    #
+    # Averaging each unique post once removes the ordering dependence entirely
+    # and keeps the double-count protection the dedupe was there to provide.
+    post_scores: Dict[str, float] = {}
+
     for prompt_name, result in (analysis_results or {}).items():
         tweet_ids = result.get("tweet_ids", []) or []
-        unique_mentions = 0
-        for tid in tweet_ids:
-            if tid not in unique_ids:
-                unique_ids.add(tid)
-                unique_mentions += 1
+        ids = {str(tid) for tid in tweet_ids}
+        unique_ids |= ids
 
         sentiment = float(result.get("sentiment_score", 0.0) or 0.0)
         overall = (result.get("overall_sentiment") or "neutral").lower()
+        mention_count = int(result.get("mention_count", 0) or 0)
+        has_evidence = mention_count > 0 and overall != "error"
 
-        weight = max(unique_mentions, 1)
-        total_weighted_sentiment += sentiment * weight
-        total_weight += weight
+        # True per-post scores when the angle supplies them. Identical posts
+        # appearing in several angles resolve to the same value, so the order
+        # of assignment is irrelevant -- which is the property the previous
+        # setdefault-over-angle-means version only appeared to have.
+        per_post = result.get("post_scores") or {}
+        if per_post:
+            post_scores.update({str(k): float(v) for k, v in per_post.items()})
+        else:
+            # Legacy/fixture results without per-post detail: fall back to the
+            # angle mean, but never overwrite a real per-post value.
+            for tid in ids:
+                post_scores.setdefault(tid, sentiment)
+
+        # EMPTY IS MISSING, NOT NEUTRAL. An angle with no posts previously
+        # returned overall_sentiment="neutral", indistinguishable from a
+        # genuinely balanced one -- so six empty angles rendered as "signals are
+        # neutral across all 8 analysis types" and, because emptiness cannot
+        # disagree, "conviction is higher". A spam corpus earned Moderate
+        # confidence that way.
+        if not has_evidence:
+            continue
 
         if overall == "bullish":
             bullish_prompts += 1
@@ -1031,18 +1166,30 @@ def generate_ai_summary(analysis_results: Dict[str, Dict]) -> Dict[str, Any]:
         else:
             error_prompts += 1
 
-        # Only count prompt sentiment in disagreement if it has some evidence.
-        if int(result.get("mention_count", 0) or 0) > 0 and overall != "error":
-            prompt_sentiments.append(sentiment)
+        prompt_sentiments.append(sentiment)
 
         if "Red Flags" in prompt_name:
             red_flag_sentiment = sentiment
-            red_flag_mentions = unique_mentions
+            red_flag_ids = ids
+
+    # How many angles actually carried evidence. Without this the three
+    # reassurance lines below fire on an EMPTY corpus -- measured, with all
+    # eight angles empty: "Signals are neutral across all 0 analysis types",
+    # "No red flags or warning signals detected", and "conviction is higher".
+    # That is emptiness inflating confidence, which 1.3 fixed in the counters
+    # and not in the prose the user actually reads.
+    evidenced_prompts = bullish_prompts + bearish_prompts + neutral_prompts
 
     total_mentions = len(unique_ids)
-    avg_sentiment = (total_weighted_sentiment / total_weight) if total_weight else 0.0
+    avg_sentiment = (sum(post_scores.values()) / len(post_scores)) if post_scores else 0.0
 
-    red_flag_rate = (red_flag_mentions / total_mentions) if total_mentions else 1.0
+    # MEMBERSHIP, not first-contribution. The numerator was previously the ids
+    # the risk angle claimed FIRST, which -- being a subset of angle 1, already
+    # iterated -- was always zero. red_flag_rate was therefore structurally 0.0
+    # on every run ever made, the Avoid-on-risk rule could never fire on it, and
+    # all three retained corpora rendered "No red flags detected" including the
+    # one whose risk angle held nine posts.
+    red_flag_rate = (len(red_flag_ids) / total_mentions) if total_mentions else 0.0
 
     # Disagreement proxy: range across prompt-level signed sentiments
     if prompt_sentiments:
@@ -1119,7 +1266,10 @@ def generate_ai_summary(analysis_results: Dict[str, Dict]) -> Dict[str, Any]:
     elif bullish_prompts > 0 and bearish_prompts > 0:
         rationale.append(f"Mixed signals: {bullish_prompts} bullish vs {bearish_prompts} bearish across analysis types.")
     else:
-        rationale.append(f"Signals are neutral across all {neutral_prompts} analysis types.")
+        if evidenced_prompts:
+            rationale.append(f"Signals are neutral across all {neutral_prompts} analysis types.")
+        else:
+            rationale.append("No analysis angle returned any usable evidence.")
 
     # Evidence volume
     if total_mentions >= 50:
@@ -1131,7 +1281,11 @@ def generate_ai_summary(analysis_results: Dict[str, Dict]) -> Dict[str, Any]:
 
     # Risk
     if red_flag_rate == 0:
-        rationale.append("No red flags or warning signals detected in recent posts.")
+        rationale.append(
+            "No red flags or warning signals detected in recent posts."
+            if evidenced_prompts else
+            "Not enough evidence to say whether risk signals are present."
+        )
     elif red_flag_rate <= 0.10:
         rationale.append(f"Low red-flag rate ({red_flag_rate:.0%}) — minimal warning signals in posts.")
     else:
@@ -1143,7 +1297,11 @@ def generate_ai_summary(analysis_results: Dict[str, Dict]) -> Dict[str, Any]:
     elif disagreement >= 0.40:
         rationale.append("Some disagreement between analysis types — moderate conviction only.")
     else:
-        rationale.append("Signals are consistent across analysis types — conviction is higher.")
+        rationale.append(
+            "Signals are consistent across analysis types — conviction is higher."
+            if evidenced_prompts >= 2 else
+            "Too few populated angles to judge consistency."
+        )
 
     return {
         "recommendation": recommendation,

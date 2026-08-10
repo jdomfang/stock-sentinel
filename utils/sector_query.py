@@ -121,6 +121,52 @@ def _config(name: str, default: str = "") -> str:
         return default
 
 
+# Single words that are ordinary English or generic finance vocabulary, and so
+# cannot be used as a search term even inside a finance-worded query.
+#
+# The naive rule is "multi-word aliases only", and it is too blunt: 22% of the
+# ~7,600 ticker universe normalises to one word, and the great majority of
+# those are coined and perfectly safe -- AerCap, Affirm, Alector, Altimmune,
+# AudioEye, Adecoagro. A blanket rule discards all of them, and it discards
+# "Tesla", which is the alias measured to change TSLA's direction reading.
+#
+# So the exclusion is by vocabulary, not by word count. The list is deliberately
+# short: the query retains its finance OR-list conjunct, which already filters
+# most ambient usage, so only words that are common IN FINANCE TEXT need to be
+# here. "Southern" and "Visa" do; "Tesla" does not.
+_GENERIC_SINGLE_WORD = frozenset({
+    "american", "atlantic", "capital", "central", "century", "coastal",
+    "commerce", "community", "consumer", "continental", "core", "eastern",
+    "empire", "energy", "enterprise", "equity", "federal", "financial",
+    "first", "fortune", "freedom", "frontier", "gap", "general", "global",
+    "group", "growth", "heritage", "holdings", "horizon", "independence",
+    "industrial", "international", "investors", "legacy", "liberty", "market",
+    "meridian", "metro", "mid", "momentum", "mutual", "national", "northern",
+    "open", "pacific", "partners", "peak", "pioneer", "premier", "prime",
+    "progress", "prospect", "range", "regional", "republic", "reserve",
+    "resources", "select", "sentinel", "shell", "signature", "southern",
+    "standard", "sterling", "summit", "sun", "target", "trust", "union",
+    "united", "universal", "value", "vision", "visa", "western",
+})
+
+
+def company_alias(name: str) -> str:
+    """A phrase safe to search for, or "" when the name cannot carry a query.
+
+    Returns "" rather than a risky term on purpose: a bad alias does not merely
+    add noise, it adds noise that the ticker-attribution filter then certifies
+    as valid evidence -- the failure that put 69 posts about Members of
+    Parliament into an MP Materials corpus.
+    """
+    n = normalize_company_name(name)
+    if not n:
+        return ""
+    if len(n.split()) >= 2:
+        return n
+    # Single word: long enough to be distinctive, and not ordinary vocabulary.
+    return "" if (len(n) < 4 or n.lower() in _GENERIC_SINGLE_WORD) else n
+
+
 def normalize_company_name(name: str) -> str:
     """Strip corporate boilerplate down to what a person would type."""
     n = re.sub(r"\(.*?\)", "", name or "")

@@ -1679,11 +1679,22 @@ def _render_deep_panel(ticker, sector, deep_results):
             _lp = _prices[-1]
             if isinstance(_lp, (int, float)):
                 _price = f"${_lp:.2f}"
-            _proj_r = simple_projection(_prices, _ai["avg_sentiment"], days=30)
+            # Identical treatment to pages/Deep_Analysis.py. This call site was
+            # missed once already, and the result was the same ticker on the
+            # same day showing one range here and a different one there, with
+            # this page still printing the bare "N days" hold string that was
+            # removed as misleading -- the median day-to-+5% among WINNING paths
+            # only, hit rate hidden -- and applying the sentiment tilt with no
+            # quality gate at all.
+            _dq_ok = len({str(_t) for _r in deep_results.values()
+                          for _t in (_r.get("tweet_ids") or [])}) >= 8
+            _proj_r = simple_projection(_prices, _ai["avg_sentiment"], days=30,
+                                        quality_ok=_dq_ok)
             if _proj_r.get("error") is None:
-                _p10, _p90 = _proj_r.get("gain_p10"), _proj_r.get("gain_p90")
-                _proj = f"{_p10:.1f}–{_p90:.1f}%" if (_p10 is not None and _p90 is not None) else f"{float(_proj_r.get('avg_gain',0)):.1f}%"
-                _hold = f"{int(_proj_r.get('suggested_hold_days', 0))} days"
+                _proj = (f"{_proj_r['scenario_bear']:.1f}% to "
+                         f"{_proj_r['scenario_bull']:.1f}%")
+                _lo, _hi = _proj_r.get("review_window_days", (14, 28))
+                _hold = f"{_lo // 7}–{_hi // 7} weeks"
     except Exception:
         pass
 
