@@ -13,7 +13,7 @@ from collections import defaultdict, deque
 import logging
 
 from utils.navigation import render_sidebar_navigation, render_top_nav
-from utils.ui import apply_theme, close_page, render_recommendation_panel, render_full_analysis_expander
+from utils.ui import apply_theme, close_page, render_recommendation_panel, render_full_analysis_expander, render_evidence_check
 from utils.sentiment import extract_tickers_detailed, analyze_sentiment_batch
 from utils import x_metrics
 from utils.finance import get_ticker_master_list, get_stock_data, get_last_close_prices_best_effort
@@ -1666,19 +1666,88 @@ if st.session_state.df_valid is not None:
         pass
 
 def _render_deep_panel(ticker, sector, deep_results):
-    """Render the deep analysis panel inline below a ticker row."""
+    """Render the deep analysis panel inline below a ticker row.
+
+    Adjudicates from the SAME evidence ledger as pages/Deep_Analysis.py. This
+    path used to run generate_ai_summary instead, so clicking Deep Analyze on a
+    scan row and typing the same ticker on the other page produced two
+    different products at one credit price -- and only the typed path ever
+    reached verdict_log, making that table a biased sample of one entry route.
+    """
     from utils.deep_analysis import ANALYSIS_PROMPTS
-    _ai = generate_ai_summary(deep_results)
+    from utils.ui import render_evidence_check
+
+    _sink = st.session_state.get("deep_analysis_sink") or {}
+    _v = None
+    try:
+        if _sink.get("ticker_corpus") is not None:
+            from utils.evidence import build_ledger
+            from utils.sentiment import analyze_sentiment_batch as _sc
+            from utils.verdict import adjudicate as _adj
+
+            _al = _sink.get("alias") or ""
+            _led = []
+            for _k, _ch in (("ticker_corpus", "social_base"),
+                            ("influencer_corpus", "newswire")):
+                _ps = _sink.get(_k) or []
+                if not _ps:
+                    continue
+                _ds = _sc([(x.get("text") or "")[:512] for x in _ps])
+                _by = {str(x["id"]): d for x, d in zip(_ps, _ds)
+                       if x.get("id") is not None}
+                _seen = {r.post_id for r in _led}
+                _led += [r for r in build_ledger(_ps, ticker, alias=_al,
+                                                 channel=_ch, scores=_by)
+                         if r.post_id not in _seen]
+            try:
+                from utils import seed as _sd_mod
+                _sp = _sd_mod.fetch(ticker, sector,
+                                    exclude_ids={r.post_id for r in _led})
+                if _sp:
+                    _dd = _sc([(x.get("text") or "")[:512] for x in _sp])
+                    _bi = {str(x["id"]): d for x, d in zip(_sp, _dd)
+                           if x.get("id") is not None}
+                    _led += build_ledger(_sp, ticker, alias=_al,
+                                         channel="discovery_seed", scores=_bi)
+            except Exception:
+                logger.warning("discovery: seed reuse failed", exc_info=True)
+    except Exception:
+        logger.warning("discovery: ledger build failed; using legacy path",
+                       exc_info=True)
+        _led = []
 
     _price, _proj, _hold, _pts = "Unavailable", "Unavailable", "Unavailable", 0
+    _prices = _vols = None
+    _last = None
+    _proj_r: dict = {}
     try:
         _sd = get_stock_data(ticker)
         if _sd.get("error") is None and _sd.get("prices"):
             _prices = _sd["prices"]
+            _vols = _sd.get("volumes") or None
             _pts = len(_prices)
             _lp = _prices[-1]
             if isinstance(_lp, (int, float)):
                 _price = f"${_lp:.2f}"
+                _last = float(_lp)
+    except Exception:
+        logger.warning("discovery: price fetch failed", exc_info=True)
+
+    if _led:
+        try:
+            _v = _adj(_led, _prices, _vols)
+        except Exception:
+            logger.warning("discovery: adjudication failed", exc_info=True)
+            _v = None
+
+    if _v is not None:
+        _ai = {"recommendation": _v.recommendation, "confidence": _v.confidence,
+               "avg_sentiment": _v.social.direction, "rationale": [_v.reason]}
+    else:
+        _ai = generate_ai_summary(deep_results)
+
+    try:
+        if _prices:
             # Identical treatment to pages/Deep_Analysis.py. This call site was
             # missed once already, and the result was the same ticker on the
             # same day showing one range here and a different one there, with
@@ -1686,8 +1755,12 @@ def _render_deep_panel(ticker, sector, deep_results):
             # removed as misleading -- the median day-to-+5% among WINNING paths
             # only, hit rate hidden -- and applying the sentiment tilt with no
             # quality gate at all.
-            _dq_ok = len({str(_t) for _r in deep_results.values()
-                          for _t in (_r.get("tweet_ids") or [])}) >= 8
+            # Buy only, per the design: a tilted band under an Avoid reads as
+            # a short-side price target the system has no basis for.
+            _dq_ok = ((_v.quality.tier in ("moderate", "high")
+                       and _v.recommendation == "Buy") if _v is not None else
+                      len({str(_t) for _r in deep_results.values()
+                           for _t in (_r.get("tweet_ids") or [])}) >= 8)
             _proj_r = simple_projection(_prices, _ai["avg_sentiment"], days=30,
                                         quality_ok=_dq_ok)
             if _proj_r.get("error") is None:
@@ -1696,7 +1769,7 @@ def _render_deep_panel(ticker, sector, deep_results):
                 _lo, _hi = _proj_r.get("review_window_days", (14, 28))
                 _hold = f"{_lo // 7}–{_hi // 7} weeks"
     except Exception:
-        pass
+        logger.warning("discovery: projection failed", exc_info=True)
 
     try:
         _uids = {tid for _r in deep_results.values() for tid in (_r.get("tweet_ids") or [])}
@@ -1851,6 +1924,35 @@ def _render_deep_panel(ticker, sector, deep_results):
 
     components.html(_panel_html, height=750, scrolling=True)
 
+    # The pillar readout, and the verdict record. This path previously wrote
+    # NEITHER: a scan-row Deep Analyze produced no evidence check and no
+    # verdict_log row, so the table built to measure this product only ever saw
+    # users who typed the ticker on the other page.
+    if _v is not None:
+        try:
+            render_evidence_check(_v, ticker)
+        except Exception:
+            logger.warning("discovery: evidence check render failed", exc_info=True)
+        try:
+            from utils import verdict_log
+            from utils.sentiment import MODEL_NAME as _mn
+            verdict_log.record(
+                ticker, _v.recommendation,
+                sector=sector or None, confidence=_v.confidence,
+                avg_sentiment=_v.social.direction,
+                red_flag_rate=_v.risk.soft_rate,
+                disagreement=1.0 if _v.social.conflict else 0.0,
+                total_mentions=_mentions_ct,
+                price_at_verdict=_last,
+                projected_p10=(_proj_r or {}).get("gain_p10"),
+                projected_p90=(_proj_r or {}).get("gain_p90"),
+                suggested_hold_days=(_proj_r or {}).get("suggested_hold_days"),
+                success_rate=(_proj_r or {}).get("success_rate"),
+                model=f"{_mn}|ledger|discovery",
+            )
+        except Exception:
+            logger.warning("discovery: verdict_log write failed", exc_info=True)
+
 # ── Results table ──
 if st.session_state.df_valid is not None:
     df_valid_display = st.session_state.df_valid.drop(columns=["Mentions", "Sample Tweets", "Evidence"], errors="ignore")
@@ -1997,10 +2099,13 @@ if st.session_state.df_valid is not None:
                             # request id reverts to "-" without this.
                             _set_request_id(_drid)
                             try:
+                                _disc_sink: dict = {}
                                 _disc_holder["result"] = run_deep_analysis(
                                     ticker_symbol,
                                     _disc_sector,
+                                    sink=_disc_sink,
                                 )
+                                _disc_holder["sink"] = _disc_sink
                             except Exception as _e:
                                 _disc_holder["error"] = str(_e)
                                 logger.exception(f"Deep analysis error for {ticker_symbol}")
@@ -2047,6 +2152,11 @@ if st.session_state.df_valid is not None:
                                            "Your credit was not used — try again in a moment.")
                         else:
                             st.session_state.deep_analysis_results = _disc_holder.get("result")
+                            # The panel re-renders from session state on every
+                            # rerun, so the corpora have to survive with it or
+                            # the second render silently drops to the legacy
+                            # adjudicator.
+                            st.session_state.deep_analysis_sink = _disc_holder.get("sink") or {}
                             st.session_state.selected_ticker = ticker_symbol
                             st.session_state["_scroll_to_deep_panel"] = True
                             # Set BEFORE st.rerun(): it raises RerunException, so
