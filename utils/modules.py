@@ -87,6 +87,18 @@ def _eligible(rows: Sequence[EvidenceRow]) -> list[EvidenceRow]:
     return [r for r in rows if r.evidence_eligible]
 
 
+def _deciding(rows: Sequence[EvidenceRow]) -> list[EvidenceRow]:
+    """Eligible rows that may DECIDE, as opposed to corroborate.
+
+    The seed is reused from a basket query and may never alone produce a Buy or
+    an Avoid. Excluding it from quality and direction was not enough: risk() and
+    catalyst() read every channel, so one seeded "lawsuit filed" list post
+    issued an Avoid, and one seeded hard catalyst flipped a Watch to a Buy and
+    exempted the price veto.
+    """
+    return [r for r in _eligible(rows) if r.channel != "discovery_seed"]
+
+
 @dataclass
 class Quality:
     score: float = 0.0
@@ -255,7 +267,7 @@ def risk(rows: Sequence[EvidenceRow]) -> Risk:
     a fifth of the eligible corpus, because hedging vocabulary is ambient on
     finance X and a lower bar simply returns Avoid for every liquid ticker.
     """
-    elig = _eligible(rows)
+    elig = _deciding(rows)
     severe = [r for r in elig if r.risk_severity == "severe"]
     soft = [r for r in elig if r.risk_severity == "soft"]
     sev_cl, soft_cl = _clusters(severe), _clusters(soft)
@@ -289,7 +301,7 @@ def catalyst(rows: Sequence[EvidenceRow]) -> Catalyst:
     single account repeating "possible catalyst" across a thread is one opinion,
     not corroboration.
     """
-    elig = _eligible(rows)
+    elig = _deciding(rows)
     hard = [r for r in elig if r.catalyst_severity == "hard"]
     soft = [r for r in elig if r.catalyst_severity == "soft"]
     hard_cl, soft_cl = _clusters(hard), _clusters(soft)

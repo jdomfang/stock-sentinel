@@ -374,7 +374,10 @@ if _run_clicked or (_autorun and _prefill):
                     # The real quality gate now, rather than an evidence-count
                     # proxy: a tilt applied to a corpus not shown to be about
                     # this company is the same error in a different place.
-                    _q_ok = (_verdict.quality.tier in ("moderate", "high")
+                    # Buy only. A tilted band under an Avoid reads as a
+                    # short-side price target the system has no basis for.
+                    _q_ok = ((_verdict.quality.tier in ("moderate", "high")
+                              and _verdict.recommendation == "Buy")
                              if _verdict is not None else
                              len({str(_tid) for _r in analysis_results.values()
                                   for _tid in (_r.get("tweet_ids") or [])}) >= 8)
@@ -402,7 +405,12 @@ if _run_clicked or (_autorun and _prefill):
             except Exception:
                 pass
 
-            _total_mentions = sum(r.get("mention_count", 0) for r in analysis_results.values())
+            # UNIQUE ids. Summing mention_count across the eight angles counts
+            # a post once per angle it lands in -- angle 1 is the whole corpus
+            # and most others are subsets -- printing 141 for a 98-post corpus
+            # in which 90 were analysed, and logging that inflated figure.
+            _total_mentions = len({str(_t) for _r in analysis_results.values()
+                                   for _t in (_r.get("tweet_ids") or [])})
 
             # Anchor + auto-scroll so panel comes into view immediately
             import streamlit as _st
@@ -494,7 +502,10 @@ if _run_clicked or (_autorun and _prefill):
                     suggested_hold_days=_proj.get("suggested_hold_days"),
                     success_rate=_proj.get("success_rate"),
                     event_id=getattr(_credit, "event_id", None),
-                    model=MODEL_NAME,
+                    # Which adjudicator produced this row. Without it the same
+                    # columns hold different quantities on different runs and
+                    # nothing downstream can separate them.
+                    model=f"{MODEL_NAME}|{'ledger' if _verdict else 'legacy'}",
                 )
             except Exception:
                 _da_logger.warning("verdict_log call failed", exc_info=True)

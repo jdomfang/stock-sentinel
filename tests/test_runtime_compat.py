@@ -50,9 +50,12 @@ def main() -> int:
     print(f"  runtime compatibility: deploy target is python {major}.{minor}")
     print("=" * 74)
 
-    files = sorted(list((REPO / "utils").glob("*.py"))
-                   + list((REPO / "pages").glob("*.py"))
-                   + [REPO / "app.py"])
+    # Every directory that ships, not just the two that were changed last.
+    files = sorted(
+        [f for d in ("utils", "pages", "scripts", "worker", "sync",
+                     "inference", "payments_api", "tests")
+         for f in (REPO / d).glob("*.py")]
+        + [REPO / "app.py"])
     for f in files:
         src = f.read_text(encoding="utf-8")
         rel = f.relative_to(REPO)
@@ -74,6 +77,21 @@ def main() -> int:
             if "\\" in seg:
                 check(f"{rel}:{node.lineno} f-string has no backslash in the expression",
                       False, f"python {major}.{minor} cannot parse: {seg[:60]}")
+
+        # Other post-3.11 syntax that would ship silently.
+        for node in ast.walk(tree):
+            if (major, minor) < (3, 12) and isinstance(
+                    node, (getattr(ast, "TypeAlias", ()),)):
+                check(f"{rel}:{node.lineno} no PEP 695 type alias", False,
+                      f"requires python 3.12")
+            if (major, minor) < (3, 11) and isinstance(node, ast.TryStar):
+                check(f"{rel}:{node.lineno} no except* group", False,
+                      "requires python 3.11")
+            if (major, minor) < (3, 12) and isinstance(
+                    node, (ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef)):
+                if getattr(node, "type_params", None):
+                    check(f"{rel}:{node.lineno} no PEP 695 generic parameters",
+                          False, "requires python 3.12")
 
     print(f"\n  {len(PASSED)} passed, {len(FAILED)} failed")
     for n, d in FAILED:

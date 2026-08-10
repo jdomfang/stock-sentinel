@@ -104,7 +104,7 @@ def _confidence(q: M.Quality, s: M.Social, rows: Sequence[EvidenceRow],
     level = earned
 
     sizes: dict[tuple, int] = {}
-    soc = [r for r in rows if r.channel != "newswire"]
+    soc = [r for r in rows if r.channel not in ("newswire", "discovery_seed")]
     for r in soc:
         key = (r.channel, r.cluster_id)
         sizes[key] = sizes.get(key, 0) + 1
@@ -187,17 +187,22 @@ def adjudicate(rows: Sequence[EvidenceRow],
         # No `usable` conjunct: a pass must never be printed beside a value that
         # is the thing the requirement forbids.
         Pillar("No disqualifying risk", not r.high, r.detail,
-               "no confirmed severe item", blocks_buy=True),
+               "no severe item, and fewer than 3 independent warning voices",
+               blocks_buy=True),
         # hard_clusters, not `present` -- `present` includes soft catalysts, so
         # this pillar passed on "0 confirmed, 4 unconfirmed" beside a printed
         # requirement of ">= 1 confirmed event".
         Pillar("Confirmed catalyst", c.hard_clusters >= 1, c.detail,
                ">= 1 confirmed event"),
-        # Covers BOTH downward routes. Social direction had no pillar at all,
+        # SENTIMENT and confirmed events only -- risk has its own pillar. The
+        # earlier name, "Nothing points down", promised to cover every downward
+        # signal while testing two of them, so it rendered green beside an Avoid
+        # the risk pillar had caused.
+        # Covers both SENTIMENT routes. Social direction had no pillar at all,
         # so the Avoid it triggers rendered six passes and an empty remediation
         # list; the confirmed-bearish-event Avoid had the same hole, and the
         # "no remediation path" backstop below is what surfaced it.
-        Pillar("Nothing points down",
+        Pillar("Sentiment not against it",
                s.lean != "negative" and not (c.hard_clusters >= 1 and c.hard_direction < 0),
                s.detail + (f" · confirmed event {c.hard_direction:+.2f}"
                            if c.hard_clusters >= 1 else ""),
@@ -223,10 +228,26 @@ def adjudicate(rows: Sequence[EvidenceRow],
             "The usable evidence came mostly from a recent sector scan rather "
             "than this ticker's own retrieval. That can corroborate a call; it "
             "cannot make one on its own.")
+    elif not can_call:
+        # BEFORE any Avoid. A corpus that cannot support a Buy cannot support a
+        # sell signal either -- the wrong-entity corpus was issuing Avoid on a
+        # parliamentary committee referral while its own quality pillar read
+        # FAIL. Also before the missing-price branch, which otherwise blamed
+        # price for a call that quality was blocking.
+        v.recommendation, v.reason = "Watch", (
+            f"Evidence quality {q.score:.2f} is below the {M.QUALITY_MODERATE:.2f} "
+            "needed to support a call in either direction.")
     elif r.high:
-        v.recommendation, v.reason = "Avoid", (
+        # The rule is severe>=1 OR (soft>=3 AND rate>=20%), so "confirmed" was
+        # a lie on the soft route: "Confirmed downside evidence (0 severe, 3
+        # soft)" appeared beside a green "Sentiment not against it".
+        v.recommendation = "Avoid"
+        v.reason = (
             f"Confirmed downside evidence ({r.detail})"
-            + (" filed by a newswire source." if r.from_newswire else "."))
+            + (" filed by a newswire source." if r.from_newswire else ".")
+            if r.severe_clusters >= 1 else
+            f"Repeated warning language across {r.soft_clusters} independent "
+            f"voices ({r.detail}). Not a confirmed event.")
     elif can_call and s.lean == "negative":
         v.recommendation, v.reason = "Avoid", (
             f"Sentiment is negative ({s.direction:+.2f}) on evidence of adequate quality.")
@@ -244,50 +265,59 @@ def adjudicate(rows: Sequence[EvidenceRow],
         # FAILS CLOSED. Without price context no directional call is made.
         v.recommendation, v.reason = "Watch", (
             "No price context available, so no directional call is made.")
-    elif not can_call:
-        v.recommendation, v.reason = "Watch", (
-            f"Evidence quality {q.score:.2f} is below the {M.QUALITY_MODERATE:.2f} "
-            "needed to support a call.")
     elif q.eligible_clusters >= MIN_CLUSTERS_MODERATE and not price_blocks and (
             bullish_event or s.lean == "positive"):
         # TWO ROUTES, and the catalyst route now requires the event to READ
         # positive. A Buy also needs enough voices to be worth Moderate --
         # Buy/Low is not one of the four products the design describes.
         route = "a confirmed catalyst" if bullish_event else "positive sentiment"
-        v.recommendation, v.reason = "Buy", (
+        v.recommendation = "Buy"
+        v.reason = (
             f"Evidence favours upside via {route}, with no disqualifying risk "
-            "and price not contradicting.")
+            + ("and price not contradicting." if not price_adverse else
+               f"— and a confirmed event overriding a {p.detail}."))
     else:
         v.recommendation, v.reason = "Watch", (
             "Real evidence, but it does not line up into a call.")
 
     v.confidence, v.earned_confidence, v.confidence_notes = _confidence(q, s, rows)
 
+    # A Buy the confidence rules then mark Low is not one of the four products
+    # the design describes -- it rendered "Strong upside signal" beside "Thin
+    # data, use caution". The confidence rules are the stricter judge.
+    if v.recommendation == "Buy" and v.confidence == "Low":
+        v.recommendation = "Watch"
+        v.reason = ("Upside evidence, but confidence rules downgraded it: "
+                    + "; ".join(v.confidence_notes or ["thin evidence"]) + ".")
+
     # ---- What would change this. Assembled from the pillars that failed, for
     # every non-Buy verdict -- it used to run only for Watch, so an Avoid
     # rendered nothing at all.
-    if v.recommendation != "Buy":
-        remedy = {
-            "Evidence quality": ("evidence from this ticker's own retrieval, "
-                                 "not only the sector scan" if seed_only else
-                                 "more company-specific discussion"),
-            "Independent sources": "more independent voices, not more posts",
-            "No disqualifying risk": "the risk item resolving or ageing out",
-            "Nothing points down": "sentiment turning, or the negative event ageing out",
-            "Crowds agree": "press coverage turning, or trader sentiment cooling",
-            "Price not contradicting": ("any price history at all"
-                                        if p.status == "missing" else
-                                        "price stabilising, or volume normalising"),
-        }
-        for pill in v.pillars:
-            if not pill.passed and pill.blocks_buy:
-                v.would_change.append(remedy.get(pill.name, pill.name))
-        if c.hard_clusters < 1 and s.lean != "positive":
-            # BOTH routes named, not one.
-            v.would_change.append("a confirmed catalyst, or traders leaning positive")
-        if not v.would_change:
-            v.would_change.append("nothing identified — this should not happen")
-            logger.warning("verdict %s had no remediation path", v.recommendation)
+    # Built for EVERY verdict. On a Watch or an Avoid these are the remedies;
+    # on a Buy the failing blockers ARE the invalidation condition the design
+    # requires -- omitting them left a red pillar sitting under a green Buy
+    # with nothing on the card explaining why it still stood.
+    remedy = {
+        "Evidence quality": ("evidence from this ticker's own retrieval, "
+                             "not only the sector scan" if seed_only else
+                             "more company-specific discussion"),
+        "Independent sources": "more independent voices, not more posts",
+        "No disqualifying risk": "the risk item resolving or ageing out",
+        "Sentiment not against it": "sentiment turning, or the negative event ageing out",
+        "Confirmed catalyst": "a confirmed event",
+        "Crowds agree": "press coverage turning, or trader sentiment cooling",
+        "Price not contradicting": ("any price history at all"
+                                    if p.status == "missing" else
+                                    "price stabilising, or volume normalising"),
+    }
+    for pill in v.pillars:
+        if not pill.passed and pill.blocks_buy:
+            v.would_change.append(remedy.get(pill.name, pill.name))
+    if v.recommendation != "Buy" and c.hard_clusters < 1 and s.lean != "positive":
+        v.would_change.append("a confirmed catalyst, or traders leaning positive")
+    if v.recommendation != "Buy" and not v.would_change:
+        v.would_change.append("nothing identified — this should not happen")
+        logger.warning("verdict %s had no remediation path", v.recommendation)
 
     logger.info("verdict %s/%s (earned %s) q=%.2f clusters=%d lean=%s risk=%s "
                 "cat=%d@%+.2f price=%s wire=%d",
