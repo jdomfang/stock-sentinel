@@ -267,6 +267,7 @@ def risk(rows: Sequence[EvidenceRow]) -> Risk:
 @dataclass
 class Catalyst:
     present: bool = False
+    hard_direction: float = 0.0   # mean margin of the CONFIRMED rows
     hard_clusters: int = 0
     soft_clusters: int = 0
     soft_authors: int = 0
@@ -295,10 +296,15 @@ def catalyst(rows: Sequence[EvidenceRow]) -> Catalyst:
                        "falling back to cluster count", len(soft))
         authors = soft_cl
     present = hard_cl >= 1 or (soft_cl >= 3 and authors >= 2)
+    # A confirmed event is not a bullish event. "Guidance cut", "downgrade" and
+    # "shares plunge" are all hard catalysts, and a Buy route that reads the
+    # mere presence of one as upside recommended buying a guidance cut.
+    scored_hard = [r.margin for r in hard if r.scored]
+    hard_dir = (sum(scored_hard) / len(scored_hard)) if scored_hard else 0.0
     items = [r.text[:110] for r in hard[:3]] or [r.text[:110] for r in soft[:3]]
-    return Catalyst(present, hard_cl, soft_cl, authors,
+    return Catalyst(present, round(hard_dir, 3), hard_cl, soft_cl, authors,
                     any(r.channel == "newswire" for r in hard), items,
-                    f"{hard_cl} confirmed, {soft_cl} unconfirmed"
+                    f"{hard_cl} confirmed ({hard_dir:+.2f}), {soft_cl} unconfirmed"
                     if elig else "no eligible evidence")
 
 
