@@ -324,6 +324,27 @@ if _run_clicked or (_autorun and _prefill):
                         # windows, so one post can land in both corpora and be
                         # counted as two independent voices.
                         _ledger += [r for r in _new if r.post_id not in _seen]
+                    # A recent sector scan may hold posts about this ticker
+                    # that its own query will never reach -- two arms on the
+                    # same ticker in the same window shared zero posts out of
+                    # 198. Free: those posts are already paid for.
+                    try:
+                        from utils import seed as _seed
+                        _seen_ids = {r.post_id for r in _ledger}
+                        _seed_posts = _seed.fetch(_run_ticker, sector,
+                                                  exclude_ids=_seen_ids)
+                        if _seed_posts:
+                            _st = [(x.get("text") or "")[:512] for x in _seed_posts]
+                            _sd2 = _score(_st)
+                            _sid = {str(x["id"]): d for x, d in zip(_seed_posts, _sd2)
+                                    if x.get("id") is not None}
+                            _ledger += build_ledger(_seed_posts, _run_ticker,
+                                                    alias=_alias_used,
+                                                    channel="discovery_seed",
+                                                    scores=_sid)
+                    except Exception:
+                        _da_logger.warning("seed reuse failed", exc_info=True)
+
                     if _ledger:
                         _verdict = adjudicate(_ledger, prices_for_verdict,
                                               volumes_for_verdict)

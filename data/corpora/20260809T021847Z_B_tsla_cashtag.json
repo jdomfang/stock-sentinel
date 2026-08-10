@@ -1,0 +1,1712 @@
+{
+  "arm": "B_tsla_cashtag",
+  "ticker": "TSLA",
+  "query": "$TSLA lang:en -is:retweet",
+  "timeframe": "48h",
+  "success": true,
+  "error": null,
+  "fetched_at": "2026-08-09T02:18:48.379018+00:00",
+  "count": 100,
+  "tweets": [
+    {
+      "author_id": "1255589175618830336",
+      "created_at": "2026-08-09T02:18:37.000Z",
+      "edit_history_tweet_ids": [
+        "2086275931677552961"
+      ],
+      "id": "2086275931677552961",
+      "public_metrics": {
+        "bookmark_count": 0,
+        "impression_count": 0,
+        "like_count": 0,
+        "quote_count": 0,
+        "reply_count": 0,
+        "retweet_count": 0
+      },
+      "text": "\ud83d\udce7\ud83d\udddd\ud83c\udf2e\ud83e\udd87\nThis weekend for my SUBSCRIBERS I will do a presentation on the markets along with a NEW forecast and target \ud83c\udfaf \n\nI will also do charts on \n\n$TSLA$META$MSFT"
+    },
+    {
+      "author_id": "1572121294522683394",
+      "created_at": "2026-08-09T02:18:37.000Z",
+      "edit_history_tweet_ids": [
+        "2086275928074633611"
+      ],
+      "id": "2086275928074633611",
+      "public_metrics": {
+        "bookmark_count": 0,
+        "impression_count": 0,
+        "like_count": 0,
+        "quote_count": 0,
+        "reply_count": 0,
+        "retweet_count": 0
+      },
+      "text": "\ud83d\udcca\ud83c\udf51\ud83d\udea5\ud83c\udf3d\ud83d\udc46\nThis weekend for my SUBSCRIBERS I will do a presentation on the markets along with a NEW forecast and target \ud83c\udfaf \n\nI will also do charts on \n\n$TSLA$META$MSFT"
+    },
+    {
+      "author_id": "986647702741114881",
+      "created_at": "2026-08-09T02:18:31.000Z",
+      "edit_history_tweet_ids": [
+        "2086275906751152216"
+      ],
+      "id": "2086275906751152216",
+      "public_metrics": {
+        "bookmark_count": 0,
+        "impression_count": 0,
+        "like_count": 0,
+        "quote_count": 0,
+        "reply_count": 0,
+        "retweet_count": 0
+      },
+      "text": "\ud83c\udf06\ud83d\udcc6\ud83c\udf9f\nThis weekend for my SUBSCRIBERS I will do a presentation on the markets along with a NEW forecast and target \ud83c\udfaf \n\nI will also do charts on \n\n$TSLA$META$MSFT"
+    },
+    {
+      "author_id": "1373626668183654402",
+      "created_at": "2026-08-09T02:18:31.000Z",
+      "edit_history_tweet_ids": [
+        "2086275905463406927"
+      ],
+      "id": "2086275905463406927",
+      "public_metrics": {
+        "bookmark_count": 0,
+        "impression_count": 0,
+        "like_count": 0,
+        "quote_count": 0,
+        "reply_count": 0,
+        "retweet_count": 0
+      },
+      "text": "\ud83d\ude3c\u2603\ud83d\ude10\ud83e\udd1d\nThis weekend for my SUBSCRIBERS I will do a presentation on the markets along with a NEW forecast and target \ud83c\udfaf \n\nI will also do charts on \n\n$TSLA$META$MSFT"
+    },
+    {
+      "author_id": "1256061545013899269",
+      "created_at": "2026-08-09T02:18:30.000Z",
+      "edit_history_tweet_ids": [
+        "2086275902321672320"
+      ],
+      "id": "2086275902321672320",
+      "public_metrics": {
+        "bookmark_count": 0,
+        "impression_count": 0,
+        "like_count": 0,
+        "quote_count": 0,
+        "reply_count": 0,
+        "retweet_count": 0
+      },
+      "text": "\ud83e\udd24\nThis weekend for my SUBSCRIBERS I will do a presentation on the markets along with a NEW forecast and target \ud83c\udfaf \n\nI will also do charts on \n\n$TSLA$META$MSFT"
+    },
+    {
+      "author_id": "816664672371965952",
+      "created_at": "2026-08-09T02:18:29.000Z",
+      "edit_history_tweet_ids": [
+        "2086275894826471533"
+      ],
+      "id": "2086275894826471533",
+      "public_metrics": {
+        "bookmark_count": 0,
+        "impression_count": 0,
+        "like_count": 0,
+        "quote_count": 0,
+        "reply_count": 0,
+        "retweet_count": 0
+      },
+      "text": "\u260e\ud83e\uddc3\ud83d\udc81\ud83c\udfdb\nThis weekend for my SUBSCRIBERS I will do a presentation on the markets along with a NEW forecast and target \ud83c\udfaf \n\nI will also do charts on \n\n$TSLA$META$MSFT"
+    },
+    {
+      "author_id": "1880849161542893568",
+      "created_at": "2026-08-09T02:18:26.000Z",
+      "edit_history_tweet_ids": [
+        "2086275883908608165"
+      ],
+      "id": "2086275883908608165",
+      "public_metrics": {
+        "bookmark_count": 0,
+        "impression_count": 0,
+        "like_count": 0,
+        "quote_count": 0,
+        "reply_count": 0,
+        "retweet_count": 0
+      },
+      "text": "\ud83e\udd7d\ud83d\udddc\ud83c\udf01\nThis weekend for my SUBSCRIBERS I will do a presentation on the markets along with a NEW forecast and target \ud83c\udfaf \n\nI will also do charts on \n\n$TSLA$META$MSFT"
+    },
+    {
+      "author_id": "1345782209756581888",
+      "created_at": "2026-08-09T02:18:24.000Z",
+      "edit_history_tweet_ids": [
+        "2086275874794373171"
+      ],
+      "id": "2086275874794373171",
+      "public_metrics": {
+        "bookmark_count": 0,
+        "impression_count": 0,
+        "like_count": 0,
+        "quote_count": 0,
+        "reply_count": 0,
+        "retweet_count": 0
+      },
+      "text": "\ud83e\udda2\nThis weekend for my SUBSCRIBERS I will do a presentation on the markets along with a NEW forecast and target \ud83c\udfaf \n\nI will also do charts on \n\n$TSLA$META$MSFT"
+    },
+    {
+      "author_id": "940109404023676928",
+      "created_at": "2026-08-09T02:18:21.000Z",
+      "edit_history_tweet_ids": [
+        "2086275863922827559"
+      ],
+      "id": "2086275863922827559",
+      "public_metrics": {
+        "bookmark_count": 0,
+        "impression_count": 0,
+        "like_count": 0,
+        "quote_count": 0,
+        "reply_count": 0,
+        "retweet_count": 0
+      },
+      "text": "\ud83d\ude36\ud83d\udc22\ud83d\ude9d\ud83e\udd6a\ud83d\udc9b\nThis weekend for my SUBSCRIBERS I will do a presentation on the markets along with a NEW forecast and target \ud83c\udfaf \n\nI will also do charts on \n\n$TSLA$META$MSFT"
+    },
+    {
+      "author_id": "1541194594087342080",
+      "created_at": "2026-08-09T02:18:21.000Z",
+      "edit_history_tweet_ids": [
+        "2086275860898718120"
+      ],
+      "id": "2086275860898718120",
+      "public_metrics": {
+        "bookmark_count": 0,
+        "impression_count": 0,
+        "like_count": 0,
+        "quote_count": 0,
+        "reply_count": 0,
+        "retweet_count": 0
+      },
+      "text": "\ud83e\udd39\ud83e\udda2\ud83d\udcef\ud83d\udd4d\u2696\ufe0f\nThis weekend for my SUBSCRIBERS I will do a presentation on the markets along with a NEW forecast and target \ud83c\udfaf \n\nI will also do charts on \n\n$TSLA$META$MSFT"
+    },
+    {
+      "author_id": "1413173766188789760",
+      "created_at": "2026-08-09T02:18:19.000Z",
+      "edit_history_tweet_ids": [
+        "2086275854108119215"
+      ],
+      "id": "2086275854108119215",
+      "public_metrics": {
+        "bookmark_count": 0,
+        "impression_count": 0,
+        "like_count": 0,
+        "quote_count": 0,
+        "reply_count": 0,
+        "retweet_count": 0
+      },
+      "text": "\ud83d\ude07\ud83d\ude30\nThis weekend for my SUBSCRIBERS I will do a presentation on the markets along with a NEW forecast and target \ud83c\udfaf \n\nI will also do charts on \n\n$TSLA$META$MSFT"
+    },
+    {
+      "author_id": "754283228471496704",
+      "created_at": "2026-08-09T02:18:18.000Z",
+      "edit_history_tweet_ids": [
+        "2086275849288851460"
+      ],
+      "id": "2086275849288851460",
+      "public_metrics": {
+        "bookmark_count": 0,
+        "impression_count": 0,
+        "like_count": 0,
+        "quote_count": 0,
+        "reply_count": 0,
+        "retweet_count": 0
+      },
+      "text": "\ud83c\udf9b\ud83d\udcfa\ud83d\udcda\nThis weekend for my SUBSCRIBERS I will do a presentation on the markets along with a NEW forecast and target \ud83c\udfaf \n\nI will also do charts on \n\n$TSLA$META$MSFT"
+    },
+    {
+      "author_id": "1365882375968874496",
+      "created_at": "2026-08-09T02:18:16.000Z",
+      "edit_history_tweet_ids": [
+        "2086275840086594023"
+      ],
+      "id": "2086275840086594023",
+      "public_metrics": {
+        "bookmark_count": 0,
+        "impression_count": 0,
+        "like_count": 0,
+        "quote_count": 0,
+        "reply_count": 0,
+        "retweet_count": 0
+      },
+      "text": "\ud83d\udca9\nThis weekend for my SUBSCRIBERS I will do a presentation on the markets along with a NEW forecast and target \ud83c\udfaf \n\nI will also do charts on \n\n$TSLA$META$MSFT"
+    },
+    {
+      "author_id": "1282447840816570369",
+      "created_at": "2026-08-09T02:18:15.000Z",
+      "edit_history_tweet_ids": [
+        "2086275839809757195"
+      ],
+      "id": "2086275839809757195",
+      "public_metrics": {
+        "bookmark_count": 0,
+        "impression_count": 0,
+        "like_count": 0,
+        "quote_count": 0,
+        "reply_count": 0,
+        "retweet_count": 0
+      },
+      "text": "\ud83d\udcb8\ud83e\udd63\ud83d\udd76\u26f3\nThis weekend for my SUBSCRIBERS I will do a presentation on the markets along with a NEW forecast and target \ud83c\udfaf \n\nI will also do charts on \n\n$TSLA$META$MSFT"
+    },
+    {
+      "author_id": "1279253116345409544",
+      "created_at": "2026-08-09T02:18:15.000Z",
+      "edit_history_tweet_ids": [
+        "2086275838631133494"
+      ],
+      "id": "2086275838631133494",
+      "public_metrics": {
+        "bookmark_count": 0,
+        "impression_count": 0,
+        "like_count": 0,
+        "quote_count": 0,
+        "reply_count": 0,
+        "retweet_count": 0
+      },
+      "text": "\ud83d\uddd3\nThis weekend for my SUBSCRIBERS I will do a presentation on the markets along with a NEW forecast and target \ud83c\udfaf \n\nI will also do charts on \n\n$TSLA$META$MSFT"
+    },
+    {
+      "author_id": "1391908570057175041",
+      "created_at": "2026-08-09T02:18:15.000Z",
+      "edit_history_tweet_ids": [
+        "2086275835837686092"
+      ],
+      "id": "2086275835837686092",
+      "public_metrics": {
+        "bookmark_count": 0,
+        "impression_count": 0,
+        "like_count": 0,
+        "quote_count": 0,
+        "reply_count": 0,
+        "retweet_count": 0
+      },
+      "text": "\u26f9\ufe0f\ud83c\udf0f\nThis weekend for my SUBSCRIBERS I will do a presentation on the markets along with a NEW forecast and target \ud83c\udfaf \n\nI will also do charts on \n\n$TSLA$META$MSFT"
+    },
+    {
+      "author_id": "1222363306830155776",
+      "created_at": "2026-08-09T02:18:14.000Z",
+      "edit_history_tweet_ids": [
+        "2086275834336141354"
+      ],
+      "id": "2086275834336141354",
+      "public_metrics": {
+        "bookmark_count": 0,
+        "impression_count": 0,
+        "like_count": 0,
+        "quote_count": 0,
+        "reply_count": 0,
+        "retweet_count": 0
+      },
+      "text": "\ud83d\udd2c\nThis weekend for my SUBSCRIBERS I will do a presentation on the markets along with a NEW forecast and target \ud83c\udfaf \n\nI will also do charts on \n\n$TSLA$META$MSFT"
+    },
+    {
+      "author_id": "1589319918545149952",
+      "created_at": "2026-08-09T02:18:09.000Z",
+      "edit_history_tweet_ids": [
+        "2086275813519819107"
+      ],
+      "id": "2086275813519819107",
+      "public_metrics": {
+        "bookmark_count": 0,
+        "impression_count": 1,
+        "like_count": 0,
+        "quote_count": 0,
+        "reply_count": 0,
+        "retweet_count": 0
+      },
+      "text": "\ud83d\udc69\nThis weekend for my SUBSCRIBERS I will do a presentation on the markets along with a NEW forecast and target \ud83c\udfaf \n\nI will also do charts on \n\n$TSLA$META$MSFT"
+    },
+    {
+      "author_id": "1330815291014541312",
+      "created_at": "2026-08-09T02:18:08.000Z",
+      "edit_history_tweet_ids": [
+        "2086275808705024432"
+      ],
+      "id": "2086275808705024432",
+      "public_metrics": {
+        "bookmark_count": 0,
+        "impression_count": 0,
+        "like_count": 0,
+        "quote_count": 0,
+        "reply_count": 0,
+        "retweet_count": 0
+      },
+      "text": "\ud83d\ude9b\ud83c\udf26\ud83e\udd58\ud83e\udd49\ud83e\uddf4\nThis weekend for my SUBSCRIBERS I will do a presentation on the markets along with a NEW forecast and target \ud83c\udfaf \n\nI will also do charts on \n\n$TSLA$META$MSFT"
+    },
+    {
+      "author_id": "1432013260161646602",
+      "created_at": "2026-08-09T02:18:08.000Z",
+      "edit_history_tweet_ids": [
+        "2086275807261892715"
+      ],
+      "id": "2086275807261892715",
+      "public_metrics": {
+        "bookmark_count": 0,
+        "impression_count": 0,
+        "like_count": 0,
+        "quote_count": 0,
+        "reply_count": 0,
+        "retweet_count": 0
+      },
+      "text": "\ud83d\ude3d\ud83c\udf62\ud83d\udec1\nThis weekend for my SUBSCRIBERS I will do a presentation on the markets along with a NEW forecast and target \ud83c\udfaf \n\nI will also do charts on \n\n$TSLA$META$MSFT"
+    },
+    {
+      "author_id": "1573137357234053121",
+      "created_at": "2026-08-09T02:18:06.000Z",
+      "edit_history_tweet_ids": [
+        "2086275799993192498"
+      ],
+      "id": "2086275799993192498",
+      "public_metrics": {
+        "bookmark_count": 0,
+        "impression_count": 0,
+        "like_count": 0,
+        "quote_count": 0,
+        "reply_count": 0,
+        "retweet_count": 0
+      },
+      "text": "\ud83d\udc30\ud83d\udc9d\ud83e\uddee\ud83e\uddc3\ud83c\udf93\nThis weekend for my SUBSCRIBERS I will do a presentation on the markets along with a NEW forecast and target \ud83c\udfaf \n\nI will also do charts on \n\n$TSLA$META$MSFT"
+    },
+    {
+      "author_id": "1072147019915964416",
+      "created_at": "2026-08-09T02:18:04.000Z",
+      "edit_history_tweet_ids": [
+        "2086275791567081474"
+      ],
+      "id": "2086275791567081474",
+      "public_metrics": {
+        "bookmark_count": 0,
+        "impression_count": 0,
+        "like_count": 0,
+        "quote_count": 0,
+        "reply_count": 0,
+        "retweet_count": 0
+      },
+      "text": "\u26fd\u26be\ud83e\udd24\ud83c\udf2e\ud83c\udfc9\nThis weekend for my SUBSCRIBERS I will do a presentation on the markets along with a NEW forecast and target \ud83c\udfaf \n\nI will also do charts on \n\n$TSLA$META$MSFT"
+    },
+    {
+      "author_id": "818341574555947010",
+      "created_at": "2026-08-09T02:18:04.000Z",
+      "edit_history_tweet_ids": [
+        "2086275791369720317"
+      ],
+      "id": "2086275791369720317",
+      "public_metrics": {
+        "bookmark_count": 0,
+        "impression_count": 0,
+        "like_count": 0,
+        "quote_count": 0,
+        "reply_count": 0,
+        "retweet_count": 0
+      },
+      "text": "\u2744\ud83e\udd3c\ud83e\udd76\ud83d\udc52\ud83d\udd79\nThis weekend for my SUBSCRIBERS I will do a presentation on the markets along with a NEW forecast and target \ud83c\udfaf \n\nI will also do charts on \n\n$TSLA$META$MSFT"
+    },
+    {
+      "author_id": "3612728360",
+      "created_at": "2026-08-09T02:18:03.000Z",
+      "edit_history_tweet_ids": [
+        "2086275789008609492"
+      ],
+      "id": "2086275789008609492",
+      "public_metrics": {
+        "bookmark_count": 0,
+        "impression_count": 1,
+        "like_count": 0,
+        "quote_count": 0,
+        "reply_count": 0,
+        "retweet_count": 0
+      },
+      "text": "\ud83c\udf51\ud83c\udfad\ud83d\udc11\ud83c\udf49\nThis weekend for my SUBSCRIBERS I will do a presentation on the markets along with a NEW forecast and target \ud83c\udfaf \n\nI will also do charts on \n\n$TSLA$META$MSFT"
+    },
+    {
+      "author_id": "1401858859631665158",
+      "created_at": "2026-08-09T02:18:03.000Z",
+      "edit_history_tweet_ids": [
+        "2086275787809017976"
+      ],
+      "id": "2086275787809017976",
+      "public_metrics": {
+        "bookmark_count": 0,
+        "impression_count": 0,
+        "like_count": 0,
+        "quote_count": 0,
+        "reply_count": 0,
+        "retweet_count": 0
+      },
+      "text": "\ud83d\udc76\nThis weekend for my SUBSCRIBERS I will do a presentation on the markets along with a NEW forecast and target \ud83c\udfaf \n\nI will also do charts on \n\n$TSLA$META$MSFT"
+    },
+    {
+      "author_id": "4789496892",
+      "created_at": "2026-08-09T02:18:03.000Z",
+      "edit_history_tweet_ids": [
+        "2086275786382737516"
+      ],
+      "id": "2086275786382737516",
+      "public_metrics": {
+        "bookmark_count": 0,
+        "impression_count": 0,
+        "like_count": 0,
+        "quote_count": 0,
+        "reply_count": 0,
+        "retweet_count": 0
+      },
+      "text": "\ud83d\udcbb\ud83d\udcf0\ud83d\udc0f\ud83d\udc53\nThis weekend for my SUBSCRIBERS I will do a presentation on the markets along with a NEW forecast and target \ud83c\udfaf \n\nI will also do charts on \n\n$TSLA$META$MSFT"
+    },
+    {
+      "author_id": "1230345018604425216",
+      "created_at": "2026-08-09T02:18:02.000Z",
+      "edit_history_tweet_ids": [
+        "2086275782448697514"
+      ],
+      "id": "2086275782448697514",
+      "public_metrics": {
+        "bookmark_count": 0,
+        "impression_count": 0,
+        "like_count": 0,
+        "quote_count": 0,
+        "reply_count": 0,
+        "retweet_count": 0
+      },
+      "text": "\ud83c\udfa5\ud83d\udea7\ud83c\udf27\nThis weekend for my SUBSCRIBERS I will do a presentation on the markets along with a NEW forecast and target \ud83c\udfaf \n\nI will also do charts on \n\n$TSLA$META$MSFT"
+    },
+    {
+      "author_id": "1271126982433148929",
+      "created_at": "2026-08-09T02:18:01.000Z",
+      "edit_history_tweet_ids": [
+        "2086275779978015160"
+      ],
+      "id": "2086275779978015160",
+      "public_metrics": {
+        "bookmark_count": 0,
+        "impression_count": 1,
+        "like_count": 0,
+        "quote_count": 0,
+        "reply_count": 0,
+        "retweet_count": 0
+      },
+      "text": "\ud83d\udc1f\ud83d\udc32\ud83e\udd8b\nThis weekend for my SUBSCRIBERS I will do a presentation on the markets along with a NEW forecast and target \ud83c\udfaf \n\nI will also do charts on \n\n$TSLA$META$MSFT"
+    },
+    {
+      "author_id": "1046141021405552641",
+      "created_at": "2026-08-09T02:17:57.000Z",
+      "edit_history_tweet_ids": [
+        "2086275761913139512"
+      ],
+      "id": "2086275761913139512",
+      "public_metrics": {
+        "bookmark_count": 0,
+        "impression_count": 0,
+        "like_count": 0,
+        "quote_count": 0,
+        "reply_count": 0,
+        "retweet_count": 0
+      },
+      "text": "\ud83e\udd55\ud83e\udd6c\ud83e\udd80\ud83e\udd7b\ud83d\udc6c\nThis weekend for my SUBSCRIBERS I will do a presentation on the markets along with a NEW forecast and target \ud83c\udfaf \n\nI will also do charts on \n\n$TSLA$META$MSFT"
+    },
+    {
+      "author_id": "849127088",
+      "created_at": "2026-08-09T02:17:56.000Z",
+      "edit_history_tweet_ids": [
+        "2086275759870468538"
+      ],
+      "id": "2086275759870468538",
+      "public_metrics": {
+        "bookmark_count": 0,
+        "impression_count": 1,
+        "like_count": 0,
+        "quote_count": 0,
+        "reply_count": 0,
+        "retweet_count": 0
+      },
+      "text": "\u23f2\ud83d\uddc3\ud83e\uddbc\nThis weekend for my SUBSCRIBERS I will do a presentation on the markets along with a NEW forecast and target \ud83c\udfaf \n\nI will also do charts on \n\n$TSLA$META$MSFT"
+    },
+    {
+      "author_id": "2060164579997700096",
+      "created_at": "2026-08-09T02:17:56.000Z",
+      "edit_history_tweet_ids": [
+        "2086275759669404145"
+      ],
+      "id": "2086275759669404145",
+      "public_metrics": {
+        "bookmark_count": 0,
+        "impression_count": 0,
+        "like_count": 0,
+        "quote_count": 0,
+        "reply_count": 0,
+        "retweet_count": 0
+      },
+      "text": "\ud83c\udfa0\ud83e\ude7a\ud83e\uddcf\nThis weekend for my SUBSCRIBERS I will do a presentation on the markets along with a NEW forecast and target \ud83c\udfaf \n\nI will also do charts on \n\n$TSLA$META$MSFT"
+    },
+    {
+      "author_id": "1794760520689762304",
+      "created_at": "2026-08-09T02:17:51.000Z",
+      "edit_history_tweet_ids": [
+        "2086275738689237056"
+      ],
+      "id": "2086275738689237056",
+      "public_metrics": {
+        "bookmark_count": 0,
+        "impression_count": 0,
+        "like_count": 0,
+        "quote_count": 0,
+        "reply_count": 0,
+        "retweet_count": 0
+      },
+      "text": "\ud83c\udf9b\ud83c\udfd5\ud83d\ude11\nThis weekend for my SUBSCRIBERS I will do a presentation on the markets along with a NEW forecast and target \ud83c\udfaf \n\nI will also do charts on \n\n$TSLA$META$MSFT"
+    },
+    {
+      "author_id": "500450141",
+      "created_at": "2026-08-09T02:17:51.000Z",
+      "edit_history_tweet_ids": [
+        "2086275736231465006"
+      ],
+      "id": "2086275736231465006",
+      "public_metrics": {
+        "bookmark_count": 0,
+        "impression_count": 1,
+        "like_count": 0,
+        "quote_count": 0,
+        "reply_count": 0,
+        "retweet_count": 0
+      },
+      "text": "\ud83c\udf96\ud83d\udd16\u2744\ufe0f\ud83d\udce0\ud83c\udfca\nThis weekend for my SUBSCRIBERS I will do a presentation on the markets along with a NEW forecast and target \ud83c\udfaf \n\nI will also do charts on \n\n$TSLA$META$MSFT"
+    },
+    {
+      "author_id": "1121350875606216704",
+      "created_at": "2026-08-09T02:17:50.000Z",
+      "edit_history_tweet_ids": [
+        "2086275734465863769"
+      ],
+      "id": "2086275734465863769",
+      "public_metrics": {
+        "bookmark_count": 0,
+        "impression_count": 0,
+        "like_count": 0,
+        "quote_count": 0,
+        "reply_count": 0,
+        "retweet_count": 0
+      },
+      "text": "\ud83e\uddfa\ud83e\udd86\ud83d\udc78\ud83e\uddc5\nThis weekend for my SUBSCRIBERS I will do a presentation on the markets along with a NEW forecast and target \ud83c\udfaf \n\nI will also do charts on \n\n$TSLA$META$MSFT"
+    },
+    {
+      "author_id": "1478267546700759040",
+      "created_at": "2026-08-09T02:17:49.000Z",
+      "edit_history_tweet_ids": [
+        "2086275730220974375"
+      ],
+      "id": "2086275730220974375",
+      "public_metrics": {
+        "bookmark_count": 0,
+        "impression_count": 0,
+        "like_count": 0,
+        "quote_count": 0,
+        "reply_count": 0,
+        "retweet_count": 0
+      },
+      "text": "\u2696\ud83d\udcb4\ud83d\udc78\nThis weekend for my SUBSCRIBERS I will do a presentation on the markets along with a NEW forecast and target \ud83c\udfaf \n\nI will also do charts on \n\n$TSLA$META$MSFT"
+    },
+    {
+      "author_id": "1287050641408319488",
+      "created_at": "2026-08-09T02:17:49.000Z",
+      "edit_history_tweet_ids": [
+        "2086275729776328856"
+      ],
+      "id": "2086275729776328856",
+      "public_metrics": {
+        "bookmark_count": 0,
+        "impression_count": 0,
+        "like_count": 0,
+        "quote_count": 0,
+        "reply_count": 0,
+        "retweet_count": 0
+      },
+      "text": "\ud83d\ude9b\ud83c\udf21\u2763\ud83d\uddfa\nThis weekend for my SUBSCRIBERS I will do a presentation on the markets along with a NEW forecast and target \ud83c\udfaf \n\nI will also do charts on \n\n$TSLA$META$MSFT"
+    },
+    {
+      "author_id": "2599412420",
+      "created_at": "2026-08-09T02:17:49.000Z",
+      "edit_history_tweet_ids": [
+        "2086275727754666145"
+      ],
+      "id": "2086275727754666145",
+      "public_metrics": {
+        "bookmark_count": 0,
+        "impression_count": 2,
+        "like_count": 0,
+        "quote_count": 0,
+        "reply_count": 0,
+        "retweet_count": 0
+      },
+      "text": "\ud83e\uddb3\ud83d\udeb2\ud83c\udfee\nThis weekend for my SUBSCRIBERS I will do a presentation on the markets along with a NEW forecast and target \ud83c\udfaf \n\nI will also do charts on \n\n$TSLA$META$MSFT"
+    },
+    {
+      "author_id": "1317108514959994881",
+      "created_at": "2026-08-09T02:17:48.000Z",
+      "edit_history_tweet_ids": [
+        "2086275724780900429"
+      ],
+      "id": "2086275724780900429",
+      "public_metrics": {
+        "bookmark_count": 0,
+        "impression_count": 0,
+        "like_count": 0,
+        "quote_count": 0,
+        "reply_count": 0,
+        "retweet_count": 0
+      },
+      "text": "\ud83c\udfe5\u270c\ud83e\uddab\nThis weekend for my SUBSCRIBERS I will do a presentation on the markets along with a NEW forecast and target \ud83c\udfaf \n\nI will also do charts on \n\n$TSLA$META$MSFT"
+    },
+    {
+      "author_id": "1260637275429502976",
+      "created_at": "2026-08-09T02:17:48.000Z",
+      "edit_history_tweet_ids": [
+        "2086275723954647324"
+      ],
+      "id": "2086275723954647324",
+      "public_metrics": {
+        "bookmark_count": 0,
+        "impression_count": 0,
+        "like_count": 0,
+        "quote_count": 0,
+        "reply_count": 0,
+        "retweet_count": 0
+      },
+      "text": "\ud83d\udd0d\nThis weekend for my SUBSCRIBERS I will do a presentation on the markets along with a NEW forecast and target \ud83c\udfaf \n\nI will also do charts on \n\n$TSLA$META$MSFT"
+    },
+    {
+      "author_id": "1398919313923268609",
+      "created_at": "2026-08-09T02:17:45.000Z",
+      "edit_history_tweet_ids": [
+        "2086275713406312747"
+      ],
+      "id": "2086275713406312747",
+      "public_metrics": {
+        "bookmark_count": 0,
+        "impression_count": 0,
+        "like_count": 0,
+        "quote_count": 0,
+        "reply_count": 0,
+        "retweet_count": 0
+      },
+      "text": "\ud83c\udfd5\nThis weekend for my SUBSCRIBERS I will do a presentation on the markets along with a NEW forecast and target \ud83c\udfaf \n\nI will also do charts on \n\n$TSLA$META$MSFT"
+    },
+    {
+      "author_id": "1340701556174278656",
+      "created_at": "2026-08-09T02:17:45.000Z",
+      "edit_history_tweet_ids": [
+        "2086275711141060735"
+      ],
+      "id": "2086275711141060735",
+      "public_metrics": {
+        "bookmark_count": 0,
+        "impression_count": 1,
+        "like_count": 0,
+        "quote_count": 0,
+        "reply_count": 0,
+        "retweet_count": 0
+      },
+      "text": "\ud83d\ude83\ud83d\udc0a\ud83d\udc6a\ud83d\udc6f\nThis weekend for my SUBSCRIBERS I will do a presentation on the markets along with a NEW forecast and target \ud83c\udfaf \n\nI will also do charts on \n\n$TSLA$META$MSFT"
+    },
+    {
+      "author_id": "1972792984052879360",
+      "created_at": "2026-08-09T02:17:40.000Z",
+      "edit_history_tweet_ids": [
+        "2086275689943326983"
+      ],
+      "id": "2086275689943326983",
+      "public_metrics": {
+        "bookmark_count": 0,
+        "impression_count": 0,
+        "like_count": 0,
+        "quote_count": 0,
+        "reply_count": 0,
+        "retweet_count": 0
+      },
+      "text": "\ud83d\ude13\u2764\u260e\ud83c\udfa9\nThis weekend for my SUBSCRIBERS I will do a presentation on the markets along with a NEW forecast and target \ud83c\udfaf \n\nI will also do charts on \n\n$TSLA$META$MSFT"
+    },
+    {
+      "author_id": "1595819888488374273",
+      "created_at": "2026-08-09T02:17:38.000Z",
+      "edit_history_tweet_ids": [
+        "2086275683785769190"
+      ],
+      "id": "2086275683785769190",
+      "public_metrics": {
+        "bookmark_count": 0,
+        "impression_count": 0,
+        "like_count": 0,
+        "quote_count": 0,
+        "reply_count": 0,
+        "retweet_count": 0
+      },
+      "text": "\ud83e\udd11\ud83d\udc5b\ud83e\udd6d\nThis weekend for my SUBSCRIBERS I will do a presentation on the markets along with a NEW forecast and target \ud83c\udfaf \n\nI will also do charts on \n\n$TSLA$META$MSFT"
+    },
+    {
+      "author_id": "1365941130769047553",
+      "created_at": "2026-08-09T02:17:37.000Z",
+      "edit_history_tweet_ids": [
+        "2086275678756848127"
+      ],
+      "id": "2086275678756848127",
+      "public_metrics": {
+        "bookmark_count": 0,
+        "impression_count": 2,
+        "like_count": 0,
+        "quote_count": 0,
+        "reply_count": 0,
+        "retweet_count": 0
+      },
+      "text": "\ud83c\udf3c\ud83c\udfa3\nThis weekend for my SUBSCRIBERS I will do a presentation on the markets along with a NEW forecast and target \ud83c\udfaf \n\nI will also do charts on \n\n$TSLA$META$MSFT"
+    },
+    {
+      "author_id": "1362328117155532805",
+      "created_at": "2026-08-09T02:17:36.000Z",
+      "edit_history_tweet_ids": [
+        "2086275675342745846"
+      ],
+      "id": "2086275675342745846",
+      "public_metrics": {
+        "bookmark_count": 0,
+        "impression_count": 0,
+        "like_count": 0,
+        "quote_count": 0,
+        "reply_count": 0,
+        "retweet_count": 0
+      },
+      "text": "\ud83c\udfbb\ud83d\udcd6\ud83c\udf8a\ud83c\udfde\ud83d\udc04\nThis weekend for my SUBSCRIBERS I will do a presentation on the markets along with a NEW forecast and target \ud83c\udfaf \n\nI will also do charts on \n\n$TSLA$META$MSFT"
+    },
+    {
+      "author_id": "2607141684",
+      "created_at": "2026-08-09T02:17:36.000Z",
+      "edit_history_tweet_ids": [
+        "2086275673182568591"
+      ],
+      "id": "2086275673182568591",
+      "public_metrics": {
+        "bookmark_count": 0,
+        "impression_count": 1,
+        "like_count": 0,
+        "quote_count": 0,
+        "reply_count": 0,
+        "retweet_count": 0
+      },
+      "text": "\ud83c\udfe2\u26f3\ud83e\uddfa\nThis weekend for my SUBSCRIBERS I will do a presentation on the markets along with a NEW forecast and target \ud83c\udfaf \n\nI will also do charts on \n\n$TSLA$META$MSFT"
+    },
+    {
+      "author_id": "770363096627949569",
+      "created_at": "2026-08-09T02:17:35.000Z",
+      "edit_history_tweet_ids": [
+        "2086275670410252782"
+      ],
+      "id": "2086275670410252782",
+      "public_metrics": {
+        "bookmark_count": 0,
+        "impression_count": 0,
+        "like_count": 0,
+        "quote_count": 0,
+        "reply_count": 0,
+        "retweet_count": 0
+      },
+      "text": "\ud83d\ude23\ud83c\udf19\ud83d\udcc5\nThis weekend for my SUBSCRIBERS I will do a presentation on the markets along with a NEW forecast and target \ud83c\udfaf \n\nI will also do charts on \n\n$TSLA$META$MSFT"
+    },
+    {
+      "author_id": "875184448957894658",
+      "created_at": "2026-08-09T02:17:32.000Z",
+      "edit_history_tweet_ids": [
+        "2086275657957335532"
+      ],
+      "id": "2086275657957335532",
+      "public_metrics": {
+        "bookmark_count": 0,
+        "impression_count": 2,
+        "like_count": 0,
+        "quote_count": 0,
+        "reply_count": 0,
+        "retweet_count": 0
+      },
+      "text": "\ud83c\udf21\ud83d\udef7\nThis weekend for my SUBSCRIBERS I will do a presentation on the markets along with a NEW forecast and target \ud83c\udfaf \n\nI will also do charts on \n\n$TSLA$META$MSFT"
+    },
+    {
+      "author_id": "377318468",
+      "created_at": "2026-08-09T02:17:32.000Z",
+      "edit_history_tweet_ids": [
+        "2086275656984240580"
+      ],
+      "id": "2086275656984240580",
+      "public_metrics": {
+        "bookmark_count": 0,
+        "impression_count": 2,
+        "like_count": 0,
+        "quote_count": 0,
+        "reply_count": 0,
+        "retweet_count": 0
+      },
+      "text": "\ud83e\udd64\ud83c\udf1b\ud83d\ude88\nThis weekend for my SUBSCRIBERS I will do a presentation on the markets along with a NEW forecast and target \ud83c\udfaf \n\nI will also do charts on \n\n$TSLA$META$MSFT"
+    },
+    {
+      "author_id": "1263197085270265856",
+      "created_at": "2026-08-09T02:17:29.000Z",
+      "edit_history_tweet_ids": [
+        "2086275645948964869"
+      ],
+      "id": "2086275645948964869",
+      "public_metrics": {
+        "bookmark_count": 0,
+        "impression_count": 0,
+        "like_count": 0,
+        "quote_count": 0,
+        "reply_count": 0,
+        "retweet_count": 0
+      },
+      "text": "\ud83e\uddd3\ud83d\udeac\ud83d\udcc0\ud83d\ude9a\nThis weekend for my SUBSCRIBERS I will do a presentation on the markets along with a NEW forecast and target \ud83c\udfaf \n\nI will also do charts on \n\n$TSLA$META$MSFT"
+    },
+    {
+      "author_id": "1496948427720212483",
+      "created_at": "2026-08-09T02:17:27.000Z",
+      "edit_history_tweet_ids": [
+        "2086275637774303661"
+      ],
+      "id": "2086275637774303661",
+      "public_metrics": {
+        "bookmark_count": 0,
+        "impression_count": 0,
+        "like_count": 0,
+        "quote_count": 0,
+        "reply_count": 0,
+        "retweet_count": 0
+      },
+      "text": "\ud83d\ude23\nThis weekend for my SUBSCRIBERS I will do a presentation on the markets along with a NEW forecast and target \ud83c\udfaf \n\nI will also do charts on \n\n$TSLA$META$MSFT"
+    },
+    {
+      "author_id": "1471278461499101185",
+      "created_at": "2026-08-09T02:17:27.000Z",
+      "edit_history_tweet_ids": [
+        "2086275636444713334"
+      ],
+      "id": "2086275636444713334",
+      "public_metrics": {
+        "bookmark_count": 0,
+        "impression_count": 0,
+        "like_count": 0,
+        "quote_count": 0,
+        "reply_count": 0,
+        "retweet_count": 0
+      },
+      "text": "\ud83d\ude41\ud83e\uddc5\ud83e\udd76\ud83d\udcbf\nThis weekend for my SUBSCRIBERS I will do a presentation on the markets along with a NEW forecast and target \ud83c\udfaf \n\nI will also do charts on \n\n$TSLA$META$MSFT"
+    },
+    {
+      "author_id": "1163110399455236096",
+      "created_at": "2026-08-09T02:17:24.000Z",
+      "edit_history_tweet_ids": [
+        "2086275625312981222"
+      ],
+      "id": "2086275625312981222",
+      "public_metrics": {
+        "bookmark_count": 0,
+        "impression_count": 0,
+        "like_count": 0,
+        "quote_count": 0,
+        "reply_count": 0,
+        "retweet_count": 0
+      },
+      "text": "\u26f0\ud83d\udc7e\nThis weekend for my SUBSCRIBERS I will do a presentation on the markets along with a NEW forecast and target \ud83c\udfaf \n\nI will also do charts on \n\n$TSLA$META$MSFT"
+    },
+    {
+      "author_id": "1429368720888008709",
+      "created_at": "2026-08-09T02:17:24.000Z",
+      "edit_history_tweet_ids": [
+        "2086275624789041209"
+      ],
+      "id": "2086275624789041209",
+      "public_metrics": {
+        "bookmark_count": 0,
+        "impression_count": 0,
+        "like_count": 0,
+        "quote_count": 0,
+        "reply_count": 0,
+        "retweet_count": 0
+      },
+      "text": "\ud83e\udd5d\ud83c\udf78\ud83e\udd0f\u2694\nThis weekend for my SUBSCRIBERS I will do a presentation on the markets along with a NEW forecast and target \ud83c\udfaf \n\nI will also do charts on \n\n$TSLA$META$MSFT"
+    },
+    {
+      "author_id": "1286288412140376069",
+      "created_at": "2026-08-09T02:17:24.000Z",
+      "edit_history_tweet_ids": [
+        "2086275621819130059"
+      ],
+      "id": "2086275621819130059",
+      "public_metrics": {
+        "bookmark_count": 0,
+        "impression_count": 0,
+        "like_count": 0,
+        "quote_count": 0,
+        "reply_count": 0,
+        "retweet_count": 0
+      },
+      "text": "\ud83d\udd0c\ud83c\udfaa\ud83d\udc71\ud83e\uddfc\ud83d\ude18\nThis weekend for my SUBSCRIBERS I will do a presentation on the markets along with a NEW forecast and target \ud83c\udfaf \n\nI will also do charts on \n\n$TSLA$META$MSFT"
+    },
+    {
+      "author_id": "1477333842377646081",
+      "created_at": "2026-08-09T02:17:21.000Z",
+      "edit_history_tweet_ids": [
+        "2086275612381942022"
+      ],
+      "id": "2086275612381942022",
+      "public_metrics": {
+        "bookmark_count": 0,
+        "impression_count": 2,
+        "like_count": 0,
+        "quote_count": 0,
+        "reply_count": 0,
+        "retweet_count": 0
+      },
+      "text": "\ud83e\udd9e\ud83c\udf6b\ud83c\udf86\nThis weekend for my SUBSCRIBERS I will do a presentation on the markets along with a NEW forecast and target \ud83c\udfaf \n\nI will also do charts on \n\n$TSLA$META$MSFT"
+    },
+    {
+      "author_id": "1817199118038822912",
+      "created_at": "2026-08-09T02:17:19.000Z",
+      "edit_history_tweet_ids": [
+        "2086275604605780105"
+      ],
+      "id": "2086275604605780105",
+      "public_metrics": {
+        "bookmark_count": 0,
+        "impression_count": 0,
+        "like_count": 0,
+        "quote_count": 0,
+        "reply_count": 0,
+        "retweet_count": 0
+      },
+      "text": "\ud83c\udfcf\ud83c\udf9f\ud83c\udf31\ud83e\udd3e\ud83d\udc21\nThis weekend for my SUBSCRIBERS I will do a presentation on the markets along with a NEW forecast and target \ud83c\udfaf \n\nI will also do charts on \n\n$TSLA$META$MSFT"
+    },
+    {
+      "author_id": "883156311289901056",
+      "created_at": "2026-08-09T02:17:19.000Z",
+      "edit_history_tweet_ids": [
+        "2086275604026896819"
+      ],
+      "id": "2086275604026896819",
+      "public_metrics": {
+        "bookmark_count": 0,
+        "impression_count": 0,
+        "like_count": 0,
+        "quote_count": 0,
+        "reply_count": 0,
+        "retweet_count": 0
+      },
+      "text": "\ud83c\udf24\ud83d\udc7b\ud83c\udffa\ud83d\udc61\ud83e\uddae\nThis weekend for my SUBSCRIBERS I will do a presentation on the markets along with a NEW forecast and target \ud83c\udfaf \n\nI will also do charts on \n\n$TSLA$META$MSFT"
+    },
+    {
+      "author_id": "1162569471296303104",
+      "created_at": "2026-08-09T02:17:16.000Z",
+      "edit_history_tweet_ids": [
+        "2086275590223487242"
+      ],
+      "id": "2086275590223487242",
+      "public_metrics": {
+        "bookmark_count": 0,
+        "impression_count": 0,
+        "like_count": 0,
+        "quote_count": 0,
+        "reply_count": 0,
+        "retweet_count": 0
+      },
+      "text": "\ud83e\uddcb\ud83c\udfaf\ud83d\udcf2\nThis weekend for my SUBSCRIBERS I will do a presentation on the markets along with a NEW forecast and target \ud83c\udfaf \n\nI will also do charts on \n\n$TSLA$META$MSFT"
+    },
+    {
+      "author_id": "939479024476200961",
+      "created_at": "2026-08-09T02:17:15.000Z",
+      "edit_history_tweet_ids": [
+        "2086275585785950352"
+      ],
+      "id": "2086275585785950352",
+      "public_metrics": {
+        "bookmark_count": 0,
+        "impression_count": 0,
+        "like_count": 0,
+        "quote_count": 0,
+        "reply_count": 0,
+        "retweet_count": 0
+      },
+      "text": "\ud83c\udf4f\nThis weekend for my SUBSCRIBERS I will do a presentation on the markets along with a NEW forecast and target \ud83c\udfaf \n\nI will also do charts on \n\n$TSLA$META$MSFT"
+    },
+    {
+      "author_id": "1584257700887568384",
+      "created_at": "2026-08-09T02:17:13.000Z",
+      "edit_history_tweet_ids": [
+        "2086275578311618704"
+      ],
+      "id": "2086275578311618704",
+      "public_metrics": {
+        "bookmark_count": 0,
+        "impression_count": 0,
+        "like_count": 0,
+        "quote_count": 0,
+        "reply_count": 0,
+        "retweet_count": 0
+      },
+      "text": "\ud83c\udf4a\ud83d\ude26\ud83d\udc58\ud83d\udc97\ud83d\udcfd\nThis weekend for my SUBSCRIBERS I will do a presentation on the markets along with a NEW forecast and target \ud83c\udfaf \n\nI will also do charts on \n\n$TSLA$META$MSFT"
+    },
+    {
+      "author_id": "1325124763711205378",
+      "created_at": "2026-08-09T02:17:12.000Z",
+      "edit_history_tweet_ids": [
+        "2086275575145017780"
+      ],
+      "id": "2086275575145017780",
+      "public_metrics": {
+        "bookmark_count": 0,
+        "impression_count": 0,
+        "like_count": 0,
+        "quote_count": 0,
+        "reply_count": 0,
+        "retweet_count": 0
+      },
+      "text": "\u231b\ud83d\udeaa\ud83e\uddfd\ud83e\uddec\nThis weekend for my SUBSCRIBERS I will do a presentation on the markets along with a NEW forecast and target \ud83c\udfaf \n\nI will also do charts on \n\n$TSLA$META$MSFT"
+    },
+    {
+      "author_id": "4331139701",
+      "created_at": "2026-08-09T02:17:07.000Z",
+      "edit_history_tweet_ids": [
+        "2086275553737211963"
+      ],
+      "id": "2086275553737211963",
+      "public_metrics": {
+        "bookmark_count": 0,
+        "impression_count": 0,
+        "like_count": 0,
+        "quote_count": 0,
+        "reply_count": 0,
+        "retweet_count": 0
+      },
+      "text": "\ud83d\ude22\u26f9\ud83d\udda8\nThis weekend for my SUBSCRIBERS I will do a presentation on the markets along with a NEW forecast and target \ud83c\udfaf \n\nI will also do charts on \n\n$TSLA$META$MSFT"
+    },
+    {
+      "author_id": "1551362001540038658",
+      "created_at": "2026-08-09T02:17:06.000Z",
+      "edit_history_tweet_ids": [
+        "2086275550369230964"
+      ],
+      "id": "2086275550369230964",
+      "public_metrics": {
+        "bookmark_count": 0,
+        "impression_count": 0,
+        "like_count": 0,
+        "quote_count": 0,
+        "reply_count": 0,
+        "retweet_count": 0
+      },
+      "text": "\ud83d\udc5e\ud83c\udfcb\ud83e\udd67\ud83d\udc32\nThis weekend for my SUBSCRIBERS I will do a presentation on the markets along with a NEW forecast and target \ud83c\udfaf \n\nI will also do charts on \n\n$TSLA$META$MSFT"
+    },
+    {
+      "author_id": "1256547975926632449",
+      "created_at": "2026-08-09T02:17:02.000Z",
+      "edit_history_tweet_ids": [
+        "2086275530425307167"
+      ],
+      "id": "2086275530425307167",
+      "public_metrics": {
+        "bookmark_count": 0,
+        "impression_count": 0,
+        "like_count": 0,
+        "quote_count": 0,
+        "reply_count": 0,
+        "retweet_count": 0
+      },
+      "text": "\ud83d\udc16\ud83e\uddfb\ud83d\udc06\nThis weekend for my SUBSCRIBERS I will do a presentation on the markets along with a NEW forecast and target \ud83c\udfaf \n\nI will also do charts on \n\n$TSLA$META$MSFT"
+    },
+    {
+      "author_id": "1001486692388298753",
+      "created_at": "2026-08-09T02:17:01.000Z",
+      "edit_history_tweet_ids": [
+        "2086275526688162107"
+      ],
+      "id": "2086275526688162107",
+      "public_metrics": {
+        "bookmark_count": 0,
+        "impression_count": 0,
+        "like_count": 0,
+        "quote_count": 0,
+        "reply_count": 0,
+        "retweet_count": 0
+      },
+      "text": "\ud83e\udd85\ud83d\udc3c\ud83d\udc4c\ud83e\udd27\ud83e\udd12\nThis weekend for my SUBSCRIBERS I will do a presentation on the markets along with a NEW forecast and target \ud83c\udfaf \n\nI will also do charts on \n\n$TSLA$META$MSFT"
+    },
+    {
+      "author_id": "1870647994778824704",
+      "created_at": "2026-08-09T02:16:59.000Z",
+      "edit_history_tweet_ids": [
+        "2086275519675310250"
+      ],
+      "id": "2086275519675310250",
+      "public_metrics": {
+        "bookmark_count": 0,
+        "impression_count": 0,
+        "like_count": 0,
+        "quote_count": 0,
+        "reply_count": 0,
+        "retweet_count": 0
+      },
+      "text": "\ud83e\uddd4\nThis weekend for my SUBSCRIBERS I will do a presentation on the markets along with a NEW forecast and target \ud83c\udfaf \n\nI will also do charts on \n\n$TSLA$META$MSFT"
+    },
+    {
+      "author_id": "1429982569332871172",
+      "created_at": "2026-08-09T02:16:58.000Z",
+      "edit_history_tweet_ids": [
+        "2086275514894020661"
+      ],
+      "id": "2086275514894020661",
+      "public_metrics": {
+        "bookmark_count": 0,
+        "impression_count": 0,
+        "like_count": 0,
+        "quote_count": 0,
+        "reply_count": 0,
+        "retweet_count": 0
+      },
+      "text": "\ud83d\ude91\ud83d\udef0\ud83c\udf1e\nThis weekend for my SUBSCRIBERS I will do a presentation on the markets along with a NEW forecast and target \ud83c\udfaf \n\nI will also do charts on \n\n$TSLA$META$MSFT"
+    },
+    {
+      "author_id": "1598056709905420288",
+      "created_at": "2026-08-09T02:16:57.000Z",
+      "edit_history_tweet_ids": [
+        "2086275510405824617"
+      ],
+      "id": "2086275510405824617",
+      "public_metrics": {
+        "bookmark_count": 0,
+        "impression_count": 0,
+        "like_count": 0,
+        "quote_count": 0,
+        "reply_count": 0,
+        "retweet_count": 0
+      },
+      "text": "\ud83d\udeb6\nThis weekend for my SUBSCRIBERS I will do a presentation on the markets along with a NEW forecast and target \ud83c\udfaf \n\nI will also do charts on \n\n$TSLA$META$MSFT"
+    },
+    {
+      "author_id": "1529394578444279808",
+      "created_at": "2026-08-09T02:16:55.000Z",
+      "edit_history_tweet_ids": [
+        "2086275500733812883"
+      ],
+      "id": "2086275500733812883",
+      "public_metrics": {
+        "bookmark_count": 0,
+        "impression_count": 0,
+        "like_count": 0,
+        "quote_count": 0,
+        "reply_count": 0,
+        "retweet_count": 0
+      },
+      "text": "\u2615\ud83d\ude9d\ud83c\udf2b\ud83d\udc85\nThis weekend for my SUBSCRIBERS I will do a presentation on the markets along with a NEW forecast and target \ud83c\udfaf \n\nI will also do charts on \n\n$TSLA$META$MSFT"
+    },
+    {
+      "author_id": "1288882011864576001",
+      "created_at": "2026-08-09T02:16:52.000Z",
+      "edit_history_tweet_ids": [
+        "2086275488004084104"
+      ],
+      "id": "2086275488004084104",
+      "public_metrics": {
+        "bookmark_count": 0,
+        "impression_count": 0,
+        "like_count": 0,
+        "quote_count": 0,
+        "reply_count": 0,
+        "retweet_count": 0
+      },
+      "text": "\ud83c\udf6d\nThis weekend for my SUBSCRIBERS I will do a presentation on the markets along with a NEW forecast and target \ud83c\udfaf \n\nI will also do charts on \n\n$TSLA$META$MSFT"
+    },
+    {
+      "author_id": "829900124218273793",
+      "created_at": "2026-08-09T02:16:48.000Z",
+      "edit_history_tweet_ids": [
+        "2086275473462755387"
+      ],
+      "id": "2086275473462755387",
+      "public_metrics": {
+        "bookmark_count": 0,
+        "impression_count": 0,
+        "like_count": 0,
+        "quote_count": 0,
+        "reply_count": 0,
+        "retweet_count": 0
+      },
+      "text": "\ud83e\udd92\ud83c\udf35\ud83d\ude24\ud83c\udf88\nThis weekend for my SUBSCRIBERS I will do a presentation on the markets along with a NEW forecast and target \ud83c\udfaf \n\nI will also do charts on \n\n$TSLA$META$MSFT"
+    },
+    {
+      "author_id": "712309726839590912",
+      "created_at": "2026-08-09T02:16:48.000Z",
+      "edit_history_tweet_ids": [
+        "2086275472875290631"
+      ],
+      "id": "2086275472875290631",
+      "public_metrics": {
+        "bookmark_count": 0,
+        "impression_count": 0,
+        "like_count": 0,
+        "quote_count": 0,
+        "reply_count": 0,
+        "retweet_count": 0
+      },
+      "text": "\ud83d\ude27\ud83d\udc63\ud83e\udd91\ud83c\udfa3\nThis weekend for my SUBSCRIBERS I will do a presentation on the markets along with a NEW forecast and target \ud83c\udfaf \n\nI will also do charts on \n\n$TSLA$META$MSFT"
+    },
+    {
+      "author_id": "1267621343249367040",
+      "created_at": "2026-08-09T02:16:48.000Z",
+      "edit_history_tweet_ids": [
+        "2086275472690712633"
+      ],
+      "id": "2086275472690712633",
+      "public_metrics": {
+        "bookmark_count": 0,
+        "impression_count": 0,
+        "like_count": 0,
+        "quote_count": 0,
+        "reply_count": 0,
+        "retweet_count": 0
+      },
+      "text": "\ud83d\udc13\ud83d\udc83\ud83d\udc54\ud83e\udd38\ud83d\udcec\nThis weekend for my SUBSCRIBERS I will do a presentation on the markets along with a NEW forecast and target \ud83c\udfaf \n\nI will also do charts on \n\n$TSLA$META$MSFT"
+    },
+    {
+      "author_id": "1769289277437804544",
+      "created_at": "2026-08-09T02:16:46.000Z",
+      "edit_history_tweet_ids": [
+        "2086275466013389038"
+      ],
+      "id": "2086275466013389038",
+      "public_metrics": {
+        "bookmark_count": 0,
+        "impression_count": 0,
+        "like_count": 0,
+        "quote_count": 0,
+        "reply_count": 0,
+        "retweet_count": 0
+      },
+      "text": "\ud83d\udc95\nThis weekend for my SUBSCRIBERS I will do a presentation on the markets along with a NEW forecast and target \ud83c\udfaf \n\nI will also do charts on \n\n$TSLA$META$MSFT"
+    },
+    {
+      "author_id": "906895133613760512",
+      "created_at": "2026-08-09T02:16:46.000Z",
+      "edit_history_tweet_ids": [
+        "2086275465115771249"
+      ],
+      "id": "2086275465115771249",
+      "public_metrics": {
+        "bookmark_count": 0,
+        "impression_count": 0,
+        "like_count": 0,
+        "quote_count": 0,
+        "reply_count": 0,
+        "retweet_count": 0
+      },
+      "text": "\u270f\ud83c\udf46\ud83c\udf75\ud83d\udcb0\ud83c\udf0d\nThis weekend for my SUBSCRIBERS I will do a presentation on the markets along with a NEW forecast and target \ud83c\udfaf \n\nI will also do charts on \n\n$TSLA$META$MSFT"
+    },
+    {
+      "author_id": "1869622167937122304",
+      "created_at": "2026-08-09T02:16:44.000Z",
+      "edit_history_tweet_ids": [
+        "2086275455997395190"
+      ],
+      "id": "2086275455997395190",
+      "public_metrics": {
+        "bookmark_count": 0,
+        "impression_count": 0,
+        "like_count": 0,
+        "quote_count": 0,
+        "reply_count": 0,
+        "retweet_count": 0
+      },
+      "text": "\ud83e\ude71\ud83e\uddb4\nThis weekend for my SUBSCRIBERS I will do a presentation on the markets along with a NEW forecast and target \ud83c\udfaf \n\nI will also do charts on \n\n$TSLA$META$MSFT"
+    },
+    {
+      "author_id": "1276978377891577857",
+      "created_at": "2026-08-09T02:16:43.000Z",
+      "edit_history_tweet_ids": [
+        "2086275453342392701"
+      ],
+      "id": "2086275453342392701",
+      "public_metrics": {
+        "bookmark_count": 0,
+        "impression_count": 0,
+        "like_count": 0,
+        "quote_count": 0,
+        "reply_count": 0,
+        "retweet_count": 0
+      },
+      "text": "\ud83e\udda8\nThis weekend for my SUBSCRIBERS I will do a presentation on the markets along with a NEW forecast and target \ud83c\udfaf \n\nI will also do charts on \n\n$TSLA$META$MSFT"
+    },
+    {
+      "author_id": "1555297768771665922",
+      "created_at": "2026-08-09T02:16:43.000Z",
+      "edit_history_tweet_ids": [
+        "2086275451673083955"
+      ],
+      "id": "2086275451673083955",
+      "public_metrics": {
+        "bookmark_count": 0,
+        "impression_count": 0,
+        "like_count": 0,
+        "quote_count": 0,
+        "reply_count": 0,
+        "retweet_count": 0
+      },
+      "text": "\ud83c\udfa1\ud83d\udef9\ud83d\udedf\ud83e\uddf8\ud83e\uddd2\nThis weekend for my SUBSCRIBERS I will do a presentation on the markets along with a NEW forecast and target \ud83c\udfaf \n\nI will also do charts on \n\n$TSLA$META$MSFT"
+    },
+    {
+      "author_id": "1381977303958229006",
+      "created_at": "2026-08-09T02:16:43.000Z",
+      "edit_history_tweet_ids": [
+        "2086275451211878674"
+      ],
+      "id": "2086275451211878674",
+      "public_metrics": {
+        "bookmark_count": 0,
+        "impression_count": 2,
+        "like_count": 0,
+        "quote_count": 0,
+        "reply_count": 0,
+        "retweet_count": 0
+      },
+      "text": "\ud83e\udd9e\ud83e\udd80\ud83c\udf5b\nThis weekend for my SUBSCRIBERS I will do a presentation on the markets along with a NEW forecast and target \ud83c\udfaf \n\nI will also do charts on \n\n$TSLA$META$MSFT"
+    },
+    {
+      "author_id": "1062979795221270528",
+      "created_at": "2026-08-09T02:16:39.000Z",
+      "edit_history_tweet_ids": [
+        "2086275436020215950"
+      ],
+      "id": "2086275436020215950",
+      "public_metrics": {
+        "bookmark_count": 0,
+        "impression_count": 1,
+        "like_count": 0,
+        "quote_count": 0,
+        "reply_count": 0,
+        "retweet_count": 0
+      },
+      "text": "\ud83d\ude4e\nThis weekend for my SUBSCRIBERS I will do a presentation on the markets along with a NEW forecast and target \ud83c\udfaf \n\nI will also do charts on \n\n$TSLA$META$MSFT"
+    },
+    {
+      "author_id": "1588051155992682496",
+      "created_at": "2026-08-09T02:16:37.000Z",
+      "edit_history_tweet_ids": [
+        "2086275426624668101"
+      ],
+      "id": "2086275426624668101",
+      "public_metrics": {
+        "bookmark_count": 0,
+        "impression_count": 0,
+        "like_count": 0,
+        "quote_count": 0,
+        "reply_count": 0,
+        "retweet_count": 0
+      },
+      "text": "\ud83e\uddd8\ud83d\udd0f\ud83d\udc83\ud83e\udd8f\ud83d\udc50\nThis weekend for my SUBSCRIBERS I will do a presentation on the markets along with a NEW forecast and target \ud83c\udfaf \n\nI will also do charts on \n\n$TSLA$META$MSFT"
+    },
+    {
+      "author_id": "1428823258468691974",
+      "created_at": "2026-08-09T02:16:36.000Z",
+      "edit_history_tweet_ids": [
+        "2086275421889306709"
+      ],
+      "id": "2086275421889306709",
+      "public_metrics": {
+        "bookmark_count": 0,
+        "impression_count": 0,
+        "like_count": 0,
+        "quote_count": 0,
+        "reply_count": 0,
+        "retweet_count": 0
+      },
+      "text": "\ud83d\udddd\nThis weekend for my SUBSCRIBERS I will do a presentation on the markets along with a NEW forecast and target \ud83c\udfaf \n\nI will also do charts on \n\n$TSLA$META$MSFT"
+    },
+    {
+      "author_id": "128121931",
+      "created_at": "2026-08-09T02:16:35.000Z",
+      "edit_history_tweet_ids": [
+        "2086275419733656004"
+      ],
+      "id": "2086275419733656004",
+      "public_metrics": {
+        "bookmark_count": 0,
+        "impression_count": 1,
+        "like_count": 0,
+        "quote_count": 0,
+        "reply_count": 0,
+        "retweet_count": 0
+      },
+      "text": "\ud83d\udc9a\ud83c\udf0c\ud83d\ude9e\ud83e\udd21\ud83d\udc4a\nThis weekend for my SUBSCRIBERS I will do a presentation on the markets along with a NEW forecast and target \ud83c\udfaf \n\nI will also do charts on \n\n$TSLA$META$MSFT"
+    },
+    {
+      "author_id": "1547095185490079744",
+      "created_at": "2026-08-09T02:16:34.000Z",
+      "edit_history_tweet_ids": [
+        "2086275415773937941"
+      ],
+      "id": "2086275415773937941",
+      "public_metrics": {
+        "bookmark_count": 0,
+        "impression_count": 0,
+        "like_count": 0,
+        "quote_count": 0,
+        "reply_count": 0,
+        "retweet_count": 0
+      },
+      "text": "\ud83d\udd2a\ud83e\udde1\ud83d\udeeb\nThis weekend for my SUBSCRIBERS I will do a presentation on the markets along with a NEW forecast and target \ud83c\udfaf \n\nI will also do charts on \n\n$TSLA$META$MSFT"
+    },
+    {
+      "author_id": "2064316223144554497",
+      "created_at": "2026-08-09T02:16:31.000Z",
+      "edit_history_tweet_ids": [
+        "2086275403296235642"
+      ],
+      "id": "2086275403296235642",
+      "public_metrics": {
+        "bookmark_count": 0,
+        "impression_count": 0,
+        "like_count": 0,
+        "quote_count": 0,
+        "reply_count": 0,
+        "retweet_count": 0
+      },
+      "text": "\ud83d\ude3d\nThis weekend for my SUBSCRIBERS I will do a presentation on the markets along with a NEW forecast and target \ud83c\udfaf \n\nI will also do charts on \n\n$TSLA$META$MSFT"
+    },
+    {
+      "author_id": "1816157903188840448",
+      "created_at": "2026-08-09T02:16:31.000Z",
+      "edit_history_tweet_ids": [
+        "2086275402633486698"
+      ],
+      "id": "2086275402633486698",
+      "public_metrics": {
+        "bookmark_count": 0,
+        "impression_count": 0,
+        "like_count": 0,
+        "quote_count": 0,
+        "reply_count": 0,
+        "retweet_count": 0
+      },
+      "text": "\ud83e\uddc6\ud83d\udc3b\u26d1\nThis weekend for my SUBSCRIBERS I will do a presentation on the markets along with a NEW forecast and target \ud83c\udfaf \n\nI will also do charts on \n\n$TSLA$META$MSFT"
+    },
+    {
+      "author_id": "1008403772563849216",
+      "created_at": "2026-08-09T02:16:31.000Z",
+      "edit_history_tweet_ids": [
+        "2086275402092224519"
+      ],
+      "id": "2086275402092224519",
+      "public_metrics": {
+        "bookmark_count": 0,
+        "impression_count": 1,
+        "like_count": 0,
+        "quote_count": 0,
+        "reply_count": 0,
+        "retweet_count": 0
+      },
+      "text": "\ud83d\ude80\ud83d\udc1d\ud83d\udc42\nThis weekend for my SUBSCRIBERS I will do a presentation on the markets along with a NEW forecast and target \ud83c\udfaf \n\nI will also do charts on \n\n$TSLA$META$MSFT"
+    },
+    {
+      "author_id": "1817058580371243012",
+      "created_at": "2026-08-09T02:16:31.000Z",
+      "edit_history_tweet_ids": [
+        "2086275401723040213"
+      ],
+      "id": "2086275401723040213",
+      "public_metrics": {
+        "bookmark_count": 0,
+        "impression_count": 0,
+        "like_count": 0,
+        "quote_count": 0,
+        "reply_count": 0,
+        "retweet_count": 0
+      },
+      "text": "\ud83d\ude4e\ud83e\udd2b\ud83e\udd74\nThis weekend for my SUBSCRIBERS I will do a presentation on the markets along with a NEW forecast and target \ud83c\udfaf \n\nI will also do charts on \n\n$TSLA$META$MSFT"
+    },
+    {
+      "author_id": "827055112841547776",
+      "created_at": "2026-08-09T02:16:27.000Z",
+      "edit_history_tweet_ids": [
+        "2086275385537212658"
+      ],
+      "id": "2086275385537212658",
+      "public_metrics": {
+        "bookmark_count": 0,
+        "impression_count": 0,
+        "like_count": 0,
+        "quote_count": 0,
+        "reply_count": 0,
+        "retweet_count": 0
+      },
+      "text": "\ud83e\udde4\ud83d\udc3b\ud83e\udd69\nThis weekend for my SUBSCRIBERS I will do a presentation on the markets along with a NEW forecast and target \ud83c\udfaf \n\nI will also do charts on \n\n$TSLA$META$MSFT"
+    },
+    {
+      "author_id": "1326050759746580486",
+      "created_at": "2026-08-09T02:16:24.000Z",
+      "edit_history_tweet_ids": [
+        "2086275373864501539"
+      ],
+      "id": "2086275373864501539",
+      "public_metrics": {
+        "bookmark_count": 0,
+        "impression_count": 0,
+        "like_count": 0,
+        "quote_count": 0,
+        "reply_count": 0,
+        "retweet_count": 0
+      },
+      "text": "\ud83e\uddaf\ud83e\uddb2\ud83d\udc2f\nThis weekend for my SUBSCRIBERS I will do a presentation on the markets along with a NEW forecast and target \ud83c\udfaf \n\nI will also do charts on \n\n$TSLA$META$MSFT"
+    },
+    {
+      "author_id": "1255240967680151560",
+      "created_at": "2026-08-09T02:16:24.000Z",
+      "edit_history_tweet_ids": [
+        "2086275372782682299"
+      ],
+      "id": "2086275372782682299",
+      "public_metrics": {
+        "bookmark_count": 0,
+        "impression_count": 0,
+        "like_count": 0,
+        "quote_count": 0,
+        "reply_count": 0,
+        "retweet_count": 0
+      },
+      "text": "\ud83c\udf2c\nThis weekend for my SUBSCRIBERS I will do a presentation on the markets along with a NEW forecast and target \ud83c\udfaf \n\nI will also do charts on \n\n$TSLA$META$MSFT"
+    },
+    {
+      "author_id": "1490101394543869955",
+      "created_at": "2026-08-09T02:16:24.000Z",
+      "edit_history_tweet_ids": [
+        "2086275370857414918"
+      ],
+      "id": "2086275370857414918",
+      "public_metrics": {
+        "bookmark_count": 0,
+        "impression_count": 0,
+        "like_count": 0,
+        "quote_count": 0,
+        "reply_count": 0,
+        "retweet_count": 0
+      },
+      "text": "\ud83d\udc23\ud83e\udd62\ud83e\uddd0\nThis weekend for my SUBSCRIBERS I will do a presentation on the markets along with a NEW forecast and target \ud83c\udfaf \n\nI will also do charts on \n\n$TSLA$META$MSFT"
+    },
+    {
+      "author_id": "1557052498527256576",
+      "created_at": "2026-08-09T02:16:23.000Z",
+      "edit_history_tweet_ids": [
+        "2086275369217478920"
+      ],
+      "id": "2086275369217478920",
+      "public_metrics": {
+        "bookmark_count": 0,
+        "impression_count": 0,
+        "like_count": 0,
+        "quote_count": 0,
+        "reply_count": 0,
+        "retweet_count": 0
+      },
+      "text": "\ud83c\udf83\ud83c\udfac\nThis weekend for my SUBSCRIBERS I will do a presentation on the markets along with a NEW forecast and target \ud83c\udfaf \n\nI will also do charts on \n\n$TSLA$META$MSFT"
+    },
+    {
+      "author_id": "1936889388102725632",
+      "created_at": "2026-08-09T02:16:23.000Z",
+      "edit_history_tweet_ids": [
+        "2086275366482477271"
+      ],
+      "id": "2086275366482477271",
+      "public_metrics": {
+        "bookmark_count": 0,
+        "impression_count": 0,
+        "like_count": 0,
+        "quote_count": 0,
+        "reply_count": 0,
+        "retweet_count": 0
+      },
+      "text": "\ud83d\udd25\ud83d\udd77\ud83e\uddee\nThis weekend for my SUBSCRIBERS I will do a presentation on the markets along with a NEW forecast and target \ud83c\udfaf \n\nI will also do charts on \n\n$TSLA$META$MSFT"
+    },
+    {
+      "author_id": "1420303156785795077",
+      "created_at": "2026-08-09T02:16:21.000Z",
+      "edit_history_tweet_ids": [
+        "2086275358580457564"
+      ],
+      "id": "2086275358580457564",
+      "public_metrics": {
+        "bookmark_count": 0,
+        "impression_count": 0,
+        "like_count": 0,
+        "quote_count": 0,
+        "reply_count": 0,
+        "retweet_count": 0
+      },
+      "text": "\ud83d\udd25\nThis weekend for my SUBSCRIBERS I will do a presentation on the markets along with a NEW forecast and target \ud83c\udfaf \n\nI will also do charts on \n\n$TSLA$META$MSFT"
+    },
+    {
+      "author_id": "783536393675018240",
+      "created_at": "2026-08-09T02:16:19.000Z",
+      "edit_history_tweet_ids": [
+        "2086275349671731269"
+      ],
+      "id": "2086275349671731269",
+      "public_metrics": {
+        "bookmark_count": 0,
+        "impression_count": 0,
+        "like_count": 0,
+        "quote_count": 0,
+        "reply_count": 0,
+        "retweet_count": 0
+      },
+      "text": "\ud83e\udd88\ud83e\udda6\u263a\ud83e\uddee\nThis weekend for my SUBSCRIBERS I will do a presentation on the markets along with a NEW forecast and target \ud83c\udfaf \n\nI will also do charts on \n\n$TSLA$META$MSFT"
+    },
+    {
+      "author_id": "1332291471265865728",
+      "created_at": "2026-08-09T02:16:18.000Z",
+      "edit_history_tweet_ids": [
+        "2086275348589621550"
+      ],
+      "id": "2086275348589621550",
+      "public_metrics": {
+        "bookmark_count": 0,
+        "impression_count": 0,
+        "like_count": 0,
+        "quote_count": 0,
+        "reply_count": 0,
+        "retweet_count": 0
+      },
+      "text": "\ud83d\udca3\ud83d\ude27\u231a\ud83c\udf50\nThis weekend for my SUBSCRIBERS I will do a presentation on the markets along with a NEW forecast and target \ud83c\udfaf \n\nI will also do charts on \n\n$TSLA$META$MSFT"
+    },
+    {
+      "author_id": "783863253256450048",
+      "created_at": "2026-08-09T02:16:17.000Z",
+      "edit_history_tweet_ids": [
+        "2086275342604415123"
+      ],
+      "id": "2086275342604415123",
+      "public_metrics": {
+        "bookmark_count": 0,
+        "impression_count": 0,
+        "like_count": 0,
+        "quote_count": 0,
+        "reply_count": 0,
+        "retweet_count": 0
+      },
+      "text": "\ud83c\udfd3\ud83d\udd73\nThis weekend for my SUBSCRIBERS I will do a presentation on the markets along with a NEW forecast and target \ud83c\udfaf \n\nI will also do charts on \n\n$TSLA$META$MSFT"
+    },
+    {
+      "author_id": "1279481398051713031",
+      "created_at": "2026-08-09T02:16:15.000Z",
+      "edit_history_tweet_ids": [
+        "2086275335968948498"
+      ],
+      "id": "2086275335968948498",
+      "public_metrics": {
+        "bookmark_count": 0,
+        "impression_count": 0,
+        "like_count": 0,
+        "quote_count": 0,
+        "reply_count": 0,
+        "retweet_count": 0
+      },
+      "text": "\ud83c\udf62\ud83e\udd3d\ud83e\udd1a\ud83d\udc68\nThis weekend for my SUBSCRIBERS I will do a presentation on the markets along with a NEW forecast and target \ud83c\udfaf \n\nI will also do charts on \n\n$TSLA$META$MSFT"
+    }
+  ]
+}

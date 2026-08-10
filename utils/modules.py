@@ -66,15 +66,21 @@ def _clusters(rows: Sequence[EvidenceRow]) -> int:
 
 
 def _social_rows(rows: Sequence[EvidenceRow]) -> list[EvidenceRow]:
-    """Everything except the wire.
+    """This ticker's OWN retrieval. Not the wire, not a reused sector scan.
 
     The wire is factual and neutral by construction. Excluding it from
     _channel was not enough: it still fed quality, and through quality_w it
     shrank both social channels. Measured on the genuine corpus, adding 20 wire
     posts dropped quality 0.305 -> 0.230 (a whole tier) and made the conflict
     veto vanish, purely through that shrink.
+
+    The seed is excluded for the same reason with a different cause: it comes
+    from a basket query matching ~55 cashtags, so it over-selects multi-ticker
+    list posts. Measured: one own eligible row plus nine seed rows produced a
+    social direction of +0.90 that was almost entirely the seed's. It may
+    corroborate confidence; it must not steer direction or set the quality bar.
     """
-    return [r for r in rows if r.channel != "newswire"]
+    return [r for r in rows if r.channel not in ("newswire", "discovery_seed")]
 
 
 def _eligible(rows: Sequence[EvidenceRow]) -> list[EvidenceRow]:

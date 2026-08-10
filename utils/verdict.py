@@ -147,6 +147,22 @@ def adjudicate(rows: Sequence[EvidenceRow],
     # its comment named.
     can_call = q.tier in ("moderate", "high")
 
+    # A seeded corpus is biased by construction: it comes from a basket query
+    # matching any of ~55 cashtags, which over-selects multi-ticker list posts.
+    # It may CORROBORATE, and it may lift confidence, but a directional call
+    # resting on it alone is a call resting on a channel we know is skewed.
+    _elig = [r for r in rows if r.evidence_eligible]
+    _own = [r for r in _elig if r.channel not in ("discovery_seed",)]
+    _own_clusters = len({(r.channel, r.cluster_id) for r in _own})
+    # PROPORTIONAL, not binary. Requiring merely one non-seed row let a single
+    # own post unlock a call the seed then drove: measured, one own eligible row
+    # plus nine seed rows returned Buy on a social direction of +0.90 that was
+    # almost entirely the seed's, and fourteen seed rows lifted a rejected
+    # corpus from 0.250 to 0.543 and flipped Watch to Buy.
+    seed_only = bool(_elig) and _own_clusters < MIN_CLUSTERS_MODERATE
+    if seed_only:
+        can_call = False
+
     # The price veto has a catalyst exemption in the locked design and it
     # existed in neither module: a confirmed event on a -20% tape returned
     # Watch where the spec says Buy.
@@ -162,7 +178,9 @@ def adjudicate(rows: Sequence[EvidenceRow],
         # readout previously printed ">= 0.10 to judge at all" while the Buy
         # branch required 0.30, so a corpus in between showed six green pillars
         # and named nothing standing in its way.
-        Pillar("Evidence quality", can_call, f"{q.score:.2f} ({q.tier})",
+        Pillar("Evidence quality", q.tier in ("moderate", "high") and not seed_only,
+               f"{q.score:.2f} ({q.tier})"
+               + (f" · only {_own_clusters} own source(s)" if seed_only else ""),
                f">= {M.QUALITY_MODERATE:.2f} to support a call", blocks_buy=True),
         Pillar("Independent sources", q.eligible_clusters >= MIN_CLUSTERS_MODERATE,
                str(q.eligible_clusters), f">= {MIN_CLUSTERS_MODERATE}", blocks_buy=True),
@@ -200,6 +218,11 @@ def adjudicate(rows: Sequence[EvidenceRow],
     elif q.eligible_clusters < 3:
         v.recommendation, v.reason = "Watch", (
             f"Only {q.eligible_clusters} independent source(s) survived filtering.")
+    elif seed_only:
+        v.recommendation, v.reason = "Watch", (
+            "The usable evidence came mostly from a recent sector scan rather "
+            "than this ticker's own retrieval. That can corroborate a call; it "
+            "cannot make one on its own.")
     elif r.high:
         v.recommendation, v.reason = "Avoid", (
             f"Confirmed downside evidence ({r.detail})"
@@ -245,7 +268,9 @@ def adjudicate(rows: Sequence[EvidenceRow],
     # rendered nothing at all.
     if v.recommendation != "Buy":
         remedy = {
-            "Evidence quality": "more company-specific discussion",
+            "Evidence quality": ("evidence from this ticker's own retrieval, "
+                                 "not only the sector scan" if seed_only else
+                                 "more company-specific discussion"),
             "Independent sources": "more independent voices, not more posts",
             "No disqualifying risk": "the risk item resolving or ageing out",
             "Nothing points down": "sentiment turning, or the negative event ageing out",

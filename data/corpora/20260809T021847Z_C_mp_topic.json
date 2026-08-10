@@ -1,0 +1,1712 @@
+{
+  "arm": "C_mp_topic",
+  "ticker": "MP",
+  "query": "($MP OR MP) (stock OR stocks OR shares OR price OR chart OR earnings OR news OR catalyst OR bullish OR bearish OR risk OR watchlist OR trading OR options OR #FinTwit) lang:en -is:retweet",
+  "timeframe": "48h",
+  "success": true,
+  "error": null,
+  "fetched_at": "2026-08-09T02:18:48.707623+00:00",
+  "count": 100,
+  "tweets": [
+    {
+      "author_id": "2058401027196674048",
+      "created_at": "2026-08-09T02:12:37.000Z",
+      "edit_history_tweet_ids": [
+        "2086274421954859028"
+      ],
+      "id": "2086274421954859028",
+      "public_metrics": {
+        "bookmark_count": 0,
+        "impression_count": 17,
+        "like_count": 1,
+        "quote_count": 0,
+        "reply_count": 0,
+        "retweet_count": 0
+      },
+      "text": "\ud83d\ude80 The next 10 years could become one of the biggest investment cycles in history.\n\nThe biggest wealth-building opportunities often don\u2019t come from chasing today\u2019s hottest stocks.\n\nThey come from understanding:\n\nWhere will capital flow next?\n\nThe AI revolution is much bigger than https://t.co/yqoNtvDWqe"
+    },
+    {
+      "author_id": "240649814",
+      "created_at": "2026-08-09T02:05:27.000Z",
+      "edit_history_tweet_ids": [
+        "2086272616310976838"
+      ],
+      "id": "2086272616310976838",
+      "public_metrics": {
+        "bookmark_count": 0,
+        "impression_count": 2031,
+        "like_count": 0,
+        "quote_count": 0,
+        "reply_count": 0,
+        "retweet_count": 0
+      },
+      "text": "Congress MP P. Chidambaram slams absence of TN parties, regrets boycott of TN MP meet:\n\n- TN lost chance to show unity\n\n- Flags delimitation divide\n\n- 'Consensus in T.N has broken down'\n\n@NiyamikaS shares more details with @aakaaanksha https://t.co/312t4rtGWU"
+    },
+    {
+      "author_id": "3290076612",
+      "created_at": "2026-08-09T02:04:30.000Z",
+      "edit_history_tweet_ids": [
+        "2086272376304759008"
+      ],
+      "id": "2086272376304759008",
+      "public_metrics": {
+        "bookmark_count": 0,
+        "impression_count": 6,
+        "like_count": 2,
+        "quote_count": 0,
+        "reply_count": 0,
+        "retweet_count": 0
+      },
+      "text": "Neha das is a Fake News peddler.\n\n1- OBC are not the main perpetrators against SCST.\n\n2- NCRB does not publish any national caste-wise breakdown of accused under the SC/ST Act.\n\n3- The claim was made by Adarsh Muni Trivedi in MP court. https://t.co/KKhS4isYB9 https://t.co/kYETGCl3Na"
+    },
+    {
+      "author_id": "1423717651071840258",
+      "created_at": "2026-08-09T02:00:02.000Z",
+      "edit_history_tweet_ids": [
+        "2086271253195923570"
+      ],
+      "id": "2086271253195923570",
+      "public_metrics": {
+        "bookmark_count": 0,
+        "impression_count": 220,
+        "like_count": 0,
+        "quote_count": 0,
+        "reply_count": 0,
+        "retweet_count": 0
+      },
+      "text": "$BTC Sentiment \n\nCROWD = Bearish \ud83d\udfe5\nMP = Bearish \ud83d\udfe5 \n\nCheck out sentiment and other crypto stats at https://t.co/HQDyBNv73S https://t.co/lcyuibnmMX"
+    },
+    {
+      "author_id": "1423717651071840258",
+      "created_at": "2026-08-09T02:00:02.000Z",
+      "edit_history_tweet_ids": [
+        "2086271252579397975"
+      ],
+      "id": "2086271252579397975",
+      "public_metrics": {
+        "bookmark_count": 0,
+        "impression_count": 202,
+        "like_count": 0,
+        "quote_count": 0,
+        "reply_count": 0,
+        "retweet_count": 0
+      },
+      "text": "$QNT Sentiment \n\nCROWD = Bullish \ud83d\udfe9\nMP = Bearish \ud83d\udfe5 \n\nCheck out sentiment and other crypto stats at https://t.co/HQDyBNv73S https://t.co/SgED1PWq1p"
+    },
+    {
+      "author_id": "1423717651071840258",
+      "created_at": "2026-08-09T02:00:02.000Z",
+      "edit_history_tweet_ids": [
+        "2086271251954487794"
+      ],
+      "id": "2086271251954487794",
+      "public_metrics": {
+        "bookmark_count": 0,
+        "impression_count": 194,
+        "like_count": 0,
+        "quote_count": 0,
+        "reply_count": 0,
+        "retweet_count": 0
+      },
+      "text": "Top 3 Bearish Sentiment Cryptos: CROWD\n\n \ud83d\udfe5 $SI $AKT $BTC\n\nTop 3 Bearish Cryptos: MP \n\n \ud83d\udfe5 $KAS $AVAX $FET\n    \nCheck out sentiment and other crypto stats at https://t.co/HQDyBNv73S"
+    },
+    {
+      "author_id": "1836721758776565760",
+      "created_at": "2026-08-09T01:58:30.000Z",
+      "edit_history_tweet_ids": [
+        "2086270865688412577"
+      ],
+      "id": "2086270865688412577",
+      "public_metrics": {
+        "bookmark_count": 0,
+        "impression_count": 7,
+        "like_count": 1,
+        "quote_count": 0,
+        "reply_count": 0,
+        "retweet_count": 0
+      },
+      "text": "\ud83d\udea8 MIGRATION OVERHAUL, BOM BLUNDERS IN QUEENSLAND, AND A GOVERNMENT SYSTEM UNDER GROWING SCRUTINY.\n\nNationals MP David Littleproud and Clinton Maynard break down renewed calls to tighten visa categories and rethink Australia\u2019s migration settings, alongside controversy over Bureau https://t.co/iailpoweaE"
+    },
+    {
+      "author_id": "1549400329753616384",
+      "created_at": "2026-08-09T01:45:58.000Z",
+      "edit_history_tweet_ids": [
+        "2086267715220799844"
+      ],
+      "id": "2086267715220799844",
+      "public_metrics": {
+        "bookmark_count": 0,
+        "impression_count": 19,
+        "like_count": 1,
+        "quote_count": 0,
+        "reply_count": 0,
+        "retweet_count": 0
+      },
+      "text": "@hydrogenbombv No dmk mp attended the meeting. Everyone are with dmk.  Don't believe fake news bro"
+    },
+    {
+      "author_id": "1691711804987293696",
+      "created_at": "2026-08-09T01:41:33.000Z",
+      "edit_history_tweet_ids": [
+        "2086266602622730514"
+      ],
+      "id": "2086266602622730514",
+      "public_metrics": {
+        "bookmark_count": 0,
+        "impression_count": 25,
+        "like_count": 0,
+        "quote_count": 0,
+        "reply_count": 0,
+        "retweet_count": 0
+      },
+      "text": "There are so many stocks in the market but don\u2019t have money :( \n\nMy next few fvts that I want to own\n$FRVO \n$ENPH \n$MP\n$INOD\n$AEHR \n$FLY"
+    },
+    {
+      "author_id": "1720665183188922368",
+      "created_at": "2026-08-09T01:31:04.000Z",
+      "edit_history_tweet_ids": [
+        "2086263963260481615"
+      ],
+      "id": "2086263963260481615",
+      "public_metrics": {
+        "bookmark_count": 0,
+        "impression_count": 7,
+        "like_count": 0,
+        "quote_count": 0,
+        "reply_count": 0,
+        "retweet_count": 0
+      },
+      "text": "@ArinzeOkpala2 @CBSNews Kosovo deadlock spans nearly 2 years with 3 elections. Feb 2025: VV largest, no majority. Dec 2025: VV wins big but fails president vote (needs 2/3). Apr 2026: Assembly dissolved. Jun 7 2026 snap: VV takes 53/120 seats. Aug 8 constitutive session: Kurti seeks more time for talks"
+    },
+    {
+      "author_id": "2011520495875997698",
+      "created_at": "2026-08-09T01:12:57.000Z",
+      "edit_history_tweet_ids": [
+        "2086259406489223414"
+      ],
+      "id": "2086259406489223414",
+      "public_metrics": {
+        "bookmark_count": 0,
+        "impression_count": 20,
+        "like_count": 0,
+        "quote_count": 0,
+        "reply_count": 0,
+        "retweet_count": 0
+      },
+      "text": "@Skaly__Bull The US side is even dumber: our one rare earth mine, Mountain Pass, spent years digging up the rocks and shipping them to China to refine.\n\nThe Pentagon got so spooked it bought $400M of MP Materials stock just to keep the place alive."
+    },
+    {
+      "author_id": "1720665183188922368",
+      "created_at": "2026-08-09T01:09:51.000Z",
+      "edit_history_tweet_ids": [
+        "2086258624830071080"
+      ],
+      "id": "2086258624830071080",
+      "public_metrics": {
+        "bookmark_count": 0,
+        "impression_count": 42,
+        "like_count": 1,
+        "quote_count": 0,
+        "reply_count": 0,
+        "retweet_count": 0
+      },
+      "text": "@TheChokepoints @Polymarket Not directly\u2014the $3B package funds Sila, Niron Magnetics, Sunrise and others. MP already secured major DoD equity stake, price floor and offtake deals in 2025. Broader domestic critical minerals push and reduced China reliance still support $MP as the leading US rare"
+    },
+    {
+      "author_id": "1901027956585058305",
+      "created_at": "2026-08-09T00:54:50.000Z",
+      "edit_history_tweet_ids": [
+        "2086254846177423385"
+      ],
+      "id": "2086254846177423385",
+      "public_metrics": {
+        "bookmark_count": 0,
+        "impression_count": 11,
+        "like_count": 0,
+        "quote_count": 0,
+        "reply_count": 0,
+        "retweet_count": 0
+      },
+      "text": "Who in the Tr*mp admin or fam have bought/are buying stock that will skyrocket now?? https://t.co/mpCMPYmSA0"
+    },
+    {
+      "author_id": "2006227362225217537",
+      "created_at": "2026-08-09T00:35:49.000Z",
+      "edit_history_tweet_ids": [
+        "2086250059449114723"
+      ],
+      "id": "2086250059449114723",
+      "public_metrics": {
+        "bookmark_count": 2,
+        "impression_count": 187,
+        "like_count": 2,
+        "quote_count": 1,
+        "reply_count": 1,
+        "retweet_count": 1
+      },
+      "text": "@rock_taster @cekdrew Speciality minerals are a very difficult business given cyclicality. Take lithium, which actually has an LME market, at least for hydroxide. Prices surge. Companies print. But it\u2019s volatile. Depending on how contracts are structured, some will be shorter-term, some spot and maybe"
+    },
+    {
+      "author_id": "953739115",
+      "created_at": "2026-08-09T00:27:13.000Z",
+      "edit_history_tweet_ids": [
+        "2086247894181724481"
+      ],
+      "id": "2086247894181724481",
+      "public_metrics": {
+        "bookmark_count": 0,
+        "impression_count": 25,
+        "like_count": 1,
+        "quote_count": 0,
+        "reply_count": 0,
+        "retweet_count": 0
+      },
+      "text": "\ud83d\udea8Kapil Sibal on the Alleged Misuse of Investigative Agencies\n\n\ud83c\udfa5 Video Credit \n\ud83c\udfa5 Choir India News Network\n\nPurpose: To highlight Rajya Sabha MP and Senior Advocate Kapil Sibal's criticism of the alleged use of investigative agencies and provisions of the Prevention of Money https://t.co/1UQ6yWrfUh"
+    },
+    {
+      "author_id": "16294248",
+      "created_at": "2026-08-09T00:24:17.000Z",
+      "edit_history_tweet_ids": [
+        "2086247156403544424"
+      ],
+      "id": "2086247156403544424",
+      "public_metrics": {
+        "bookmark_count": 0,
+        "impression_count": 46,
+        "like_count": 1,
+        "quote_count": 0,
+        "reply_count": 1,
+        "retweet_count": 0
+      },
+      "text": "@jordanbpeterson Physical Constant:\n \nPLANCK MASS (m\u209a)\n2.18\u00d710-\u2078\u00a0kg (Mantissa+Exponent)\n2+1+8+1+0+8={20}\n \n{20}: Duality|Relation: {2}\u00a0crossing\u00a0{+}\u00a0the Void|Unknown|Potential: {0}\u00a0resolving to\u00a0{2}: Duality|Relation.\n \nAnd 'The Linguistic Hinge' (resolution of the written form of a number): https://t.co/FpyTsddslG"
+    },
+    {
+      "author_id": "1720665183188922368",
+      "created_at": "2026-08-09T00:01:38.000Z",
+      "edit_history_tweet_ids": [
+        "2086241456084095278"
+      ],
+      "id": "2086241456084095278",
+      "public_metrics": {
+        "bookmark_count": 0,
+        "impression_count": 2,
+        "like_count": 1,
+        "quote_count": 0,
+        "reply_count": 0,
+        "retweet_count": 0
+      },
+      "text": "@EvolEnmity MP Materials (MP) and USA Rare Earth (USAR) lead U.S. mine-to-magnet builds with DoD price floors, offtakes, Apple/GM deals, and new capacity. Lynas offers the largest non-China production. Volatile sector tied to policy and China dynamics\u2014high risk. Do your own research; this is"
+    },
+    {
+      "author_id": "16294248",
+      "created_at": "2026-08-09T00:00:44.000Z",
+      "edit_history_tweet_ids": [
+        "2086241230825173447"
+      ],
+      "id": "2086241230825173447",
+      "public_metrics": {
+        "bookmark_count": 0,
+        "impression_count": 116,
+        "like_count": 1,
+        "quote_count": 0,
+        "reply_count": 1,
+        "retweet_count": 0
+      },
+      "text": "The Architecture Of Language. \n \nTIME  \n2+9+4+5={20}\nWHY?\n5+8+7={20}\nTHEN\n2+8+5+5={20}\nTHIS\n2+8+9+1={20}\nTODAY \n2+6+4+1+7={20}\nWILL \n5+9+3+3={20}\nVERB\n4+5+9+2={20}\nWISE \n5+9+1+5={20}\nBALANCE\n2+1+3+1+5+3+5={20}\n\u00c1INE (Irish Goddess: 'Midsummer|Beauty|Wealth|Sovereignty') https://t.co/kyiphDTXjz"
+    },
+    {
+      "author_id": "1720665183188922368",
+      "created_at": "2026-08-08T23:58:11.000Z",
+      "edit_history_tweet_ids": [
+        "2086240588987253223"
+      ],
+      "id": "2086240588987253223",
+      "public_metrics": {
+        "bookmark_count": 0,
+        "impression_count": 32,
+        "like_count": 1,
+        "quote_count": 0,
+        "reply_count": 0,
+        "retweet_count": 0
+      },
+      "text": "@Rebecca98869736 @USAC_Bull On October 9 2025 China expanded rare earth export controls to more elements, equipment and technologies with extraterritorial rules. This sparked a sharp rally in US critical minerals stocks including $MP $USAR $UUUU and $UAMY as markets priced in domestic alternatives and"
+    },
+    {
+      "author_id": "291186163",
+      "created_at": "2026-08-08T23:49:10.000Z",
+      "edit_history_tweet_ids": [
+        "2086238318505709678"
+      ],
+      "id": "2086238318505709678",
+      "public_metrics": {
+        "bookmark_count": 0,
+        "impression_count": 107,
+        "like_count": 2,
+        "quote_count": 0,
+        "reply_count": 0,
+        "retweet_count": 0
+      },
+      "text": "Brantford, Brant-South, Six Nations MP @LarryBrockMP shares his thoughts on PM @MarkJCarney in a sit down interview this past Tuesday on Scott Fox After 9. https://t.co/fVV2FK4Ne4"
+    },
+    {
+      "author_id": "1456789212364263427",
+      "created_at": "2026-08-08T23:46:10.000Z",
+      "edit_history_tweet_ids": [
+        "2086237563078017504"
+      ],
+      "id": "2086237563078017504",
+      "public_metrics": {
+        "bookmark_count": 0,
+        "impression_count": 1,
+        "like_count": 0,
+        "quote_count": 0,
+        "reply_count": 0,
+        "retweet_count": 0
+      },
+      "text": "\ud83d\udea8 SAD NEWS: NPP Council of Patrons member and Mampong MP hopeful, Beatrice Owarewa Siaw, has reportedly passed away.\nA close source confirmed that Owarewa died at the Komfo Anokye Teaching Hospital on Saturday night. \ud83d\udd4a\ufe0f\ud83d\udc94\n\n#UKTVGhana #News #Ghana #NPP https://t.co/0kOtBZ4La3"
+    },
+    {
+      "author_id": "1984181034808983552",
+      "created_at": "2026-08-08T23:21:25.000Z",
+      "edit_history_tweet_ids": [
+        "2086231336415908111"
+      ],
+      "id": "2086231336415908111",
+      "public_metrics": {
+        "bookmark_count": 0,
+        "impression_count": 232,
+        "like_count": 4,
+        "quote_count": 0,
+        "reply_count": 1,
+        "retweet_count": 0
+      },
+      "text": "BREAKING NEWS \ud83d\udea8 \ud83d\udea8 \n\nDMK MP are not in Contact of DMK High Command Also. https://t.co/T7zFbub1ci https://t.co/XEzzPPIDHm"
+    },
+    {
+      "author_id": "1597428369750212609",
+      "created_at": "2026-08-08T23:08:05.000Z",
+      "edit_history_tweet_ids": [
+        "2086227979089174959"
+      ],
+      "id": "2086227979089174959",
+      "public_metrics": {
+        "bookmark_count": 0,
+        "impression_count": 64,
+        "like_count": 0,
+        "quote_count": 0,
+        "reply_count": 0,
+        "retweet_count": 0
+      },
+      "text": "@Kalshi One of those stocks were $MP"
+    },
+    {
+      "author_id": "2041837305976008704",
+      "created_at": "2026-08-08T23:03:14.000Z",
+      "edit_history_tweet_ids": [
+        "2086226760064983055"
+      ],
+      "id": "2086226760064983055",
+      "public_metrics": {
+        "bookmark_count": 0,
+        "impression_count": 24,
+        "like_count": 1,
+        "quote_count": 0,
+        "reply_count": 0,
+        "retweet_count": 0
+      },
+      "text": "@pravchak it is simple calculations, no need chart or graph explanation , another 10laks crores additional credit  on tamil nadu people head for another 5 years TVK government. congress-TVK drama will clearly shows up in 2029 MP election. wait and see."
+    },
+    {
+      "author_id": "2049924723362930689",
+      "created_at": "2026-08-08T23:01:00.000Z",
+      "edit_history_tweet_ids": [
+        "2086226196329542085"
+      ],
+      "id": "2086226196329542085",
+      "public_metrics": {
+        "bookmark_count": 0,
+        "impression_count": 50,
+        "like_count": 1,
+        "quote_count": 0,
+        "reply_count": 0,
+        "retweet_count": 0
+      },
+      "text": "Back to sharing the investing journey \ud83d\udcc8\n\nCurrently ~\u00a323k invested\n70% ETFs / 30% individual stocks\n\ud83c\udf0d All-World\n\ud83c\uddfa\ud83c\uddf8 Russell 2000\n\ud83c\uddef\ud83c\uddf5 Japan\n\ud83c\uddee\ud83c\uddf3 India\n$SOFI $GRAB $NVO $ZVRA $MP \n\u00a3600/month going in.\n\nThoughts on the portfolio? What would you change? \ud83d\udc47"
+    },
+    {
+      "author_id": "1456036716125491203",
+      "created_at": "2026-08-08T22:58:44.000Z",
+      "edit_history_tweet_ids": [
+        "2086225627888374008"
+      ],
+      "id": "2086225627888374008",
+      "public_metrics": {
+        "bookmark_count": 6,
+        "impression_count": 5470,
+        "like_count": 24,
+        "quote_count": 3,
+        "reply_count": 8,
+        "retweet_count": 6
+      },
+      "text": "BREAKING NEWS. Words reaching me just now from the corridors of the JLP are that MP for West Kingston and minister of local government Honourable Desmond Mckenzie has been flown out of the island for medical emergency. Let's keep him in our prayers."
+    },
+    {
+      "author_id": "1594960375199551493",
+      "created_at": "2026-08-08T22:50:46.000Z",
+      "edit_history_tweet_ids": [
+        "2086223621018521754"
+      ],
+      "id": "2086223621018521754",
+      "public_metrics": {
+        "bookmark_count": 0,
+        "impression_count": 9,
+        "like_count": 1,
+        "quote_count": 0,
+        "reply_count": 1,
+        "retweet_count": 0
+      },
+      "text": "@TheSkinnyRage Yes but that, honestly, seems like something worth paying for. I think if GTAO is the same type of thing as 5's, they wouldn't change a thing. Why would they? If there's DLC expansions for SP and MP, for the price of a sub, that sounds like value imo"
+    },
+    {
+      "author_id": "1607569113454465024",
+      "created_at": "2026-08-08T22:44:22.000Z",
+      "edit_history_tweet_ids": [
+        "2086222012897177844"
+      ],
+      "id": "2086222012897177844",
+      "public_metrics": {
+        "bookmark_count": 0,
+        "impression_count": 16114,
+        "like_count": 19,
+        "quote_count": 0,
+        "reply_count": 0,
+        "retweet_count": 15
+      },
+      "text": "We are all in three of them.  \nSome options / some in shares\n\nBuy the fear while others are selling. You sell when others are buying\n\n$MP DOS $39 now $50 \n$USAR DOS $14 now $20\n$LAC DOS $3 now $3.30 https://t.co/LS96eLGls9 https://t.co/iw0zZto4BN"
+    },
+    {
+      "author_id": "1009901457171025920",
+      "created_at": "2026-08-08T22:12:34.000Z",
+      "edit_history_tweet_ids": [
+        "2086214009439821903"
+      ],
+      "id": "2086214009439821903",
+      "public_metrics": {
+        "bookmark_count": 0,
+        "impression_count": 98,
+        "like_count": 14,
+        "quote_count": 0,
+        "reply_count": 4,
+        "retweet_count": 4
+      },
+      "text": "#LaborGovernment \ud83c\udde6\ud83c\uddfa \nAustralia needs a fucking double dissolution and general election NOW.\n\nFACT : Immigrants who commit heinous crimes in LABOR states, are being released back into the community, avoiding any jail time, and are not being deported \u2026\nMeanwhile in Queensland,"
+    },
+    {
+      "author_id": "1230144885862387712",
+      "created_at": "2026-08-08T22:03:33.000Z",
+      "edit_history_tweet_ids": [
+        "2086211739796877362"
+      ],
+      "id": "2086211739796877362",
+      "public_metrics": {
+        "bookmark_count": 0,
+        "impression_count": 124,
+        "like_count": 1,
+        "quote_count": 0,
+        "reply_count": 0,
+        "retweet_count": 0
+      },
+      "text": "@AFTVMedia No I don't think so.  But if the price is like 75 MP it will be okay.  Don't over spend."
+    },
+    {
+      "author_id": "729631100",
+      "created_at": "2026-08-08T21:42:29.000Z",
+      "edit_history_tweet_ids": [
+        "2086206440075673727"
+      ],
+      "id": "2086206440075673727",
+      "public_metrics": {
+        "bookmark_count": 0,
+        "impression_count": 197,
+        "like_count": 0,
+        "quote_count": 0,
+        "reply_count": 0,
+        "retweet_count": 0
+      },
+      "text": "What stocks are opportunity in this market near all time high? \n\nRight now:\n$MP\n$ORCL\n$ONDS\n$HIMS\n$RDDT\n$QCOM\n\nCould be opportunity if there\u2019s a pull back:\n\n$ZETA\n$TOST\n$CHYM"
+    },
+    {
+      "author_id": "1109459909937106947",
+      "created_at": "2026-08-08T21:35:58.000Z",
+      "edit_history_tweet_ids": [
+        "2086204800044351751"
+      ],
+      "id": "2086204800044351751",
+      "public_metrics": {
+        "bookmark_count": 0,
+        "impression_count": 5,
+        "like_count": 0,
+        "quote_count": 0,
+        "reply_count": 0,
+        "retweet_count": 0
+      },
+      "text": "Out of the more than 15 power units at two Kyiv thermal power plants, only two are currently operational, and they are not operating at full capacity, stated MP Yuriy Kamelchuk. \n\nAccording to him, the load on these units is critical, and there is a risk that they could simply"
+    },
+    {
+      "author_id": "2037923457636462592",
+      "created_at": "2026-08-08T21:23:04.000Z",
+      "edit_history_tweet_ids": [
+        "2086201553892024676"
+      ],
+      "id": "2086201553892024676",
+      "public_metrics": {
+        "bookmark_count": 0,
+        "impression_count": 74,
+        "like_count": 1,
+        "quote_count": 0,
+        "reply_count": 0,
+        "retweet_count": 0
+      },
+      "text": "KOSOVO \n\n\ud83d\udea8Breaking -opposition lawmaker throws eggs at Kosovo s acting PM Albin Kurti at parliamentary session\n\nAug 8, 2026 \n\nAn opposition MP, Time Kadrijaj, threw eggs at Kosovo's acting Prime Minister Albin Kurti during a plenary session on Saturday.\n\nThe Alliance party MP https://t.co/qkjCsKJnki"
+    },
+    {
+      "author_id": "1518784328884715521",
+      "created_at": "2026-08-08T21:18:27.000Z",
+      "edit_history_tweet_ids": [
+        "2086200388718633067"
+      ],
+      "id": "2086200388718633067",
+      "public_metrics": {
+        "bookmark_count": 0,
+        "impression_count": 11,
+        "like_count": 0,
+        "quote_count": 0,
+        "reply_count": 0,
+        "retweet_count": 0
+      },
+      "text": "@AucklandIsland Ah yes, selective memory strikes again \u2014 and this time it\u2019s wearing a little ministerial lanyard and going \u201cWho, me?\u201d\nMichael Wood, the man who treated \u201cI\u2019m just about to sell the shares\u201d the way most people treat \u201cI\u2019ll start the diet on Monday.\u201d\nThe Cabinet Office rang him up"
+    },
+    {
+      "author_id": "1334508747943682048",
+      "created_at": "2026-08-08T21:06:38.000Z",
+      "edit_history_tweet_ids": [
+        "2086197418044096931"
+      ],
+      "id": "2086197418044096931",
+      "public_metrics": {
+        "bookmark_count": 1,
+        "impression_count": 296,
+        "like_count": 1,
+        "quote_count": 0,
+        "reply_count": 0,
+        "retweet_count": 0
+      },
+      "text": "$ALOY $MP $USAR \n\ud83d\udd37 STATE STREET HAS FILED ITS 13F FOR Q2:\n\n\ud83d\udfe2 INCREASED 25,758% \n\n\u2022 ALOY (Rare Earths) \n10,444 to 2.7M shares https://t.co/dkVKewkzDf https://t.co/eIAILhD2rr"
+    },
+    {
+      "author_id": "4496709687",
+      "created_at": "2026-08-08T21:06:31.000Z",
+      "edit_history_tweet_ids": [
+        "2086197385479295201"
+      ],
+      "id": "2086197385479295201",
+      "public_metrics": {
+        "bookmark_count": 0,
+        "impression_count": 0,
+        "like_count": 0,
+        "quote_count": 0,
+        "reply_count": 0,
+        "retweet_count": 0
+      },
+      "text": "@PancreaticCanUK have written an open letter to the cancer minister, calling on governments to address the lack of treatment options for pancreatic cancer. \n\nI\u2019ve written to my MP asking them to sign it. Will you email them too? https://t.co/FwfJqRMjxd"
+    },
+    {
+      "author_id": "1241695356569731073",
+      "created_at": "2026-08-08T21:03:57.000Z",
+      "edit_history_tweet_ids": [
+        "2086196742492504195"
+      ],
+      "id": "2086196742492504195",
+      "public_metrics": {
+        "bookmark_count": 0,
+        "impression_count": 7,
+        "like_count": 0,
+        "quote_count": 0,
+        "reply_count": 0,
+        "retweet_count": 0
+      },
+      "text": "@sonofr @CountBinface @ClactonGazette The bin man is more than just a costume, he would probably make a good MP , Clacton should take a risk and give it a go - nothing to lose!"
+    },
+    {
+      "author_id": "503367254",
+      "created_at": "2026-08-08T21:02:39.000Z",
+      "edit_history_tweet_ids": [
+        "2086196413218930789"
+      ],
+      "id": "2086196413218930789",
+      "public_metrics": {
+        "bookmark_count": 1,
+        "impression_count": 150,
+        "like_count": 2,
+        "quote_count": 0,
+        "reply_count": 0,
+        "retweet_count": 0
+      },
+      "text": "A MUST READ:\n\n1.\n\nEventually, Goldman Sachs' compliance team noticed major red flags and irregular activities in the transaction. Realizing Berko was violating anti-corruption laws, the bank forced him to resign in 2016 and completely walked away from financing the project.\n\n2."
+    },
+    {
+      "author_id": "1636755165666476032",
+      "created_at": "2026-08-08T21:00:42.000Z",
+      "edit_history_tweet_ids": [
+        "2086195924032749920"
+      ],
+      "id": "2086195924032749920",
+      "public_metrics": {
+        "bookmark_count": 1,
+        "impression_count": 8,
+        "like_count": 2,
+        "quote_count": 0,
+        "reply_count": 0,
+        "retweet_count": 1
+      },
+      "text": "@HanyaToderoff She was HIS Ea \u2026 \nLawton came after her \n\nFf cook \nCoffee barista turned EA I heriti g her mp .. mp job \nHack news guy writing  book  to butterball PP now MP\n\nWby am I not qualified ?\n\nhttps://t.co/xGbOzavrMO"
+    },
+    {
+      "author_id": "936678684508999681",
+      "created_at": "2026-08-08T21:00:17.000Z",
+      "edit_history_tweet_ids": [
+        "2086195819565195735"
+      ],
+      "id": "2086195819565195735",
+      "public_metrics": {
+        "bookmark_count": 0,
+        "impression_count": 7,
+        "like_count": 0,
+        "quote_count": 0,
+        "reply_count": 0,
+        "retweet_count": 0
+      },
+      "text": "Watch: Moment opposition MP throws eggs at Kosovo's acting PM\n\nhttps://t.co/gbcckmlFwr\n#BreakingNews #WorldNews #News"
+    },
+    {
+      "author_id": "2450592238",
+      "created_at": "2026-08-08T21:00:06.000Z",
+      "edit_history_tweet_ids": [
+        "2086195770789642699"
+      ],
+      "id": "2086195770789642699",
+      "public_metrics": {
+        "bookmark_count": 0,
+        "impression_count": 35,
+        "like_count": 0,
+        "quote_count": 0,
+        "reply_count": 0,
+        "retweet_count": 0
+      },
+      "text": "Can\u2019t stand the woman but at least GB News are finally talking about MP Rupert Lowe and Restore Britain  \ud83e\udd23 https://t.co/BFrAlfJf23"
+    },
+    {
+      "author_id": "120520987",
+      "created_at": "2026-08-08T20:21:54.000Z",
+      "edit_history_tweet_ids": [
+        "2086186157994590335"
+      ],
+      "id": "2086186157994590335",
+      "public_metrics": {
+        "bookmark_count": 0,
+        "impression_count": 12,
+        "like_count": 0,
+        "quote_count": 0,
+        "reply_count": 0,
+        "retweet_count": 0
+      },
+      "text": "When even a retired bureacrat, ex CEO of West Bengal, and ex Rajya Sabha MP posts fake news on X about India's borrowing to take a dig at Darendra, the Fekuchand Jholawala, you must accept that fakery &amp; stupidity in India are an incurable pandemic just like what it is in America."
+    },
+    {
+      "author_id": "2050004065577578496",
+      "created_at": "2026-08-08T19:32:16.000Z",
+      "edit_history_tweet_ids": [
+        "2086173670087807277"
+      ],
+      "id": "2086173670087807277",
+      "public_metrics": {
+        "bookmark_count": 0,
+        "impression_count": 137,
+        "like_count": 1,
+        "quote_count": 0,
+        "reply_count": 0,
+        "retweet_count": 0
+      },
+      "text": "DONALD TRUMP DOES IT AGAIN. .. \n\nYou're telling people you buy stocks to \"get rich.\" \n\nTHE PREVIOUS \"RECOMMENDATIONS\": \n\u2022 $INTC A $20 \u2192 +600% \n\u2022 $DELL A $230 \u2192 +90% \n\u2022 $MU A $740 \u2192 +70% \n\nAND NOW SAY YOU HAVE TO BUY: \n\u2022 $ALOY A $8.25 \n\u2022 USER $14.75 \n\u2022 $MP A $40.49 https://t.co/XOyhJtkZkQ"
+    },
+    {
+      "author_id": "29076133",
+      "created_at": "2026-08-08T19:32:01.000Z",
+      "edit_history_tweet_ids": [
+        "2086173606044680642"
+      ],
+      "id": "2086173606044680642",
+      "public_metrics": {
+        "bookmark_count": 0,
+        "impression_count": 18,
+        "like_count": 0,
+        "quote_count": 0,
+        "reply_count": 1,
+        "retweet_count": 0
+      },
+      "text": "@grok @CreativeDeduct @grok \"empirical IO details\" is a remarkable phrase for evidence you introduced yourself; you cited BLS means, merger studies, and elasticities all thread, and now that they've cornered you they've become details. Notice what that costs you. Mises held economic law is"
+    },
+    {
+      "author_id": "2065786724261761024",
+      "created_at": "2026-08-08T19:18:31.000Z",
+      "edit_history_tweet_ids": [
+        "2086170210420011380"
+      ],
+      "id": "2086170210420011380",
+      "public_metrics": {
+        "bookmark_count": 0,
+        "impression_count": 1,
+        "like_count": 0,
+        "quote_count": 0,
+        "reply_count": 0,
+        "retweet_count": 0
+      },
+      "text": "\ud83c\udfe6 Did you know MP Materials just reported Q2 earnings? Their rare earth production keeps powering the tech we can't live without. Worth checking out if you're thinking about supply chain plays.\nFollow to stay ahead of the market"
+    },
+    {
+      "author_id": "1120302373719760896",
+      "created_at": "2026-08-08T19:17:31.000Z",
+      "edit_history_tweet_ids": [
+        "2086169956425556399"
+      ],
+      "id": "2086169956425556399",
+      "public_metrics": {
+        "bookmark_count": 0,
+        "impression_count": 57,
+        "like_count": 2,
+        "quote_count": 0,
+        "reply_count": 0,
+        "retweet_count": 0
+      },
+      "text": "\ud83d\udea8 BREAKING NEWS \ud83d\udea8\n\n@Nigel_Farage announces that after he fails to be re-elected as an MP on Thursday he will stand for President of the public toilets at Kings Cross."
+    },
+    {
+      "author_id": "349367097",
+      "created_at": "2026-08-08T19:16:18.000Z",
+      "edit_history_tweet_ids": [
+        "2086169648781795452"
+      ],
+      "id": "2086169648781795452",
+      "public_metrics": {
+        "bookmark_count": 3,
+        "impression_count": 2717,
+        "like_count": 26,
+        "quote_count": 1,
+        "reply_count": 5,
+        "retweet_count": 1
+      },
+      "text": "The U.S. Is Burning Through Weapons in Iran. Russia and China Are Taking Note $MP $USAR $UUUU $UAMY $AREC\n\nBombing Iran burned through thousands of multimillion-dollar missiles that contain precision parts from a global web of suppliers and can take years to produce. Defending"
+    },
+    {
+      "author_id": "1720665183188922368",
+      "created_at": "2026-08-08T19:15:34.000Z",
+      "edit_history_tweet_ids": [
+        "2086169464710508826"
+      ],
+      "id": "2086169464710508826",
+      "public_metrics": {
+        "bookmark_count": 0,
+        "impression_count": 17,
+        "like_count": 0,
+        "quote_count": 0,
+        "reply_count": 1,
+        "retweet_count": 0
+      },
+      "text": "@JeremyM84459000 @CreativeDeduct It responds directly. Prager &amp; Schmitt isolate effects to large local concentration jumps for industry-specific skills, attenuated by unions. That supports antitrust on mergers, not rejection of wage-to-MP bidding under competition. Unions counter the markdown as countervailing"
+    },
+    {
+      "author_id": "1987950202649784320",
+      "created_at": "2026-08-08T19:07:17.000Z",
+      "edit_history_tweet_ids": [
+        "2086167383111344300"
+      ],
+      "id": "2086167383111344300",
+      "public_metrics": {
+        "bookmark_count": 0,
+        "impression_count": 3,
+        "like_count": 0,
+        "quote_count": 0,
+        "reply_count": 0,
+        "retweet_count": 0
+      },
+      "text": "@FoxNews HEY FOX NEWS? HAVE YOU SEEN DAVID DAVIS MP HOUSE OF LORDS AROUND ANYWHERE? https://t.co/oTJKdrquKj"
+    },
+    {
+      "author_id": "174472126",
+      "created_at": "2026-08-08T19:06:22.000Z",
+      "edit_history_tweet_ids": [
+        "2086167149828305093"
+      ],
+      "id": "2086167149828305093",
+      "public_metrics": {
+        "bookmark_count": 0,
+        "impression_count": 99,
+        "like_count": 0,
+        "quote_count": 0,
+        "reply_count": 0,
+        "retweet_count": 0
+      },
+      "text": "@CallumLyon Courtesy of Steve Baker [former MP] via Fighting for A Free Future.\n\n\"The Bank for International Settlements (BIS) surveyed the situation in their 2010 paper The Future of Public Debt: Prospects and Implications. They concluded even then that \u201cthe path pursued by fiscal https://t.co/ZLqagKXunV"
+    },
+    {
+      "author_id": "2074151592430108672",
+      "created_at": "2026-08-08T19:04:23.000Z",
+      "edit_history_tweet_ids": [
+        "2086166651565908017"
+      ],
+      "id": "2086166651565908017",
+      "public_metrics": {
+        "bookmark_count": 0,
+        "impression_count": 0,
+        "like_count": 0,
+        "quote_count": 0,
+        "reply_count": 0,
+        "retweet_count": 0
+      },
+      "text": "$LIGHT will hit 0.20000 \ud83d\udcc8\ud83d\udcaf\ud83d\udc41\ufe0f\ud83d\ude48\nit's price will again increase \ud83d\udcc8\nLet's set up Short\nEntry : MP\nStop Loss : 0.152000\nTF1:     0.18000\nTF2:     0.19200\nTF3:     0.21000\n https://t.co/BP9mpmCY5A"
+    },
+    {
+      "author_id": "1556582617926991872",
+      "created_at": "2026-08-08T18:57:59.000Z",
+      "edit_history_tweet_ids": [
+        "2086165041074544980"
+      ],
+      "id": "2086165041074544980",
+      "public_metrics": {
+        "bookmark_count": 1,
+        "impression_count": 496,
+        "like_count": 10,
+        "quote_count": 0,
+        "reply_count": 5,
+        "retweet_count": 0
+      },
+      "text": "there's this project rhat gave me 5 gtd spots and I didn't even see it on time, now it's trading for over $40 and mp was $2 \n\nsmh, holy fumble \ud83d\ude42"
+    },
+    {
+      "author_id": "2078227489608855552",
+      "created_at": "2026-08-08T18:45:35.000Z",
+      "edit_history_tweet_ids": [
+        "2086161919316992239"
+      ],
+      "id": "2086161919316992239",
+      "public_metrics": {
+        "bookmark_count": 0,
+        "impression_count": 10,
+        "like_count": 0,
+        "quote_count": 0,
+        "reply_count": 0,
+        "retweet_count": 0
+      },
+      "text": "An opposition MP threw eggs at Kosovo's acting prime minister during a parliamentary session, BBC News reports.\n\n- @BBCNews #UKPol"
+    },
+    {
+      "author_id": "1185804208903282688",
+      "created_at": "2026-08-08T18:39:07.000Z",
+      "edit_history_tweet_ids": [
+        "2086160294250958898"
+      ],
+      "id": "2086160294250958898",
+      "public_metrics": {
+        "bookmark_count": 0,
+        "impression_count": 19,
+        "like_count": 0,
+        "quote_count": 0,
+        "reply_count": 0,
+        "retweet_count": 0
+      },
+      "text": "@Praveen4474 @MemeByMak she was a news presenter in 2012 when UPA was in power, her father was a Congress MP at that time. but the OP knows how easy it is to fool his audience so he keeps sharing this every other month."
+    },
+    {
+      "author_id": "1349349707257143302",
+      "created_at": "2026-08-08T18:25:15.000Z",
+      "edit_history_tweet_ids": [
+        "2086156804262650085"
+      ],
+      "id": "2086156804262650085",
+      "public_metrics": {
+        "bookmark_count": 0,
+        "impression_count": 20,
+        "like_count": 0,
+        "quote_count": 0,
+        "reply_count": 0,
+        "retweet_count": 0
+      },
+      "text": "@ProjectFridayFM @MarioNawfal We've outsourced the materials. We don't have the skilled labor. Nor do we have the industrial (manufacturing) floor space.\n\nRemember last year when trump started taking stakes in Intel and MP materials? This is why. \n\nRemember when he yelled at Defense contractors for using free"
+    },
+    {
+      "author_id": "1644781942058160130",
+      "created_at": "2026-08-08T18:19:03.000Z",
+      "edit_history_tweet_ids": [
+        "2086155243096780957"
+      ],
+      "id": "2086155243096780957",
+      "public_metrics": {
+        "bookmark_count": 0,
+        "impression_count": 420,
+        "like_count": 0,
+        "quote_count": 0,
+        "reply_count": 0,
+        "retweet_count": 0
+      },
+      "text": "@pRRRadeep Please stop it! THIS  IS FAKE NEWS. Not a fan of the current govt or this MP, but this is simply not true. We, the honest citizens, can't lower ourselves to the same level as the BJP IT cell."
+    },
+    {
+      "author_id": "931178012464373761",
+      "created_at": "2026-08-08T18:15:53.000Z",
+      "edit_history_tweet_ids": [
+        "2086154446963126630"
+      ],
+      "id": "2086154446963126630",
+      "public_metrics": {
+        "bookmark_count": 0,
+        "impression_count": 117,
+        "like_count": 0,
+        "quote_count": 0,
+        "reply_count": 0,
+        "retweet_count": 0
+      },
+      "text": "Saturday 08 August 2026.\ud83d\udd3a\u2699\ufe0f\ud83d\udee0\ufe0f\ud83d\udd3a\ud83c\udf10\nThe World Clock \u2014 Worldwide https://t.co/JkGHBGMFZQ\nSource: presstv*ir\nUS behind all wars in West Asia, Hezbollah won\u2019t yield to pressure: Lebanese lawmaker\nSaturday, 08 August 2026 3:26 PM\u00a0\u00a0[\u00a0Last Update:\u00a0Saturday, 08 August 2026 3:43 PM\u00a0] https://t.co/sU3Rw4UdjR"
+    },
+    {
+      "author_id": "931178012464373761",
+      "created_at": "2026-08-08T18:12:06.000Z",
+      "edit_history_tweet_ids": [
+        "2086153492427690200"
+      ],
+      "id": "2086153492427690200",
+      "public_metrics": {
+        "bookmark_count": 0,
+        "impression_count": 212,
+        "like_count": 0,
+        "quote_count": 0,
+        "reply_count": 0,
+        "retweet_count": 0
+      },
+      "text": "Saturday 08 August 2026.\ud83d\udd3a\u2699\ufe0f\ud83d\udee0\ufe0f\ud83d\udd3a\ud83c\udf10\nThe World Clock \u2014 Worldwide https://t.co/JkGHBGMFZQ\nSource: presstv*ir\nStrait of Hormuz reopening hinges on US accepting Iran\u2019s conditions: IRGC spokesman\nSaturday, 08 August 2026 1:02 PM\u00a0\u00a0[\u00a0Last Update:\u00a0Saturday, 08 August 2026 1:02 PM\u00a0]\nAn https://t.co/6njs6B6vB8"
+    },
+    {
+      "author_id": "1292924392033247232",
+      "created_at": "2026-08-08T18:07:42.000Z",
+      "edit_history_tweet_ids": [
+        "2086152384732930078"
+      ],
+      "id": "2086152384732930078",
+      "public_metrics": {
+        "bookmark_count": 0,
+        "impression_count": 223,
+        "like_count": 0,
+        "quote_count": 0,
+        "reply_count": 0,
+        "retweet_count": 0
+      },
+      "text": "InsiderFinance's AI analysis featured this exact $MP long call for members at 42.09. Six trading days later it had run to 53.47, +27.04%.\n\n\u2197\ufe0f Weekly flow: $10.52M calls vs $7.66M puts, +$2.86M net across 332 trades\n\u2197\ufe0f Upside strikes: $45 Call 2026-08-21 led at $1.06M; $50/$55 https://t.co/9BLncnjDb5"
+    },
+    {
+      "author_id": "1747087421081255936",
+      "created_at": "2026-08-08T18:03:27.000Z",
+      "edit_history_tweet_ids": [
+        "2086151318478197077"
+      ],
+      "id": "2086151318478197077",
+      "public_metrics": {
+        "bookmark_count": 1,
+        "impression_count": 805,
+        "like_count": 34,
+        "quote_count": 0,
+        "reply_count": 5,
+        "retweet_count": 2
+      },
+      "text": "Meet the real Dhurandhar of Indian politics.\n\nWhether Congress is in power or not, whether Rahul Gandhi saves his Lok Sabha seat or not this man always protects his own.\n\nNo matter which party forms the government, Rajiv Shukla never loses his seat. And the kind of power and https://t.co/OA0edH6E3D"
+    },
+    {
+      "author_id": "2074151592430108672",
+      "created_at": "2026-08-08T17:56:17.000Z",
+      "edit_history_tweet_ids": [
+        "2086149515451711938"
+      ],
+      "id": "2086149515451711938",
+      "public_metrics": {
+        "bookmark_count": 0,
+        "impression_count": 0,
+        "like_count": 0,
+        "quote_count": 0,
+        "reply_count": 0,
+        "retweet_count": 0
+      },
+      "text": "$SKYAI price will be down \ud83d\udcc9\ud83d\udcc9\ud83d\udcaf\ud83d\udcaf\nLet's set the short \nEntry : MP\nStop Loss :   0.12800\nTF1:   0.12000\nTF2:   0.11500\nTF3:   0.10000\nTF4:   0.09800\n https://t.co/kcz3vgeEad"
+    },
+    {
+      "author_id": "1752084142265958400",
+      "created_at": "2026-08-08T17:53:10.000Z",
+      "edit_history_tweet_ids": [
+        "2086148729065865679"
+      ],
+      "id": "2086148729065865679",
+      "public_metrics": {
+        "bookmark_count": 0,
+        "impression_count": 323,
+        "like_count": 4,
+        "quote_count": 0,
+        "reply_count": 1,
+        "retweet_count": 0
+      },
+      "text": "Going to update this $MP chart in more depth becuase direction seems clear after its 25% bounce in a week.\n\nBlack = last weeks chart \nPurple = new chart\nLast week the descending channel was clear and we got a strong 20%+ bounce off the lows. Aside from the descending channel i https://t.co/3a5XJcBb0d https://t.co/ykLF8rDv6x"
+    },
+    {
+      "author_id": "4206928966",
+      "created_at": "2026-08-08T17:50:56.000Z",
+      "edit_history_tweet_ids": [
+        "2086148166446182752"
+      ],
+      "id": "2086148166446182752",
+      "public_metrics": {
+        "bookmark_count": 0,
+        "impression_count": 105,
+        "like_count": 0,
+        "quote_count": 0,
+        "reply_count": 0,
+        "retweet_count": 0
+      },
+      "text": "Iraq Economic News and Points To Ponder Saturday Morning 8-8-26\nhttps://t.co/QA6RQy29aN\nIraq Economic News and Points To Ponder Saturday Morning 8-8-26 - Former MP Abbas Sarout confirmed on Thursday that 80% of Iraqi money i... https://t.co/RY75T5CoLa"
+    },
+    {
+      "author_id": "1981728208618979328",
+      "created_at": "2026-08-08T17:46:15.000Z",
+      "edit_history_tweet_ids": [
+        "2086146990249771188"
+      ],
+      "id": "2086146990249771188",
+      "public_metrics": {
+        "bookmark_count": 0,
+        "impression_count": 13,
+        "like_count": 0,
+        "quote_count": 0,
+        "reply_count": 0,
+        "retweet_count": 0
+      },
+      "text": "@KarlTurnerMP @andyburnham Was this When he STOLE \u00a336,000 an more in taxes when he was a MP last time for one thing ?\nMaybe *MAM or DAD* a Gold ROLEX its exactly same PRICE !"
+    },
+    {
+      "author_id": "1172830860099444736",
+      "created_at": "2026-08-08T17:30:41.000Z",
+      "edit_history_tweet_ids": [
+        "2086143072287486452"
+      ],
+      "id": "2086143072287486452",
+      "public_metrics": {
+        "bookmark_count": 0,
+        "impression_count": 19,
+        "like_count": 2,
+        "quote_count": 0,
+        "reply_count": 1,
+        "retweet_count": 0
+      },
+      "text": "Terrible evening. When you pay \u00a34 for a glass of pistachios you don't expect some to be empty and others not ready to open. I am going to complain, call the police, write to my MP, contact trading standards, rant on LBC, blame it on immigration and religion and claim for damages. https://t.co/AkDJtP6arc"
+    },
+    {
+      "author_id": "16984207",
+      "created_at": "2026-08-08T17:28:57.000Z",
+      "edit_history_tweet_ids": [
+        "2086142633743663317"
+      ],
+      "id": "2086142633743663317",
+      "public_metrics": {
+        "bookmark_count": 0,
+        "impression_count": 27,
+        "like_count": 0,
+        "quote_count": 0,
+        "reply_count": 0,
+        "retweet_count": 0
+      },
+      "text": "BBC News - Moment opposition MP throws eggs at prime minister of Kosovo - BBC News\nhttps://t.co/CA1aRLBwUW"
+    },
+    {
+      "author_id": "258792150",
+      "created_at": "2026-08-08T17:24:04.000Z",
+      "edit_history_tweet_ids": [
+        "2086141407408906601"
+      ],
+      "id": "2086141407408906601",
+      "public_metrics": {
+        "bookmark_count": 0,
+        "impression_count": 32,
+        "like_count": 0,
+        "quote_count": 0,
+        "reply_count": 0,
+        "retweet_count": 0
+      },
+      "text": "@TheDeshBhakt The biggest legacy of this government would be horse trading of MP. The way this government rigged the system is unprecedented except of course during emergency."
+    },
+    {
+      "author_id": "1424034163611557892",
+      "created_at": "2026-08-08T17:20:45.000Z",
+      "edit_history_tweet_ids": [
+        "2086140571643420775"
+      ],
+      "id": "2086140571643420775",
+      "public_metrics": {
+        "bookmark_count": 0,
+        "impression_count": 7,
+        "like_count": 1,
+        "quote_count": 0,
+        "reply_count": 0,
+        "retweet_count": 0
+      },
+      "text": "@PancreaticCanUK have written an open letter to the cancer minister, calling on governments to address the lack of treatment options for pancreatic cancer. \n\nI\u2019ve written to my MP asking them to sign it. Will you email them too? https://t.co/myhWXAfYzo"
+    },
+    {
+      "author_id": "134758540",
+      "created_at": "2026-08-08T17:00:01.000Z",
+      "edit_history_tweet_ids": [
+        "2086135353199546679"
+      ],
+      "id": "2086135353199546679",
+      "public_metrics": {
+        "bookmark_count": 5,
+        "impression_count": 38653,
+        "like_count": 137,
+        "quote_count": 0,
+        "reply_count": 4,
+        "retweet_count": 7
+      },
+      "text": "#TamilNadu MPs on Saturday \"unanimously\" decided to oppose Centre's #DelimitationBill after Chief Minister #CJosephVijay chaired a meeting to discuss its likely impact on the state.\n\nCongress MP #KartiChidambaram said around 21 out of 57 #RajyaSabha and #LokSabha MPs attended the https://t.co/POPFsbeRmI"
+    },
+    {
+      "author_id": "1519276573882568704",
+      "created_at": "2026-08-08T16:55:23.000Z",
+      "edit_history_tweet_ids": [
+        "2086134188500037944"
+      ],
+      "id": "2086134188500037944",
+      "public_metrics": {
+        "bookmark_count": 0,
+        "impression_count": 11,
+        "like_count": 0,
+        "quote_count": 0,
+        "reply_count": 0,
+        "retweet_count": 0
+      },
+      "text": "WTF is going on with petrol prices   Oil is about $80 /barrel so just who is making all this profit.  Price gouging is very apparent and govt is doing fuck all about it   Start writing to your local MP"
+    },
+    {
+      "author_id": "1613829975701962756",
+      "created_at": "2026-08-08T16:51:25.000Z",
+      "edit_history_tweet_ids": [
+        "2086133187583820230"
+      ],
+      "id": "2086133187583820230",
+      "public_metrics": {
+        "bookmark_count": 0,
+        "impression_count": 6,
+        "like_count": 0,
+        "quote_count": 0,
+        "reply_count": 0,
+        "retweet_count": 0
+      },
+      "text": "@simonwatt85 absolute complete and utter Bollocks,that Charlatan had no need whatsoever to resign his seat,he thought he was being clever, a now he's a laughing Stock across the world,there was no choice needed he was already their MP,he's an absolute arsehole not fit to be an MP or PM.\ud83d\ude35\u200d\ud83d\udcab\ud83d\ude35\u200d\ud83d\udcab\ud83d\ude35\u200d\ud83d\udcab"
+    },
+    {
+      "author_id": "1477383566203969542",
+      "created_at": "2026-08-08T16:45:29.000Z",
+      "edit_history_tweet_ids": [
+        "2086131696504590586"
+      ],
+      "id": "2086131696504590586",
+      "public_metrics": {
+        "bookmark_count": 0,
+        "impression_count": 15,
+        "like_count": 0,
+        "quote_count": 0,
+        "reply_count": 0,
+        "retweet_count": 0
+      },
+      "text": "Another comparison between $MP and $OKLO is timing risk. MP is entering a high-risk 18 months as it scales metal/alloy production, expands magnets, brings HREE separation online under government audit. Oklo's execution risk appears around H2 2027, with derisking catalysts ahead."
+    },
+    {
+      "author_id": "1830665043467276288",
+      "created_at": "2026-08-08T16:45:01.000Z",
+      "edit_history_tweet_ids": [
+        "2086131577122144726"
+      ],
+      "id": "2086131577122144726",
+      "public_metrics": {
+        "bookmark_count": 0,
+        "impression_count": 8,
+        "like_count": 0,
+        "quote_count": 0,
+        "reply_count": 0,
+        "retweet_count": 0
+      },
+      "text": "@StevenJonMiller Theres something dark about this and the lack of information. When a mp was killed by so called far right person it was all over every detail about him and the murder was all over the news yet .poor Anne doesn't get the same because she was a reform mp ."
+    },
+    {
+      "author_id": "308960972",
+      "created_at": "2026-08-08T16:42:36.000Z",
+      "edit_history_tweet_ids": [
+        "2086130972664176945"
+      ],
+      "id": "2086130972664176945",
+      "public_metrics": {
+        "bookmark_count": 0,
+        "impression_count": 609,
+        "like_count": 4,
+        "quote_count": 0,
+        "reply_count": 1,
+        "retweet_count": 6
+      },
+      "text": "@dreamyard_ Clam $5\nEiscue $7\nRay $2\nAlolan Ninetales cracked ice holo (DMG) $1\nMeowth (mp) .40\u00a2\nWeedle (mp) .40\u00a2\n\n$1 pwe (buyer risk) $6 bmwt https://t.co/UzuJztZyJx"
+    },
+    {
+      "author_id": "1221371721451618304",
+      "created_at": "2026-08-08T16:41:45.000Z",
+      "edit_history_tweet_ids": [
+        "2086130754786906587"
+      ],
+      "id": "2086130754786906587",
+      "public_metrics": {
+        "bookmark_count": 0,
+        "impression_count": 105,
+        "like_count": 0,
+        "quote_count": 0,
+        "reply_count": 0,
+        "retweet_count": 0
+      },
+      "text": "OPINION: A message from Paulette Hamilton, MP for Erdington\n\nFollowing the significant investment secured from central government earlier this year for Stockland Green Health Centre, it was a pleasure to mark the start of the new 32-bed purpose-built facility at the Highcroft https://t.co/iig6deJCaS"
+    },
+    {
+      "author_id": "1825551266459623424",
+      "created_at": "2026-08-08T16:38:00.000Z",
+      "edit_history_tweet_ids": [
+        "2086129811995636175"
+      ],
+      "id": "2086129811995636175",
+      "public_metrics": {
+        "bookmark_count": 0,
+        "impression_count": 76,
+        "like_count": 1,
+        "quote_count": 0,
+        "reply_count": 0,
+        "retweet_count": 1
+      },
+      "text": "Immune cells need iron. But it's a balance. \n\nLow Fe = infection risk:\n\nFe &gt; Th17 (ROR\u03b3t) &gt; Fungi, Bacteria \nFe &gt; Neutrophil/MP (ROS/NADPH) &gt; Bacteria \nFe &gt; Antibody production (B cells)\nFe &gt; Cytokines (IL-1, TNF-\u03b1) (Th cells) &gt; Virus\n\nExcess Fe = inflammation, tissue damage,"
+    },
+    {
+      "author_id": "1654164367321997312",
+      "created_at": "2026-08-08T16:35:29.000Z",
+      "edit_history_tweet_ids": [
+        "2086129180186407223"
+      ],
+      "id": "2086129180186407223",
+      "public_metrics": {
+        "bookmark_count": 0,
+        "impression_count": 7,
+        "like_count": 0,
+        "quote_count": 0,
+        "reply_count": 0,
+        "retweet_count": 0
+      },
+      "text": "@becadjue A Labour MP who posts with  her replies turned off.\nLiverpool City Council hasn't had a housing department since 2007,when it transferred its stock and staff to a newly formed Social housing association. \nTherefore how many more local authorities don't have Council housing?"
+    },
+    {
+      "author_id": "1774401480642174976",
+      "created_at": "2026-08-08T16:33:07.000Z",
+      "edit_history_tweet_ids": [
+        "2086128583270162894"
+      ],
+      "id": "2086128583270162894",
+      "public_metrics": {
+        "bookmark_count": 0,
+        "impression_count": 35,
+        "like_count": 1,
+        "quote_count": 0,
+        "reply_count": 0,
+        "retweet_count": 0
+      },
+      "text": "1 MP wala support bhi ab BREAKING news hai https://t.co/HAM3PLDhvJ"
+    },
+    {
+      "author_id": "2008771446387220480",
+      "created_at": "2026-08-08T16:27:05.000Z",
+      "edit_history_tweet_ids": [
+        "2086127064726610249"
+      ],
+      "id": "2086127064726610249",
+      "public_metrics": {
+        "bookmark_count": 0,
+        "impression_count": 7,
+        "like_count": 1,
+        "quote_count": 0,
+        "reply_count": 0,
+        "retweet_count": 0
+      },
+      "text": "@Rama_Chandran_K MP meeting avanga 100% reject pannuvaanganu avaruku nalla theriyum.\nStill, risk eduthu irukaangana, he must have a strong reason. \n\nFirst point agree panna, santhoshathoda povom.\n\nSecond one, we will cross the bridge when it comes."
+    },
+    {
+      "author_id": "847373125",
+      "created_at": "2026-08-08T16:22:48.000Z",
+      "edit_history_tweet_ids": [
+        "2086125989218976045"
+      ],
+      "id": "2086125989218976045",
+      "public_metrics": {
+        "bookmark_count": 0,
+        "impression_count": 125,
+        "like_count": 6,
+        "quote_count": 0,
+        "reply_count": 1,
+        "retweet_count": 1
+      },
+      "text": "@Mrsinha Breaking news: DMK MP Kanimozhi hits back at Rahul Gandhi. \n\nSays: \"People know who is 'Ettappan' after TN assembly poll results\".\n\nKanimozhi is right. After running a govt with the DMK in Tamil Nadu for five years, opportunist Congress party didn\u2019t even take a minute to betray https://t.co/6xfnpTDdml"
+    },
+    {
+      "author_id": "1670533978837905410",
+      "created_at": "2026-08-08T16:19:34.000Z",
+      "edit_history_tweet_ids": [
+        "2086125175003894001"
+      ],
+      "id": "2086125175003894001",
+      "public_metrics": {
+        "bookmark_count": 0,
+        "impression_count": 1092,
+        "like_count": 28,
+        "quote_count": 0,
+        "reply_count": 2,
+        "retweet_count": 2
+      },
+      "text": "$DTREF\n\nWhat Dateline Has Already Done\n\nStep Toward Strategic StatusDateline\u2019s ProgressStrategic Impact\n\nCarbonatite REE discovery\u2714\ufe0f Completed\u2b50\u2b50\u2b50\u2b50\u2b50\nUSGS zircon confirmation\u2714\ufe0f Completed\u2b50\u2b50\u2b50\u2b50\u2b50\nFederal\u2011grade geophysics\u2714\ufe0f Completed\u2b50\u2b50\u2b50\u2b50\nREE\u2011bearing fenite mapping\u2714\ufe0f"
+    },
+    {
+      "author_id": "1401491105527459840",
+      "created_at": "2026-08-08T16:05:30.000Z",
+      "edit_history_tweet_ids": [
+        "2086121634998710433"
+      ],
+      "id": "2086121634998710433",
+      "public_metrics": {
+        "bookmark_count": 0,
+        "impression_count": 77,
+        "like_count": 4,
+        "quote_count": 0,
+        "reply_count": 0,
+        "retweet_count": 1
+      },
+      "text": "SCHOOL CHALE HAM!\nKakraua in MP has a school only upto 8th STD.\nBoys &amp; girls who want to learn further have to risk their lives &amp; cross this check dam to reach another school far away.\nThis is the model of Vikasit Bharat!\nThis is Beti Bachao Beti Padhao!\n@suchetadalal https://t.co/ENuOHy7aDl"
+    },
+    {
+      "author_id": "1595759938831368193",
+      "created_at": "2026-08-08T16:02:13.000Z",
+      "edit_history_tweet_ids": [
+        "2086120806266921338"
+      ],
+      "id": "2086120806266921338",
+      "public_metrics": {
+        "bookmark_count": 0,
+        "impression_count": 64,
+        "like_count": 0,
+        "quote_count": 0,
+        "reply_count": 0,
+        "retweet_count": 0
+      },
+      "text": "Can we push for a private member's bill to scrap off bride price?\nLet's give our legislature some work.\nI don't know which MP can table it. https://t.co/1eLLzuGlaF"
+    },
+    {
+      "author_id": "610395268",
+      "created_at": "2026-08-08T15:44:15.000Z",
+      "edit_history_tweet_ids": [
+        "2086116286049013946"
+      ],
+      "id": "2086116286049013946",
+      "public_metrics": {
+        "bookmark_count": 0,
+        "impression_count": 7,
+        "like_count": 1,
+        "quote_count": 0,
+        "reply_count": 0,
+        "retweet_count": 2
+      },
+      "text": "An Australian MP puts the flag of a foreign government committing war crimes on a daily basis on equal standing with the Australian flag\n@SouthwickMP  shares the values of Israel \nNot worthy of a seat in our parliament https://t.co/ZbABU80ldw"
+    },
+    {
+      "author_id": "1568541832132395008",
+      "created_at": "2026-08-08T15:43:28.000Z",
+      "edit_history_tweet_ids": [
+        "2086116089985892475"
+      ],
+      "id": "2086116089985892475",
+      "public_metrics": {
+        "bookmark_count": 0,
+        "impression_count": 10,
+        "like_count": 0,
+        "quote_count": 0,
+        "reply_count": 0,
+        "retweet_count": 0
+      },
+      "text": "@Heidi_Labour Heidi Alexander Labour MP. \nI really enjoyed meeting with the Wiltshire Refugee Network yesterday.\nThey are a new charity - who often work with the excellent Harbour Project, based here in Swindon - helping people who have been granted asylum get the basics of life sorted out.\nI https://t.co/M67dvh7S1r"
+    },
+    {
+      "author_id": "859030304740323328",
+      "created_at": "2026-08-08T15:43:25.000Z",
+      "edit_history_tweet_ids": [
+        "2086116077499543891"
+      ],
+      "id": "2086116077499543891",
+      "public_metrics": {
+        "bookmark_count": 0,
+        "impression_count": 18,
+        "like_count": 1,
+        "quote_count": 0,
+        "reply_count": 0,
+        "retweet_count": 0
+      },
+      "text": "@elonmusk \nHow can we get our Rupert inthe news?? Any suggestions would be appreciated. We have a MSM blockage against our MP @RupertLowe10 https://t.co/zOjreyYzJG"
+    },
+    {
+      "author_id": "1337866822926864386",
+      "created_at": "2026-08-08T15:38:00.000Z",
+      "edit_history_tweet_ids": [
+        "2086114713235067246"
+      ],
+      "id": "2086114713235067246",
+      "public_metrics": {
+        "bookmark_count": 0,
+        "impression_count": 737,
+        "like_count": 4,
+        "quote_count": 0,
+        "reply_count": 2,
+        "retweet_count": 1
+      },
+      "text": "\ud83c\uddec\ud83c\udde7 Anti-immigration unrest broke out in Thetford, Norfolk, over Aug. 4\u20136, as protesters targeted residential properties rumored to house asylum seekers. Norfolk Police report damaged homes, broken fences, attempts to force entry into properties, injured officers, and multiple https://t.co/skLG4zCQrg"
+    },
+    {
+      "author_id": "1816637470563266560",
+      "created_at": "2026-08-08T15:28:37.000Z",
+      "edit_history_tweet_ids": [
+        "2086112350432571859"
+      ],
+      "id": "2086112350432571859",
+      "public_metrics": {
+        "bookmark_count": 0,
+        "impression_count": 61,
+        "like_count": 0,
+        "quote_count": 0,
+        "reply_count": 1,
+        "retweet_count": 0
+      },
+      "text": "Musk Paulus US &amp; intl. notaries authenticate MP signatures for the transactions &amp; corporate &amp; independent audits, IRS MP tax, equity status &amp; corporate property, wealth &amp; asset management, corporate &amp; private internal companies shares registers &amp; MP banks.\nhttps://t.co/OBXegj3vmn https://t.co/PSIrkt5CTz"
+    },
+    {
+      "author_id": "1946027945879011328",
+      "created_at": "2026-08-08T15:24:39.000Z",
+      "edit_history_tweet_ids": [
+        "2086111355342651432"
+      ],
+      "id": "2086111355342651432",
+      "public_metrics": {
+        "bookmark_count": 0,
+        "impression_count": 5,
+        "like_count": 0,
+        "quote_count": 0,
+        "reply_count": 0,
+        "retweet_count": 0
+      },
+      "text": "@Patrick92295427 @FresnoGM @FoxNews @grok Yes. Donald Trump Jr. is a partner in 1789 Capital, which invested in Vulcan Elements, a rare-earth magnet maker, in August 2025. The firm later received a major Pentagon loan. Reports from financial disclosures also show President Trump reported capital gains on shares of MP\u2026\u2026"
+    },
+    {
+      "author_id": "1214407349936377856",
+      "created_at": "2026-08-08T15:19:45.000Z",
+      "edit_history_tweet_ids": [
+        "2086110122657640706"
+      ],
+      "id": "2086110122657640706",
+      "public_metrics": {
+        "bookmark_count": 0,
+        "impression_count": 202,
+        "like_count": 0,
+        "quote_count": 0,
+        "reply_count": 0,
+        "retweet_count": 0
+      },
+      "text": "@Bihar_se_hai To get this level of treatment, you have to be MLA or MP and lie all the time. There is no other options"
+    },
+    {
+      "author_id": "1923828238435995648",
+      "created_at": "2026-08-08T15:17:09.000Z",
+      "edit_history_tweet_ids": [
+        "2086109468366917868"
+      ],
+      "id": "2086109468366917868",
+      "public_metrics": {
+        "bookmark_count": 0,
+        "impression_count": 93,
+        "like_count": 1,
+        "quote_count": 0,
+        "reply_count": 1,
+        "retweet_count": 0
+      },
+      "text": "@TradingWithGuy @Topstep 100% brother. I was actually about to make the exact same post, you beat me to it and hit the nail right on the head.\nYOLO trading around CPI is basically pure gambling, straight out of a casino where you're standing in front of a slot machine. \ud83d\ude02\nThankfully, the Topstep changes"
+    },
+    {
+      "author_id": "39743812",
+      "created_at": "2026-08-08T15:14:24.000Z",
+      "edit_history_tweet_ids": [
+        "2086108773303902386"
+      ],
+      "id": "2086108773303902386",
+      "public_metrics": {
+        "bookmark_count": 5,
+        "impression_count": 31556,
+        "like_count": 97,
+        "quote_count": 4,
+        "reply_count": 9,
+        "retweet_count": 10
+      },
+      "text": "#WATCH | Prayagraj, Uttar Pradesh: Lok Sabha LoP and Congress MP Rahul Gandhi says, \"There are 40 crore energetic young people like you in this country; this is the nation's strength. People talk about China, America, and Russia, but all of them pale in comparison to the youth of https://t.co/YaDl0SKtna"
+    },
+    {
+      "author_id": "1104352547219873793",
+      "created_at": "2026-08-08T15:14:22.000Z",
+      "edit_history_tweet_ids": [
+        "2086108767742218271"
+      ],
+      "id": "2086108767742218271",
+      "public_metrics": {
+        "bookmark_count": 0,
+        "impression_count": 257,
+        "like_count": 0,
+        "quote_count": 0,
+        "reply_count": 0,
+        "retweet_count": 0
+      },
+      "text": "@PrishaSargam Be happy that you are getting somebody to do the job at reasonable price. Let the movement of labour force be free all over India. You also encourage kannadigas to go out and and earn good amount of money. Today it's  up bihar mp WB keep projects going"
+    },
+    {
+      "author_id": "1283010290100121601",
+      "created_at": "2026-08-08T15:10:32.000Z",
+      "edit_history_tweet_ids": [
+        "2086107802200650055"
+      ],
+      "id": "2086107802200650055",
+      "public_metrics": {
+        "bookmark_count": 4,
+        "impression_count": 1166,
+        "like_count": 11,
+        "quote_count": 0,
+        "reply_count": 3,
+        "retweet_count": 0
+      },
+      "text": "Space (ETF: $nasa, $ufo) and rare earth metals (ETF $remx) are another two sectors that are showing strong signs of trend reversal for bull side. Many individual stocks in these two sectors have formed 5-wave up structure. A subsequent pullback could be buying opportunities."
+    },
+    {
+      "author_id": "1763136360050016256",
+      "created_at": "2026-08-08T15:09:20.000Z",
+      "edit_history_tweet_ids": [
+        "2086107498596217180"
+      ],
+      "id": "2086107498596217180",
+      "public_metrics": {
+        "bookmark_count": 8,
+        "impression_count": 12017,
+        "like_count": 7,
+        "quote_count": 1,
+        "reply_count": 1,
+        "retweet_count": 1
+      },
+      "text": "I may not have many followers, but all I can say is this:\n\nIf you happen to see this, maybe that is fate\u2014and maybe it is your good fortune.\n\nHere is how I currently see the market from the weekly-chart perspective.\n\n$QQQ \nWeekly momentum is recovering, and validated capital is https://t.co/GgnIuZiiPq"
+    },
+    {
+      "author_id": "1097897763445108738",
+      "created_at": "2026-08-08T15:09:05.000Z",
+      "edit_history_tweet_ids": [
+        "2086107437137113139"
+      ],
+      "id": "2086107437137113139",
+      "public_metrics": {
+        "bookmark_count": 18,
+        "impression_count": 57784,
+        "like_count": 341,
+        "quote_count": 2,
+        "reply_count": 10,
+        "retweet_count": 56
+      },
+      "text": "BIG BREAKING NEWS \ud83d\udea8 DMK &amp; AIADMK MPs boycott Vijay\u2019s meeting with Tamil Nadu MPs over delimitation.\n\nDMK MP Kanimozhi -\n\n\"DEMAND FAIR  DELIMITATION, NOT NO  DELIMITATION\"\n\n\"When we don't have any idea about the new bill, what's the need for this meeting called by TVK govt\"\n\n\"TVK https://t.co/T4yYXTpC5w https://t.co/Fd1z0v6MLi"
+    },
+    {
+      "author_id": "2219216444",
+      "created_at": "2026-08-08T15:05:11.000Z",
+      "edit_history_tweet_ids": [
+        "2086106456223313993"
+      ],
+      "id": "2086106456223313993",
+      "public_metrics": {
+        "bookmark_count": 0,
+        "impression_count": 12,
+        "like_count": 1,
+        "quote_count": 0,
+        "reply_count": 0,
+        "retweet_count": 0
+      },
+      "text": "@PancreaticCanUK have written an open letter to the cancer minister, calling on governments to address the lack of treatment options for pancreatic cancer. \n\nI\u2019ve written to my MP asking them to sign it. Will you email them too? https://t.co/De96QL9INL"
+    },
+    {
+      "author_id": "248505587",
+      "created_at": "2026-08-08T14:53:17.000Z",
+      "edit_history_tweet_ids": [
+        "2086103459879883211"
+      ],
+      "id": "2086103459879883211",
+      "public_metrics": {
+        "bookmark_count": 0,
+        "impression_count": 204,
+        "like_count": 3,
+        "quote_count": 0,
+        "reply_count": 0,
+        "retweet_count": 2
+      },
+      "text": "Oil transit fees owed to Turkey by Iraqi Kurdistan have vanished in Jersey, says MP: \u201cThis is called international robbery,\u201d remarks opposition lawmaker, claiming documents show $229mn has evaporated on island. https://t.co/7WQkcUyNHA Follow for news https://t.co/YlDz0GO6yR"
+    },
+    {
+      "author_id": "1301994454103056384",
+      "created_at": "2026-08-08T14:50:01.000Z",
+      "edit_history_tweet_ids": [
+        "2086102636730655209"
+      ],
+      "id": "2086102636730655209",
+      "public_metrics": {
+        "bookmark_count": 0,
+        "impression_count": 33,
+        "like_count": 1,
+        "quote_count": 0,
+        "reply_count": 1,
+        "retweet_count": 0
+      },
+      "text": "Encounters shouldn't just be seen as just encounters. What purpose  do they serve? In classic JRPGs like  old school DQ or FF they are a risk reward of using resources like MP which was hard to restore for exp and gold gains. A juggling act leading to a boss and escaping places"
+    },
+    {
+      "author_id": "2081783427028946944",
+      "created_at": "2026-08-08T14:49:34.000Z",
+      "edit_history_tweet_ids": [
+        "2086102526282403956"
+      ],
+      "id": "2086102526282403956",
+      "public_metrics": {
+        "bookmark_count": 0,
+        "impression_count": 158,
+        "like_count": 4,
+        "quote_count": 0,
+        "reply_count": 0,
+        "retweet_count": 1
+      },
+      "text": "Despite the recent rally, rare earth stocks and magnet producers are still trading at a steep discount to their 52 week highs.\n\n$EMAT $REA $MP $USAR $AREC $UUUU $ALOY https://t.co/v1cem95zUb"
+    }
+  ]
+}

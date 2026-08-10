@@ -1,0 +1,26 @@
+{
+  "stamp": "20260809T021847Z",
+  "dry": false,
+  "arms": {
+    "A_tsla_topic": {
+      "success": true,
+      "count": 98,
+      "file": "20260809T021847Z_A_tsla_topic.json",
+      "error": null
+    },
+    "B_tsla_cashtag": {
+      "success": true,
+      "count": 100,
+      "file": "20260809T021847Z_B_tsla_cashtag.json",
+      "error": null
+    },
+    "C_mp_topic": {
+      "success": true,
+      "count": 100,
+      "file": "20260809T021847Z_C_mp_topic.json",
+      "error": null
+    }
+  },
+  "total_posts": 298,
+  "calls_made": 3
+}

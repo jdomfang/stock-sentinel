@@ -1,0 +1,1693 @@
+{
+  "arm": "A_tsla_topic",
+  "ticker": "TSLA",
+  "query": "($TSLA OR TSLA) (stock OR stocks OR shares OR price OR chart OR earnings OR news OR catalyst OR bullish OR bearish OR risk OR watchlist OR trading OR options OR #FinTwit) lang:en -is:retweet",
+  "timeframe": "48h",
+  "success": true,
+  "error": null,
+  "fetched_at": "2026-08-09T02:18:48.143313+00:00",
+  "count": 98,
+  "tweets": [
+    {
+      "author_id": "2058401027196674048",
+      "created_at": "2026-08-09T02:12:37.000Z",
+      "edit_history_tweet_ids": [
+        "2086274421954859028"
+      ],
+      "id": "2086274421954859028",
+      "public_metrics": {
+        "bookmark_count": 0,
+        "impression_count": 17,
+        "like_count": 1,
+        "quote_count": 0,
+        "reply_count": 0,
+        "retweet_count": 0
+      },
+      "text": "\ud83d\ude80 The next 10 years could become one of the biggest investment cycles in history.\n\nThe biggest wealth-building opportunities often don\u2019t come from chasing today\u2019s hottest stocks.\n\nThey come from understanding:\n\nWhere will capital flow next?\n\nThe AI revolution is much bigger than https://t.co/yqoNtvDWqe"
+    },
+    {
+      "author_id": "2018902159383822336",
+      "created_at": "2026-08-09T02:08:43.000Z",
+      "edit_history_tweet_ids": [
+        "2086273440395506130"
+      ],
+      "id": "2086273440395506130",
+      "public_metrics": {
+        "bookmark_count": 0,
+        "impression_count": 17,
+        "like_count": 1,
+        "quote_count": 0,
+        "reply_count": 0,
+        "retweet_count": 0
+      },
+      "text": "My August recommendations:\n$NVDA (NVIDIA) \u2014 Current Price: $223.96 \uff5c Buy on Dips  Retracement Scaling-in Range: $210 - $220\n$AAPL (Apple Inc.) \u2014 Current Price: $313.33 \uff5c Wait and See (Do not buy)\n$TSLA (Tesla) \u2014 Current Price: $328.58 \uff5c Wait and See (Do not buy)\n$NFLX https://t.co/6e7LCICpKT"
+    },
+    {
+      "author_id": "1528511265571622913",
+      "created_at": "2026-08-09T02:08:02.000Z",
+      "edit_history_tweet_ids": [
+        "2086273267854389415"
+      ],
+      "id": "2086273267854389415",
+      "public_metrics": {
+        "bookmark_count": 0,
+        "impression_count": 7,
+        "like_count": 0,
+        "quote_count": 0,
+        "reply_count": 1,
+        "retweet_count": 0
+      },
+      "text": "@RandyWKirk1 Why not? How much dilution SPCX need to take depends how high SPCX stock is, and how low TSLA stock price is. \n\nIf TSLA is losing money will the Morgan Stanley pay the difference for shareholders ?"
+    },
+    {
+      "author_id": "1246508929506574346",
+      "created_at": "2026-08-09T02:00:30.000Z",
+      "edit_history_tweet_ids": [
+        "2086271369809981494"
+      ],
+      "id": "2086271369809981494",
+      "public_metrics": {
+        "bookmark_count": 0,
+        "impression_count": 1,
+        "like_count": 0,
+        "quote_count": 0,
+        "reply_count": 0,
+        "retweet_count": 0
+      },
+      "text": "\ud83d\ude80 Daily Market Update | 09 Aug 2026\n\n\ud83d\udcc8 CRYPTO: $BTC $ETH $SOL\n\ud83d\udcca STOCKS: $NVDA $AAPL $TSLA\n\nFollow @NaveedNarejo4 for daily updates!\n\n#Crypto #Bitcoin #Stocks #Pakistan"
+    },
+    {
+      "author_id": "2018902159383822336",
+      "created_at": "2026-08-09T01:56:30.000Z",
+      "edit_history_tweet_ids": [
+        "2086270365156979075"
+      ],
+      "id": "2086270365156979075",
+      "public_metrics": {
+        "bookmark_count": 0,
+        "impression_count": 24,
+        "like_count": 1,
+        "quote_count": 0,
+        "reply_count": 0,
+        "retweet_count": 0
+      },
+      "text": "5 Stocks Poised for Explosive Revenue Growth\u2014Miss This Opportunity and You Might Wait Another Decade!\n$QCOM (Qualcomm): Projected revenue surge of 532% (The King of Absolute Growth)\n$AMD (Advanced Micro Devices): Projected revenue surge of 366\\%\\)\n$TSLA (Tesla): Projected revenue https://t.co/mOKsQYfkpv"
+    },
+    {
+      "author_id": "2011154222927196160",
+      "created_at": "2026-08-09T01:55:54.000Z",
+      "edit_history_tweet_ids": [
+        "2086270213087993872"
+      ],
+      "id": "2086270213087993872",
+      "public_metrics": {
+        "bookmark_count": 0,
+        "impression_count": 1,
+        "like_count": 0,
+        "quote_count": 0,
+        "reply_count": 0,
+        "retweet_count": 0
+      },
+      "text": "@MEXCVIP_SEAAF @Pancake_MEXC My favorite stock on MEXC is \n$TSLA\n because Tesla leads innovation in electric vehicles, AI, and robotics, characterized by high volatility. I like trading it on MEXC due to its extremely low futures fees (0% Maker) and high liquidity.\n\n@paisar168\n \nMEXC UID= 81966927"
+    },
+    {
+      "author_id": "2086204700693798912",
+      "created_at": "2026-08-09T01:55:41.000Z",
+      "edit_history_tweet_ids": [
+        "2086270158998569011"
+      ],
+      "id": "2086270158998569011",
+      "public_metrics": {
+        "bookmark_count": 0,
+        "impression_count": 1,
+        "like_count": 0,
+        "quote_count": 0,
+        "reply_count": 0,
+        "retweet_count": 0
+      },
+      "text": "First company on the list: $TSLA\nGoing to break it down the way Buffett would:\nDo I understand the business?\nDoes it have a moat??\nIs the balance sheet healthy?\nIs the price actually fair (P/E, margin of safety)?\n\nNumbers over hype. Let's see if it's a good buy!"
+    },
+    {
+      "author_id": "2011154222927196160",
+      "created_at": "2026-08-09T01:55:26.000Z",
+      "edit_history_tweet_ids": [
+        "2086270093810376898"
+      ],
+      "id": "2086270093810376898",
+      "public_metrics": {
+        "bookmark_count": 0,
+        "impression_count": 3,
+        "like_count": 0,
+        "quote_count": 0,
+        "reply_count": 0,
+        "retweet_count": 0
+      },
+      "text": "@Pancake_MEXC My favorite stock on MEXC is $TSLA because Tesla leads innovation in electric vehicles, AI, and robotics, characterized by high volatility. I like trading it on MEXC due to its extremely low futures fees (0% Maker) and high liquidity.\n\n@paisar168 \nMEXC UID= 81966927"
+    },
+    {
+      "author_id": "2086204700693798912",
+      "created_at": "2026-08-09T01:52:30.000Z",
+      "edit_history_tweet_ids": [
+        "2086269359157366789"
+      ],
+      "id": "2086269359157366789",
+      "public_metrics": {
+        "bookmark_count": 0,
+        "impression_count": 1,
+        "like_count": 0,
+        "quote_count": 0,
+        "reply_count": 0,
+        "retweet_count": 0
+      },
+      "text": "P/E ratio = Price \u00f7 Earnings Per Share. It tells you how many years of CURRENT profit you're paying for\nFor Example:\n$TSLA: $328.58 \u00f7 $1.08 EPS = 305x (paying for 305 yrs of profit)\n$NKE: ~20x (paying for 20 yrs)\nHigher P/E = betting on huge future growth. Lower = cheaper today"
+    },
+    {
+      "author_id": "1587116140978806784",
+      "created_at": "2026-08-09T01:51:35.000Z",
+      "edit_history_tweet_ids": [
+        "2086269127069471199"
+      ],
+      "id": "2086269127069471199",
+      "public_metrics": {
+        "bookmark_count": 0,
+        "impression_count": 37,
+        "like_count": 0,
+        "quote_count": 0,
+        "reply_count": 0,
+        "retweet_count": 0
+      },
+      "text": "@colin_gladman the problem is that retail ownership is down to historic lows of like 20% now so I don\u2019t think Elon cares about sentiment that much anymore.\n\nand the institutions who will primarily be voting and own TSLA were part of the SpaceX ipo so they will vote in favor of the merger"
+    },
+    {
+      "author_id": "2011154222927196160",
+      "created_at": "2026-08-09T01:51:07.000Z",
+      "edit_history_tweet_ids": [
+        "2086269011382165777"
+      ],
+      "id": "2086269011382165777",
+      "public_metrics": {
+        "bookmark_count": 0,
+        "impression_count": 1,
+        "like_count": 0,
+        "quote_count": 0,
+        "reply_count": 0,
+        "retweet_count": 0
+      },
+      "text": "@Pancake_MEXC @Alpha_MEXC With 0 fees, my next \u221e move is Trading stocks like \n$TSLA\n to ride the wave of innovation in the markets. \n\n#MEXC0808 UID= 81966927"
+    },
+    {
+      "author_id": "2011154222927196160",
+      "created_at": "2026-08-09T01:50:46.000Z",
+      "edit_history_tweet_ids": [
+        "2086268919971549515"
+      ],
+      "id": "2086268919971549515",
+      "public_metrics": {
+        "bookmark_count": 0,
+        "impression_count": 2,
+        "like_count": 0,
+        "quote_count": 0,
+        "reply_count": 0,
+        "retweet_count": 0
+      },
+      "text": "@Alpha_MEXC With 0 fees, my next \u221e move is Trading stocks like $TSLA to ride the wave of innovation in the markets. \n\n#MEXC0808 UID= 81966927"
+    },
+    {
+      "author_id": "2086136252466675712",
+      "created_at": "2026-08-09T01:50:06.000Z",
+      "edit_history_tweet_ids": [
+        "2086268752920723752"
+      ],
+      "id": "2086268752920723752",
+      "public_metrics": {
+        "bookmark_count": 0,
+        "impression_count": 6,
+        "like_count": 0,
+        "quote_count": 0,
+        "reply_count": 0,
+        "retweet_count": 0
+      },
+      "text": "If stocks are moving onchain, what kind of culture will grow around them?\n\nMeet HoodLumz \ud83d\udc51\n3,333 characters. 100% onchain SVG. Minted with TSLA on Robinhood Chain.\n\nTurn on notification \ud83d\udd14 https://t.co/XRkD7qM7EY"
+    },
+    {
+      "author_id": "1923429663726239745",
+      "created_at": "2026-08-09T01:45:38.000Z",
+      "edit_history_tweet_ids": [
+        "2086267630860832789"
+      ],
+      "id": "2086267630860832789",
+      "public_metrics": {
+        "bookmark_count": 0,
+        "impression_count": 12,
+        "like_count": 2,
+        "quote_count": 0,
+        "reply_count": 2,
+        "retweet_count": 0
+      },
+      "text": "I learned the hard way that owning an investment and actually being able to access it aren't always the same thing.\n\nLast year, I tried moving funds to an offshore platform over a long holiday weekend to hedge a stock position.\n\nMy bank flagged the transfer.\n\nThree days later, https://t.co/QqGJn3tDv0"
+    },
+    {
+      "author_id": "1279963560639070208",
+      "created_at": "2026-08-09T01:40:25.000Z",
+      "edit_history_tweet_ids": [
+        "2086266318647402861"
+      ],
+      "id": "2086266318647402861",
+      "public_metrics": {
+        "bookmark_count": 0,
+        "impression_count": 13,
+        "like_count": 0,
+        "quote_count": 0,
+        "reply_count": 0,
+        "retweet_count": 1
+      },
+      "text": "@elonmusk @Teslaconomics @Gfilche Need some similar hype on $TSLA we\u2019ve taken a beating the last few years even w great earnings.  Bullish on the future but hard not to diversify how flat the stock has been.  We\u2019d appreciate any insight \u2764\ufe0f\ud83d\udcaf big fan btw"
+    },
+    {
+      "author_id": "833154196727689218",
+      "created_at": "2026-08-09T01:39:03.000Z",
+      "edit_history_tweet_ids": [
+        "2086265972059750730"
+      ],
+      "id": "2086265972059750730",
+      "public_metrics": {
+        "bookmark_count": 0,
+        "impression_count": 913,
+        "like_count": 18,
+        "quote_count": 0,
+        "reply_count": 3,
+        "retweet_count": 1
+      },
+      "text": "@strengthPlan No, that's not how to see it. \n\nYou may be able to sell it between merger announcement and merger closing at a higher price than now (who knows what it will be). \n\nBut once the merger closes, you don't have TSLA stock anymore, you exchanged it for a number of SPCX stock."
+    },
+    {
+      "author_id": "79233326",
+      "created_at": "2026-08-09T01:38:30.000Z",
+      "edit_history_tweet_ids": [
+        "2086265832418500686"
+      ],
+      "id": "2086265832418500686",
+      "public_metrics": {
+        "bookmark_count": 1,
+        "impression_count": 495,
+        "like_count": 3,
+        "quote_count": 0,
+        "reply_count": 0,
+        "retweet_count": 0
+      },
+      "text": "$TSLA \u2014 A High Frequency buying opportunity traders cannot afford to overlook.\nWatch the video to see why this area matters: https://t.co/H7uFRCaOZV\nTrade the Blue Boxes, High Frequency areas.\n\n#elliottwave #ElliottWave #trading #TSLA #Tesla #Stocks #HighFrequency #BlueBox https://t.co/QgKYNJpQW7"
+    },
+    {
+      "author_id": "714225599825514501",
+      "created_at": "2026-08-09T01:30:00.000Z",
+      "edit_history_tweet_ids": [
+        "2086263696049762525"
+      ],
+      "id": "2086263696049762525",
+      "public_metrics": {
+        "bookmark_count": 0,
+        "impression_count": 180,
+        "like_count": 1,
+        "quote_count": 0,
+        "reply_count": 0,
+        "retweet_count": 0
+      },
+      "text": "\ud83d\udd25 Weekend Update: Fresh Fibonacci Key Support Levels for Hot Stocks (0.382\u20130.618)\n\nThese names are consolidating right in the golden Fib zone \u2014 potential low-risk entries before the next leg higher. Save this!\n\nAI Power / Utilities\n\u2022 $IREN $40\n\u2022 $NBIS $153\n\u2022 $CIFR $14\n\u2022"
+    },
+    {
+      "author_id": "4276969040",
+      "created_at": "2026-08-09T01:25:20.000Z",
+      "edit_history_tweet_ids": [
+        "2086262520059449714"
+      ],
+      "id": "2086262520059449714",
+      "public_metrics": {
+        "bookmark_count": 11,
+        "impression_count": 5097,
+        "like_count": 82,
+        "quote_count": 0,
+        "reply_count": 10,
+        "retweet_count": 2
+      },
+      "text": "This will get some hate, but that\u2019s fine, I\u2019m not here to make friends. Like I\u2019ve always said, \u201cNeed a friend? Buy a dog.\u201d\n\nI still think this is the most likely move for $TSLA\n\nI expect price to overall move higher as the market stays stronger up through midterms.  Then I expect https://t.co/pop8Jx6soE"
+    },
+    {
+      "author_id": "1678469799364403222",
+      "created_at": "2026-08-09T01:21:32.000Z",
+      "edit_history_tweet_ids": [
+        "2086261565582454918"
+      ],
+      "id": "2086261565582454918",
+      "public_metrics": {
+        "bookmark_count": 0,
+        "impression_count": 12,
+        "like_count": 0,
+        "quote_count": 0,
+        "reply_count": 0,
+        "retweet_count": 0
+      },
+      "text": "Selling puts and calls feels like free money.\n\nUntil it doesn\u2019t.\n\nEvery \u201ctheta gang\u201d account you follow has a tail risk they\u2019re not showing you. \n\nOne gap down, one earnings surprise, one black swan and those months and years of premium collection is gone in a session.\n\nDefined"
+    },
+    {
+      "author_id": "53011680",
+      "created_at": "2026-08-09T01:17:01.000Z",
+      "edit_history_tweet_ids": [
+        "2086260427898659016"
+      ],
+      "id": "2086260427898659016",
+      "public_metrics": {
+        "bookmark_count": 0,
+        "impression_count": 57,
+        "like_count": 2,
+        "quote_count": 0,
+        "reply_count": 0,
+        "retweet_count": 0
+      },
+      "text": "Weren\u2019t some Fintwats calling for TSLA $250?? \n\nMaybe they can still be right later\u2026\n\nI added shares at $305."
+    },
+    {
+      "author_id": "358834522",
+      "created_at": "2026-08-09T01:08:56.000Z",
+      "edit_history_tweet_ids": [
+        "2086258395150225607"
+      ],
+      "id": "2086258395150225607",
+      "public_metrics": {
+        "bookmark_count": 1,
+        "impression_count": 2131,
+        "like_count": 44,
+        "quote_count": 2,
+        "reply_count": 4,
+        "retweet_count": 8
+      },
+      "text": "GOOD NEWS \ud83d\udea8 SG Americas Securities LLC, the U.S. broker-dealer arm of French banking giant Soci\u00e9t\u00e9 G\u00e9n\u00e9rale, made a massive move on $TSLA during Q2 2026, pouring $3.999 billion in fresh capital into the stock \ud83d\udd25\n\nThis aggressive buying added over 9.5 million shares to their https://t.co/wJagMk865a"
+    },
+    {
+      "author_id": "2074523349397467136",
+      "created_at": "2026-08-09T01:07:53.000Z",
+      "edit_history_tweet_ids": [
+        "2086258128648024429"
+      ],
+      "id": "2086258128648024429",
+      "public_metrics": {
+        "bookmark_count": 0,
+        "impression_count": 2,
+        "like_count": 0,
+        "quote_count": 0,
+        "reply_count": 0,
+        "retweet_count": 0
+      },
+      "text": "$TSLA Complete Analysis #StockMarket #Markets #Investing #Trading https://t.co/73XYePpB04"
+    },
+    {
+      "author_id": "87226645",
+      "created_at": "2026-08-09T01:00:55.000Z",
+      "edit_history_tweet_ids": [
+        "2086256377299632284"
+      ],
+      "id": "2086256377299632284",
+      "public_metrics": {
+        "bookmark_count": 0,
+        "impression_count": 264,
+        "like_count": 3,
+        "quote_count": 0,
+        "reply_count": 1,
+        "retweet_count": 1
+      },
+      "text": "Everyone just wants Tesla stock $500+\n\nJust something not $100-$450 for the past 5 years\n\nTesla stock was $400 2021, $400 2024, $400 2025, and $400 2026\n\nIt\u2019s like the twilight zone \ud83d\ude35\ud83d\ude35\ud83d\ude35#tsla"
+    },
+    {
+      "author_id": "2084967310188548096",
+      "created_at": "2026-08-09T00:58:55.000Z",
+      "edit_history_tweet_ids": [
+        "2086255873781850148"
+      ],
+      "id": "2086255873781850148",
+      "public_metrics": {
+        "bookmark_count": 0,
+        "impression_count": 3,
+        "like_count": 1,
+        "quote_count": 0,
+        "reply_count": 0,
+        "retweet_count": 0
+      },
+      "text": "Tesla Q2 Earnings: Here\u2019s what to expect\n\nTesla (NASDAQ: TSLA) will report its earnings for the second quarter of 2026 this evening after market close, and investors and analysts are waiting anxiously to see what the company will report for the second three-month span of the https://t.co/4FUbzgTsXv"
+    },
+    {
+      "author_id": "2897852237",
+      "created_at": "2026-08-09T00:56:20.000Z",
+      "edit_history_tweet_ids": [
+        "2086255224029876579"
+      ],
+      "id": "2086255224029876579",
+      "public_metrics": {
+        "bookmark_count": 2,
+        "impression_count": 2817,
+        "like_count": 27,
+        "quote_count": 0,
+        "reply_count": 9,
+        "retweet_count": 0
+      },
+      "text": "Has Tesla's stock lost its mojo? Trading volume dropped to a long term low and pushed TSLA from a close second most traded stock to 8th place in the span of a year. @Tesla https://t.co/6o8J29GCzB"
+    },
+    {
+      "author_id": "87226645",
+      "created_at": "2026-08-09T00:55:59.000Z",
+      "edit_history_tweet_ids": [
+        "2086255134351208908"
+      ],
+      "id": "2086255134351208908",
+      "public_metrics": {
+        "bookmark_count": 0,
+        "impression_count": 340,
+        "like_count": 0,
+        "quote_count": 0,
+        "reply_count": 0,
+        "retweet_count": 0
+      },
+      "text": "Berkshire should be investing in Tesla and SpaceX if they were smart\n\nDon\u2019t seem they are very smart for staying out of the market for 14 quarters when stocks just went to the moon #tsla https://t.co/M0kY7g7iA3"
+    },
+    {
+      "author_id": "232654492",
+      "created_at": "2026-08-09T00:46:34.000Z",
+      "edit_history_tweet_ids": [
+        "2086252766922432657"
+      ],
+      "id": "2086252766922432657",
+      "public_metrics": {
+        "bookmark_count": 0,
+        "impression_count": 28,
+        "like_count": 0,
+        "quote_count": 0,
+        "reply_count": 0,
+        "retweet_count": 0
+      },
+      "text": "@Morecryptoonl Interesting to me that XRP, ETH, &amp; TSLA all have the same weekly chart, going back about 6 to 8 years."
+    },
+    {
+      "author_id": "558768187",
+      "created_at": "2026-08-09T00:38:09.000Z",
+      "edit_history_tweet_ids": [
+        "2086250646274277522"
+      ],
+      "id": "2086250646274277522",
+      "public_metrics": {
+        "bookmark_count": 0,
+        "impression_count": 34,
+        "like_count": 0,
+        "quote_count": 0,
+        "reply_count": 0,
+        "retweet_count": 0
+      },
+      "text": "Why are you selling $TSLA at this price? Why not at $500 https://t.co/cOf1uXf2gY"
+    },
+    {
+      "author_id": "2001658427299516416",
+      "created_at": "2026-08-09T00:37:06.000Z",
+      "edit_history_tweet_ids": [
+        "2086250382544842910"
+      ],
+      "id": "2086250382544842910",
+      "public_metrics": {
+        "bookmark_count": 0,
+        "impression_count": 1,
+        "like_count": 0,
+        "quote_count": 0,
+        "reply_count": 0,
+        "retweet_count": 0
+      },
+      "text": "@donaldjdean Higher lows on $TSLA keeping the trendline alive. For 24/7 onchain exposure to tokenized equities, the MEXC xStocks Gala offers zero trading fees on $TSLAx and all 1:1 backed tokens. New users get a $200 TSLAx position airdrop and access to a $1M total prize pool."
+    },
+    {
+      "author_id": "1586379350089293824",
+      "created_at": "2026-08-09T00:37:05.000Z",
+      "edit_history_tweet_ids": [
+        "2086250378098581928"
+      ],
+      "id": "2086250378098581928",
+      "public_metrics": {
+        "bookmark_count": 5,
+        "impression_count": 2918,
+        "like_count": 28,
+        "quote_count": 0,
+        "reply_count": 3,
+        "retweet_count": 2
+      },
+      "text": "The market rewards impatience just enough to eventually punish you for it.\n\nThink about that. You chase a trade and it works. You force an entry and it works. You oversize and somehow get away with it. So you do it again. Eventually the market collects.\n\nOne of the biggest things"
+    },
+    {
+      "author_id": "2728610524",
+      "created_at": "2026-08-09T00:34:35.000Z",
+      "edit_history_tweet_ids": [
+        "2086249464902070772",
+        "2086249750576222212"
+      ],
+      "id": "2086249750576222212",
+      "public_metrics": {
+        "bookmark_count": 0,
+        "impression_count": 24,
+        "like_count": 0,
+        "quote_count": 0,
+        "reply_count": 0,
+        "retweet_count": 0
+      },
+      "text": "Elon inspired \u201cHold on to Tesla stock it\u2019s going to  worth a lot \u201d. \nInvest in the future, not the past. \u26a1\ud83d\ude80 Tesla is building across AI, robotics, energy, and electric vehicles. The biggest opportunities often start with believing in what\u2019s next. $TSLA \ud83d\udd25\ud83d\udcc8 #tesla #elonmusk https://t.co/f7DGnFzzUo"
+    },
+    {
+      "author_id": "2728610524",
+      "created_at": "2026-08-09T00:33:27.000Z",
+      "edit_history_tweet_ids": [
+        "2086249464902070772",
+        "2086249750576222212"
+      ],
+      "id": "2086249464902070772",
+      "public_metrics": {
+        "bookmark_count": 0,
+        "impression_count": 3,
+        "like_count": 0,
+        "quote_count": 0,
+        "reply_count": 0,
+        "retweet_count": 0
+      },
+      "text": "Invest in the future, not the past. \u26a1\ud83d\ude80 Tesla is building across AI, robotics, energy, and electric vehicles. The biggest opportunities often start with believing in what\u2019s next. Elon inspired \u201cHold on to Tesla stock it\u2019s going to worth a lot \u201d $TSLA \ud83d\udd25\ud83d\udcc8 #tesla #elonmusk https://t.co/LKvN9nr69R"
+    },
+    {
+      "author_id": "1478792886103601153",
+      "created_at": "2026-08-09T00:30:18.000Z",
+      "edit_history_tweet_ids": [
+        "2086248670060814820"
+      ],
+      "id": "2086248670060814820",
+      "public_metrics": {
+        "bookmark_count": 0,
+        "impression_count": 70,
+        "like_count": 2,
+        "quote_count": 0,
+        "reply_count": 0,
+        "retweet_count": 0
+      },
+      "text": "@elonmusk @Gfilche Ok it seeeeeeeems like we are valid for a continuation of the pump from Friday\u2026\nIt would seem\u2026if retail didnt sell their shares before they probably won\u2019t now &amp; will buy the dip if there is one \n\n$spcx $tsla $nvda"
+    },
+    {
+      "author_id": "1217290826",
+      "created_at": "2026-08-09T00:28:23.000Z",
+      "edit_history_tweet_ids": [
+        "2086248190492217715"
+      ],
+      "id": "2086248190492217715",
+      "public_metrics": {
+        "bookmark_count": 0,
+        "impression_count": 29,
+        "like_count": 2,
+        "quote_count": 0,
+        "reply_count": 0,
+        "retweet_count": 1
+      },
+      "text": "@elonmusk @aaronburnett How about we just scale Robotaxi so TSLA stops tanking and underperforming the S&amp;P on the 5 year chart https://t.co/R7I9lZ52dD"
+    },
+    {
+      "author_id": "2026877764914352128",
+      "created_at": "2026-08-09T00:26:30.000Z",
+      "edit_history_tweet_ids": [
+        "2086247714829001065"
+      ],
+      "id": "2086247714829001065",
+      "public_metrics": {
+        "bookmark_count": 0,
+        "impression_count": 43,
+        "like_count": 2,
+        "quote_count": 0,
+        "reply_count": 0,
+        "retweet_count": 1
+      },
+      "text": "#SpaceX --  price heading towards key level of 147-155$ flip n ATH \n\n130$ will defend by option sellers as floor \n\n$SPCX $TSLA $BTC https://t.co/vtyeggwCyC"
+    },
+    {
+      "author_id": "2001658427299516416",
+      "created_at": "2026-08-09T00:21:52.000Z",
+      "edit_history_tweet_ids": [
+        "2086246550821552188"
+      ],
+      "id": "2086246550821552188",
+      "public_metrics": {
+        "bookmark_count": 0,
+        "impression_count": 1,
+        "like_count": 0,
+        "quote_count": 0,
+        "reply_count": 0,
+        "retweet_count": 0
+      },
+      "text": "@daltonbrewer When $TSLA makes its move toward $400, onchain traders will be ready. You can gain exposure to tokenized equities on the MEXC xStocks Gala with zero trading fees on $TSLAx. \nTrade 1:1 backed tokens 24/7 while corporate action benefits pass through via token rebasing."
+    },
+    {
+      "author_id": "865639729",
+      "created_at": "2026-08-09T00:19:42.000Z",
+      "edit_history_tweet_ids": [
+        "2086246005641789493"
+      ],
+      "id": "2086246005641789493",
+      "public_metrics": {
+        "bookmark_count": 0,
+        "impression_count": 28,
+        "like_count": 0,
+        "quote_count": 0,
+        "reply_count": 2,
+        "retweet_count": 0
+      },
+      "text": "High returns at low cost: buying cheap in the South and selling high in the North. We call that capturing a profit margin. That is the entire Silicon Valley business model: settlers\u2014sporting the red, white, and blue aesthetic and the \"Don't Tread on Me\" motto, implying that U.S."
+    },
+    {
+      "author_id": "2001658427299516416",
+      "created_at": "2026-08-09T00:17:58.000Z",
+      "edit_history_tweet_ids": [
+        "2086245568507232444"
+      ],
+      "id": "2086245568507232444",
+      "public_metrics": {
+        "bookmark_count": 0,
+        "impression_count": 1,
+        "like_count": 0,
+        "quote_count": 0,
+        "reply_count": 0,
+        "retweet_count": 0
+      },
+      "text": "@alphacharts365 A 225-230 retest on $TSLA would reset risk/reward nicely. Anyone tracking tokenized equities can play this setup on the MEXC xStocks Gala with zero fees on $TSLAx. Earn 20% APR via flexible savings on 1:1 backed tokens while corporate action benefits pass through rebasing."
+    },
+    {
+      "author_id": "1982783154495860736",
+      "created_at": "2026-08-09T00:07:42.000Z",
+      "edit_history_tweet_ids": [
+        "2086242983549223219"
+      ],
+      "id": "2086242983549223219",
+      "public_metrics": {
+        "bookmark_count": 0,
+        "impression_count": 85,
+        "like_count": 7,
+        "quote_count": 0,
+        "reply_count": 1,
+        "retweet_count": 4
+      },
+      "text": "Chart has breakout successfully with solid volume. \n\nMany are still in shock and they gonna end up buying higher in fomo \n\nBoth $TSLA $SPCX  gonna bounce hardner next week . \n\n150-170$ before next week . https://t.co/fJ3a81lVfA"
+    },
+    {
+      "author_id": "2070179487803944960",
+      "created_at": "2026-08-09T00:06:26.000Z",
+      "edit_history_tweet_ids": [
+        "2086242363605991785",
+        "2086242610977681887",
+        "2086242665503559956"
+      ],
+      "id": "2086242665503559956",
+      "public_metrics": {
+        "bookmark_count": 0,
+        "impression_count": 45,
+        "like_count": 2,
+        "quote_count": 0,
+        "reply_count": 0,
+        "retweet_count": 1
+      },
+      "text": "Dumb $TSLA investors: \"We want to merge with $SPCX and want $600/share for our $TSLA shares!\" \ud83d\ude21 \n\nSmart $TSLA investors: Sells 1/2 of $TSLA shares and uses it to buy $SPCX. \ud83e\udd70 https://t.co/mXEWhqqCQA"
+    },
+    {
+      "author_id": "950579400290000896",
+      "created_at": "2026-08-09T00:06:22.000Z",
+      "edit_history_tweet_ids": [
+        "2086242648571236859"
+      ],
+      "id": "2086242648571236859",
+      "public_metrics": {
+        "bookmark_count": 0,
+        "impression_count": 178,
+        "like_count": 4,
+        "quote_count": 0,
+        "reply_count": 0,
+        "retweet_count": 0
+      },
+      "text": "@elonmusk @wholemars @Gfilche This is disservice to tsla long term investors, it is getting out of hand.Literally trying to suppress tsla stock and pump space x stock.\n\nI think it\u2019s high time Elon take back seat from TSLA else,investors will never see tsla realize it\u2019s potential until it is favorable for him."
+    },
+    {
+      "author_id": "2070179487803944960",
+      "created_at": "2026-08-09T00:06:13.000Z",
+      "edit_history_tweet_ids": [
+        "2086242363605991785",
+        "2086242610977681887",
+        "2086242665503559956"
+      ],
+      "id": "2086242610977681887",
+      "public_metrics": {
+        "bookmark_count": 0,
+        "impression_count": 2,
+        "like_count": 0,
+        "quote_count": 0,
+        "reply_count": 0,
+        "retweet_count": 0
+      },
+      "text": "Dumb $TSLA investors: \"We want a merge with $SPCX and want $600/share for our $TSLA shares!\" \ud83d\ude21 \n\nSmart $TSLA investors: Sells 1/2 of $TSLA shares and uses it to buy $SPCX. \ud83e\udd70 https://t.co/mXEWhqqCQA"
+    },
+    {
+      "author_id": "2070179487803944960",
+      "created_at": "2026-08-09T00:05:14.000Z",
+      "edit_history_tweet_ids": [
+        "2086242363605991785",
+        "2086242610977681887",
+        "2086242665503559956"
+      ],
+      "id": "2086242363605991785",
+      "public_metrics": {
+        "bookmark_count": 0,
+        "impression_count": 8,
+        "like_count": 0,
+        "quote_count": 0,
+        "reply_count": 0,
+        "retweet_count": 0
+      },
+      "text": "Dumb $TSLA investors: \"We want a merger and want $600/share!\"\n\nSmart $TSLA investors: Sells 1/2 of $TSLA shares and buys $SPCX. https://t.co/mXEWhqqCQA"
+    },
+    {
+      "author_id": "2071248632209121281",
+      "created_at": "2026-08-09T00:04:59.000Z",
+      "edit_history_tweet_ids": [
+        "2086242299852513479"
+      ],
+      "id": "2086242299852513479",
+      "public_metrics": {
+        "bookmark_count": 0,
+        "impression_count": 2,
+        "like_count": 0,
+        "quote_count": 0,
+        "reply_count": 0,
+        "retweet_count": 0
+      },
+      "text": "@donaldjdean $TSLA holding $295 with higher lows is a clean setup to watch. What surprised me more is MEXC letting eligible users buy real Tesla shares with USDT, no separate broker, and zero platform fees during launch."
+    },
+    {
+      "author_id": "2180560289",
+      "created_at": "2026-08-09T00:02:42.000Z",
+      "edit_history_tweet_ids": [
+        "2086241724876140768"
+      ],
+      "id": "2086241724876140768",
+      "public_metrics": {
+        "bookmark_count": 0,
+        "impression_count": 107,
+        "like_count": 1,
+        "quote_count": 0,
+        "reply_count": 0,
+        "retweet_count": 0
+      },
+      "text": "\ud83d\udea8 Night Report: Tesla, NVDA, Starlink, Solana, Bitcoin, Claude, OpenClaw &amp; Hermes (August 8, 2026) \ud83c\udf19\n\n\ud83d\udd0b Tesla (TSLA): $328.58 (+2.8%) \u2014 $16.8B Terafab manufacturing initiative sparks investor debate as robotaxis clear 2.5M paying-passenger miles.\n\n\ud83d\udfe2 NVIDIA (NVDA): $223.96 https://t.co/cR4tqpdUk1"
+    },
+    {
+      "author_id": "1436836205010857984",
+      "created_at": "2026-08-09T00:02:05.000Z",
+      "edit_history_tweet_ids": [
+        "2086241568252481764"
+      ],
+      "id": "2086241568252481764",
+      "public_metrics": {
+        "bookmark_count": 0,
+        "impression_count": 13,
+        "like_count": 1,
+        "quote_count": 0,
+        "reply_count": 0,
+        "retweet_count": 1
+      },
+      "text": "\ud83d\udfe2 BUY SIGNAL\n\nSymbol: $TSLA USDT (FUTURES)\nInterval: 1D\nPrice: 332.35\nStop Loss: 325.703\nTP1: 338.997 | TP2: 345.644 | TP3: 352.291\n\nNot financial advice. Manage your risk.\n#crypto #binance #stocks #coin #TSLA"
+    },
+    {
+      "author_id": "2084343629103996928",
+      "created_at": "2026-08-09T00:00:19.000Z",
+      "edit_history_tweet_ids": [
+        "2086241126101799254"
+      ],
+      "id": "2086241126101799254",
+      "public_metrics": {
+        "bookmark_count": 0,
+        "impression_count": 12,
+        "like_count": 1,
+        "quote_count": 0,
+        "reply_count": 0,
+        "retweet_count": 0
+      },
+      "text": "If you invested $10,000 in $TSLA stock 4 years ago, you'd be up $200 (+2%) right now https://t.co/PaGg1zMuXD"
+    },
+    {
+      "author_id": "1599003149326393345",
+      "created_at": "2026-08-08T23:57:23.000Z",
+      "edit_history_tweet_ids": [
+        "2086240386549497929"
+      ],
+      "id": "2086240386549497929",
+      "public_metrics": {
+        "bookmark_count": 0,
+        "impression_count": 15,
+        "like_count": 0,
+        "quote_count": 0,
+        "reply_count": 1,
+        "retweet_count": 0
+      },
+      "text": "Michael Burry's current short entries outstanding as of 6 August 2026,\n\n1. $SOXX \u2013 $642.80  \n2. $MU \u2013 $1,051.87, $933.86, $880.35\n3. $NVDA \u2013 $198.09  \n4. $CAT \u2013 $1,060.98  \n5. $TSLA \u2013 $416.22  \n6. $AMAT \u2013 $729.40  \n7. $ORCL \u2013 $144.63  \n8. $NBIS \u2013 $211.77\n\nSix entries are"
+    },
+    {
+      "author_id": "1874897957214187521",
+      "created_at": "2026-08-08T23:49:37.000Z",
+      "edit_history_tweet_ids": [
+        "2086238433245089919"
+      ],
+      "id": "2086238433245089919",
+      "public_metrics": {
+        "bookmark_count": 0,
+        "impression_count": 42,
+        "like_count": 0,
+        "quote_count": 0,
+        "reply_count": 0,
+        "retweet_count": 0
+      },
+      "text": "@profstonge Essentially a forecast of $TSLA and $SPCX stock prices -- not too optimistic."
+    },
+    {
+      "author_id": "565686132",
+      "created_at": "2026-08-08T23:48:39.000Z",
+      "edit_history_tweet_ids": [
+        "2086238191343083767"
+      ],
+      "id": "2086238191343083767",
+      "public_metrics": {
+        "bookmark_count": 2,
+        "impression_count": 1905,
+        "like_count": 23,
+        "quote_count": 0,
+        "reply_count": 3,
+        "retweet_count": 2
+      },
+      "text": "Your life would drastically change if you consistently invested $1,000+ per month over 20 years into either the S&amp;P 500 (betting on America) and high conviction stocks like $TSLA, $SOFI, $PLTR and $SPCX."
+    },
+    {
+      "author_id": "1729358556317536256",
+      "created_at": "2026-08-08T23:44:41.000Z",
+      "edit_history_tweet_ids": [
+        "2086237193366835406"
+      ],
+      "id": "2086237193366835406",
+      "public_metrics": {
+        "bookmark_count": 0,
+        "impression_count": 139,
+        "like_count": 5,
+        "quote_count": 0,
+        "reply_count": 0,
+        "retweet_count": 0
+      },
+      "text": "\u26a0\ufe0f DELETING IN 18 HOURS.\n\n$NVDA \u2014 Stay Away\n$TSLA \u2014 Run Away\n$AAPL \u2014 Dead Money\n$GOOGL \u2014 Search Is Dying\n$SPCX \u2014 Portfolio Killer\nMeanwhile:\n$STX: $276 \u2192 $825\n$AMD: $38 \u2192 $459\n$MU: $88 \u2192 $801\nLast year, I spotted SanDisk early.\nNow I\u2019m watching another overlooked opportunity. https://t.co/Klr7YgybqC"
+    },
+    {
+      "author_id": "348844712",
+      "created_at": "2026-08-08T23:43:12.000Z",
+      "edit_history_tweet_ids": [
+        "2086236817133609203"
+      ],
+      "id": "2086236817133609203",
+      "public_metrics": {
+        "bookmark_count": 5,
+        "impression_count": 5873,
+        "like_count": 91,
+        "quote_count": 1,
+        "reply_count": 19,
+        "retweet_count": 5
+      },
+      "text": "Got quoted in the @wsj about my $SPCX investment \n\nDescribed as a \u201cdevotee\u201d of Elons ventures. Always making me look like a total suck up \ud83d\ude02\n\nSame thing happened 8 years ago when I got quoted about $TSLA stock (and it later went up 15X)\n\nFeels like I never get respect for https://t.co/79Ivdgd5JY"
+    },
+    {
+      "author_id": "1453541465339084801",
+      "created_at": "2026-08-08T23:38:03.000Z",
+      "edit_history_tweet_ids": [
+        "2086234996034117879",
+        "2086235520405750198"
+      ],
+      "id": "2086235520405750198",
+      "public_metrics": {
+        "bookmark_count": 0,
+        "impression_count": 21,
+        "like_count": 1,
+        "quote_count": 0,
+        "reply_count": 1,
+        "retweet_count": 0
+      },
+      "text": "9 months ago I wrote about @michaeljburry crash warnings and whether we were repeating 1929 or 2008.\nMy conclusion then: The guardrails are real. Policymakers will act faster and harder than ever. No Great Depression. But a 30\u201350% correction remains possible. Bet on volatility,"
+    },
+    {
+      "author_id": "48009002",
+      "created_at": "2026-08-08T23:36:58.000Z",
+      "edit_history_tweet_ids": [
+        "2086235249856663798"
+      ],
+      "id": "2086235249856663798",
+      "public_metrics": {
+        "bookmark_count": 0,
+        "impression_count": 0,
+        "like_count": 0,
+        "quote_count": 0,
+        "reply_count": 0,
+        "retweet_count": 0
+      },
+      "text": "2 more days, and 15,000,000 TSLA shares more for institutions \ud83e\udd2f\n\n15 million TSLA shares \ud83d\ude31\n\nThat's now 53.5% of outstanding shares. https://t.co/DLwBefkqyt"
+    },
+    {
+      "author_id": "1453541465339084801",
+      "created_at": "2026-08-08T23:35:58.000Z",
+      "edit_history_tweet_ids": [
+        "2086234996034117879",
+        "2086235520405750198"
+      ],
+      "id": "2086234996034117879",
+      "public_metrics": {
+        "bookmark_count": 0,
+        "impression_count": 6,
+        "like_count": 0,
+        "quote_count": 0,
+        "reply_count": 0,
+        "retweet_count": 0
+      },
+      "text": "months ago I wrote about @michaeljburry crash warnings and whether we were repeating 1929 or 2008.\nMy conclusion then: The guardrails are real. Policymakers will act faster and harder than ever. No Great Depression. But a 30\u201350% correction remains possible. Bet on volatility, not"
+    },
+    {
+      "author_id": "87226645",
+      "created_at": "2026-08-08T23:29:20.000Z",
+      "edit_history_tweet_ids": [
+        "2086233328152142219"
+      ],
+      "id": "2086233328152142219",
+      "public_metrics": {
+        "bookmark_count": 0,
+        "impression_count": 212,
+        "like_count": 3,
+        "quote_count": 0,
+        "reply_count": 0,
+        "retweet_count": 0
+      },
+      "text": "Everyone buying Tesla stock here #tsla https://t.co/VQruDbxvY5"
+    },
+    {
+      "author_id": "888106937698603009",
+      "created_at": "2026-08-08T23:28:46.000Z",
+      "edit_history_tweet_ids": [
+        "2086233187571650774"
+      ],
+      "id": "2086233187571650774",
+      "public_metrics": {
+        "bookmark_count": 0,
+        "impression_count": 55,
+        "like_count": 0,
+        "quote_count": 0,
+        "reply_count": 0,
+        "retweet_count": 0
+      },
+      "text": "People.. Hot Take... \n\nWarren Buffet is not buying $TSLA stock..\n\nIt's not low enough \ud83d\ude02"
+    },
+    {
+      "author_id": "87226645",
+      "created_at": "2026-08-08T23:28:12.000Z",
+      "edit_history_tweet_ids": [
+        "2086233010496475568",
+        "2086233044512338298"
+      ],
+      "id": "2086233044512338298",
+      "public_metrics": {
+        "bookmark_count": 1,
+        "impression_count": 898,
+        "like_count": 13,
+        "quote_count": 0,
+        "reply_count": 3,
+        "retweet_count": 0
+      },
+      "text": "Goals next week:\n\nTesla stock $350\nSpaceX stock $150\n\nGoals the week after:\n\nTesla stock $375\nSpaceX stock $175\n\n#tsla #spcx"
+    },
+    {
+      "author_id": "87226645",
+      "created_at": "2026-08-08T23:28:04.000Z",
+      "edit_history_tweet_ids": [
+        "2086233010496475568",
+        "2086233044512338298"
+      ],
+      "id": "2086233010496475568",
+      "public_metrics": {
+        "bookmark_count": 0,
+        "impression_count": 51,
+        "like_count": 0,
+        "quote_count": 0,
+        "reply_count": 0,
+        "retweet_count": 0
+      },
+      "text": "Goals next week:\n\nTesla stock $350\nSpaceX stock $150\n\nGoal the week after:\n\nTesla stock $375\nSpaceX stock $175\n\n#tsla #spcx"
+    },
+    {
+      "author_id": "2054102345127223296",
+      "created_at": "2026-08-08T23:22:09.000Z",
+      "edit_history_tweet_ids": [
+        "2086231519727603835"
+      ],
+      "id": "2086231519727603835",
+      "public_metrics": {
+        "bookmark_count": 0,
+        "impression_count": 2,
+        "like_count": 0,
+        "quote_count": 0,
+        "reply_count": 0,
+        "retweet_count": 0
+      },
+      "text": "This week\u2019s watchlist leaders: $CSCO and $CRWV earnings. Also keeping an eye on $TSLA, $SPCX, $INTC, $ORCL."
+    },
+    {
+      "author_id": "417508671",
+      "created_at": "2026-08-08T23:21:43.000Z",
+      "edit_history_tweet_ids": [
+        "2086231410801574037"
+      ],
+      "id": "2086231410801574037",
+      "public_metrics": {
+        "bookmark_count": 0,
+        "impression_count": 408,
+        "like_count": 0,
+        "quote_count": 0,
+        "reply_count": 0,
+        "retweet_count": 0
+      },
+      "text": "@MarcosMillaYT $407 is the price target for the stock, not the robotaxi network.\nnvidia sells shovels. tsla sells hope. the math is in the hardware margin, not the equity dream."
+    },
+    {
+      "author_id": "1907713636237455360",
+      "created_at": "2026-08-08T23:13:22.000Z",
+      "edit_history_tweet_ids": [
+        "2086229308654109183"
+      ],
+      "id": "2086229308654109183",
+      "public_metrics": {
+        "bookmark_count": 0,
+        "impression_count": 297,
+        "like_count": 3,
+        "quote_count": 0,
+        "reply_count": 1,
+        "retweet_count": 1
+      },
+      "text": "TSLA +2.51%\nAAPL slightly green\nGOOGL &amp; MSTR in the red\u2026\nDaily Stock Trends are out \ud83d\udc40\nWhat\u2019s your move today \u2014 long, short, or sitting this one out?\n#MEXC # USStocks https://t.co/5zDWLJ7oUv"
+    },
+    {
+      "author_id": "1750051229525229568",
+      "created_at": "2026-08-08T23:12:13.000Z",
+      "edit_history_tweet_ids": [
+        "2086229018974494937"
+      ],
+      "id": "2086229018974494937",
+      "public_metrics": {
+        "bookmark_count": 0,
+        "impression_count": 1,
+        "like_count": 0,
+        "quote_count": 0,
+        "reply_count": 0,
+        "retweet_count": 0
+      },
+      "text": "$TSLA bottomed under $294 last week and has climbed steadily since, now sitting above $330. I caught the recovery early, trading on @MEXC RealStocks with idle USDT instead of waiting on a bank transfer or eating FX fees. Under a minute, no extra app. https://t.co/wpSuMD03XP"
+    },
+    {
+      "author_id": "1951170851052945408",
+      "created_at": "2026-08-08T23:08:31.000Z",
+      "edit_history_tweet_ids": [
+        "2086228088783053182"
+      ],
+      "id": "2086228088783053182",
+      "public_metrics": {
+        "bookmark_count": 1,
+        "impression_count": 5157,
+        "like_count": 7,
+        "quote_count": 0,
+        "reply_count": 2,
+        "retweet_count": 0
+      },
+      "text": "Wall Street Analysts have an Average Price Target in the Next 12 Months for Tesla $TSLA of: \n\n1) $407 per share"
+    },
+    {
+      "author_id": "1948727565281361925",
+      "created_at": "2026-08-08T23:08:02.000Z",
+      "edit_history_tweet_ids": [
+        "2086227968888885473"
+      ],
+      "id": "2086227968888885473",
+      "public_metrics": {
+        "bookmark_count": 0,
+        "impression_count": 1,
+        "like_count": 0,
+        "quote_count": 0,
+        "reply_count": 0,
+        "retweet_count": 0
+      },
+      "text": "TSLA soared +2.83% to $328.58. SpaceX shares also jumped 11% following a Buy upgrade from Argus, citing rapid AI compute expansion. 2/7"
+    },
+    {
+      "author_id": "2012006446515511296",
+      "created_at": "2026-08-08T23:01:40.000Z",
+      "edit_history_tweet_ids": [
+        "2086226366156927433"
+      ],
+      "id": "2086226366156927433",
+      "public_metrics": {
+        "bookmark_count": 2,
+        "impression_count": 1675,
+        "like_count": 18,
+        "quote_count": 0,
+        "reply_count": 2,
+        "retweet_count": 0
+      },
+      "text": "@elonmusk @profstonge Do people think $SPCX will not perform as well as $TSLA? I'm betting on the guy with the 25,570.31% stock price increase. https://t.co/r3ovXq0vRw"
+    },
+    {
+      "author_id": "110074780",
+      "created_at": "2026-08-08T23:00:26.000Z",
+      "edit_history_tweet_ids": [
+        "2086218216326803704",
+        "2086226053677347232"
+      ],
+      "id": "2086226053677347232",
+      "public_metrics": {
+        "bookmark_count": 0,
+        "impression_count": 74,
+        "like_count": 0,
+        "quote_count": 0,
+        "reply_count": 0,
+        "retweet_count": 0
+      },
+      "text": "\ud83d\ude97\ud83d\udca8 Tesla hits the ultimate Make-or-Break level!\n\nThe stock has slid right down to its multi-year ascending trendline support. This is the same trampoline that has launched epic rallies in the past.\n\nThe big question: Will it bounce back to the moon, or will this floor crack https://t.co/vwAlPlLNHF"
+    },
+    {
+      "author_id": "1761500505321226240",
+      "created_at": "2026-08-08T22:57:42.000Z",
+      "edit_history_tweet_ids": [
+        "2086210842979402079",
+        "2086225367312875935"
+      ],
+      "id": "2086225367312875935",
+      "public_metrics": {
+        "bookmark_count": 0,
+        "impression_count": 160,
+        "like_count": 1,
+        "quote_count": 0,
+        "reply_count": 0,
+        "retweet_count": 0
+      },
+      "text": "\u23f3 $BYDDF \u23f3\nDaily chart update \ud83d\udc47\nScenario A is playing out and wave 2 started.\nTargets: $10.85- $10.20, Teal lines is the most likely reversal zones ==&gt; its where we have to most support.\nWe could have a double bottom if they don\u2019t deliver on earnings.\n$TSLA $NIO $XPEV $LI https://t.co/lW6gkYnvSB https://t.co/2uHSA4Sa9C"
+    },
+    {
+      "author_id": "2066536000822665216",
+      "created_at": "2026-08-08T22:55:46.000Z",
+      "edit_history_tweet_ids": [
+        "2086224882866520067"
+      ],
+      "id": "2086224882866520067",
+      "public_metrics": {
+        "bookmark_count": 0,
+        "impression_count": 7,
+        "like_count": 0,
+        "quote_count": 0,
+        "reply_count": 0,
+        "retweet_count": 0
+      },
+      "text": "@TrendSpider $TSLA testing the line again \ud83d\udc40 Now I want to see whether buyers actually defend it. The setup is one thing, but I also like that MEXC 0808 Stock Season is putting attention on the cost of participating, with zero fee available on eligible trades."
+    },
+    {
+      "author_id": "1720665183188922368",
+      "created_at": "2026-08-08T22:50:08.000Z",
+      "edit_history_tweet_ids": [
+        "2086223462574530799"
+      ],
+      "id": "2086223462574530799",
+      "public_metrics": {
+        "bookmark_count": 0,
+        "impression_count": 47,
+        "like_count": 2,
+        "quote_count": 0,
+        "reply_count": 0,
+        "retweet_count": 0
+      },
+      "text": "@thekrishna @Vol888 MACD is a momentum indicator tracking the gap between a stock\u2019s 12-day and 26-day EMAs, plus a 9-day signal line.\n\nThe chart shows the daily MACD line (blue) just crossing above its signal line (orange) after a long stretch of deep negative readings. That \u201cbullish cross\u201d is the"
+    },
+    {
+      "author_id": "1467389918708211712",
+      "created_at": "2026-08-08T22:49:22.000Z",
+      "edit_history_tweet_ids": [
+        "2086223271171666346"
+      ],
+      "id": "2086223271171666346",
+      "public_metrics": {
+        "bookmark_count": 0,
+        "impression_count": 3,
+        "like_count": 0,
+        "quote_count": 0,
+        "reply_count": 0,
+        "retweet_count": 0
+      },
+      "text": "@TheSonOfWalkley When $TSLA breaks, traders scale. 5 entries during a breakout = 5 fee events elsewhere (0.03-0.06% each side). #MEXC stripped that: 0% maker/taker on eligible U.S. stocks during Stock Season. Which means your edge stays intact. How far will 0 Fee go on 08/08? \ud83d\ude80"
+    },
+    {
+      "author_id": "2069465662301376512",
+      "created_at": "2026-08-08T22:49:07.000Z",
+      "edit_history_tweet_ids": [
+        "2086223207099511051"
+      ],
+      "id": "2086223207099511051",
+      "public_metrics": {
+        "bookmark_count": 0,
+        "impression_count": 1,
+        "like_count": 0,
+        "quote_count": 0,
+        "reply_count": 0,
+        "retweet_count": 0
+      },
+      "text": "@EchoAnalysis That $185 level could get tested if the 200WMA breaks. I\u2019m keeping $TSLA on watch and taking advantage of zero fee when trading these setups during MEXC 0808 Stock Season. Lower explicit trading costs make a difference when you\u2019re actively managing positions. https://t.co/d3dESTCo9z"
+    },
+    {
+      "author_id": "1403810092927971329",
+      "created_at": "2026-08-08T22:49:02.000Z",
+      "edit_history_tweet_ids": [
+        "2086223187298378080"
+      ],
+      "id": "2086223187298378080",
+      "public_metrics": {
+        "bookmark_count": 1,
+        "impression_count": 5293,
+        "like_count": 75,
+        "quote_count": 2,
+        "reply_count": 4,
+        "retweet_count": 3
+      },
+      "text": "$TSLA \"Return of the Mac?\"\n\nDay 1 of the bullish MacD cross: +$9\n\nStill oversold. \ud83d\udc40 https://t.co/V7OWoqLnPr https://t.co/wCkprwvCSS"
+    },
+    {
+      "author_id": "1202170284465410048",
+      "created_at": "2026-08-08T22:47:56.000Z",
+      "edit_history_tweet_ids": [
+        "2086222910960677124"
+      ],
+      "id": "2086222910960677124",
+      "public_metrics": {
+        "bookmark_count": 0,
+        "impression_count": 1,
+        "like_count": 0,
+        "quote_count": 0,
+        "reply_count": 0,
+        "retweet_count": 0
+      },
+      "text": "@TrendSpider $TSLA technicals are where active traders make moves, entries, exits, adjustments on each bounce. Fee structure matters when you're trading multiple times. @MEXC's 0% maker and 0% taker on eligible U.S. stocks (RealStocks, Stock Futures, Tokenized). https://t.co/PKHyNQBs0Z"
+    },
+    {
+      "author_id": "1190737624165601280",
+      "created_at": "2026-08-08T22:42:56.000Z",
+      "edit_history_tweet_ids": [
+        "2086221653240160482"
+      ],
+      "id": "2086221653240160482",
+      "public_metrics": {
+        "bookmark_count": 0,
+        "impression_count": 48,
+        "like_count": 0,
+        "quote_count": 0,
+        "reply_count": 0,
+        "retweet_count": 0
+      },
+      "text": "@TarekMM100 Can you update Tsla chart? Thank you"
+    },
+    {
+      "author_id": "1931291388584308737",
+      "created_at": "2026-08-08T22:42:07.000Z",
+      "edit_history_tweet_ids": [
+        "2086221447731499390"
+      ],
+      "id": "2086221447731499390",
+      "public_metrics": {
+        "bookmark_count": 0,
+        "impression_count": 1,
+        "like_count": 0,
+        "quote_count": 0,
+        "reply_count": 0,
+        "retweet_count": 0
+      },
+      "text": "@daltonbrewer $TSLA back above $400 would definitely wake the timeline up.\n\nAt ~$329 now, that's a pretty serious move to make. Having the real stock available on MEXC RealStocks with USDT makes this kind of setup much easier to keep in play."
+    },
+    {
+      "author_id": "2076046081842962432",
+      "created_at": "2026-08-08T22:41:26.000Z",
+      "edit_history_tweet_ids": [
+        "2086221273084944620"
+      ],
+      "id": "2086221273084944620",
+      "public_metrics": {
+        "bookmark_count": 0,
+        "impression_count": 1,
+        "like_count": 0,
+        "quote_count": 0,
+        "reply_count": 0,
+        "retweet_count": 0
+      },
+      "text": "The latest earnings season highlighted strong results from $TSLA $META $GOOGL and $AMD. Analysts believe $TSLA $META $GOOGL $AMD will remain key players in the evolving digital economy."
+    },
+    {
+      "author_id": "1636810965390901265",
+      "created_at": "2026-08-08T22:39:16.000Z",
+      "edit_history_tweet_ids": [
+        "2086220729771610462"
+      ],
+      "id": "2086220729771610462",
+      "public_metrics": {
+        "bookmark_count": 0,
+        "impression_count": 84,
+        "like_count": 0,
+        "quote_count": 0,
+        "reply_count": 0,
+        "retweet_count": 0
+      },
+      "text": "How many people find this research report section in Robinhood useful? Does the fair value mentioned here matter while taking the investment decision? $HOOD \n\nThis question is not specific to $TSLA stock but in general. https://t.co/P80rtETIOn"
+    },
+    {
+      "author_id": "832218563964444672",
+      "created_at": "2026-08-08T22:30:51.000Z",
+      "edit_history_tweet_ids": [
+        "2086218610285203909"
+      ],
+      "id": "2086218610285203909",
+      "public_metrics": {
+        "bookmark_count": 0,
+        "impression_count": 220,
+        "like_count": 0,
+        "quote_count": 0,
+        "reply_count": 0,
+        "retweet_count": 0
+      },
+      "text": "Elon musk said they are aiming for 20 GW compute EOY 2027\n\nIf they achieve this you are looking at 400-500 billion ARR\n\nThere are a lot of skeptics who say he always misses deadlines with $TSLA \n\nBut $TSLA is inventing something that does not exist. In comparison AI compute is"
+    },
+    {
+      "author_id": "110074780",
+      "created_at": "2026-08-08T22:29:17.000Z",
+      "edit_history_tweet_ids": [
+        "2086218216326803704",
+        "2086226053677347232"
+      ],
+      "id": "2086218216326803704",
+      "public_metrics": {
+        "bookmark_count": 0,
+        "impression_count": 51,
+        "like_count": 1,
+        "quote_count": 0,
+        "reply_count": 0,
+        "retweet_count": 0
+      },
+      "text": "\ud83d\ude97\ud83d\udca8 Tesla hits the ultimate Make-or-Break level!\n\nThe stock has slid right down to its multi-year ascending trendline support. This is the same trampoline that has launched epic rallies in the past.\n\nThe big question: Will it bounce back to the moon, or will this floor crack https://t.co/mf6kvpS3Qa"
+    },
+    {
+      "author_id": "1526756988604006400",
+      "created_at": "2026-08-08T22:29:12.000Z",
+      "edit_history_tweet_ids": [
+        "2086218194281492851"
+      ],
+      "id": "2086218194281492851",
+      "public_metrics": {
+        "bookmark_count": 0,
+        "impression_count": 23,
+        "like_count": 1,
+        "quote_count": 0,
+        "reply_count": 0,
+        "retweet_count": 0
+      },
+      "text": "@itsFoxCrypto $ELONCOIN still highly undervalued, rewarding both TSLA and SPCX stock.\n\nCa:\n\n0x499c573997a1382f4051ece45b3d6b2f0e317777\n\nAt the very least, check it out!!!"
+    },
+    {
+      "author_id": "1526756988604006400",
+      "created_at": "2026-08-08T22:28:59.000Z",
+      "edit_history_tweet_ids": [
+        "2086218142615789792"
+      ],
+      "id": "2086218142615789792",
+      "public_metrics": {
+        "bookmark_count": 0,
+        "impression_count": 32,
+        "like_count": 0,
+        "quote_count": 0,
+        "reply_count": 0,
+        "retweet_count": 0
+      },
+      "text": "@CryptoThro $ELONCOIN still highly undervalued, rewarding both TSLA and SPCX stock.\n\nCa:\n\n0x499c573997a1382f4051ece45b3d6b2f0e317777\n\nAt the very least, check it out!!!"
+    },
+    {
+      "author_id": "1526756988604006400",
+      "created_at": "2026-08-08T22:28:31.000Z",
+      "edit_history_tweet_ids": [
+        "2086218024978116636"
+      ],
+      "id": "2086218024978116636",
+      "public_metrics": {
+        "bookmark_count": 0,
+        "impression_count": 0,
+        "like_count": 0,
+        "quote_count": 0,
+        "reply_count": 0,
+        "retweet_count": 0
+      },
+      "text": "@AshCrypto $ELONCOIN still highly undervalued, rewarding both TSLA and SPCX stock.\n\nCa:\n\n0x499c573997a1382f4051ece45b3d6b2f0e317777\n\nAt the very least, check it out!!!"
+    },
+    {
+      "author_id": "1723123447943888896",
+      "created_at": "2026-08-08T22:28:26.000Z",
+      "edit_history_tweet_ids": [
+        "2086218002639503539"
+      ],
+      "id": "2086218002639503539",
+      "public_metrics": {
+        "bookmark_count": 0,
+        "impression_count": 2,
+        "like_count": 0,
+        "quote_count": 0,
+        "reply_count": 0,
+        "retweet_count": 0
+      },
+      "text": "@TrendSpider Seems like a good time to jump on $TSLA trading activity on MEXC RealStocks.\n\nLove how the exchange helps me access real U.S. stocks alongside crypto, making it easier to diversify, follow global market movements, and manage opportunities through one familiar platform."
+    },
+    {
+      "author_id": "1526756988604006400",
+      "created_at": "2026-08-08T22:28:21.000Z",
+      "edit_history_tweet_ids": [
+        "2086217982452138007"
+      ],
+      "id": "2086217982452138007",
+      "public_metrics": {
+        "bookmark_count": 0,
+        "impression_count": 3,
+        "like_count": 0,
+        "quote_count": 0,
+        "reply_count": 0,
+        "retweet_count": 0
+      },
+      "text": "@CryptoCurb $ELONCOIN still highly undervalued, rewarding both TSLA and SPCX stock.\n\nCa:\n\n0x499c573997a1382f4051ece45b3d6b2f0e317777\n\nAt the very least, check it out!!!"
+    },
+    {
+      "author_id": "1526756988604006400",
+      "created_at": "2026-08-08T22:28:13.000Z",
+      "edit_history_tweet_ids": [
+        "2086217947752825170"
+      ],
+      "id": "2086217947752825170",
+      "public_metrics": {
+        "bookmark_count": 0,
+        "impression_count": 0,
+        "like_count": 0,
+        "quote_count": 0,
+        "reply_count": 0,
+        "retweet_count": 0
+      },
+      "text": "@MarketCoinpedia @Cardano_CF @Shibtoken @Zcash @pepecoineth @pudgypenguins @terra_money @wikicatcoin @crepe_bsc @RealManyu $ELONCOIN still highly undervalued, rewarding both TSLA and SPCX stock.\n\nCa:\n\n0x499c573997a1382f4051ece45b3d6b2f0e317777\n\nAt the very least, check it out!!!"
+    },
+    {
+      "author_id": "1526756988604006400",
+      "created_at": "2026-08-08T22:27:49.000Z",
+      "edit_history_tweet_ids": [
+        "2086217847458648365"
+      ],
+      "id": "2086217847458648365",
+      "public_metrics": {
+        "bookmark_count": 0,
+        "impression_count": 21,
+        "like_count": 0,
+        "quote_count": 0,
+        "reply_count": 0,
+        "retweet_count": 0
+      },
+      "text": "@bnb_girl1 $ELONCOIN still highly undervalued, rewarding both TSLA and SPCX stock.\n\nCa:\n\n0x499c573997a1382f4051ece45b3d6b2f0e317777\n\nAt the very least, check it out!!!"
+    },
+    {
+      "author_id": "1526756988604006400",
+      "created_at": "2026-08-08T22:27:35.000Z",
+      "edit_history_tweet_ids": [
+        "2086217787723165702"
+      ],
+      "id": "2086217787723165702",
+      "public_metrics": {
+        "bookmark_count": 0,
+        "impression_count": 20,
+        "like_count": 0,
+        "quote_count": 0,
+        "reply_count": 0,
+        "retweet_count": 0
+      },
+      "text": "@juliadotsol $ELONCOIN still highly undervalued, rewarding both TSLA and SPCX stock.\n\nCa:\n\n0x499c573997a1382f4051ece45b3d6b2f0e317777\n\nAt the very least, check it out!!!"
+    },
+    {
+      "author_id": "1526756988604006400",
+      "created_at": "2026-08-08T22:27:28.000Z",
+      "edit_history_tweet_ids": [
+        "2086217760900513945"
+      ],
+      "id": "2086217760900513945",
+      "public_metrics": {
+        "bookmark_count": 0,
+        "impression_count": 20,
+        "like_count": 0,
+        "quote_count": 0,
+        "reply_count": 0,
+        "retweet_count": 0
+      },
+      "text": "@YogiDyor $ELONCOIN still highly undervalued, rewarding both TSLA and SPCX stock.\n\nCa:\n\n0x499c573997a1382f4051ece45b3d6b2f0e317777\n\nAt the very least, check it out!!!"
+    },
+    {
+      "author_id": "1526756988604006400",
+      "created_at": "2026-08-08T22:27:19.000Z",
+      "edit_history_tweet_ids": [
+        "2086217722955018505"
+      ],
+      "id": "2086217722955018505",
+      "public_metrics": {
+        "bookmark_count": 0,
+        "impression_count": 0,
+        "like_count": 0,
+        "quote_count": 0,
+        "reply_count": 0,
+        "retweet_count": 0
+      },
+      "text": "@cryptopundiit $ELONCOIN still highly undervalued, rewarding both TSLA and SPCX stock.\n\nCa:\n\n0x499c573997a1382f4051ece45b3d6b2f0e317777\n\nAt the very least, check it out!!!"
+    },
+    {
+      "author_id": "1526756988604006400",
+      "created_at": "2026-08-08T22:27:07.000Z",
+      "edit_history_tweet_ids": [
+        "2086217671159542198"
+      ],
+      "id": "2086217671159542198",
+      "public_metrics": {
+        "bookmark_count": 0,
+        "impression_count": 19,
+        "like_count": 0,
+        "quote_count": 0,
+        "reply_count": 0,
+        "retweet_count": 0
+      },
+      "text": "@Ghostdyor $ELONCOIN still highly undervalued, rewarding both TSLA and SPCX stock.\n\nCa:\n\n0x499c573997a1382f4051ece45b3d6b2f0e317777\n\nAt the very least, check it out!!!"
+    },
+    {
+      "author_id": "538248212",
+      "created_at": "2026-08-08T22:25:51.000Z",
+      "edit_history_tweet_ids": [
+        "2086217350605377717"
+      ],
+      "id": "2086217350605377717",
+      "public_metrics": {
+        "bookmark_count": 0,
+        "impression_count": 229,
+        "like_count": 0,
+        "quote_count": 0,
+        "reply_count": 0,
+        "retweet_count": 0
+      },
+      "text": "@Polymarket Interested to see what he buys\u2014if he\u2019s more of a risk taker $TSLA and $SPCX are right there."
+    },
+    {
+      "author_id": "1526756988604006400",
+      "created_at": "2026-08-08T22:25:16.000Z",
+      "edit_history_tweet_ids": [
+        "2086217203708317947"
+      ],
+      "id": "2086217203708317947",
+      "public_metrics": {
+        "bookmark_count": 0,
+        "impression_count": 0,
+        "like_count": 0,
+        "quote_count": 0,
+        "reply_count": 0,
+        "retweet_count": 0
+      },
+      "text": "@MrCatchaDip @Pumpfun @fomo $ELONCOIN still highly undervalued, rewarding both TSLA and SPCX stock.\n\nCa:\n\n0x499c573997a1382f4051ece45b3d6b2f0e317777\n\nAt the very least, check it out!!!"
+    },
+    {
+      "author_id": "1526756988604006400",
+      "created_at": "2026-08-08T22:25:03.000Z",
+      "edit_history_tweet_ids": [
+        "2086217149584961729"
+      ],
+      "id": "2086217149584961729",
+      "public_metrics": {
+        "bookmark_count": 0,
+        "impression_count": 22,
+        "like_count": 0,
+        "quote_count": 0,
+        "reply_count": 0,
+        "retweet_count": 0
+      },
+      "text": "@AlphaCryptoGems $ELONCOIN still highly undervalued, rewarding both TSLA and SPCX stock.\n\nCa:\n\n0x499c573997a1382f4051ece45b3d6b2f0e317777\n\nAt the very least, check it out!!!"
+    },
+    {
+      "author_id": "1526756988604006400",
+      "created_at": "2026-08-08T22:24:56.000Z",
+      "edit_history_tweet_ids": [
+        "2086217121453711667"
+      ],
+      "id": "2086217121453711667",
+      "public_metrics": {
+        "bookmark_count": 0,
+        "impression_count": 3,
+        "like_count": 1,
+        "quote_count": 0,
+        "reply_count": 0,
+        "retweet_count": 0
+      },
+      "text": "@blknoiz06 $ELONCOIN still highly undervalued, rewarding both TSLA and SPCX stock.\n\nCa:\n\n0x499c573997a1382f4051ece45b3d6b2f0e317777\n\nAt the very least, check it out!!!"
+    },
+    {
+      "author_id": "1747847146605338624",
+      "created_at": "2026-08-08T22:24:48.000Z",
+      "edit_history_tweet_ids": [
+        "2086217087031157198"
+      ],
+      "id": "2086217087031157198",
+      "public_metrics": {
+        "bookmark_count": 0,
+        "impression_count": 206,
+        "like_count": 5,
+        "quote_count": 0,
+        "reply_count": 0,
+        "retweet_count": 0
+      },
+      "text": "Whats going on X!?\n\nHope everyone's having a nice weekend and ready to roll monday.\n\nThere is more to life outside the stock market, we just use it as a tool to allow a better life for ourselves \n\n$SPY $QQQ $IWM $NVDA $TSLA $ARM $IONQ"
+    },
+    {
+      "author_id": "1526756988604006400",
+      "created_at": "2026-08-08T22:24:47.000Z",
+      "edit_history_tweet_ids": [
+        "2086217082648084583"
+      ],
+      "id": "2086217082648084583",
+      "public_metrics": {
+        "bookmark_count": 0,
+        "impression_count": 21,
+        "like_count": 0,
+        "quote_count": 0,
+        "reply_count": 0,
+        "retweet_count": 0
+      },
+      "text": "@itsFoxCrypto $ELONCOIN still highly undervalued, rewarding both TSLA and SPCX stock.\n\nCa:\n\n0x499c573997a1382f4051ece45b3d6b2f0e317777\n\nAt the very least, check it out!!!"
+    }
+  ]
+}
