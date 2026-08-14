@@ -131,7 +131,8 @@ def load_labels() -> dict[str, dict]:
             continue
         # Later lines win, so a recheck pass does not destroy the first answer:
         # both are kept in the file and compared by `pass` number.
-        out.setdefault(rec["uid"], {})[rec.get("pass", 1)] = rec
+        who = rec.get("labeller", "human")
+        out.setdefault(who, {}).setdefault(rec["uid"], {})[rec.get("pass", 1)] = rec
     return out
 
 
@@ -150,7 +151,7 @@ def ask(unit: dict, pass_no: int) -> dict | None:
     print("-" * 78)
     rec = {"uid": unit["uid"], "post_id": unit["post_id"], "arm": unit["arm"],
            "ticker": unit["ticker"], "represents": unit["represents"],
-           "pass": pass_no}
+           "pass": pass_no, "labeller": os.environ.get("LABELLER", "human")}
     for key, question, options in FIELDS:
         opts = "  ".join(f"[{k}] {v.split(' — ')[0]}" for k, v in options.items())
         while True:
@@ -175,22 +176,34 @@ def ask(unit: dict, pass_no: int) -> dict | None:
 
 def report() -> None:
     units = {u["uid"]: u for u in load_units()}
-    labels = load_labels()
-    done = len(labels)
-    print(f"\nlabelled {done}/{len(units)} units "
-          f"({sum(units[u]['represents'] for u in labels if u in units)} posts covered)")
+    by_who = load_labels()
+    for who, labels in sorted(by_who.items()):
+        print(f"\n{who}: {len(labels)}/{len(units)} units "
+              f"({sum(units[u]['represents'] for u in labels if u in units)} posts)")
+        pairs = {u: p for u, p in labels.items() if len(p) >= 2}
+        if pairs:
+            print(f"  self-consistency over {len(pairs)} re-labelled:")
+            for field, floor in AGREEMENT_FLOOR.items():
+                agree = sum(1 for p in pairs.values()
+                            if p[min(p)].get(field) == p[max(p)].get(field))
+                rate = agree / len(pairs)
+                print(f"    {field:<10} {rate:.0%} (floor {floor:.0%})"
+                      f"  {'OK' if rate >= floor else 'TOO LOW'}")
 
-    pairs = {u: p for u, p in labels.items() if len(p) >= 2}
-    if not pairs:
-        print("no recheck pass yet — run with --recheck N to measure consistency")
-        return
-    print(f"\nself-consistency over {len(pairs)} re-labelled units:")
-    for field, floor in AGREEMENT_FLOOR.items():
-        agree = sum(1 for p in pairs.values()
-                    if p[min(p)].get(field) == p[max(p)].get(field))
-        rate = agree / len(pairs)
-        verdict = "OK" if rate >= floor else "TOO LOW — rubric is too vague to use"
-        print(f"  {field:<10} {rate:.0%}  (floor {floor:.0%})  {verdict}")
+    # INTER-RATER. Two independent judges disagreeing is real evidence;
+    # one judge agreeing with themselves a day later mostly measures memory.
+    if len(by_who) >= 2:
+        a, b = sorted(by_who)[:2]
+        shared = set(by_who[a]) & set(by_who[b])
+        if shared:
+            print(f"\ninter-rater agreement, {a} vs {b}, over {len(shared)} shared units:")
+            for field, floor in AGREEMENT_FLOOR.items():
+                agree = sum(1 for u in shared
+                            if by_who[a][u][min(by_who[a][u])].get(field)
+                            == by_who[b][u][min(by_who[b][u])].get(field))
+                rate = agree / len(shared)
+                print(f"  {field:<10} {rate:.0%} (floor {floor:.0%})"
+                      f"  {'OK' if rate >= floor else 'DISAGREEMENT — investigate'}")
 
 
 def main() -> int:
@@ -203,7 +216,7 @@ def main() -> int:
     if not units:
         print(f"no corpora found in {CORPUS_DIR}")
         return 1
-    labels = load_labels()
+    labels = load_labels().get(os.environ.get("LABELLER", "human"), {})
 
     if "--recheck" in args:
         n = 30

@@ -50,8 +50,41 @@ _NONWORD = re.compile(r"[^a-z0-9$ ]+")
 CLUSTER_JACCARD = 0.75
 
 # A post is "directional" when the model is confident enough to have an opinion
-# rather than merely a winner. Provisional.
-DIRECTIONAL_MARGIN = 0.15
+# rather than merely a winner.
+#
+# THIS IS A PROPERTY OF THE MODEL, NOT OF THE DOMAIN. Different sentiment
+# models have wildly different confidence distributions, so one hardcoded
+# number cannot serve two of them. Measured against 175 human-labelled posts by
+# sweeping the threshold for each candidate:
+#
+#   ProsusAI/finbert        best F1 0.41 at 0.05   direction accuracy 68%
+#   FinTwitBERT-sentiment   best F1 0.56 at 0.70   direction accuracy 86%
+#
+# FinBERT is trained on financial news and reads trader prose as neutral; at
+# 0.70 it finds 18% of the views a human sees, where FinTwitBERT finds 68%.
+_DIRECTIONAL_MARGIN_BY_MODEL = {
+    "prosusai/finbert": 0.15,
+    "stephanakkerman/fintwitbert-sentiment": 0.70,
+    "zhayunduo/roberta-base-stocktwits-finetuned": 0.85,
+    "cardiffnlp/twitter-roberta-base-sentiment-latest": 0.05,
+}
+_DEFAULT_DIRECTIONAL_MARGIN = 0.50
+
+
+def directional_margin(model: str | None = None) -> float:
+    """The |p_pos - p_neg| a post must clear to count as carrying a view."""
+    if model is None:
+        try:
+            from utils.sentiment import MODEL_NAME as model
+        except Exception:
+            model = ""
+    return _DIRECTIONAL_MARGIN_BY_MODEL.get(
+        str(model or "").strip().lower(), _DEFAULT_DIRECTIONAL_MARGIN)
+
+
+# Kept for callers that read the constant; resolved at import for the model in
+# force. Prefer directional_margin() where the model may vary.
+DIRECTIONAL_MARGIN = directional_margin()
 
 # --- Evidence vocabularies -------------------------------------------------
 #

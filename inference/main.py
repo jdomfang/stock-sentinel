@@ -95,26 +95,54 @@ def _load():
     return _pipeline
 
 
-def score_finbert_output(
-    label: str, confidence: float, neutral_threshold: float = 0.55
-) -> tuple[float, str, str]:
-    """Byte-for-byte the mapping in utils.sentiment.score_finbert_output.
+def _normalise_label(label) -> str:
+    """Model label -> {POSITIVE, NEGATIVE, NEUTRAL, UNKNOWN}.
 
-    Duplicated deliberately rather than imported: this service must not depend
-    on the Streamlit app's package. The behaviour is pinned on both sides by
-    tests/test_characterization.py, so a divergence fails loudly instead of
-    silently shifting every recommendation.
+    Different sentiment models name the same three classes differently.
+    FinBERT says positive/neutral/negative; FinTwitBERT, trained on financial
+    Twitter rather than financial news, says BULLISH/NEUTRAL/BEARISH.
+
+    Without this, swapping MODEL_NAME to a better model would map every label
+    to UNKNOWN, score every post 0.0, and make the app report "not enough clean
+    evidence about this company" for every ticker on earth -- silently, with no
+    error anywhere. The scores would look like an honest finding.
     """
-    label_norm = str(label).strip().upper() if label is not None else "UNKNOWN"
+    s = str(label).strip().upper() if label is not None else ""
+    if s in ("POSITIVE", "BULLISH", "POS", "LABEL_2"):
+        return "POSITIVE"
+    if s in ("NEGATIVE", "BEARISH", "NEG", "LABEL_0"):
+        return "NEGATIVE"
+    if s in ("NEUTRAL", "NEU", "LABEL_1"):
+        return "NEUTRAL"
+    return "UNKNOWN"
+
+
+def score_finbert_output(label: str, confidence: float, neutral_threshold: float = 0.55) -> tuple[float, str, str]:
+    """Map a sentiment model's output -> (signed_score, trading_sentiment, normalized_label).
+
+    - signed_score in [-1, 1]
+    - trading_sentiment in {Bullish, Bearish, Neutral}
+    - normalized_label in {POSITIVE, NEGATIVE, NEUTRAL, UNKNOWN}
+    """
+    label_norm = _normalise_label(label)
     conf = float(confidence or 0.0)
 
+    if label_norm == "UNKNOWN":
+        # LOUD, not silent. An unrecognised label means the model was changed
+        # without teaching this function its vocabulary, and the alternative --
+        # returning a confident 0.0 -- is indistinguishable from a genuinely
+        # neutral corpus.
+        logger.error("unrecognised sentiment label %r; scoring as UNKNOWN. "
+                     "Add it to _normalise_label.", label)
+        return 0.0, "Neutral", "UNKNOWN"
+
     if conf < neutral_threshold or label_norm == "NEUTRAL":
-        return 0.0, "Neutral", "NEUTRAL" if label_norm != "UNKNOWN" else "UNKNOWN"
+        return 0.0, "Neutral", "NEUTRAL"
+
     if label_norm == "POSITIVE":
         return conf, "Bullish", "POSITIVE"
-    if label_norm == "NEGATIVE":
-        return -conf, "Bearish", "NEGATIVE"
-    return 0.0, "Neutral", "UNKNOWN"
+
+    return -conf, "Bearish", "NEGATIVE"
 
 
 class ScoreRequest(BaseModel):

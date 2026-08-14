@@ -268,13 +268,46 @@ def test_simple_projection_determinism() -> None:
           simple_projection([100.0, 101.0], 0.5).get("error"), "Insufficient price data")
 
 
+def test_label_vocabularies():
+    """Swapping the sentiment model must not silently zero every score.
+
+    FinBERT emits positive/neutral/negative; FinTwitBERT, trained on financial
+    Twitter rather than financial news, emits BULLISH/NEUTRAL/BEARISH. Mapping
+    an unrecognised label to a confident 0.0 would make the app report "not
+    enough clean evidence about this company" for every ticker on earth, with
+    no error anywhere -- and the output would read as an honest finding.
+    """
+    from utils.evidence import directional_margin
+    from utils.sentiment import score_finbert_output as sco
+
+    print("\nlabel vocabularies -- two models, three classes, different names")
+    for lab in ("positive", "POSITIVE", "BULLISH", "bullish"):
+        check(f"{lab} -> Bullish", sco(lab, 0.9)[1], "Bullish")
+    for lab in ("negative", "BEARISH", "bearish"):
+        check(f"{lab} -> Bearish", sco(lab, 0.9)[1], "Bearish")
+    for lab in ("neutral", "NEUTRAL"):
+        check(f"{lab} -> Neutral", sco(lab, 0.9)[1], "Neutral")
+    # Distinguishable from a genuine neutral by anything that inspects it.
+    check("an unrecognised label is UNKNOWN", sco("banana", 0.9)[2], "UNKNOWN")
+
+    # The per-post direction threshold is a property of the MODEL. One
+    # hardcoded number cannot serve two models whose confidence distributions
+    # differ by more than 4x.
+    check("finbert threshold", directional_margin("ProsusAI/finbert"), 0.15)
+    check("fintwitbert threshold",
+          directional_margin("StephanAkkerman/FinTwitBERT-sentiment"), 0.70)
+    check("unknown model gets a conservative default",
+          directional_margin("who/knows"), 0.50)
+
+
 def main() -> int:
     print("=" * 74)
     print("  Characterization suite -- pins behaviour ahead of the Phase 1 rewrite")
     print("=" * 74)
 
     for t in (test_score_finbert_output, test_extract_tickers,
-              test_generate_ai_summary, test_simple_projection_determinism):
+              test_generate_ai_summary, test_simple_projection_determinism,
+              test_label_vocabularies):
         try:
             t()
         except Exception as e:  # a crashing test is a failing test
