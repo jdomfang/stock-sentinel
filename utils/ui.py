@@ -348,7 +348,7 @@ def render_recommendation_panel(
     ai_summary: dict,
     current_price: str = "Unavailable",
     projected_gain: str = "Unavailable",
-    hold_days: str = "Unavailable",
+    drawdown_first: str = "Unavailable",
     mentions: int = 0,
     price_points: int = 0,
 ) -> None:
@@ -439,8 +439,14 @@ def render_recommendation_panel(
             f'</div>'
         )
 
-    _rec_sublabel = {"buy": "Strong upside signal", "watch": "Hold — monitor closely", "avoid": "Risk outweighs reward"}.get(rec.lower(), "")
-    _conf_sublabel = {"high": "Strong data backing", "moderate": "Reasonable evidence", "low": "Thin data — use caution"}.get(conf.lower(), "")
+    # "Strong upside signal" and "Strong data backing" were unconditional claims
+    # about signal strength, on a system whose own adjudicator sets
+    # ALLOW_HIGH = False because it "has not earned the word". Suppressing the
+    # word High for that reason and then rendering "Strong" in its place is
+    # worse than either alternative -- it looks like restraint was exercised.
+    # Moderate is the CEILING here, so it is named as one.
+    _rec_sublabel = {"buy": "Evidence leans upside", "watch": "Hold — monitor closely", "avoid": "Risk outweighs reward"}.get(rec.lower(), "")
+    _conf_sublabel = {"high": "Strong data backing", "moderate": "Highest we issue — unvalidated", "low": "Thin data — use caution"}.get(conf.lower(), "")
     _conf_bar = {"high": 90, "moderate": 55, "low": 25}.get(conf.lower(), 30)
 
     st.markdown(
@@ -475,7 +481,8 @@ def render_recommendation_panel(
     )
 
     # ── Price / projection / hold period row ──
-    if current_price != "Unavailable" or projected_gain != "Unavailable" or hold_days != "Unavailable":
+    if (current_price != "Unavailable" or projected_gain != "Unavailable"
+            or drawdown_first != "Unavailable"):
         _fc = "border-radius:10px;padding:10px 14px;background:rgba(15,23,42,.55);border:1px solid rgba(148,163,184,.12);flex:1;"
         _fl = "font-size:0.68rem;font-weight:700;letter-spacing:0.05em;text-transform:uppercase;color:rgba(148,163,184,.55);margin-bottom:3px;"
         _fv = "font-size:1.00rem;font-weight:800;color:rgba(248,250,252,.92);"
@@ -487,10 +494,16 @@ def render_recommendation_panel(
             # directional claim at all -- so the label was the last place the
             # old promise survived.
             f'<div style="{_fc}"><div style="{_fl}">30d range (vol)</div><div style="{_fv}">{projected_gain}</div></div>'
-            # "Hold Period" invited the reading "hold this long and you are up".
-            # The number was the median day on which the WINNING simulations
-            # first touched +5%, with the paths that never got there dropped.
-            f'<div style="{_fc}"><div style="{_fl}">Review window</div><div style="{_fv}">{hold_days}</div></div>'
+            # This tile has now held two numbers that meant nothing. "Hold
+            # Period" was the median day the WINNING simulations first touched
+            # +5%, with the paths that never got there dropped -- it invited
+            # "hold this long and you are up". Its replacement, "Review window",
+            # was the constant (14, 28) printed for every ticker on every run.
+            # It now carries a measured figure: of the simulated paths that DID
+            # reach +5%, the median worst drawdown suffered first. That is the
+            # number a stop is placed from, and it is the only one of the three
+            # that changes with the stock.
+            f'<div style="{_fc}"><div style="{_fl}">Drawdown first</div><div style="{_fv}">{drawdown_first}</div></div>'
             f'</div>',
             unsafe_allow_html=True,
         )
@@ -656,7 +669,7 @@ def render_deep_panel_header(ticker: str, sector: str, rec: str, conf: str, avg_
 
     # Rec sub-label
     rec_sub = {
-        "buy": "Strong positive signal detected",
+        "buy": "Evidence leans upside",
         "avoid": "Risk signals outweigh upside",
         "watch": "Insufficient conviction to act",
     }.get(rec_l, "Signal computed from social data")

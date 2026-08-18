@@ -259,17 +259,23 @@ if _run_clicked or (_autorun and _prefill):
             # projection below reuses the same series. Previously fetched after
             # the summary, which would have left the veto permanently blind and
             # therefore -- since it fails closed -- Buy permanently unreachable.
-            current_price, projected_gain, hold_days, price_points = (
+            current_price, projected_gain, drawdown_first, price_points = (
                 "Unavailable", "Unavailable", "Unavailable", 0)
             _last_close: float | None = None
             _proj: dict = {}
             prices_for_verdict: list | None = None
             volumes_for_verdict: list | None = None
+            # The trading session _last_close belongs to. Recording the price
+            # without it makes forward return uncomputable: a verdict issued on
+            # a weekend or after hours has a created_at date that is not a
+            # trading day, and the join to price_history silently finds nothing.
+            _bar_date: str | None = None
             try:
                 _sd = get_stock_data(_run_ticker)
                 if _sd.get("error") is None and _sd.get("prices"):
                     prices_for_verdict = _sd["prices"]
                     volumes_for_verdict = _sd.get("volumes") or None
+                    _bar_date = _sd.get("last_bar_date")
                     price_points = len(prices_for_verdict)
                     _lp = prices_for_verdict[-1]
                     if isinstance(_lp, (int, float)):
@@ -277,6 +283,20 @@ if _run_clicked or (_autorun and _prefill):
                         _last_close = float(_lp)
             except Exception:
                 _da_logger.warning("price fetch failed", exc_info=True)
+
+            # The sector benchmark, so the veto can tell "this company fell"
+            # from "everything fell". One extra daily-bars call on the price
+            # provider -- NOT an X call -- and the ETF is shared across every
+            # ticker in the sector, so the existing price cache absorbs nearly
+            # all of it. Failure is silent and falls back to the absolute
+            # reading the veto has always used.
+            _bench_sym, _bench_prices = "", None
+            try:
+                if prices_for_verdict:
+                    from utils.relative import benchmark_prices as _bench
+                    _bench_sym, _bench_prices = _bench(_run_ticker, sector)
+            except Exception:
+                _da_logger.warning("benchmark fetch failed", exc_info=True)
 
             # ---- Adjudicate from the evidence ledger ----
             #
@@ -286,6 +306,12 @@ if _run_clicked or (_autorun and _prefill):
             # path raised.
             _verdict = None
             ai_summary = None
+            # Bound here, not only inside the ledger branch below. signal_log
+            # reads it after delivery, and while `_verdict is not None` does
+            # currently imply the branch ran, that is an invariant across 200
+            # lines rather than a guarantee -- and the cost of it being wrong is
+            # a NameError on a page the user has already paid for.
+            _ledger: list = []
             _building = st.empty()
             try:
                 if _corpus_sink.get("ticker_corpus") is not None:
@@ -347,7 +373,10 @@ if _run_clicked or (_autorun and _prefill):
 
                     if _ledger:
                         _verdict = adjudicate(_ledger, prices_for_verdict,
-                                              volumes_for_verdict)
+                                              volumes_for_verdict,
+                                              benchmark_prices=_bench_prices,
+                                              benchmark=_bench_sym,
+                                              bar_date=_bar_date)
             except Exception:
                 _da_logger.warning("ledger adjudication failed; using legacy path",
                                    exc_info=True)
@@ -395,15 +424,33 @@ if _run_clicked or (_autorun and _prefill):
                         # paths that never got there simply dropped. On live
                         # TSLA that printed "hold 6 days" beside a -21%
                         # forecast, and the 25% hit-rate was never shown.
-                        # Bare window only. The hit rate is shown in the
-                        # movement-profile table beneath, where the DOWN column
-                        # sits beside it -- publishing "+5% in 66% of paths"
-                        # alone reads as a 66% win rate, which is exactly what
-                        # _movement_profile's own docstring forbids.
-                        _lo, _hi = proj.get("review_window_days", (14, 28))
-                        hold_days = f"{_lo//7}–{_hi//7} weeks"
+                        # The hit rate is shown in the movement-profile table
+                        # beneath, where the DOWN column sits beside it --
+                        # publishing "+5% in 66% of paths" alone reads as a 66%
+                        # win rate, which is exactly what _movement_profile's
+                        # own docstring forbids.
+                        #
+                        # In its place, the drawdown that reaching +5% cost on
+                        # the way -- p75, not the median. Conditioning on
+                        # winners selects for paths that hit the target on day
+                        # one with no dip at all, so above ~8% daily volatility
+                        # the median pins to exactly 0 and the tile would print
+                        # "-0.0%" for the riskiest tickers in the product.
+                        # Absent rather than zero when the target was never
+                        # reached, and falsy-guarded so a true zero is shown as
+                        # "under 0.1%" rather than as no risk at all.
+                        _m5 = (proj.get("movement_profile") or {}).get("5%") or {}
+                        _mae = _m5.get("mae_p75")
+                        if _mae is not None:
+                            drawdown_first = ("under 0.1%" if _mae < 0.001
+                                              else f"-{_mae * 100:.1f}%")
             except Exception:
-                pass
+                # Was a bare `pass`. Every other handler on this page logs, and
+                # this one now guards two more statements; a silent degrade to
+                # "Unavailable" beside a fully rendered movement-profile table
+                # is exactly the failure nobody would report.
+                _da_logger.warning("projection post-processing failed",
+                                   exc_info=True)
 
             # UNIQUE ids. Summing mention_count across the eight angles counts
             # a post once per angle it lands in -- angle 1 is the whole corpus
@@ -420,14 +467,22 @@ if _run_clicked or (_autorun and _prefill):
                 height=0,
             )
 
+            # THE NUMBER ON THE CARD MUST BE THE NUMBER THAT DECIDED THE CALL.
+            # `_total_mentions` is the union of ids across all eight analysis
+            # angles -- effectively the whole retrieved corpus, ~90 of 98 -- and
+            # it rendered as "90 posts analysed" beside a verdict resting on 5
+            # independent voices. The one figure a reader takes as sample size
+            # was off by ~18x from the sample.
+            _shown_mentions = (_verdict.quality.eligible_clusters
+                               if _verdict is not None else _total_mentions)
             render_recommendation_panel(
                 ticker=_run_ticker,
                 sector=sector,
                 ai_summary=ai_summary,
                 current_price=current_price,
                 projected_gain=projected_gain,
-                hold_days=hold_days,
-                mentions=_total_mentions,
+                drawdown_first=drawdown_first,
+                mentions=_shown_mentions,
                 price_points=price_points,
             )
 
@@ -453,31 +508,78 @@ if _run_clicked or (_autorun and _prefill):
             try:
                 _mp = (_proj or {}).get("movement_profile") or {}
                 if _mp:
-                    _parts = []
+                    _hz = int(_proj.get("decision_horizon_days") or 10)
+                    _parts = [
+                        "<tr style='color:rgba(148,163,184,.6);font-size:0.74rem;"
+                        "text-transform:uppercase;letter-spacing:.05em;'>"
+                        "<td style='padding:0 14px 6px 0;'>target</td>"
+                        "<td style='padding:0 14px 6px;'>reached, 30d</td>"
+                        "<td style='padding:0 14px 6px;'>fallen, 30d</td>"
+                        f"<td style='padding:0 0 6px 14px;'>within {_hz}d</td></tr>"
+                    ]
                     for _k, _v in _mp.items():
                         _ud = _v.get("up_median_day")
                         _dd = _v.get("down_median_day")
-                        _up = f"{_v['up_rate']:.0%} up" + (f" &middot; day {_ud}" if _ud else "")
-                        _dn = f"{_v['down_rate']:.0%} down" + (f" &middot; day {_dd}" if _dd else "")
+                        _up = f"{_v['up_rate']:.0%}" + (f" &middot; day {_ud}" if _ud else "")
+                        _dn = f"{_v['down_rate']:.0%}" + (f" &middot; day {_dd}" if _dd else "")
+                        # The same question over the window the social evidence
+                        # can actually speak to. Both directions, for the same
+                        # reason the 30-day columns show both.
+                        _su = _v.get("up_rate_by_decision")
+                        _sd = _v.get("down_rate_by_decision")
+                        _short = ("&mdash;" if _su is None or _sd is None
+                                  else f"{_su:.0%} up &middot; {_sd:.0%} down")
                         _parts.append(
                             f"<tr><td style='padding:6px 14px 6px 0;'>&plusmn;{_k}</td>"
                             f"<td style='padding:6px 14px;color:rgba(56,189,248,.95);'>{_up}</td>"
-                            f"<td style='padding:6px 0 6px 14px;color:rgba(248,113,113,.95);'>{_dn}</td></tr>"
+                            f"<td style='padding:6px 14px;color:rgba(248,113,113,.95);'>{_dn}</td>"
+                            f"<td style='padding:6px 0 6px 14px;color:rgba(148,163,184,.9);'>{_short}</td></tr>"
                         )
+                    # Order matters and symmetry does not hide it: whether +5%
+                    # arrives BEFORE -5% is the one directional question this
+                    # simulation can answer. With no drift estimate it answers
+                    # 50%, and saying so plainly is the point -- it states that
+                    # the price history alone gives no edge, rather than leaving
+                    # the reader to infer an edge from the up column.
+                    _f5d = _mp.get("5%") or {}
+                    _f5 = _f5d.get("up_first_rate")
+                    _tch = _f5d.get("touched_rate")
+                    # Conditional on having touched either side, and the base it
+                    # is conditional on is stated. The unconditional version of
+                    # this number reads 23% on a calm large cap -- an apparent
+                    # bearish edge printed directly under a denial of any edge.
+                    _first = ("" if _f5 is None else
+                              "<div style='color:rgba(148,163,184,.8);font-size:0.82rem;"
+                              "margin-top:10px;'>Of the paths that reach &plusmn;5% at all"
+                              + (f" ({_tch:.0%} of them)" if _tch is not None else "")
+                              + f", {_f5:.0%} reach +5% <em>first</em>. Price history alone "
+                              "carries no direction; only the evidence above does.</div>")
                     _tk = html.escape(str(_run_ticker))
                     st.markdown(
                         "<div style='border:1px solid rgba(148,163,184,.22);border-radius:14px;"
                         "padding:16px 20px;margin:0.75rem 0;'>"
                         "<div style='font-weight:700;margin-bottom:2px;'>Movement profile</div>"
                         "<div style='color:rgba(148,163,184,.8);font-size:0.82rem;margin-bottom:10px;'>"
-                        f"How far {_tk} normally travels in 30 days, from its own recent "
-                        f"volatility (&plusmn;{_proj.get('band', 0):.1f}%). Not a forecast &mdash; the "
-                        "same volatility carries it both ways.</div>"
-                        f"<table style='font-size:0.9rem;'>{''.join(_parts)}</table></div>",
+                        f"How far {_tk} normally travels, from its own recent "
+                        f"volatility (&plusmn;{_proj.get('band', 0):.1f}% over 30 days). Not a "
+                        "forecast &mdash; the same volatility carries it both ways.</div>"
+                        f"<table style='font-size:0.9rem;'>{''.join(_parts)}</table>"
+                        f"{_first}</div>",
                         unsafe_allow_html=True,
                     )
             except Exception:
                 _da_logger.warning("movement profile render failed", exc_info=True)
+
+            # EVERY piece of the page is on screen before the logging below
+            # runs. Both writes are synchronous urllib POSTs, and Streamlit
+            # cannot interrupt a blocked urlopen -- it only notices a rerun at
+            # the next st.* call. With the expander after them, a slow Supabase
+            # left the recommendation panel rendered, the full analysis simply
+            # missing, and the page ignoring clicks; a click in that window
+            # raises RerunException (a BaseException, so no `except Exception`
+            # catches it) and the user is charged for an analysis they never
+            # fully saw.
+            render_full_analysis_expander(analysis_results)
 
             # Written AFTER delivery, and unable to affect it. This is the only
             # record that this call was ever made: X's index is 7 days deep and
@@ -510,7 +612,60 @@ if _run_clicked or (_autorun and _prefill):
             except Exception:
                 _da_logger.warning("verdict_log call failed", exc_info=True)
 
-            render_full_analysis_expander(analysis_results)
+            # The wide record: everything the adjudicator SAW, not just what it
+            # said. Written for EVERY verdict, so the Watches that nearly became
+            # Buys are in the table too -- a Buy cohort with no comparison group
+            # cannot be evaluated, however long it accumulates.
+            #
+            # A separate try, and deliberately not folded into the one above: a
+            # failure here must not cost the narrow verdict_log row, which is
+            # the one already accumulating and already relied on.
+            if _verdict is not None:
+                try:
+                    from utils import signal_log
+                    from utils.sentiment import MODEL_NAME as _sl_model
+                    signal_log.record(
+                        _run_ticker, _verdict,
+                        feature="deep_analyze",
+                        price_at_decision=_last_close,
+                        decision_trade_date=_bar_date,
+                        # `sector` is the literal "unknown" on this page -- the
+                        # analysis never needed one. Storing that string would
+                        # make every deep_analyze row look like a real sector
+                        # called "unknown" in any group-by, indistinguishable
+                        # from a lookup that failed. NULL says "not captured".
+                        sector=(sector if sector and sector != "unknown" else None),
+                        # Matches verdict_log's discriminator, so the two tables
+                        # can be joined on (ticker, model) at all.
+                        model=f"{_sl_model}|ledger",
+                        event_id=getattr(_credit, "event_id", None),
+                        corpus_key=_corpus_sink.get("corpus_key"),
+                        evidence_age_s=_corpus_sink.get("corpus_age_s"),
+                        ledger=_ledger,
+                        projection=_proj,
+                        # RAW corpora, so the overlap between the two paid arms
+                        # can be counted. The ledger has already dropped every
+                        # wire post the ticker arm found first, and that overlap
+                        # is exactly the measure of whether the second query was
+                        # worth making.
+                        wire_posts=_corpus_sink.get("influencer_corpus"),
+                        main_posts=_corpus_sink.get("ticker_corpus"),
+                        # WHY the wire corpus is the size it is, and what it really
+                        # cost. An empty corpus from an errored query and one from a
+                        # genuinely quiet wire are the same [] without this.
+                        wire_state=_corpus_sink.get("wire_state"),
+                        wire_billed=_corpus_sink.get("wire_billed"),
+                        # The counterfactual must see the same tape the real
+                        # verdict did, or the cascade fails closed on absent
+                        # price data and every Buy reads as wire-caused.
+                        prices=prices_for_verdict,
+                        volumes=volumes_for_verdict,
+                        benchmark_prices=_bench_prices,
+                        benchmark=_bench_sym,
+                    )
+                except Exception:
+                    _da_logger.warning("signal_log call failed", exc_info=True)
+
         finally:
             # Backstop for every path the except blocks above cannot reach,
             # including the Streamlit abort and any failure in generate_ai_summary

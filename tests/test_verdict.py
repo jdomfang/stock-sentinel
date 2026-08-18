@@ -167,6 +167,53 @@ def test_determinism_and_safety():
             check(f"adjudicate({bad!r}) is safe", False, f"{type(e).__name__}: {e}")
 
 
+def test_architecture_review_repros():
+    """Three defects a WHOLE-PIPELINE review found that per-phase review could not.
+
+    Each was reproduced end to end on a rendered card before it was fixed.
+    """
+    print("\nwhole-architecture review: three reproduced defects")
+    FALL = [100, 97, 94, 91, 88, 86, 84, 82, 81, 80, 79, 78]
+    HEAVY = [1] * 11 + [9]
+
+    # 1. The market_wide invalidation clause leaked onto Watch and Avoid cards,
+    #    telling users a CONTINUING decline was what would make it a Buy.
+    import numpy as np
+    rng = np.random.default_rng(1)
+    b = rng.normal(np.log1p(-0.17) / 20, 0.012, 20)
+    t = b + rng.normal(0, 0.02, 20)
+    t += (np.log1p(-0.18) - t.sum()) / 20
+    tp = list(100 * np.exp(np.concatenate([[0], np.cumsum(t)])))
+    bp = list(100 * np.exp(np.concatenate([[0], np.cumsum(b)])))
+    bench = {"prices": bp, "bar_date": "2026-08-14"}
+    for name, rows in (
+        ("Watch", [row(i, margin=0.0) for i in range(8)]),
+        ("Avoid", [row(i, risk_severity="severe", evidence_types=("risk",))
+                   for i in range(6)]),
+    ):
+        v = adjudicate(rows, tp, [1] * 20 + [9], benchmark_prices=bench,
+                       benchmark="XLK", bar_date="2026-08-14")
+        check(f"the sector clause does not leak onto a {name} card",
+              not any("sector-wide" in w for w in v.would_change),
+              f"{v.recommendation}: {v.would_change}")
+
+    # 2. A confirmed event nobody SCORED defaulted to +0.00, passed `>= 0`, and
+    #    bought a -22% tape on 9x volume.
+    unscored = [row(i, catalyst_severity="hard", scored=False, margin=0.0,
+                    evidence_types=("catalyst",)) for i in range(6)]
+    v = adjudicate(unscored, FALL, HEAVY)
+    check("an unmeasured event is not a bullish event",
+          v.recommendation != "Buy", f"{v.recommendation} via {v.branch}")
+    check("...and the card says so rather than printing +0.00",
+          "unmeasured" in v.catalyst.detail, v.catalyst.detail)
+    # The mirror case must still work: a SCORED bullish event is still a Buy.
+    scored = [row(i, catalyst_severity="hard", margin=0.6,
+                  evidence_types=("catalyst", "directional_view"))
+              for i in range(6)]
+    check("a scored bullish event is still a Buy",
+          adjudicate(scored, [100.0] * 12).recommendation == "Buy")
+
+
 def main() -> int:
     print("=" * 74)
     print("  verdict: the explanation IS the decision")
@@ -179,6 +226,7 @@ def main() -> int:
     test_confidence_is_not_post_volume()
     test_conflict_blocks_but_is_not_silence()
     test_determinism_and_safety()
+    test_architecture_review_repros()
     print("\n" + "=" * 74)
     print(f"  {len(PASSED)} passed, {len(FAILED)} failed")
     for n, d in FAILED:

@@ -78,6 +78,30 @@ def main() -> int:
                 check(f"{rel}:{node.lineno} f-string has no backslash in the expression",
                       False, f"python {major}.{minor} cannot parse: {seg[:60]}")
 
+        # The OTHER half of PEP 701, and the half this file used to miss: before
+        # 3.12 a replacement field may not reuse the quote character that
+        # delimits its own f-string. f"{d["k"]}" parses clean on a 3.12 dev box
+        # and is a hard SyntaxError on the 3.11 deploy target, exactly like the
+        # backslash case that took every page down once already.
+        for node in ast.walk(tree):
+            if not isinstance(node, ast.JoinedStr):
+                continue
+            whole = ast.get_source_segment(src, node) or ""
+            body = whole.lstrip("fFrRbBuU")
+            for delim in ('"""', "'''", '"', "'"):
+                if body.startswith(delim):
+                    break
+            else:
+                continue
+            for sub in ast.walk(node):
+                if not isinstance(sub, ast.FormattedValue):
+                    continue
+                expr = ast.get_source_segment(src, sub.value) or ""
+                if delim in expr:
+                    check(f"{rel}:{node.lineno} f-string expression does not "
+                          f"reuse its own {delim} delimiter", False,
+                          f"python {major}.{minor} cannot parse: {expr[:60]}")
+
         # Other post-3.11 syntax that would ship silently.
         for node in ast.walk(tree):
             if (major, minor) < (3, 12) and isinstance(

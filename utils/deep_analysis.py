@@ -704,17 +704,36 @@ def run_deep_analysis(ticker: str, sector: str,
 
     corpuses: Dict[str, List[Dict[str, Any]]] = {"ticker": [], "influencers": []}
     errors: Dict[str, str] = {}
+    # Bound here so the sink write below cannot depend on which branches ran.
+    _wire_state: str = "unknown"
+    _wire_billed: int = 0
+    # 0 = bought fresh on this run. Set from the cache entry on a hit.
+    _corpus_age_s: float | None = 0.0
 
     # ---- Fetch influencer corpus (single call) in parallel with ticker pagination ----
     def _fetch_influencers() -> Dict[str, Any]:
+        # `wire_state` travels with the result because an EMPTY LIST HAS FOUR
+        # DIFFERENT MEANINGS and the channel is about to be judged on how often
+        # it is empty. Never configured, query errored, cache served nothing,
+        # and genuinely returned nothing are the same `[]` downstream -- so a
+        # month of rate limiting would read as "these accounts return nothing"
+        # and get a working channel cut.
         if not influencer_query:
-            return {"success": True, "tweets": []}
+            return {"success": True, "tweets": [], "wire_state": "not_configured",
+                    "wire_billed": 0}
 
         hit = corpus_cache.get("influencer", t, 72, influencer_query)
         if hit is not None:
-            return {"success": True, "tweets": hit["tweets"]}
+            # Billed ZERO. The corpus cache serves across users for 6h, so
+            # counting these posts as cost overstates the bill several-fold --
+            # and overstates it precisely on the tickers where the wire returns
+            # something, which are the only rows that carry any signal.
+            return {"success": True, "tweets": hit["tweets"],
+                    "wire_state": "cache_hit", "wire_billed": 0}
 
         res = search_x_tweets(query=influencer_query, timeframe="72h", max_results=100)
+        res["wire_billed"] = len(res.get("tweets") or []) if res.get("success") else 0
+        res["wire_state"] = "fetched" if res.get("success") else "error"
         if res.get("success"):
             # Stored even when empty. The ACHR run returned zero posts, and
             # without a negative entry the next user pays again to learn the
@@ -852,6 +871,9 @@ def run_deep_analysis(ticker: str, sector: str,
         _ticker_cached = corpus_cache.get("ticker", t, 48, ticker_query)
         if _ticker_cached is not None:
             core = list(_ticker_cached["tweets"])
+            # How stale the evidence is. A cached corpus can be hours old, and a
+            # verdict's write time is not the time the market was speaking.
+            _corpus_age_s = _ticker_cached.get("age_s")
             logger.info(
                 "🧠 Deep Analyze ticker corpus from cache: %d posts, age %.0fs -- 0 posts billed",
                 len(core), _ticker_cached["age_s"],
@@ -932,7 +954,11 @@ def run_deep_analysis(ticker: str, sector: str,
         corpuses["ticker"] = core
 
         # Influencers
-        infl_res = infl_future.result() if infl_future else {"success": True, "tweets": []}
+        infl_res = infl_future.result() if infl_future else {
+            "success": True, "tweets": [], "wire_state": "not_configured",
+            "wire_billed": 0}
+        _wire_state = infl_res.get("wire_state") or "unknown"
+        _wire_billed = infl_res.get("wire_billed") or 0
         if infl_res.get("success"):
             corpuses["influencers"] = infl_res.get("tweets", []) or []
         else:
@@ -956,6 +982,24 @@ def run_deep_analysis(ticker: str, sector: str,
         sink["ticker_corpus"] = core
         sink["influencer_corpus"] = influencers
         sink["alias"] = _alias
+        # WHY the wire corpus is the size it is, and what it actually cost.
+        # Without these, "0 posts" cannot be told from "the query failed" or
+        # "served free from cache" -- and the decision this feeds is whether to
+        # keep paying for the channel at all.
+        sink["wire_state"] = _wire_state
+        sink["wire_billed"] = _wire_billed
+        # How old the evidence was. created_at is the WRITE time; a corpus can
+        # be hours old, and a forward return anchored to the wrong moment is the
+        # thing signal_log exists to make impossible.
+        sink["corpus_age_s"] = _corpus_age_s
+        # Which corpus this analysis was built from. signal_log stores it so a
+        # disputed call can be reconstructed against the exact posts, rather
+        # than against whatever the query returns when someone looks later --
+        # X's index is 7 days deep, so "run it again" is not available.
+        try:
+            sink["corpus_key"] = _cache_key()
+        except Exception:
+            logger.warning("could not derive corpus_key for sink", exc_info=True)
 
     catalyst_keywords = [
         "breaking",

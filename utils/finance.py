@@ -2,7 +2,7 @@
 Financial data processing module.
 """
 
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import Dict, List, Optional
 import streamlit as st
 import requests
@@ -633,6 +633,22 @@ def get_stock_data(ticker: str, days: int = 30) -> Dict:
         for agg in aggs:
             v = getattr(agg, "volume", None)
             volumes.append(float(v) if isinstance(v, (int, float)) else 0.0)
+
+        # THE BAR'S DATE, which every caller needs and none could get. The
+        # timestamp was read off the same aggs and dropped, so a recorded price
+        # could not be tied to a trading session: a verdict issued on a Saturday
+        # or at 02:00 UTC carries Friday's close under a Saturday timestamp, and
+        # any join of `created_at::date` to a daily bar table silently finds no
+        # row -- discarding roughly a third of all observations with no error.
+        # Polygon aggs carry `timestamp` as epoch MILLISECONDS, UTC.
+        last_bar_date = None
+        try:
+            ts = getattr(aggs[-1], "timestamp", None)
+            if isinstance(ts, (int, float)) and ts > 0:
+                last_bar_date = datetime.fromtimestamp(
+                    ts / 1000.0, tz=timezone.utc).date().isoformat()
+        except Exception:
+            logger.warning("could not read bar date for %s", ticker, exc_info=True)
         
         # Calculate daily returns
         returns = []
@@ -649,6 +665,9 @@ def get_stock_data(ticker: str, days: int = 30) -> Dict:
         result = {
             'prices': prices,
             'volumes': volumes,
+            # ISO date of the LAST bar, i.e. the session `prices[-1]` closed in.
+            # None when the aggregate carried no usable timestamp.
+            'last_bar_date': last_bar_date,
             'volatility': round(volatility, 2),
             'error': None
         }

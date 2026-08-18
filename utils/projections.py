@@ -31,9 +31,19 @@ def _derive_seed(prices: List[float], sentiment_score: float, days: int) -> int:
     return int.from_bytes(h.digest()[:8], "little")
 
 
+# The window over which the social evidence is claimed to say anything. The
+# 30-day band is a volatility range and stands on its own, but chatter and news
+# effects are documented to decay within one to two trading days, so a
+# DIRECTIONAL reading must not be published over a horizon the evidence cannot
+# reach. Reported alongside the full-horizon numbers, never instead of them.
+DECISION_HORIZON_DAYS = 10
+
+_N_SIMS = 2000
+
+
 def _movement_profile(daily_vol: float, drift_per_day: float, days: int,
-                      targets, rng) -> Dict:
-    """How often this stock reaches a target, and how soon. Both directions.
+                      targets, rng, decision_horizon: int = DECISION_HORIZON_DAYS) -> Dict:
+    """How often this stock reaches a target, how soon, and what it costs to wait.
 
     This answers the question a short-term trader actually asks -- "what target
     and what horizon" -- and it answers it from realised volatility, with no
@@ -46,33 +56,114 @@ def _movement_profile(daily_vol: float, drift_per_day: float, days: int,
     reached in 69% of paths upward is reached in roughly 69% downward too.
     Publishing the up column alone would be read as a 69% win rate, which is
     the precise species of false confidence this rebuild exists to remove.
+
+    ONE PATH SET FOR EVERY TARGET. The previous loop drew fresh paths per
+    target, so +3%, +5% and +8% were measured in three unrelated universes and
+    nothing forced P(+8%) <= P(+5%) <= P(+3%). Sampling noise could and did
+    order them wrongly, which reads as a arithmetic error to anyone who checks.
+    Drawing once and thresholding the same paths makes the ordering structural.
+
+    THREE FIGURES THE OLD PROFILE COULD NOT PRODUCE:
+
+    up_first_rate -- P(+t arrives BEFORE -t | one of them arrived). Unlike
+        up_rate this is order-dependent and therefore genuinely directional. At
+        zero drift it is 50%, and printing that 50% is the honest statement that
+        the system claims no edge.
+
+        CONDITIONAL, and it must be. The unconditional share of ALL paths that
+        reach +t first has a complement of "went down first OR went nowhere",
+        so on a calm large cap at 1% daily vol it reads 23% -- a number that
+        looks like a strong bearish edge sitting directly beneath a sentence
+        denying any edge. Only paths that touched something can speak to which
+        came first.
+
+    mae_p75 -- of the paths that DID reach +t, the drawdown 3 in 4 of them
+        stayed within on the way. This is the number a stop is placed from, and
+        nothing in the product produced it.
+
+        NOT THE MEDIAN. Conditioning on winners selects for paths that hit the
+        target immediately, and a day-one hit has zero observed drawdown by
+        construction. Past roughly 8% daily volatility more than half the
+        winners have never dipped, so the median pins to exactly 0.0 and the
+        product prints "-0.0%" as the risk of its most volatile tickers. The
+        median is anti-correlated with volatility; p75 is monotonic in it.
+
+    up_rate_by_decision -- the same touch rate restricted to the decision
+        horizon, so the directional claim can be read over the window the
+        evidence actually covers.
     """
-    n_sims = 2000
+    n = _N_SIMS
+    days = int(days)
+    # LOG returns, exponentiated. The obvious formulation -- cumprod(1 + N(mu,
+    # sigma)) -- silently injects a median drift of -sigma^2*T/2: at 5% daily
+    # volatility the median path lands at -3.4% while `centre` claims 0.0%, and
+    # down_rate then exceeds up_rate at every target for every ticker. That is
+    # precisely the symmetry this function's own docstring asserts, and the old
+    # scalar loop violated it too. Here `drift_per_day` is a LOG drift, so the
+    # median path lands exactly on the centre the caller asked for.
+    steps = rng.normal(drift_per_day, daily_vol, size=(n, days))
+    paths = np.exp(np.cumsum(steps, axis=1)) - 1.0
+    # Worst level seen up to and including each day, for the drawdown figure.
+    running_min = np.minimum.accumulate(paths, axis=1)
+
+    horizon = max(1, min(int(decision_horizon), days))
     out = {}
     for tgt in targets:
-        up_days, down_days = [], []
-        for _ in range(n_sims):
-            px, hit_up, hit_dn = 1.0, None, None
-            for d in range(1, days + 1):
-                px *= (1.0 + rng.normal(drift_per_day, daily_vol))
-                chg = px - 1.0
-                if hit_up is None and chg >= tgt:
-                    hit_up = d
-                if hit_dn is None and chg <= -tgt:
-                    hit_dn = d
-                if hit_up is not None and hit_dn is not None:
-                    break
-            up_days.append(hit_up)
-            down_days.append(hit_dn)
-        up = [d for d in up_days if d]
-        dn = [d for d in down_days if d]
+        up_mask = paths >= tgt
+        dn_mask = paths <= -tgt
+        up_any = up_mask.any(axis=1)
+        dn_any = dn_mask.any(axis=1)
+        # argmax on a boolean row gives the first True; meaningless where the
+        # row is all False, which is why every use is masked by *_any.
+        up_day = up_mask.argmax(axis=1) + 1
+        dn_day = dn_mask.argmax(axis=1) + 1
+
+        # Reached the upside FIRST: either the downside never came, or it came
+        # later. One close cannot be both >= t and <= -t for t > 0, so these two
+        # partition the paths that touched anything.
+        up_first = up_any & (~dn_any | (up_day < dn_day))
+        dn_first = dn_any & (~up_any | (dn_day < up_day))
+        touched = int(up_first.sum() + dn_first.sum())
+
+        rows = np.flatnonzero(up_any)
+        if rows.size:
+            # The drawdown suffered before the target was reached. Positive
+            # number = how far against you it went first; a path that never
+            # dipped contributes 0, not a negative "gain".
+            depth = np.maximum(-running_min[rows, up_day[rows] - 1], 0.0)
+            mae_p50 = float(np.percentile(depth, 50))
+            mae_p75 = float(np.percentile(depth, 75))
+            mae_p90 = float(np.percentile(depth, 90))
+            # How much of the winning set never dipped at all. When this is
+            # large the p50 above is 0 for a real reason, and saying so is
+            # better than publishing the 0.
+            straight_up = float((depth <= 0.0).mean())
+        else:
+            mae_p50 = mae_p75 = mae_p90 = straight_up = None
+
         out[f"{tgt:.0%}"] = {
             "target": tgt,
-            "up_rate": len(up) / n_sims,
-            "up_median_day": int(np.median(up)) if up else None,
-            "down_rate": len(dn) / n_sims,
-            "down_median_day": int(np.median(dn)) if dn else None,
+            "up_rate": float(up_any.mean()),
+            "up_median_day": int(np.median(up_day[up_any])) if up_any.any() else None,
+            "down_rate": float(dn_any.mean()),
+            "down_median_day": int(np.median(dn_day[dn_any])) if dn_any.any() else None,
+            # Directional. None rather than 0.5 when nothing touched either
+            # side, because "no path moved 8% in a month" is an absent
+            # measurement, not a balanced one.
+            "up_first_rate": (float(up_first.sum()) / touched) if touched else None,
+            "touched_rate": touched / n,
+            # What reaching the target costs on the way.
+            "mae_p50": mae_p50,
+            "mae_p75": mae_p75,
+            "mae_p90": mae_p90,
+            "straight_up_rate": straight_up,
+            # The same question asked over the window the evidence covers.
+            "up_rate_by_decision": float((up_any & (up_day <= horizon)).mean()),
+            "down_rate_by_decision": float((dn_any & (dn_day <= horizon)).mean()),
         }
+    # NOT stored in `out`. Callers iterate profile.items() and call .get() on
+    # every value; a scalar smuggled in beside the per-target dicts crashes the
+    # renderer. The horizon travels on the projection instead.
     return out
 
 
@@ -158,7 +249,14 @@ def simple_projection(
         rng = np.random.default_rng(
             seed if seed is not None else _derive_seed(prices, sentiment_score, days)
         )
-        profile = _movement_profile(daily_vol, centre / days, days, targets, rng)
+        # log1p, not centre/days. _movement_profile exponentiates its steps, so
+        # the drift it wants is a LOG drift; handing it the arithmetic one puts
+        # the median path off the centre by a compounding error.
+        profile = _movement_profile(daily_vol, float(np.log1p(centre)) / days,
+                                    days, targets, rng)
+        # The horizon actually used, after clamping to the simulated span. The
+        # constant would mislabel the column "within 10d" on a 5-day run.
+        effective_horizon = max(1, min(DECISION_HORIZON_DAYS, int(days)))
 
         # Degrading to 0.0 here would print "+5% reached in 0% of paths"
         # as a confident statement rather than an absent measurement.
@@ -173,6 +271,9 @@ def simple_projection(
             'quality_gated': not quality_ok,
 
             'movement_profile': profile,
+            # The window the DIRECTIONAL reading is claimed over. The band above
+            # is a 30-day volatility range and is not affected by this.
+            'decision_horizon_days': effective_horizon,
 
             # Legacy keys, now honest.
             'avg_gain': round(centre * 100, 2),
@@ -184,7 +285,10 @@ def simple_projection(
             'gain_p90': round((centre + band) * 100, 2),
             'success_rate': round(five.get('up_rate', 0.0) * 100, 1),
             'suggested_hold_days': five.get('up_median_day') or days,
-            'review_window_days': (14, 28),
+            # review_window_days is GONE. It was the constant (14, 28) rendered
+            # as "2-4 weeks" under a "Review window" heading on every analysis of
+            # every ticker -- a number derived from nothing, carrying no measured
+            # signal, and lending the output a precision it does not have.
             'error': None,
         }
 

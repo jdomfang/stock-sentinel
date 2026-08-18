@@ -1679,6 +1679,11 @@ def _render_deep_panel(ticker, sector, deep_results):
 
     _sink = st.session_state.get("deep_analysis_sink") or {}
     _v = None
+    # Bound before the try, not only inside its branches. When there is no
+    # ticker_corpus the `if` below never runs and the `except` never fires, so
+    # the only other binding sites are both skipped -- and signal_log reads this
+    # after the panel has already been delivered.
+    _led: list = []
     try:
         if _sink.get("ticker_corpus") is not None:
             from utils.evidence import build_ledger
@@ -1719,12 +1724,17 @@ def _render_deep_panel(ticker, sector, deep_results):
     _price, _proj, _hold, _pts = "Unavailable", "Unavailable", "Unavailable", 0
     _prices = _vols = None
     _last = None
+    # The trading session _last belongs to. See the matching note in
+    # pages/Deep_Analysis.py: without it a verdict issued outside market hours
+    # joins no price_history row and can never be scored.
+    _bar_date: str | None = None
     _proj_r: dict = {}
     try:
         _sd = get_stock_data(ticker)
         if _sd.get("error") is None and _sd.get("prices"):
             _prices = _sd["prices"]
             _vols = _sd.get("volumes") or None
+            _bar_date = _sd.get("last_bar_date")
             _pts = len(_prices)
             _lp = _prices[-1]
             if isinstance(_lp, (int, float)):
@@ -1733,9 +1743,22 @@ def _render_deep_panel(ticker, sector, deep_results):
     except Exception:
         logger.warning("discovery: price fetch failed", exc_info=True)
 
+    # Sector benchmark. See the matching note in pages/Deep_Analysis.py -- one
+    # extra daily-bars call, shared by every ticker in the sector, so a scan of
+    # fifty industrials makes one ETF call rather than fifty.
+    _bench_sym, _bench_prices = "", None
+    try:
+        if _prices:
+            from utils.relative import benchmark_prices as _bench
+            _bench_sym, _bench_prices = _bench(ticker, sector)
+    except Exception:
+        logger.warning("discovery: benchmark fetch failed", exc_info=True)
+
     if _led:
         try:
-            _v = _adj(_led, _prices, _vols)
+            _v = _adj(_led, _prices, _vols,
+                      benchmark_prices=_bench_prices, benchmark=_bench_sym,
+                      bar_date=_bar_date)
         except Exception:
             logger.warning("discovery: adjudication failed", exc_info=True)
             _v = None
@@ -1766,8 +1789,18 @@ def _render_deep_panel(ticker, sector, deep_results):
             if _proj_r.get("error") is None:
                 _proj = (f"{_proj_r['scenario_bear']:.1f}% to "
                          f"{_proj_r['scenario_bull']:.1f}%")
-                _lo, _hi = _proj_r.get("review_window_days", (14, 28))
-                _hold = f"{_lo // 7}–{_hi // 7} weeks"
+                # Was the constant (14, 28) rendered as "2-4 weeks" on every
+                # ticker. Replaced by the drawdown reaching +5% cost on the way,
+                # which is the only figure in this row that varies with the
+                # stock. Left absent when the target was never reached.
+                # p75, not the median: see the note at the matching site in
+                # pages/Deep_Analysis.py. The median pins to 0 on volatile
+                # tickers because winners that hit on day one never dipped.
+                _m5 = (_proj_r.get("movement_profile") or {}).get("5%") or {}
+                _mae = _m5.get("mae_p75")
+                if _mae is not None:
+                    _hold = ("under 0.1%" if _mae < 0.001
+                             else f"-{_mae * 100:.1f}%")
     except Exception:
         logger.warning("discovery: projection failed", exc_info=True)
 
@@ -1785,8 +1818,10 @@ def _render_deep_panel(ticker, sector, deep_results):
     _sent_color = "rgba(56,189,248,.95)" if _avg_sent>=0.10 else "rgba(239,68,68,.88)" if _avg_sent<=-0.10 else "rgba(148,163,184,.85)"
     _sent_lbl = f"Bullish ({_avg_sent:+.2f})" if _avg_sent>=0.10 else f"Bearish ({_avg_sent:+.2f})" if _avg_sent<=-0.10 else f"Neutral ({_avg_sent:+.2f})"
     _sector_lbl = (" · "+sector.title()) if sector and sector.lower() not in ("unknown","") else ""
-    _rec_sub = {"buy":"Strong upside signal","watch":"Hold — monitor closely","avoid":"Risk outweighs reward"}.get(_rec.lower(),"")
-    _conf_sub = {"high":"Strong data backing","moderate":"Reasonable evidence","low":"Thin data — use caution"}.get(_conf.lower(),"")
+    # Kept verbatim in step with utils.ui.render_recommendation_panel, which
+    # this markup duplicates; see the note there for why "Strong" was removed.
+    _rec_sub = {"buy":"Evidence leans upside","watch":"Hold — monitor closely","avoid":"Risk outweighs reward"}.get(_rec.lower(),"")
+    _conf_sub = {"high":"Strong data backing","moderate":"Highest we issue — unvalidated","low":"Thin data — use caution"}.get(_conf.lower(),"")
     _bar_pct = min(100, int(abs(_avg_sent)*250 + {"high":30,"moderate":15,"low":0}.get(_conf.lower(),0)))
     _conf_bar = {"high":90,"moderate":55,"low":25}.get(_conf.lower(),30)
 
@@ -1799,7 +1834,12 @@ def _render_deep_panel(ticker, sector, deep_results):
     _fc = "border-radius:10px;padding:10px 14px;background:rgba(15,23,42,.55);border:1px solid rgba(148,163,184,.12);flex:1;"
     _fl = "font-size:0.68rem;font-weight:700;letter-spacing:0.05em;text-transform:uppercase;color:rgba(148,163,184,.55);margin-bottom:3px;"
     _fv = "font-size:1.00rem;font-weight:800;color:rgba(248,250,252,.92);"
-    _price_row = f'<div style="display:flex;gap:8px;margin-bottom:14px;"><div style="{_fc}"><div style="{_fl}">Last Price</div><div style="{_fv}">{_price}</div></div><div style="{_fc}"><div style="{_fl}">Proj. Gain 30d</div><div style="{_fv}">{_proj}</div></div><div style="{_fc}"><div style="{_fl}">Hold Period</div><div style="{_fv}">{_hold}</div></div></div>' if _price != "Unavailable" or _proj != "Unavailable" else ""
+    # Labels kept in step with utils.ui.render_recommendation_panel, which this
+    # markup duplicates. They had drifted: "Proj. Gain 30d" and "Hold Period"
+    # were retired there for promising a forecast the band does not make, and
+    # survived here -- so the same volatility range was captioned as a projected
+    # gain on one page and as a range on the other.
+    _price_row = f'<div style="display:flex;gap:8px;margin-bottom:14px;flex-wrap:nowrap;"><div style="{_fc}"><div style="{_fl}">Last Price</div><div style="{_fv}">{_price}</div></div><div style="{_fc}"><div style="{_fl}">30d range (vol)</div><div style="{_fv}">{_proj}</div></div><div style="{_fc}"><div style="{_fl}">Drawdown first</div><div style="{_fv}">{_hold}</div></div></div>' if _price != "Unavailable" or _proj != "Unavailable" or _hold != "Unavailable" else ""
 
     _tilt_color = {"Bullish":"rgba(56,189,248,.95)","Bearish":"rgba(239,68,68,.90)","Neutral":"rgba(148,163,184,.80)"}
 
@@ -1933,6 +1973,24 @@ def _render_deep_panel(ticker, sector, deep_results):
             render_evidence_check(_v, ticker)
         except Exception:
             logger.warning("discovery: evidence check render failed", exc_info=True)
+
+    # ONE PAID ANALYSIS, ONE ROW. This function is not called by the button
+    # handler -- it is called from the results-table row loop whenever the row
+    # is selected and results are in session state, which survives every
+    # Streamlit rerun. So without this guard a sector change, a download click
+    # or opening another row each appended another verdict_log AND signal_log
+    # row for the same analysis, silently weighting every future cohort mean by
+    # how often the user happened to click something.
+    #
+    # Keyed on the credit event, not the ticker: two genuine analyses of the
+    # same ticker are two events and must both be recorded.
+    _ev = st.session_state.get("deep_analysis_event_id")
+    _done = st.session_state.setdefault("_logged_analyses", set())
+    _log_key = (str(_ev), str(ticker), "discovery")
+    _should_log = _v is not None and _log_key not in _done
+
+    if _should_log:
+        _done.add(_log_key)
         try:
             from utils import verdict_log
             from utils.sentiment import MODEL_NAME as _mn
@@ -1952,6 +2010,48 @@ def _render_deep_panel(ticker, sector, deep_results):
             )
         except Exception:
             logger.warning("discovery: verdict_log write failed", exc_info=True)
+
+        # The wide record. Discovery runs far more often than Deep Analyze and
+        # is therefore the faster route to a scorable sample -- but its evidence
+        # comes from a basket query with its own selection bias, which is why
+        # `feature` is stored rather than the two being pooled.
+        try:
+            from utils import signal_log
+            from utils.sentiment import MODEL_NAME as _sl_mn
+            signal_log.record(
+                ticker, _v,
+                feature="discovery",
+                price_at_decision=_last,
+                decision_trade_date=_bar_date,
+                sector=sector or None,
+                # Matches verdict_log's discriminator so the two tables can be
+                # joined on (ticker, model).
+                model=f"{_sl_mn}|ledger|discovery",
+                event_id=_ev,
+                corpus_key=_sink.get("corpus_key"),
+                evidence_age_s=_sink.get("corpus_age_s"),
+                ledger=_led,
+                projection=_proj_r,
+                # See the matching note in pages/Deep_Analysis.py: raw corpora,
+                # because the ledger has already discarded the overlap that the
+                # measurement is about.
+                wire_posts=_sink.get("influencer_corpus"),
+                main_posts=_sink.get("ticker_corpus"),
+                # WHY the wire corpus is the size it is, and what it really
+                # cost. An empty corpus from an errored query and one from a
+                # genuinely quiet wire are the same [] without this.
+                wire_state=_sink.get("wire_state"),
+                wire_billed=_sink.get("wire_billed"),
+                # The counterfactual must see the same tape the real
+                # verdict did, or the cascade fails closed on absent
+                # price data and every Buy reads as wire-caused.
+                prices=_prices,
+                volumes=_vols,
+                benchmark_prices=_bench_prices,
+                benchmark=_bench_sym,
+            )
+        except Exception:
+            logger.warning("discovery: signal_log write failed", exc_info=True)
 
 # ── Results table ──
 if st.session_state.df_valid is not None:
@@ -2157,6 +2257,15 @@ if st.session_state.df_valid is not None:
                             # the second render silently drops to the legacy
                             # adjudicator.
                             st.session_state.deep_analysis_sink = _disc_holder.get("sink") or {}
+                            # Carried so the panel can identify WHICH paid
+                            # analysis it is rendering. Without it the panel --
+                            # which re-renders from session state on every
+                            # rerun -- appended a fresh log row on each sector
+                            # change, download click or row selection, and the
+                            # duplicates were indistinguishable from two genuine
+                            # analyses minutes apart.
+                            st.session_state.deep_analysis_event_id = getattr(
+                                _dcredit, "event_id", None)
                             st.session_state.selected_ticker = ticker_symbol
                             st.session_state["_scroll_to_deep_panel"] = True
                             # Set BEFORE st.rerun(): it raises RerunException, so

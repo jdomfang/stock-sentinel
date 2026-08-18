@@ -71,6 +71,19 @@ class Verdict:
     price: M.Price = field(default_factory=M.Price)
     newswire: M.Newswire = field(default_factory=M.Newswire)
 
+    # WHICH BRANCH FIRED, as a stable token. `reason` is prose and will be
+    # reworded; the pillar list is in DISPLAY order, which is not the cascade's
+    # -- "Independent sources" fails at 4 clusters while the cascade only needs
+    # 3, so reading the first failed pillar reports that pillar for a verdict
+    # the risk branch actually caused. Anything analysing this later needs the
+    # branch itself, and it cannot be reconstructed from the stored scalars
+    # without reimplementing the very cascade that is expected to change.
+    branch: str = ""
+    # The two states that block a call and appear nowhere in the module
+    # outputs, so a near-miss cannot otherwise be told from a distant one.
+    own_clusters: int = 0
+    seed_only: bool = False
+
     @property
     def failed(self) -> list[Pillar]:
         return [p for p in self.pillars if not p.passed]
@@ -129,13 +142,17 @@ def _confidence(q: M.Quality, s: M.Social, rows: Sequence[EvidenceRow],
 
 def adjudicate(rows: Sequence[EvidenceRow],
                prices: Sequence[float] | None = None,
-               volumes: Sequence[float] | None = None) -> Verdict:
+               volumes: Sequence[float] | None = None,
+               benchmark_prices=None,
+               benchmark: str = "",
+               bar_date: str | None = None) -> Verdict:
     """One of three words, plus the state that produced it."""
     q = M.quality(rows)
     s = M.social(rows, q.score)
     r = M.risk(rows)
     c = M.catalyst(rows)
-    p = M.price(prices, volumes)
+    p = M.price(prices, volumes, benchmark_prices=benchmark_prices,
+                benchmark=benchmark, bar_date=bar_date)
     w = M.newswire(rows)
 
     v = Verdict(quality=q, social=s, risk=r, catalyst=c, price=p, newswire=w)
@@ -153,15 +170,26 @@ def adjudicate(rows: Sequence[EvidenceRow],
     # resting on it alone is a call resting on a channel we know is skewed.
     _elig = [r for r in rows if r.evidence_eligible]
     _own = [r for r in _elig if r.channel not in ("discovery_seed",)]
+    _seeded = [r for r in _elig if r.channel == "discovery_seed"]
     _own_clusters = len({(r.channel, r.cluster_id) for r in _own})
     # PROPORTIONAL, not binary. Requiring merely one non-seed row let a single
     # own post unlock a call the seed then drove: measured, one own eligible row
     # plus nine seed rows returned Buy on a social direction of +0.90 that was
     # almost entirely the seed's, and fourteen seed rows lifted a rejected
     # corpus from 0.250 to 0.543 and flipped Watch to Buy.
-    seed_only = bool(_elig) and _own_clusters < MIN_CLUSTERS_MODERATE
+    # `bool(_seeded)`, not `bool(_elig)`. Keyed on eligible evidence of ANY
+    # kind, a corpus of four own posts and ZERO seed posts set this True and
+    # was told "the usable evidence came mostly from a recent sector scan" --
+    # a statement about a channel that had contributed nothing. Thin evidence
+    # and seed-dominated evidence are different findings with different
+    # remedies, and the branch that fires must be the true one.
+    seed_only = bool(_seeded) and _own_clusters < MIN_CLUSTERS_MODERATE
     if seed_only:
         can_call = False
+    # Carried on the verdict so a log can tell a seed-starved Watch from a
+    # genuine quality failure. Both print "Evidence quality" as their first
+    # failing pillar; only this distinguishes them.
+    v.own_clusters, v.seed_only = _own_clusters, seed_only
 
     # The price veto has a catalyst exemption in the locked design and it
     # existed in neither module: a confirmed event on a -20% tape returned
@@ -171,7 +199,14 @@ def adjudicate(rows: Sequence[EvidenceRow],
     # still exempts, per the design.
     price_adverse = p.status in ("caution", "declining", "unconfirmed")
     price_blocks = price_adverse and c.hard_clusters < 1
-    bullish_event = c.hard_clusters >= 1 and c.hard_direction >= 0
+    # hard_scored, not merely hard_clusters. `hard_direction` falls back to 0.0
+    # when NO confirmed row carried a score (utils/modules.py), and 0.0 passes
+    # `>= 0` -- so an inference outage, a batch-length mismatch or a post-id
+    # keying miss produced a Buy on "6 confirmed (+0.00)", printed that +0.00 as
+    # though it were a measurement, and exempted the price veto on a 22% fall.
+    # The diagnostic for this shipped in an earlier phase and was never wired in.
+    bullish_event = (c.hard_clusters >= 1 and c.hard_scored >= 1
+                     and c.hard_direction >= 0)
 
     v.pillars = [
         # Tests the bar that actually blocks a call, not the reject floor. The
@@ -203,27 +238,38 @@ def adjudicate(rows: Sequence[EvidenceRow],
         # list; the confirmed-bearish-event Avoid had the same hole, and the
         # "no remediation path" backstop below is what surfaced it.
         Pillar("Sentiment not against it",
-               s.lean != "negative" and not (c.hard_clusters >= 1 and c.hard_direction < 0),
+               s.lean != "negative" and not (c.hard_clusters >= 1
+                                             and c.hard_scored >= 1
+                                             and c.hard_direction < 0),
                s.detail + (f" · confirmed event {c.hard_direction:+.2f}"
+                           if c.hard_clusters >= 1 and c.hard_scored >= 1 else
+                           " · confirmed event, direction unmeasured"
                            if c.hard_clusters >= 1 else ""),
                "no negative lean and no bearish confirmed event", blocks_buy=True),
         Pillar("Crowds agree", not s.conflict, s.detail,
                "traders and press not opposed", blocks_buy=True),
+        # "no material decline" was the requirement until the sector benchmark
+        # existed, and it would now be a lie on the market_wide path: that
+        # status passes this pillar with a double-digit fall on the card. The
+        # requirement states the question the veto actually asks.
         Pillar("Price not contradicting",
                not price_adverse and p.status != "missing", p.detail,
-               "no material decline; price and volume data present",
+               "no COMPANY-SPECIFIC decline; price data present",
                blocks_buy=True),
     ]
 
     # ---- The cascade. First match wins. ----
     if q.tier == "reject":
+        v.branch = "quality_reject"
         v.recommendation, v.reason = "Watch", (
             "Not neutral conviction — there is not enough clean evidence about "
             "this company to judge.")
     elif q.eligible_clusters < 3:
+        v.branch = "too_few_sources"
         v.recommendation, v.reason = "Watch", (
             f"Only {q.eligible_clusters} independent source(s) survived filtering.")
     elif seed_only:
+        v.branch = "seed_only"
         v.recommendation, v.reason = "Watch", (
             "The usable evidence came mostly from a recent sector scan rather "
             "than this ticker's own retrieval. That can corroborate a call; it "
@@ -234,10 +280,12 @@ def adjudicate(rows: Sequence[EvidenceRow],
         # parliamentary committee referral while its own quality pillar read
         # FAIL. Also before the missing-price branch, which otherwise blamed
         # price for a call that quality was blocking.
+        v.branch = "quality_below_bar"
         v.recommendation, v.reason = "Watch", (
             f"Evidence quality {q.score:.2f} is below the {M.QUALITY_MODERATE:.2f} "
             "needed to support a call in either direction.")
     elif r.high:
+        v.branch = "risk_high"
         # The rule is severe>=1 OR (soft>=3 AND rate>=20%), so "confirmed" was
         # a lie on the soft route: "Confirmed downside evidence (0 severe, 3
         # soft)" appeared beside a green "Sentiment not against it".
@@ -249,19 +297,23 @@ def adjudicate(rows: Sequence[EvidenceRow],
             f"Repeated warning language across {r.soft_clusters} independent "
             f"voices ({r.detail}). Not a confirmed event.")
     elif can_call and s.lean == "negative":
+        v.branch = "sentiment_negative"
         v.recommendation, v.reason = "Avoid", (
             f"Sentiment is negative ({s.direction:+.2f}) on evidence of adequate quality.")
-    elif can_call and c.hard_clusters >= 1 and c.hard_direction < 0:
+    elif can_call and c.hard_clusters >= 1 and c.hard_scored >= 1 and c.hard_direction < 0:
+        v.branch = "bearish_event"
         # A confirmed BEARISH event. "Guidance cut", "downgrade" and "shares
         # plunge" are all hard catalysts; treating any of them as upside
         # recommended buying a guidance cut.
         v.recommendation, v.reason = "Avoid", (
             f"A confirmed event reads negative ({c.hard_direction:+.2f}).")
     elif s.conflict:
+        v.branch = "channel_conflict"
         v.recommendation, v.reason = "Watch", (
             "Trader chatter and press coverage point opposite ways. That "
             "disagreement is the finding; we will not average it away.")
     elif p.status == "missing":
+        v.branch = "price_missing"
         # FAILS CLOSED. Without price context no directional call is made.
         v.recommendation, v.reason = "Watch", (
             "No price context available, so no directional call is made.")
@@ -271,12 +323,22 @@ def adjudicate(rows: Sequence[EvidenceRow],
         # positive. A Buy also needs enough voices to be worth Moderate --
         # Buy/Low is not one of the four products the design describes.
         route = "a confirmed catalyst" if bullish_event else "positive sentiment"
+        # The absolute number, in the sentence the user actually reads. On the
+        # market_wide path "price not contradicting" would print beside a -21%
+        # tape, which is the contradiction this module exists to make
+        # unrepresentable -- the sector qualifier lived only in a pillar row
+        # further down the card.
+        r20_txt = f"{p.return_20d:+.1%}" if p.return_20d is not None else "recent"
+        v.branch = "buy_catalyst" if bullish_event else "buy_sentiment"
         v.recommendation = "Buy"
         v.reason = (
             f"Evidence favours upside via {route}, with no disqualifying risk "
-            + ("and price not contradicting." if not price_adverse else
+            + ("and price not contradicting." if p.status == "neutral" else
+               f"— the {r20_txt} fall tracks its sector rather than this "
+               "company." if p.status == "market_wide" else
                f"— and a confirmed event overriding a {p.detail}."))
     else:
+        v.branch = "no_alignment"
         v.recommendation, v.reason = "Watch", (
             "Real evidence, but it does not line up into a call.")
 
@@ -286,6 +348,10 @@ def adjudicate(rows: Sequence[EvidenceRow],
     # the design describes -- it rendered "Strong upside signal" beside "Thin
     # data, use caution". The confidence rules are the stricter judge.
     if v.recommendation == "Buy" and v.confidence == "Low":
+        # THE NEAREST MISS THERE IS: every blocking pillar passed and the Buy
+        # branch fired, then the confidence rules took it back. Without its own
+        # token it is indistinguishable from any other Watch.
+        v.branch = "buy_downgraded_low_confidence"
         v.recommendation = "Watch"
         v.reason = ("Upside evidence, but confidence rules downgraded it: "
                     + "; ".join(v.confidence_notes or ["thin evidence"]) + ".")
@@ -313,6 +379,21 @@ def adjudicate(rows: Sequence[EvidenceRow],
     for pill in v.pillars:
         if not pill.passed and pill.blocks_buy:
             v.would_change.append(remedy.get(pill.name, pill.name))
+    # A market_wide Buy passes every blocking pillar, so the loop above emits
+    # NOTHING and the card shipped a Buy on a double-digit drawdown with no
+    # stated invalidation condition at all.
+    #
+    # GATED ON Buy. Ungated, this clause rendered under "What would make this a
+    # Buy" on Watch and Avoid cards too -- telling the user that a CONTINUING
+    # 18% decline was what would turn the call positive, and asserting "the call
+    # rests on the fall being sector-wide" about a call that rested on nothing
+    # of the sort. The fix for one contradiction introduced five others. The exemption rests entirely on the
+    # fall being the sector's, so the sector ceasing to explain it IS the
+    # invalidation, and it belongs on the card.
+    if p.status == "market_wide" and v.recommendation == "Buy":
+        v.would_change.append(
+            f"the {p.return_20d:+.1%} decline continuing after its sector stops "
+            "falling — the call rests on the fall being sector-wide")
     if v.recommendation != "Buy" and c.hard_clusters < 1 and s.lean != "positive":
         v.would_change.append("a confirmed catalyst, or traders leaning positive")
     if v.recommendation != "Buy" and not v.would_change:

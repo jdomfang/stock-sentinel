@@ -54,14 +54,43 @@ CLUSTER_JACCARD = 0.75
 #
 # THIS IS A PROPERTY OF THE MODEL, NOT OF THE DOMAIN. Different sentiment
 # models have wildly different confidence distributions, so one hardcoded
-# number cannot serve two of them. Measured against 175 human-labelled posts by
-# sweeping the threshold for each candidate:
+# number cannot serve two of them. FinBERT is trained on financial news and
+# reads trader prose as neutral, finding far fewer views than FinTwitBERT at a
+# matched threshold.
 #
-#   ProsusAI/finbert        best F1 0.41 at 0.05   direction accuracy 68%
-#   FinTwitBERT-sentiment   best F1 0.56 at 0.70   direction accuracy 86%
+# 0.70 STANDS, AND THE REASON IS NOT THE ONE IT LOOKS LIKE. Swept twice by
+# scripts/sweep_threshold.py against the 176 labelled units, FinTwitBERT here:
 #
-# FinBERT is trained on financial news and reads trader prose as neutral; at
-# 0.70 it finds 18% of the views a human sees, where FinTwitBERT finds 68%.
+#   over every retrieved post      precision 48%
+#   past subject and spam typing   precision 84% [68-93%]   n=32
+#
+# The second is the gate's job -- a post failing `target_subject_status` or
+# `spam_risk` is never eligible whatever this margin says. But the second
+# number is NOT a discovery that the gate is healthy: 67% of in-funnel posts
+# carry a direction before the gate sees anything, so a gate admitting
+# everything already scores 67% and the jump from 48% is mostly the denominator
+# getting cleaner. The gate's own contribution is the LIFT, +17 points, and
+# that is the same in both populations.
+#
+# Scored the way this gate is actually used -- admitted AND with the right sign,
+# since a bullish post voting bearish is the worst possible admission and plain
+# precision counts it as a success -- it is 72% [55-84%]. Wide enough to be
+# indistinguishable from 60%.
+#
+# So the threshold is not the lever. Direction accuracy is flat at 83-88% across
+# the entire sweep: once the model commits, the sign is as reliable at 0.05 as
+# at 0.95. Moving this number is unjustified in either direction on the evidence
+# available, which is why it has not been moved.
+#
+# WHAT THE SAME LABELS SAY ABOUT THE SYSTEM, which is harsher: of 52 labelled
+# posts the ledger ADMITS, the labeller wanted 33% to influence the verdict, or
+# 60% counting "maybe". The open problem is what gets admitted, not where this
+# constant sits.
+#
+# PROVENANCE: data/labels.jsonl is one labeller (labeller="claude", an AI), one
+# pass, 176 units, two tickers, one 7-day window. scripts/label_posts.py
+# --recheck has never been run, so the rubric's own agreement floors are
+# unmeasured and every figure above inherits that uncertainty.
 _DIRECTIONAL_MARGIN_BY_MODEL = {
     "prosusai/finbert": 0.15,
     "stephanakkerman/fintwitbert-sentiment": 0.70,
@@ -410,9 +439,18 @@ def build_ledger(
     alias: str = "",
     channel: str = "social_base",
     scores: dict[str, dict] | None = None,
+    margin_threshold: float | None = None,
 ) -> list[EvidenceRow]:
-    """Describe every post. `scores` maps POST ID -> FinBERT distribution."""
+    """Describe every post. `scores` maps POST ID -> a sentiment distribution.
+
+    margin_threshold overrides the gate for callers that sweep it. Resolved per
+    call rather than read from the module constant, which is fixed at import
+    from whatever MODEL_NAME happened to be set then -- so a calibration script
+    scoring one model was silently grading it against another model's gate.
+    """
     t = (ticker or "").strip().upper()
+    gate = (directional_margin() if margin_threshold is None
+            else float(margin_threshold))
     texts = [str(p.get("text") or "") for p in posts]
     clusters = assign_clusters(texts)
     sizes: dict[int, int] = {}
@@ -450,7 +488,7 @@ def build_ledger(
         p_pos = float(dist.get("p_positive") or 0.0)
         p_neg = float(dist.get("p_negative") or 0.0)
         margin = p_pos - p_neg
-        if abs(margin) >= DIRECTIONAL_MARGIN:
+        if abs(margin) >= gate:
             types = types + ("directional_view",)
 
         size = sizes[cid]
