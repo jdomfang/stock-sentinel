@@ -407,6 +407,16 @@ def adjudicate(rows: Sequence[EvidenceRow],
         v.would_change.append(
             f"the {p.return_20d:+.1%} decline continuing after its sector stops "
             "falling — the call rests on the fall being sector-wide")
+    # A Buy the confidence rules took back passes EVERY blocking pillar, so the
+    # loop above emits nothing and the fall-through below does not fire either
+    # (the lean IS positive). It shipped a Watch with an empty "what would
+    # change this" -- the nearest miss in the system, and the one state the
+    # user could most act on. The confidence notes are the reason, so they are
+    # the remedy.
+    if v.branch == "buy_downgraded_low_confidence":
+        v.would_change.append(
+            "; ".join(v.confidence_notes or ["thinner evidence than a call needs"])
+            + " — the evidence points up, the corpus is not yet strong enough")
     if v.recommendation != "Buy" and s.lean != "positive" and not bullish_event:
         # SPLIT, because "get a catalyst" is the wrong advice when five already
         # fired. Tightening the catalyst bar to DIRECTION_GATE opened a band

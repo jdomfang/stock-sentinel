@@ -81,6 +81,13 @@ PRICE_MARKET_WIDE_SIGMA = 1.0
 # did -- silently demanded the SECTOR be down 15%, which made the exemption
 # unreachable in every drawdown short of a sector collapse and put a hard
 # boundary at one basis point of ETF movement.
+# DEAD GIVEN PRICE_EXCESS_CAP, and kept only as documentation of intent.
+# For the share test to block while the cap allows, you would need
+#   r20*SHARE < sector <= r20 - CAP   =>   r20 > CAP/(SHARE-1) = +0.10
+# and the veto only runs at r20 <= -0.15. No value of r20 satisfies both, so
+# this test can never be the binding one. Mutation-tested: changing it from 0.5
+# to 0.01 alters not one recorded output. Do not tune it expecting an effect --
+# the cap is what governs, and it is the one to move.
 PRICE_SECTOR_SHARE = 0.5
 
 # AND THE SIGMA ALLOWANCE IS CAPPED IN ABSOLUTE TERMS.

@@ -1,0 +1,9 @@
+{
+ "corpora_sha256": {
+  "20260809T021847Z_A_tsla_topic.json": "d9b648cbb52fd318",
+  "20260809T021847Z_B_tsla_cashtag.json": "b2b56d7ed905bc95",
+  "20260809T021847Z_C_mp_topic.json": "e3d4b4a166022e22"
+ },
+ "gate": 0.15,
+ "numpy": "1"
+}

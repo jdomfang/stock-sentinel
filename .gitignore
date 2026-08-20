@@ -27,3 +27,6 @@ logs/
 # Regenerable sentiment-score cache for scripts/sweep_threshold.py.
 # The corpora it derives from ARE tracked; this is just a slow-to-rebuild index.
 data/model_scores.json
+
+# coverage artefact from local test runs
+.coverage

@@ -119,11 +119,26 @@ _DEFAULT_DIRECTIONAL_MARGIN = 0.50
 
 
 def directional_margin(model: str | None = None) -> float:
-    """The |p_pos - p_neg| a post must clear to count as carrying a view."""
+    """The |p_pos - p_neg| a post must clear to count as carrying a view.
+
+    THE FALLBACK IS LOUD, and it has to be. utils/sentiment.py imports streamlit
+    at module scope, so in any process without streamlit -- a worker, a script,
+    or the core-api service this codebase is being migrated into -- the import
+    below raises and every post is silently judged against 0.50 instead of the
+    model's own gate. Measured on the retained corpora: eligible rows fall 38 ->
+    13, eligible clusters 33 -> 12, and a corpus flips from no_alignment to
+    sentiment_negative. A 3.3x change in a decision threshold, from an
+    ImportError nobody sees.
+    """
     if model is None:
         try:
             from utils.sentiment import MODEL_NAME as model
-        except Exception:
+        except Exception as e:
+            logger.error(
+                "directional_margin: cannot read MODEL_NAME (%s) -- falling back "
+                "to %.2f. Every post is now judged against a gate that belongs "
+                "to no model. Pass `model=` explicitly outside the portal.",
+                type(e).__name__, _DEFAULT_DIRECTIONAL_MARGIN)
             model = ""
     return _DIRECTIONAL_MARGIN_BY_MODEL.get(
         str(model or "").strip().lower(), _DEFAULT_DIRECTIONAL_MARGIN)

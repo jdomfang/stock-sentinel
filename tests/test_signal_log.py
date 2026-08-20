@@ -252,6 +252,25 @@ def test_ledger_shape_counts_channels_separately():
 def test_it_never_raises_and_never_stores_junk():
     print("\nrobustness: this runs after the user has already paid")
     v = adjudicate([row(i) for i in range(8)], FLAT)
+
+    # ISOLATE THE CREDENTIALS. This block asserts record() returns False and
+    # never raises -- but it used to pass only because signal_log did not exist
+    # yet and every POST 404'd. The moment the migration was applied, the same
+    # calls started SUCCEEDING against production and the suite wrote junk TSLA
+    # rows into the table the product is trying to learn from. A test that
+    # depends on a table being absent is a test that silently becomes a writer.
+    _real_config = SL._config
+    SL._config = lambda name, default="": ""
+    try:
+        _no_creds_cases(v)
+    finally:
+        SL._config = _real_config
+
+    check("record() cannot reach the network from this suite",
+          SL._config is _real_config)
+
+
+def _no_creds_cases(v):
     for name, kw in {
         "no credentials": {},
         "empty ticker": {"ticker": ""},
@@ -266,12 +285,16 @@ def test_it_never_raises_and_never_stores_junk():
         except Exception as e:
             check(f"{name} -> False, no raise", False, f"{type(e).__name__}: {e}")
 
+
+def _value_coercion_cases():
     check("NaN is dropped, never stored", SL._num(float("nan")) is None)
     check("inf is dropped, never stored", SL._num(float("inf")) is None)
     check("bools are not coerced to numbers", SL._num(True) is None)
     check("junk text is dropped", SL._num("abc") is None)
     check("whitespace text becomes None", SL._txt("   ", 10) is None)
 
+
+def _resilience_cases():
     # A renamed field must cost one column, not the whole row.
     class Broken:
         pass
@@ -334,6 +357,8 @@ def main() -> int:
     test_projection_columns_carry_their_own_caveat()
     test_ledger_shape_counts_channels_separately()
     test_it_never_raises_and_never_stores_junk()
+    _value_coercion_cases()
+    _resilience_cases()
     test_the_migration_matches_what_is_written()
     test_the_write_sites_are_guarded_against_reruns()
     print("\n" + "=" * 74)
