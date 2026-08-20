@@ -87,10 +87,28 @@ CLUSTER_JACCARD = 0.75
 # 60% counting "maybe". The open problem is what gets admitted, not where this
 # constant sits.
 #
-# PROVENANCE: data/labels.jsonl is one labeller (labeller="claude", an AI), one
-# pass, 176 units, two tickers, one 7-day window. scripts/label_posts.py
-# --recheck has never been run, so the rubric's own agreement floors are
-# unmeasured and every figure above inherits that uncertainty.
+# PROVENANCE: data/labels.jsonl is 176 units, two tickers, one 7-day window,
+# labelled by an AI rather than a person -- twice. A second independent pass
+# (labeller="claude-2") over 40 of them, written without sight of the first
+# answers, finally puts a number on the rubric:
+#
+#   subject     90%  (floor 85%)  OK
+#   direction   80%  (floor 75%)  OK
+#   eligible    82%  (floor 90%)  BELOW ITS FLOOR
+#
+# The eligibility miss is the three-way scale, not the judgement: collapse
+# "maybe" into "yes" and it reaches exactly 90%. Five of the seven disagreements
+# had one rater saying "maybe" and the other committing.
+#
+# THE REASSURING PART, and it matches the model benchmark: where both raters
+# agreed a post carries a direction, they agreed on WHICH direction 9 times out
+# of 9. The ambiguity is entirely in "does this count as evidence", never in
+# "which way does it point" -- the same split the threshold sweep found, where
+# direction accuracy is flat at 83-88% while precision on "is it directional"
+# is the weak number.
+#
+# Two runs of one model are not two people. Read these as a FLOOR on how
+# ambiguous the rubric is, not as inter-rater reliability.
 _DIRECTIONAL_MARGIN_BY_MODEL = {
     "prosusai/finbert": 0.15,
     "stephanakkerman/fintwitbert-sentiment": 0.70,

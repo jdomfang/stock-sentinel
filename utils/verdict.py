@@ -204,9 +204,17 @@ def adjudicate(rows: Sequence[EvidenceRow],
     # `>= 0` -- so an inference outage, a batch-length mismatch or a post-id
     # keying miss produced a Buy on "6 confirmed (+0.00)", printed that +0.00 as
     # though it were a measurement, and exempted the price veto on a 22% fall.
-    # The diagnostic for this shipped in an earlier phase and was never wired in.
+    #
+    # AND `>= DIRECTION_GATE`, NOT `>= 0`. The two Buy routes used the same word
+    # for different bars: sentiment had to reach +0.15 to be called "positive",
+    # while a confirmed event only had to avoid being negative -- so a mean of
+    # exactly 0.00 across five scored events counted as bullish. Measured on
+    # live NBIS: -0.001 gave Avoid and +0.000 gave Buy, the verdict pivoting on
+    # the sign of a number that was zero. A balanced read is the ABSENCE of a
+    # bullish signal, not the presence of one, and reusing DIRECTION_GATE makes
+    # "reads positive" mean one thing on both routes without adding a constant.
     bullish_event = (c.hard_clusters >= 1 and c.hard_scored >= 1
-                     and c.hard_direction >= 0)
+                     and c.hard_direction >= M.DIRECTION_GATE)
 
     v.pillars = [
         # Tests the bar that actually blocks a call, not the reject floor. The
@@ -227,8 +235,12 @@ def adjudicate(rows: Sequence[EvidenceRow],
         # hard_clusters, not `present` -- `present` includes soft catalysts, so
         # this pillar passed on "0 confirmed, 4 unconfirmed" beside a printed
         # requirement of ">= 1 confirmed event".
-        Pillar("Confirmed catalyst", c.hard_clusters >= 1, c.detail,
-               ">= 1 confirmed event"),
+        # The requirement now states the bar the Buy route actually applies.
+        # "1 confirmed event" passed while the cascade silently also demanded a
+        # readable direction, so the pillar went green on events that could not
+        # carry a call.
+        Pillar("Confirmed catalyst", bullish_event, c.detail,
+               f">= 1 confirmed event reading >= {M.DIRECTION_GATE:+.2f}"),
         # SENTIMENT and confirmed events only -- risk has its own pillar. The
         # earlier name, "Nothing points down", promised to cover every downward
         # signal while testing two of them, so it rendered green beside an Avoid
@@ -240,7 +252,7 @@ def adjudicate(rows: Sequence[EvidenceRow],
         Pillar("Sentiment not against it",
                s.lean != "negative" and not (c.hard_clusters >= 1
                                              and c.hard_scored >= 1
-                                             and c.hard_direction < 0),
+                                             and c.hard_direction <= -M.DIRECTION_GATE),
                s.detail + (f" · confirmed event {c.hard_direction:+.2f}"
                            if c.hard_clusters >= 1 and c.hard_scored >= 1 else
                            " · confirmed event, direction unmeasured"
@@ -300,7 +312,8 @@ def adjudicate(rows: Sequence[EvidenceRow],
         v.branch = "sentiment_negative"
         v.recommendation, v.reason = "Avoid", (
             f"Sentiment is negative ({s.direction:+.2f}) on evidence of adequate quality.")
-    elif can_call and c.hard_clusters >= 1 and c.hard_scored >= 1 and c.hard_direction < 0:
+    elif (can_call and c.hard_clusters >= 1 and c.hard_scored >= 1
+          and c.hard_direction <= -M.DIRECTION_GATE):
         v.branch = "bearish_event"
         # A confirmed BEARISH event. "Guidance cut", "downgrade" and "shares
         # plunge" are all hard catalysts; treating any of them as upside
@@ -394,8 +407,23 @@ def adjudicate(rows: Sequence[EvidenceRow],
         v.would_change.append(
             f"the {p.return_20d:+.1%} decline continuing after its sector stops "
             "falling — the call rests on the fall being sector-wide")
-    if v.recommendation != "Buy" and c.hard_clusters < 1 and s.lean != "positive":
-        v.would_change.append("a confirmed catalyst, or traders leaning positive")
+    if v.recommendation != "Buy" and s.lean != "positive" and not bullish_event:
+        # SPLIT, because "get a catalyst" is the wrong advice when five already
+        # fired. Tightening the catalyst bar to DIRECTION_GATE opened a band
+        # where confirmed events exist but read flat, and that Watch reached the
+        # "no remediation path" backstop with an empty list -- the exact defect
+        # the backstop was added to surface.
+        if c.hard_clusters >= 1 and c.hard_scored >= 1:
+            v.would_change.append(
+                f"the {c.hard_clusters} confirmed event(s) reading clearly one "
+                f"way — they measure {c.hard_direction:+.2f}, inside the "
+                f"{M.DIRECTION_GATE:+.2f} needed to carry a call")
+        elif c.hard_clusters >= 1:
+            v.would_change.append(
+                "the confirmed event(s) being scored — their direction was "
+                "never measured")
+        else:
+            v.would_change.append("a confirmed catalyst, or traders leaning positive")
     if v.recommendation != "Buy" and not v.would_change:
         v.would_change.append("nothing identified — this should not happen")
         logger.warning("verdict %s had no remediation path", v.recommendation)
