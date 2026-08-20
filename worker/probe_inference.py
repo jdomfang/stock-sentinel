@@ -38,11 +38,36 @@ import time
 import urllib.error
 import urllib.request
 
-# Chosen because FinBERT is unambiguous about it and it is stable across the
-# versions pinned in inference/requirements.txt. Measured repeatedly at 0.8637.
+# Chosen because both candidate models are unambiguous about it and it is stable
+# across the versions pinned in inference/requirements.txt.
 CANARY_TEXT = "$AAPL crushing it this quarter, huge beat on services revenue"
 EXPECT_SENTIMENT = "Bullish"
-EXPECT_CONFIDENCE = 0.8637
+
+# PER MODEL, because the confidence is a property of the model and not of the
+# sentence. A single hardcoded number meant the probe could not tell an
+# INTENDED model swap from an accidental one -- it failed the worker on the
+# deliberate FinBERT -> FinTwitBERT change, which is correct behaviour reported
+# as an outage.
+#
+# Mirrors _DIRECTIONAL_MARGIN_BY_MODEL in utils/evidence.py, and for the same
+# reason: every one of these is a measurement, not a preference.
+_EXPECT_BY_MODEL = {
+    # Measured repeatedly on the pinned versions.
+    "prosusai/finbert": 0.8637,
+    "stephanakkerman/fintwitbert-sentiment": 0.9807,
+}
+
+# An UNKNOWN model is a hard failure, not a pass. The whole point of this probe
+# is that a silent model change shifts every recommendation in the app while
+# every health check stays green -- defaulting to "no expectation" would hand
+# that failure straight back.
+#
+# THE MODEL IS READ FROM THE SERVICE, NOT FROM THIS PROCESS'S ENVIRONMENT.
+# The worker is a separate Railway service from inference, so MODEL_NAME here
+# would be a THIRD copy of the same setting -- and the failure this whole
+# session has been chasing is two copies of one setting drifting apart. Asking
+# /health for the model it actually loaded cannot disagree with reality, and it
+# means swapping models needs no change on the worker at all.
 
 # Wide enough for float32 non-determinism across hosts (~1e-6 measured), far too
 # tight for a different model or a changed threshold.
@@ -93,7 +118,10 @@ def main() -> int:
     # not, spend one UNTIMED call warming it, then measure the steady state.
     try:
         with urllib.request.urlopen(f"{url}/health", timeout=15) as r:
-            loaded = bool(json.loads(r.read() or b"{}").get("loaded"))
+            _h = json.loads(r.read() or b"{}")
+        loaded = bool(_h.get("loaded"))
+        served_model = str(_h.get("model") or "").strip()
+        expect_confidence = _EXPECT_BY_MODEL.get(served_model.lower())
     except Exception as e:
         log(f"ERROR /health unreachable: {type(e).__name__}: {str(e)[:160]}")
         ping(hc, "/fail")
@@ -144,10 +172,23 @@ def main() -> int:
     got = results[0]
     sentiment = got.get("sentiment")
     confidence = float(got.get("confidence") or 0.0)
-    drift = abs(confidence - EXPECT_CONFIDENCE)
+
+    if expect_confidence is None:
+        # Loud, and actionable: it prints the exact line to add.
+        log(f"canary: {sentiment} {confidence:.4f} in {elapsed:.2f}s "
+            f"served by {served_model!r}")
+        log(f"ERROR no canary baseline for model {served_model!r}. If this "
+            f"model is intended, add \"{served_model.lower()}\": "
+            f"{confidence:.4f} to _EXPECT_BY_MODEL in this file, after "
+            f"confirming the sentiment reads {EXPECT_SENTIMENT}.")
+        ping(hc, "/fail")
+        return 1
+
+    drift = abs(confidence - expect_confidence)
 
     log(f"canary: {sentiment} {confidence:.4f} in {elapsed:.2f}s "
-        f"(expect {EXPECT_SENTIMENT} {EXPECT_CONFIDENCE:.4f}, max {MAX_SECONDS}s)")
+        f"(expect {EXPECT_SENTIMENT} {expect_confidence:.4f} for "
+        f"{served_model}, max {MAX_SECONDS}s)")
 
     failures = []
     if sentiment != EXPECT_SENTIMENT:
@@ -155,7 +196,8 @@ def main() -> int:
     if drift > CONFIDENCE_TOLERANCE:
         # The model or its version changed. Every recommendation in the app
         # shifts with it, and nothing else in the stack would notice.
-        failures.append(f"confidence drift {drift:.4f} > {CONFIDENCE_TOLERANCE}")
+        failures.append(f"confidence drift {drift:.4f} > {CONFIDENCE_TOLERANCE} "
+                        f"for model {served_model}")
     if elapsed > MAX_SECONDS:
         # Slow but correct -- the failure that already happened once and that
         # neither Sentry nor a liveness check can see.
