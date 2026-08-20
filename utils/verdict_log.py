@@ -31,7 +31,6 @@ from __future__ import annotations
 
 import json
 import logging
-import os
 import urllib.error
 import urllib.request
 from typing import Any
@@ -41,16 +40,9 @@ logger = logging.getLogger(__name__)
 TABLE = "verdict_log"
 
 
-def _config(name: str, default: str = "") -> str:
-    v = os.getenv(name, "")
-    if v:
-        return v
-    try:
-        import streamlit as st
-        return str(st.secrets.get(name, "") or "") or default
-    except Exception:
-        return default
-
+# Was a private copy of the same twelve lines in ten modules. Reaching into
+# streamlit from analysis code is what kept this file inside the portal.
+from utils.config import get as _config  # noqa: E402
 
 def _num(v: Any) -> float | None:
     """Coerce to float, or None. Never raises on junk."""

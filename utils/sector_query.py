@@ -57,7 +57,6 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 
 import json
 import logging
-import os
 import re
 import time
 import urllib.error
@@ -110,15 +109,9 @@ _CACHE: dict[str, tuple[float, list[dict]]] = {}
 _CACHE_TTL_S = 15 * 60
 
 
-def _config(name: str, default: str = "") -> str:
-    v = os.getenv(name, "")
-    if v:
-        return v
-    try:
-        import streamlit as st
-        return str(st.secrets.get(name, "") or "") or default
-    except Exception:
-        return default
+# Was a private copy of the same twelve lines in ten modules. Reaching into
+# streamlit from analysis code is what kept this file inside the portal.
+from utils.config import get as _config  # noqa: E402
 
 
 # Single words that are ordinary English or generic finance vocabulary, and so
@@ -148,7 +141,6 @@ _GENERIC_SINGLE_WORD = frozenset({
     "standard", "sterling", "summit", "sun", "target", "trust", "union",
     "united", "universal", "value", "vision", "visa", "western",
 })
-
 
 def company_alias(name: str) -> str:
     """A phrase safe to search for, or "" when the name cannot carry a query.

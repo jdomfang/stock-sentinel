@@ -41,7 +41,6 @@ from __future__ import annotations
 import hashlib
 import json
 import logging
-import os
 import urllib.error
 import urllib.parse
 import urllib.request
@@ -76,17 +75,9 @@ DEFAULT_HARD_TTL_S = {
 }
 
 
-def _config(name: str, default: str = "") -> str:
-    """Environment first, then Streamlit secrets if Streamlit happens to exist."""
-    v = os.getenv(name, "")
-    if v:
-        return v
-    try:
-        import streamlit as st
-        return str(st.secrets.get(name, "") or "") or default
-    except Exception:
-        return default
-
+# Was a private copy of the same twelve lines in ten modules. Reaching into
+# streamlit from analysis code is what kept this file inside the portal.
+from utils.config import get as _config  # noqa: E402
 
 def _endpoint() -> tuple[str, str] | None:
     base = _config("SUPABASE_URL").rstrip("/")

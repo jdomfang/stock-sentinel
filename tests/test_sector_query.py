@@ -364,6 +364,35 @@ def test_no_baskets_is_inert():
     check("and never called X", x.calls == [], str(x.calls))
 
 
+
+def test_company_alias_survives_refactors():
+    """The alias is the difference between reading a company and reading a ticker.
+
+    A regex that collapsed a duplicated config helper also swallowed the
+    _GENERIC_SINGLE_WORD frozenset sitting under it. company_alias then raised
+    NameError, its only caller swallowed that in an `except Exception`, and
+    every Deep Analyze query silently degraded from ($TSLA OR "Tesla") to
+    $TSLA-only.
+
+    Nothing caught it. This suite passed 67/67 because nothing here called
+    company_alias, and the golden oracle does not reach retrieval. The cost was
+    not only a thinner corpus: the query text is what corpus_cache hashes, so
+    every cached corpus missed and re-bought up to 300 billed X posts.
+    """
+    print("\ncompany_alias: real names resolve, generic words are refused")
+    for raw, want in (("Tesla, Inc.", "Tesla"), ("Apple Inc.", "Apple"),
+                      ("NVIDIA Corporation", "NVIDIA"),
+                      ("MP Materials Corp.", "MP Materials")):
+        got = sq.company_alias(raw)
+        check(f"{raw!r} -> {want!r}", got == want, repr(got))
+    for raw in ("Visa Inc.", "Southern Company"):
+        got = sq.company_alias(raw)
+        check(f"{raw!r} is refused as generic", got == "", repr(got))
+    check("the vocabulary the refusal depends on still exists",
+          bool(getattr(sq, "_GENERIC_SINGLE_WORD", None))
+          and "visa" in sq._GENERIC_SINGLE_WORD)
+
+
 def main() -> int:
     print("=" * 74)
     print("  sector_query: exact coverage, safe names, unchanged mapping")
@@ -374,6 +403,7 @@ def main() -> int:
     test_the_loudest_names_land_in_the_first_basket()
     test_single_word_company_names_are_refused()
     test_corporate_boilerplate_is_stripped()
+    test_company_alias_survives_refactors()
     test_an_unusable_sector_yields_no_baskets_rather_than_a_bad_query()
     test_an_empty_basket_does_not_end_the_sweep()
     test_breadth_before_depth()

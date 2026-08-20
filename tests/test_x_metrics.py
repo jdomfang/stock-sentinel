@@ -377,6 +377,31 @@ def test_query_hash_tracks_query_versions():
     check("matches the corpus cache's scheme", len(a) == 12, a)
 
 
+def test_ticker_master_is_actually_cached():
+    """A memo that looks live and is dead costs ~7,600 rows per Streamlit rerun.
+
+    @st.cache_data keys on (module, qualname) in a global store, so decorating a
+    function NESTED inside another still hit one entry. Its replacement keeps
+    state in a closure, so re-decorating on each call built a fresh empty cache.
+    Measured before the fix: five calls, five full loads of ticker_master --
+    and pages/Discovery.py calls this on every scan, on every rerun.
+    """
+    from unittest.mock import patch
+    import utils.finance as F
+
+    print("\nticker master: the cache must survive repeated calls")
+    F._cached_ticker_master.cache_clear()
+    calls = []
+    with patch.object(F, "_load_ticker_master_from_supabase_table",
+                      lambda: (calls.append(1), {"AAA": {"name": "A"}})[1]):
+        for _ in range(5):
+            F.get_ticker_master_list()
+    check("5 calls -> 1 underlying load", len(calls) == 1, f"{len(calls)} loads")
+    check("the decorator is applied at module scope, not inside a function",
+          hasattr(F, "_cached_ticker_master"))
+    F._cached_ticker_master.cache_clear()
+
+
 def main() -> int:
     print("=" * 74)
     print("  x_call_metrics: honest partition, unchanged behaviour, safe failure")
@@ -395,6 +420,7 @@ def main() -> int:
     test_telemetry_never_raises_into_a_paid_scan()
     test_query_hash_tracks_query_versions()
 
+    test_ticker_master_is_actually_cached()
     print("\n" + "=" * 74)
     print(f"  {len(PASSED)} passed, {len(FAILED)} failed")
     if FAILED:

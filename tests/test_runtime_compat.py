@@ -44,6 +44,51 @@ def pinned_version() -> tuple[int, int]:
     return (3, 11)
 
 
+def test_selectively_copied_services_can_import():
+    """A service Dockerfile that copies four files must not import a fifth.
+
+    utils/prices.py promises "standard library only" and sync/Dockerfile ships
+    exactly the files that promise implies. Adding one shared import to
+    prices.py -- which is the natural thing to do while decoupling -- killed the
+    nightly price sync at container start, with nothing in this repo to catch
+    it. The failure is invisible locally, where the whole tree is on sys.path.
+    """
+    import re
+    import subprocess
+    import tempfile
+
+    print("\nservice images: every import must be in the image")
+    for svc in ("sync",):
+        df = REPO / svc / "Dockerfile"
+        if not df.exists():
+            continue
+        copied = []
+        for line in df.read_text().splitlines():
+            m = re.match(r"\s*COPY\s+(\S+)\s+(\S+)", line)
+            if m and not m.group(1).startswith(("requirements", "--")):
+                copied.append(m.group(1))
+        with tempfile.TemporaryDirectory() as d:
+            root = Path(d)
+            for src in copied:
+                s = REPO / src
+                if not s.exists():
+                    continue
+                dst = root / src
+                dst.parent.mkdir(parents=True, exist_ok=True)
+                dst.write_bytes(s.read_bytes())
+            mods = []
+            for src in copied:
+                if src.endswith(".py") and "__init__" not in src:
+                    mods.append(src[:-3].replace("/", "."))
+            r = subprocess.run(
+                [sys.executable, "-c",
+                 "import sys; sys.path.insert(0,'.')\n"
+                 + "\n".join(f"import {m}" for m in mods)],
+                cwd=root, capture_output=True, text=True)
+            detail = (r.stderr or "").strip().splitlines()[-1:] or [""]
+            check(f"{svc} image imports its own modules", r.returncode == 0, detail[0])
+
+
 def main() -> int:
     major, minor = pinned_version()
     print("=" * 74)
@@ -117,11 +162,13 @@ def main() -> int:
                     check(f"{rel}:{node.lineno} no PEP 695 generic parameters",
                           False, "requires python 3.12")
 
+    test_selectively_copied_services_can_import()
     print(f"\n  {len(PASSED)} passed, {len(FAILED)} failed")
     for n, d in FAILED:
         print(f"    - {n}: {d}")
     print("=" * 74)
     return 1 if FAILED else 0
+
 
 
 if __name__ == "__main__":

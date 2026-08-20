@@ -5,10 +5,12 @@ Sentiment analysis module.
 import os
 import re
 from typing import List, Dict
-import streamlit as st
 import logging
 
 # Set up logging
+from utils.cache import singleton
+from utils.config import get as _config
+
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)  # Debug level for detailed ticker/sentiment logs
 
@@ -73,7 +75,9 @@ EXCLUDED_WORDS = {
 }
 
 
-@st.cache_resource(show_spinner=False)
+# Was @st.cache_resource. Same lifetime for a nullary function, and
+# single-flight so two threads cannot both load ~1 GB of model.
+@singleton
 def load_sentiment_pipeline():
     """Load and cache the sentiment analysis pipeline.
 
@@ -390,15 +394,17 @@ def _inference_config() -> tuple[str, str]:
     means the service can be turned on or off without a redeploy -- the property
     that makes this rollout reversible in seconds rather than a build cycle.
     """
-    url = os.getenv("INFERENCE_URL", "")
-    secret = os.getenv("INFERENCE_SHARED_SECRET", "")
-    if not url:
-        try:
-            import streamlit as st
-            url = str(st.secrets.get("INFERENCE_URL", "") or "")
-            secret = secret or str(st.secrets.get("INFERENCE_SHARED_SECRET", "") or "")
-        except Exception:
-            pass
+    # _config already does env-then-secrets, so the hand-rolled two-step here
+    # was redundant -- and its `except Exception: pass` was the same swallowed
+    # import that silently changed a decision threshold elsewhere in this repo.
+    #
+    # ONE BEHAVIOUR CHANGE, and it is a fix. At HEAD the shared secret was read
+    # from the environment only, and from st.secrets ONLY IF the URL was also
+    # missing from the environment. So a deployment with the URL in env and the
+    # secret in secrets.toml sent an empty secret and got a 401. Both are now
+    # read independently.
+    url = _config("INFERENCE_URL")
+    secret = _config("INFERENCE_SHARED_SECRET")
     return url.rstrip("/"), secret
 
 

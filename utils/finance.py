@@ -4,12 +4,12 @@ Financial data processing module.
 
 from datetime import datetime, timedelta, timezone
 from typing import Dict, List, Optional
-import streamlit as st
 import requests
 from polygon import RESTClient
 
 # --- Price cache (Supabase stock_prices) helpers ---
 from utils.supabase_client import get_admin_client, get_client
+from utils.cache import ttl_cache
 import numpy as np
 import logging
 import time
@@ -262,6 +262,18 @@ def _load_ticker_master_from_supabase_table() -> Dict[str, Dict]:
     return out
 
 
+# MODULE SCOPE, and that is the whole point. Was @st.cache_data(ttl=6*3600) on
+# a function NESTED inside get_ticker_master_list. Streamlit's cache keys on
+# (module, qualname), so re-creating the nested function each call still hit one
+# global entry -- ttl_cache keeps its state in a closure, so re-decorating built
+# a fresh empty cache every time and the memo was dead. Measured: five calls
+# produced five full loads of the ~7,600-row ticker_master table, and
+# pages/Discovery.py calls this on every scan, on every Streamlit rerun.
+@ttl_cache(6 * 3600)
+def _cached_ticker_master() -> Dict[str, Dict]:
+    return _load_ticker_master_from_supabase_table()
+
+
 def get_ticker_master_list() -> Dict[str, Dict]:
     """Get ticker master list from Supabase (Nasdaq sectors/industries).
 
@@ -271,12 +283,7 @@ def get_ticker_master_list() -> Dict[str, Dict]:
         Dict mapping ticker symbols to {name, sector, industry, country, exchange}
     """
     try:
-        # Cache within a Streamlit process; avoids re-querying on reruns.
-        @st.cache_data(ttl=6 * 3600, show_spinner=False)
-        def _cached_load() -> Dict[str, Dict]:
-            return _load_ticker_master_from_supabase_table()
-
-        data = _cached_load() or {}
+        data = _cached_ticker_master() or {}
         if data:
             logger.info(f"Loaded {len(data)} tickers from Supabase table ticker_master")
         else:
@@ -764,31 +771,9 @@ def get_stock_data_batch(tickers: List[str], days: int = 30, max_workers: int = 
 # ==============================
 
 
-def _config(name: str, default: str = "") -> str:
-    """Read config: environment first, then Streamlit secrets.
-
-    Four call sites read POLYGON_API_KEY three different ways: three did
-    st.secrets.get(name, os.getenv(name)) -- secrets first, env as fallback --
-    and _get_polygon_api_key read secrets ONLY. run_sync.sh meanwhile documents
-    "env wins over secrets.toml". So the documented override was silently
-    ignored: you set the variable, saw no error, and used the other key.
-
-    Environment first matches the documentation, matches utils.obs, and is what
-    a container expects. In production nothing changes -- Streamlit Cloud puts
-    the key in secrets, not env, so env is empty and it falls through.
-
-    The streamlit import is guarded so this module can eventually be imported
-    by a worker with no Streamlit installed.
-    """
-    v = os.getenv(name, "")
-    if v:
-        return v
-    try:
-        import streamlit as _st
-        return str(_st.secrets.get(name, "") or "") or default
-    except Exception:
-        return default
-
+# Was a private copy of the same twelve lines in ten modules. Reaching into
+# streamlit from analysis code is what kept this file inside the portal.
+from utils.config import get as _config  # noqa: E402
 
 def _get_polygon_api_key() -> str:
     key = _config("POLYGON_API_KEY")

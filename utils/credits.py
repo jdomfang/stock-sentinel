@@ -4,7 +4,6 @@ import logging
 import uuid
 from typing import NamedTuple
 
-import streamlit as st
 
 from utils.obs import get_request_id
 from utils.supabase_client import get_admin_client
@@ -44,14 +43,32 @@ _MESSAGES = {
 }
 
 
-def _get_user_id() -> str | None:
-    user = st.session_state.get("auth.user")
+def _get_user_id(user_id: str | None = None) -> str | None:
+    """The acting user. Explicit if given, otherwise the portal's session.
+
+    The argument exists so this module can be called from a service that
+    received an identity on the request, rather than only from a Streamlit
+    script that happens to have session_state. Passing it is how the credit
+    engine stops depending on the UI framework.
+    """
+    if user_id:
+        return user_id
+    try:
+        import streamlit as st
+        user = st.session_state.get("auth.user")
+    except Exception:
+        # Outside the portal with no explicit user, there is nobody to charge.
+        # Returning None makes the caller refuse, which is the safe direction
+        # for anything that moves money.
+        logger.warning("credits: no user_id supplied and no portal session")
+        return None
     if isinstance(user, dict):
         return user.get("id")
     return getattr(user, "id", None)
 
 
-def consume_credit(event_type: str, metadata: dict | None = None) -> CreditResult:
+def consume_credit(event_type: str, metadata: dict | None = None,
+                   user_id: str | None = None) -> CreditResult:
     """Debit one credit and write the ledger row, atomically.
 
     Delegates to public.consume_credit(), where the guard and the decrement are a
@@ -70,7 +87,7 @@ def consume_credit(event_type: str, metadata: dict | None = None) -> CreditResul
     key for a genuinely new action, which the database would reject as a
     duplicate and the caller would read as success. That is a free scan.
     """
-    uid = _get_user_id()
+    uid = _get_user_id(user_id)
     if not uid:
         return CreditResult(False, "Not logged in", reason="not_logged_in")
 
@@ -160,7 +177,8 @@ def complete_work(event_id: str | None, status: str = "completed", detail: str =
     return bool(isinstance(res, dict) and res.get("ok"))
 
 
-def refund_credit(event_type: str, event_id: str | None, reason: str) -> bool:
+def refund_credit(event_type: str, event_id: str | None, reason: str,
+                  user_id: str | None = None) -> bool:
     """Return a credit charged for work that failed. Safe to call twice.
 
     Called when a metered action is charged and then cannot be delivered -- the X
@@ -170,7 +188,7 @@ def refund_credit(event_type: str, event_id: str | None, reason: str) -> bool:
     Never raises: a failed refund must not replace the user's original error with
     a second one. Returns False and logs instead.
     """
-    uid = _get_user_id()
+    uid = _get_user_id(user_id)
     if not uid or not event_id:
         return False
 

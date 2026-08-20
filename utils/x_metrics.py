@@ -32,7 +32,6 @@ from __future__ import annotations
 import hashlib
 import json
 import logging
-import os
 import urllib.error
 import urllib.request
 from typing import Any
@@ -42,16 +41,9 @@ logger = logging.getLogger(__name__)
 TABLE = "x_call_metrics"
 
 
-def _config(name: str, default: str = "") -> str:
-    v = os.getenv(name, "")
-    if v:
-        return v
-    try:
-        import streamlit as st
-        return str(st.secrets.get(name, "") or "") or default
-    except Exception:
-        return default
-
+# Was a private copy of the same twelve lines in ten modules. Reaching into
+# streamlit from analysis code is what kept this file inside the portal.
+from utils.config import get as _config  # noqa: E402
 
 def query_hash(query: str) -> str:
     """Same content-addressed scheme as utils.corpus_cache.

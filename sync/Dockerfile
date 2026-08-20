@@ -22,6 +22,10 @@ WORKDIR /app
 # Supabase -- the same list the app scans against.
 COPY utils/prices.py            utils/
 COPY utils/__init__.py          utils/
+# prices.py reads config through the shared helper now. config.py is
+# stdlib-only, so this image keeps its "import it with nothing installed"
+# property -- but it MUST ship, or the container dies at import.
+COPY utils/config.py            utils/
 COPY scripts/sync_stock_prices.py scripts/
 COPY sync/run_sync.py           ./
 

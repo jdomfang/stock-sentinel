@@ -1,4 +1,3 @@
-import streamlit as st
 import requests
 from datetime import datetime, timedelta
 from concurrent.futures import ThreadPoolExecutor, as_completed
@@ -9,10 +8,26 @@ import logging
 import hashlib
 import functools
 
+from utils.config import get as _config
 from utils.sentiment import analyze_sentiment_batch
 from utils import corpus_cache
 
 logger = logging.getLogger(__name__)
+
+# L1 in front of the disk cache. It was st.session_state directly, which made
+# this module unimportable outside the portal for the sake of a memo. In the
+# portal the behaviour is unchanged -- same dict, same per-session lifetime.
+# Elsewhere it degrades to a process-local dict, and the disk cache underneath
+# is what actually carries the corpus between runs.
+_PROCESS_STORE: Dict[str, Any] = {}
+
+
+def _session_store():
+    try:
+        import streamlit as st
+        return st.session_state
+    except Exception:
+        return _PROCESS_STORE
 
 # ---- Prompt definitions (UI + reporting structure) ----
 # NOTE: We still present 8 prompts, but we only make 4 X API calls.
@@ -240,7 +255,7 @@ def search_x_tweets_page(
     try:
         import os
 
-        x_bearer_token = st.secrets.get("X_BEARER_TOKEN", os.getenv("X_BEARER_TOKEN"))
+        x_bearer_token = _config("X_BEARER_TOKEN")
         if not x_bearer_token:
             raise RuntimeError("Missing X_BEARER_TOKEN (set in .streamlit/secrets.toml or env var)")
 
@@ -625,8 +640,9 @@ def run_deep_analysis(ticker: str, sector: str,
         key = _cache_key()
         # session cache
         try:
-            if key in st.session_state:
-                blob = st.session_state.get(key) or {}
+            _mem = _session_store()
+            if key in _mem:
+                blob = _mem.get(key) or {}
                 ts = float(blob.get("ts", 0))
                 if ts and (time.time() - ts) <= CACHE_TTL_S:
                     return blob.get("results")
@@ -657,7 +673,7 @@ def run_deep_analysis(ticker: str, sector: str,
             "results": results,
         }
         try:
-            st.session_state[key] = blob
+            _session_store()[key] = blob
         except Exception:
             pass
         try:

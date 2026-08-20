@@ -32,7 +32,6 @@ from __future__ import annotations
 
 import json
 import logging
-import os
 import re
 import urllib.parse
 import urllib.request
@@ -54,16 +53,9 @@ MAX_AGE_HOURS = 24
 MAX_CASHTAGS = 3
 
 
-def _config(name: str, default: str = "") -> str:
-    v = os.getenv(name, "")
-    if v:
-        return v
-    try:
-        import streamlit as st
-        return str(st.secrets.get(name, "") or "") or default
-    except Exception:
-        return default
-
+# Was a private copy of the same twelve lines in ten modules. Reaching into
+# streamlit from analysis code is what kept this file inside the portal.
+from utils.config import get as _config  # noqa: E402
 
 def _get(path: str, timeout: int = 15) -> list[dict]:
     base = _config("SUPABASE_URL").rstrip("/")

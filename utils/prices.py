@@ -34,22 +34,9 @@ from datetime import datetime, timedelta
 logger = logging.getLogger(__name__)
 
 
-def _config(name: str, default: str = "") -> str:
-    """Environment first, then Streamlit secrets if Streamlit happens to exist.
-
-    Same precedence as utils.obs and utils.finance. The streamlit import is
-    guarded so this module stays importable from a container that has never
-    heard of Streamlit -- which is the entire point of the file.
-    """
-    v = os.getenv(name, "")
-    if v:
-        return v
-    try:
-        import streamlit as st
-        return str(st.secrets.get(name, "") or "") or default
-    except Exception:
-        return default
-
+# Was a private copy of the same twelve lines in ten modules. Reaching into
+# streamlit from analysis code is what kept this file inside the portal.
+from utils.config import get as _config  # noqa: E402
 
 def _require(name: str) -> str:
     v = _config(name)
