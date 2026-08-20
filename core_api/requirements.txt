@@ -1,0 +1,10 @@
+# Pinned to what the portal runs, so extracting the analysis cannot change a
+# single verdict. numpy in particular: the projection is a 2000-path Monte
+# Carlo and Generator streams are not guaranteed stable across majors.
+fastapi==0.115.6
+uvicorn[standard]==0.34.0
+pydantic==2.10.4
+numpy==1.26.4
+requests==2.32.3
+polygon-api-client==1.13.7
+supabase==2.5.0

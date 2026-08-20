@@ -30,3 +30,6 @@ data/model_scores.json
 
 # coverage artefact from local test runs
 .coverage
+
+# local disk corpus cache written by utils/deep_analysis.py
+data/cache/

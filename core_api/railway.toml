@@ -1,0 +1,12 @@
+[build]
+builder = "dockerfile"
+dockerfilePath = "core_api/Dockerfile"
+
+# WITHOUT THIS EVERY PUSH RESTARTS EVERY SERVICE. That already killed an
+# in-progress 100-minute price sync once; adding a sixth service without watch
+# paths would let a core-api deploy drop the inference model mid-analysis.
+watchPatterns = ["core_api/**", "utils/**", "data/influencers*.json"]
+
+[deploy]
+healthcheckPath = "/health"
+restartPolicyType = "ON_FAILURE"
