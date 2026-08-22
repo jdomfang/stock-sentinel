@@ -138,8 +138,7 @@ def submit(topic: str, email: str, message: str, *,
         logger.warning("contact: rate limit hit for %s (%d in the last hour)",
                        email, seen)
         return False, ("We already have several messages from this address in "
-                       "the last hour — we will reply to those. If this is "
-                       "urgent, email us directly.")
+                       "the last hour — we will reply to those.")
 
     row = {
         "topic": (str(topic or "Question").strip() or "Question")[:64],

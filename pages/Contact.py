@@ -19,14 +19,11 @@ render_sidebar_navigation()
 render_top_nav()
 apply_theme()
 
-from utils.config import get as _config
 from utils.contact import TOPICS as _contact_topics_tuple
 
 
 def _contact_topics():
     return _contact_topics_tuple
-
-support_email = _config("SUPPORT_EMAIL", "support@stocksentinel.ai")
 
 # NO LOGIN GUARD, deliberately. Whoever is locked out of their account is
 # exactly who needs to reach support, so this page stays open and the write
@@ -145,17 +142,19 @@ with left:
             elif why:
                 st.warning(why)
             else:
-                # Honest, and actionable. The support address is the only route
-                # left, so it is repeated here rather than left below the fold,
-                # and the text is still in the box for them to copy.
+                # NO EMAIL FALLBACK. The address it named, support@stocksentinel.ai,
+                # was a hardcoded literal appearing nowhere else in the repo, on a
+                # domain this project does not use -- so in the one moment a
+                # message failed to reach us, the page invited the sender to post
+                # their billing details to a stranger's mailbox.
+                #
+                # "Try again" is a real instruction now: the form no longer clears
+                # itself on failure, so their text is still in the box.
                 st.error(
-                    f"Sorry — we could not save your message just now. "
-                    f"Please email **{support_email}** directly so it is not lost.")
+                    "Sorry — we could not save your message just now. "
+                    "Your text is still here — please press Submit again in a "
+                    "moment.")
 
-    st.markdown(
-        f"<div class='contact-muted'>Or email us directly: <b>{support_email}</b></div>",
-        unsafe_allow_html=True,
-    )
     st.markdown("</div>", unsafe_allow_html=True)
 
 with right:
