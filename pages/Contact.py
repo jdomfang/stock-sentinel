@@ -19,7 +19,19 @@ render_sidebar_navigation()
 render_top_nav()
 apply_theme()
 
-support_email = st.secrets.get("SUPPORT_EMAIL", "support@stocksentinel.ai")
+from utils.config import get as _config
+from utils.contact import TOPICS as _contact_topics_tuple
+
+
+def _contact_topics():
+    return _contact_topics_tuple
+
+support_email = _config("SUPPORT_EMAIL", "support@stocksentinel.ai")
+
+# NO LOGIN GUARD, deliberately. Whoever is locked out of their account is
+# exactly who needs to reach support, so this page stays open and the write
+# happens server-side with the service-role key -- the browser never holds a
+# credential that can touch the table.
 
 st.markdown('<div class="clawd-app-wrapper">', unsafe_allow_html=True)
 
@@ -56,35 +68,89 @@ with left:
     st.markdown("<div class='contact-card'>", unsafe_allow_html=True)
     st.markdown("### Send a message")
 
-    with st.form("contact_form", clear_on_submit=True):
+    # clear_on_submit=False, and the fields are cleared by hand on success only.
+    # Streamlit resets every widget in a form after ANY submit press, whatever
+    # the script then decides -- so with it on, a typo'd email erased the
+    # message the sender had just written, and the Supabase-down branch wiped
+    # the text while telling them to paste it into an email instead.
+    with st.form("contact_form", clear_on_submit=False):
         topic = st.selectbox(
             "Topic",
-            ["Question", "Bug report", "Billing", "Feature request", "Partnership"],
+            # From utils.contact so the page and the store cannot drift apart.
+            list(_contact_topics()),
             index=0,
         )
-        email = st.text_input("Your email", placeholder="you@example.com")
+        email = st.text_input("Your email", placeholder="you@example.com",
+                              key="contact_email", max_chars=254)
         message = st.text_area(
-            "Message",
+            "Message", key="contact_message", max_chars=4000,
             placeholder="What happened / what do you need? If this is a bug, include steps to reproduce.",
             height=160,
         )
         include_device = st.checkbox("Include device/browser details (recommended)", value=True)
 
+
         submitted = st.form_submit_button("Submit", type="primary")
 
     if submitted:
-        # Note: Streamlit apps often don’t have outbound email configured.
-        # For now we log it server-side and show the email fallback.
-        payload = {
-            "topic": topic,
-            "email": email,
-            "message": message,
-            "include_device": include_device,
-            "user_agent": st.context.headers.get("User-Agent") if include_device else None,
-        }
-        LOG.info("CONTACT_FORM_SUBMISSION: %s", payload)
+        # THE OLD BEHAVIOUR WROTE ONE LOG LINE AND SAID "Message received".
+        # Streamlit Cloud keeps a rolling buffer, so every message ever sent
+        # through this form is gone. The success line is now spoken only when a
+        # row is durably stored, because the alternative is telling someone with
+        # a billing problem that you have it when you do not.
+        from utils import contact as _contact
 
-        st.success("Message received. If you don’t hear back soon, email us directly (below).")
+        problem = _contact.validate(email, message)
+        # NO HONEYPOT, NO SESSION THROTTLE. Both were removed after review.
+        #
+        # The honeypot was worse than useless: label_visibility="collapsed"
+        # hides the LABEL, not the widget, so it rendered as the only unlabelled
+        # box on the page -- exactly what a confused human or a password manager
+        # fills in -- and filling it made the page say "Message received" and
+        # store nothing. That is the precise bug this whole change exists to
+        # remove. It also defended against an attacker that cannot exist: a
+        # Streamlit form is not an HTML POST, and generic form-filling bots
+        # cannot reach it over the app's websocket at all.
+        #
+        # The session throttle was keyed on st.session_state, so it stopped a
+        # human sending a legitimate follow-up ("sorry, forgot my order
+        # number") and cost a script nothing, since reconnecting is a fresh
+        # session. The real limit lives in utils.contact, server-side.
+        if problem:
+            st.error(problem)
+        else:
+            _uid = None
+            try:
+                from utils.auth import get_user
+                _u = get_user() or {}
+                _uid = _u.get("id") if isinstance(_u, dict) else getattr(_u, "id", None)
+            except Exception:
+                # Not logged in is the ordinary case on this page.
+                pass
+            _ua = None
+            if include_device:
+                try:
+                    _ua = st.context.headers.get("User-Agent")
+                except Exception:
+                    _ua = None
+
+            ok, why = _contact.submit(topic, email, message,
+                                      user_agent=_ua, user_id=_uid)
+            if ok:
+                # Only now. The form deliberately does not clear itself.
+                for _k in ("contact_email", "contact_message"):
+                    st.session_state.pop(_k, None)
+                st.success("Message received — we typically reply within "
+                           "1–2 business days.")
+            elif why:
+                st.warning(why)
+            else:
+                # Honest, and actionable. The support address is the only route
+                # left, so it is repeated here rather than left below the fold,
+                # and the text is still in the box for them to copy.
+                st.error(
+                    f"Sorry — we could not save your message just now. "
+                    f"Please email **{support_email}** directly so it is not lost.")
 
     st.markdown(
         f"<div class='contact-muted'>Or email us directly: <b>{support_email}</b></div>",

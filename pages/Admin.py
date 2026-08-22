@@ -34,6 +34,101 @@ if not admin_email or user_email != admin_email:
 
 st.caption("Admin tools use the Supabase service role key (server-side).")
 
+st.markdown("---")
+st.subheader("📬 Messages")
+
+# ABOVE EVERY st.stop() ON THIS PAGE, not just the one in "Manage a user".
+# get_admin_client failing, the profiles query failing, or simply having zero
+# users each stop the script -- so the queue vanished in exactly the situation
+# where you most need to check whether contact writes are working.
+#
+# Expanders rather than st.dataframe. A dataframe truncates the one column that
+# matters -- the message -- and the point of this section is reading them.
+from utils import contact as _contact
+
+_mc1, _mc2 = st.columns([1.0, 2.0])
+with _mc1:
+    _unhandled_only = st.checkbox("Unhandled only", value=True)
+_messages = safe_ui(lambda: _contact.recent(200, unhandled_only=_unhandled_only),
+                    context="admin.contact.recent")
+# A HEAD count, not a second full fetch. The previous version re-ran the same
+# query purely to length it -- two round trips pulling up to 200 full 4000-char
+# bodies each, on a page Streamlit re-runs for every widget interaction.
+_open_count = _contact.unhandled_count()
+
+with _mc2:
+    st.caption(f"{'?' if _open_count is None else _open_count} unhandled · "
+               f"showing {0 if _messages is None else len(_messages)}")
+
+if _messages is None:
+    # NOT "no messages". A failed read that renders an empty inbox tells the
+    # operator there is nothing to do while the queue is full -- the same silent
+    # failure this whole table exists to end.
+    st.error("Could not load messages — the queue may not be empty. Check logs.")
+    _messages = []
+elif not _messages:
+    st.caption("Nothing unhandled." if _unhandled_only else "No messages yet.")
+
+for _m in _messages:
+    if not _m.get("id"):
+        continue          # a malformed row must not take the whole page down
+    _when = str(_m.get("created_at") or "")[:16].replace("T", " ")
+    _done = bool(_m.get("handled_at"))
+    # Escaped: the expander label renders markdown, and `email` comes from an
+    # unauthenticated form whose validator permits brackets.
+    _title = (f"{'✅' if _done else '🔵'}  "
+              f"{_contact.md_escape(_m.get('topic', '?'))} · "
+              f"{_contact.md_escape(_m.get('email', '?'))} · {_when}")
+    with st.expander(_title, expanded=not _done and len(_messages) <= 5):
+        # st.text, never st.markdown: the body is untrusted input from an
+        # unauthenticated form, and this page renders with the service-role key
+        # in scope. Markdown would let a sender inject links or HTML into the
+        # one screen an operator trusts.
+        st.text(_m.get("message") or "")
+        # st.caption renders markdown too, and user_agent is a raw client
+        # header. Unescaped, `![](https://attacker/p.png)` is a beacon that
+        # fires when an admin opens the queue.
+        _meta = [f"**Topic:** {_contact.md_escape(_m.get('topic', '?'))}",
+                 f"**From:** {_contact.md_escape(_m.get('email', '?'))}"]
+        if _m.get("user_id"):
+            _meta.append(f"**Account:** `{_m['user_id']}`")
+        else:
+            # The address is self-asserted and never verified. Without this an
+            # operator reads "From: victim@example.com — please reset my
+            # access" with no cue that anyone could have typed it.
+            _meta.append("**Unverified sender** (not logged in)")
+        if _m.get("user_agent"):
+            _meta.append("**Browser:** "
+                         + _contact.md_escape(str(_m["user_agent"])[:160]))
+        if _done:
+            _meta.append(f"**Handled:** {str(_m['handled_at'])[:16].replace('T',' ')}")
+            if _m.get("handled_note"):
+                _meta.append(f"**Note:** {_m['handled_note']}")
+        st.caption(" · ".join(_meta))
+
+        _a, _b = st.columns([2.0, 1.0])
+        if not _done:
+            with _a:
+                _note = st.text_input("Note (optional)", key=f"note_{_m.get('id')}",
+                                      label_visibility="collapsed",
+                                      placeholder="What you did about it")
+            with _b:
+                if st.button("Mark handled", key=f"done_{_m.get('id')}",
+                             use_container_width=True):
+                    if _contact.set_handled(_m["id"], True, _note):
+                        st.rerun()
+                    else:
+                        st.error("Could not update — see logs.")
+        else:
+            with _b:
+                if st.button("Reopen", key=f"open_{_m.get('id')}",
+                             use_container_width=True):
+                    if _contact.set_handled(_m["id"], False):
+                        st.rerun()
+                    else:
+                        st.error("Could not update — see logs.")
+
+
 sb = safe_ui(get_admin_client, context="admin.get_admin_client")
 if not sb:
     st.stop()
