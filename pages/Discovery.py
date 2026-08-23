@@ -16,11 +16,15 @@ from utils.navigation import render_sidebar_navigation, render_top_nav
 from utils.ui import apply_theme, close_page, render_recommendation_panel, render_full_analysis_expander, render_evidence_check
 from utils.sentiment import extract_tickers_detailed, analyze_sentiment_batch
 from utils import x_metrics
-from utils.finance import get_ticker_master_list, get_stock_data, get_last_close_prices_best_effort
+from utils.finance import get_ticker_master_list, get_last_close_prices_best_effort
 from utils import corpus_cache
 from utils import sector_query
-from utils.projections import simple_projection
-from utils.deep_analysis import ANALYSIS_PROMPTS, run_deep_analysis, generate_ai_summary
+from utils.deep_analysis import ANALYSIS_PROMPTS
+# This page contributes a table, a credit and a panel. The analysis
+# behind the panel is the same one pages/Deep_Analysis.py runs.
+from utils.analyze import (analyze as _analyze, card as _card_for,
+                           persist as _persist, price_tiles as _price_tiles,
+                           unique_mentions as _unique_mentions)
 
 
 # Verdicts we are willing to assert. Anything else is a statement about how
@@ -1665,6 +1669,22 @@ if st.session_state.df_valid is not None:
         # Never let UI extras break the page
         pass
 
+def _summary_available(a) -> bool:
+    """Did this analysis produce something a user can be shown and charged for?
+
+    The SAME condition utils.analyze.persist() uses to decide whether a row is
+    owed. Two places asking this question two different ways is how a paid
+    analysis came to be rendered but never recorded.
+    """
+    if a is None:
+        return False
+    # getattr, not attribute access: an Analysis stored in session state by an
+    # older deploy may predate a field this code reads, and an AttributeError
+    # here lands in the middle of a rendered page.
+    return (getattr(a, "verdict", None) is not None
+            or bool(getattr(a, "legacy_summary", None)))
+
+
 def _render_deep_panel(ticker, sector, deep_results):
     """Render the deep analysis panel inline below a ticker row.
 
@@ -1677,151 +1697,87 @@ def _render_deep_panel(ticker, sector, deep_results):
     from utils.deep_analysis import ANALYSIS_PROMPTS
     from utils.ui import render_evidence_check
 
-    _sink = st.session_state.get("deep_analysis_sink") or {}
-    _v = None
-    # Bound before the try, not only inside its branches. When there is no
-    # ticker_corpus the `if` below never runs and the `except` never fires, so
-    # the only other binding sites are both skipped -- and signal_log reads this
-    # after the panel has already been delivered.
-    _led: list = []
+    # READ, do not recompute. Everything below this line used to be re-derived
+    # from the session-state corpus on every rerun -- roughly 90 posts rescored,
+    # a price call, a benchmark call, a fresh adjudication and a fresh Monte
+    # Carlo, each time the user changed a sector or clicked a download button.
+    # The analysis is now computed once, by the same function the other page
+    # calls, and carried in session state.
+    _a = st.session_state.get("deep_analysis")
+    if _a is None:
+        # Only reachable if session state outlived the code that wrote it.
+        # Streamlit clears state on reboot, so this is defensive rather than
+        # expected -- and re-running is free of X spend inside the corpus TTL.
+        st.info("This analysis is from an earlier session. Run Deep Analyze "
+                "again to see it.")
+        return
+
+    # Only what the PANEL DRAWS. The ledger, corpora, volumes, benchmark, bar
+    # date and projection dict were unpacked here solely to be typed back into
+    # two log calls, and persist() reads those off the analysis itself.
+    _v = _a.verdict
+    _pts = len(_a.prices or [])
+    # THE NUMBER THAT DECIDED THE CALL, matching pages/Deep_Analysis.py. This
+    # page printed the corpus union -- ~90 of 98 posts -- beside a verdict
+    # resting on 5 independent voices, while the other page printed the 5. Same
+    # ticker, same credit, same day, two different sample sizes.
+    _ev_ct = (_a.verdict.quality.eligible_clusters
+              if _a.verdict is not None else None)
+    _mentions_ct = _ev_ct if _ev_ct is not None else _unique_mentions(_a)
+
+    # EVERY string in the panel below comes from card(), built beside the state
+    # that justifies it. This page previously carried its own copies of the
+    # headline and confidence-note dictionaries and its own number formatting,
+    # and they had already drifted from utils.ui.render_recommendation_panel.
+    # THE SAME PREDICATE persist() USES. Gating the render on card()'s error
+    # stub instead meant an Analysis carrying both a verdict and an .error
+    # returned here -- before the panel, before the evidence check and before
+    # the log write -- on a run already charged and already marked completed.
+    if not _summary_available(_a):
+        st.info("No analysis could be produced for this ticker.")
+        return
+
+    # GUARDED, as the equivalent call on pages/Deep_Analysis.py is. A raise in
+    # card() or price_tiles() here costs the panel AND both table rows, and
+    # because the analysis lives in session state the traceback reproduces on
+    # every subsequent rerun -- the page stays broken until a new scan, on an
+    # analysis the user has already paid for.
+    _card, _price, _proj, _hold = {}, "Unavailable", "Unavailable", "Unavailable"
     try:
-        if _sink.get("ticker_corpus") is not None:
-            from utils.evidence import build_ledger
-            from utils.sentiment import analyze_sentiment_batch as _sc
-            from utils.verdict import adjudicate as _adj
-
-            _al = _sink.get("alias") or ""
-            _led = []
-            for _k, _ch in (("ticker_corpus", "social_base"),
-                            ("influencer_corpus", "newswire")):
-                _ps = _sink.get(_k) or []
-                if not _ps:
-                    continue
-                _ds = _sc([(x.get("text") or "")[:512] for x in _ps])
-                _by = {str(x["id"]): d for x, d in zip(_ps, _ds)
-                       if x.get("id") is not None}
-                _seen = {r.post_id for r in _led}
-                _led += [r for r in build_ledger(_ps, ticker, alias=_al,
-                                                 channel=_ch, scores=_by)
-                         if r.post_id not in _seen]
-            try:
-                from utils import seed as _sd_mod
-                _sp = _sd_mod.fetch(ticker, sector,
-                                    exclude_ids={r.post_id for r in _led})
-                if _sp:
-                    _dd = _sc([(x.get("text") or "")[:512] for x in _sp])
-                    _bi = {str(x["id"]): d for x, d in zip(_sp, _dd)
-                           if x.get("id") is not None}
-                    _led += build_ledger(_sp, ticker, alias=_al,
-                                         channel="discovery_seed", scores=_bi)
-            except Exception:
-                logger.warning("discovery: seed reuse failed", exc_info=True)
+        _card = _card_for(_a)
+        for _t in _price_tiles(_a):
+            if _t["key"] == "last_price":
+                _price = _t["value"]
+            elif _t["key"] == "range_30d":
+                _proj = _t["value"]
+            elif _t["key"] == "drawdown_first":
+                _hold = _t["value"]
     except Exception:
-        logger.warning("discovery: ledger build failed; using legacy path",
-                       exc_info=True)
-        _led = []
+        logger.warning("discovery: card/tile build failed", exc_info=True)
 
-    _price, _proj, _hold, _pts = "Unavailable", "Unavailable", "Unavailable", 0
-    _prices = _vols = None
-    _last = None
-    # The trading session _last belongs to. See the matching note in
-    # pages/Deep_Analysis.py: without it a verdict issued outside market hours
-    # joins no price_history row and can never be scored.
-    _bar_date: str | None = None
-    _proj_r: dict = {}
-    try:
-        _sd = get_stock_data(ticker)
-        if _sd.get("error") is None and _sd.get("prices"):
-            _prices = _sd["prices"]
-            _vols = _sd.get("volumes") or None
-            _bar_date = _sd.get("last_bar_date")
-            _pts = len(_prices)
-            _lp = _prices[-1]
-            if isinstance(_lp, (int, float)):
-                _price = f"${_lp:.2f}"
-                _last = float(_lp)
-    except Exception:
-        logger.warning("discovery: price fetch failed", exc_info=True)
-
-    # Sector benchmark. See the matching note in pages/Deep_Analysis.py -- one
-    # extra daily-bars call, shared by every ticker in the sector, so a scan of
-    # fifty industrials makes one ETF call rather than fifty.
-    _bench_sym, _bench_prices = "", None
-    try:
-        if _prices:
-            from utils.relative import benchmark_prices as _bench
-            _bench_sym, _bench_prices = _bench(ticker, sector)
-    except Exception:
-        logger.warning("discovery: benchmark fetch failed", exc_info=True)
-
-    if _led:
-        try:
-            _v = _adj(_led, _prices, _vols,
-                      benchmark_prices=_bench_prices, benchmark=_bench_sym,
-                      bar_date=_bar_date)
-        except Exception:
-            logger.warning("discovery: adjudication failed", exc_info=True)
-            _v = None
-
-    if _v is not None:
-        _ai = {"recommendation": _v.recommendation, "confidence": _v.confidence,
-               "avg_sentiment": _v.social.direction, "rationale": [_v.reason]}
-    else:
-        _ai = generate_ai_summary(deep_results)
-
-    try:
-        if _prices:
-            # Identical treatment to pages/Deep_Analysis.py. This call site was
-            # missed once already, and the result was the same ticker on the
-            # same day showing one range here and a different one there, with
-            # this page still printing the bare "N days" hold string that was
-            # removed as misleading -- the median day-to-+5% among WINNING paths
-            # only, hit rate hidden -- and applying the sentiment tilt with no
-            # quality gate at all.
-            # Buy only, per the design: a tilted band under an Avoid reads as
-            # a short-side price target the system has no basis for.
-            _dq_ok = ((_v.quality.tier in ("moderate", "high")
-                       and _v.recommendation == "Buy") if _v is not None else
-                      len({str(_t) for _r in deep_results.values()
-                           for _t in (_r.get("tweet_ids") or [])}) >= 8)
-            _proj_r = simple_projection(_prices, _ai["avg_sentiment"], days=30,
-                                        quality_ok=_dq_ok)
-            if _proj_r.get("error") is None:
-                _proj = (f"{_proj_r['scenario_bear']:.1f}% to "
-                         f"{_proj_r['scenario_bull']:.1f}%")
-                # Was the constant (14, 28) rendered as "2-4 weeks" on every
-                # ticker. Replaced by the drawdown reaching +5% cost on the way,
-                # which is the only figure in this row that varies with the
-                # stock. Left absent when the target was never reached.
-                # p75, not the median: see the note at the matching site in
-                # pages/Deep_Analysis.py. The median pins to 0 on volatile
-                # tickers because winners that hit on day one never dipped.
-                _m5 = (_proj_r.get("movement_profile") or {}).get("5%") or {}
-                _mae = _m5.get("mae_p75")
-                if _mae is not None:
-                    _hold = ("under 0.1%" if _mae < 0.001
-                             else f"-{_mae * 100:.1f}%")
-    except Exception:
-        logger.warning("discovery: projection failed", exc_info=True)
-
-    try:
-        _uids = {tid for _r in deep_results.values() for tid in (_r.get("tweet_ids") or [])}
-        _mentions_ct = len(_uids)
-    except Exception:
-        _mentions_ct = 0
-
-    _rec = _ai.get("recommendation", "—")
-    _conf = _ai.get("confidence", "—")
-    _avg_sent = float(_ai.get("avg_sentiment", 0.0))
+    _rec = _card.get("verdict") or "—"
+    _conf = _card.get("confidence") or "—"
+    # None means the fallback reported no score. Rendering it as +0.00 states
+    # "Neutral" as a finding, which is what card() now refuses to do for us.
+    _avg_raw = _card.get("avg_sentiment")
+    _has_sent = _avg_raw is not None
+    _avg_sent = float(_avg_raw) if _has_sent else 0.0
     _rec_color = "rgba(56,189,248,.95)" if "buy" in _rec.lower() else "rgba(239,68,68,.90)" if "avoid" in _rec.lower() else "rgba(245,158,11,.90)"
     _conf_color = "rgba(56,189,248,.90)" if _conf.lower()=="high" else "rgba(245,158,11,.90)" if _conf.lower()=="moderate" else "rgba(148,163,184,.80)"
     _sent_color = "rgba(56,189,248,.95)" if _avg_sent>=0.10 else "rgba(239,68,68,.88)" if _avg_sent<=-0.10 else "rgba(148,163,184,.85)"
-    _sent_lbl = f"Bullish ({_avg_sent:+.2f})" if _avg_sent>=0.10 else f"Bearish ({_avg_sent:+.2f})" if _avg_sent<=-0.10 else f"Neutral ({_avg_sent:+.2f})"
+    # ONE WORD: the mood tile renders _sent_lbl.split(" ")[0].
+    _sent_lbl = ("Unscored" if not _has_sent else
+                 f"Bullish ({_avg_sent:+.2f})" if _avg_sent>=0.10 else
+                 f"Bearish ({_avg_sent:+.2f})" if _avg_sent<=-0.10 else
+                 f"Neutral ({_avg_sent:+.2f})")
+    _sent_score_txt = f"Score {_avg_sent:+.3f}" if _has_sent else "No score"
     _sector_lbl = (" · "+sector.title()) if sector and sector.lower() not in ("unknown","") else ""
-    # Kept verbatim in step with utils.ui.render_recommendation_panel, which
-    # this markup duplicates; see the note there for why "Strong" was removed.
-    _rec_sub = {"buy":"Evidence leans upside","watch":"Hold — monitor closely","avoid":"Risk outweighs reward"}.get(_rec.lower(),"")
-    _conf_sub = {"high":"Strong data backing","moderate":"Highest we issue — unvalidated","low":"Thin data — use caution"}.get(_conf.lower(),"")
+    # From the card, not from a fourth copy of these dictionaries. The previous
+    # copy was "kept verbatim in step" by hand with two other copies, which is
+    # the arrangement that let one page say "Proj. Gain 30d" for months after
+    # the other retired the phrase.
+    _rec_sub = _card.get("headline", "")
+    _conf_sub = _card.get("confidence_note", "")
     _bar_pct = min(100, int(abs(_avg_sent)*250 + {"high":30,"moderate":15,"low":0}.get(_conf.lower(),0)))
     _conf_bar = {"high":90,"moderate":55,"low":25}.get(_conf.lower(),30)
 
@@ -1829,7 +1785,7 @@ def _render_deep_panel(ticker, sector, deep_results):
         return f'<div style="width:100%;height:4px;background:rgba(148,163,184,.12);border-radius:999px;margin-top:6px;"><div style="width:{pct}%;height:4px;background:{color};border-radius:999px;"></div></div>'
 
     _mc = "border-radius:12px;padding:14px 16px 12px 16px;background:rgba(15,23,42,.75);flex:1;min-width:0;display:flex;flex-direction:column;gap:4px;"
-    _rationale_html = "".join(f'<li style="margin-bottom:5px;color:rgba(229,231,235,.85);font-size:0.88rem;line-height:1.45;">{b}</li>' for b in _ai.get("rationale",[]))
+    _rationale_html = "".join(f'<li style="margin-bottom:5px;color:rgba(229,231,235,.85);font-size:0.88rem;line-height:1.45;">{b}</li>' for b in _card.get("rationale", []))
 
     _fc = "border-radius:10px;padding:10px 14px;background:rgba(15,23,42,.55);border:1px solid rgba(148,163,184,.12);flex:1;"
     _fl = "font-size:0.68rem;font-weight:700;letter-spacing:0.05em;text-transform:uppercase;color:rgba(148,163,184,.55);margin-bottom:3px;"
@@ -1943,7 +1899,7 @@ def _render_deep_panel(ticker, sector, deep_results):
         <div style="display:flex;gap:8px;margin-bottom:14px;">
           <div style="{_mc}border:1px solid {_rec_color.replace('.95',',.28').replace('.90',',.25')};"><div style="font-size:0.68rem;font-weight:700;letter-spacing:0.06em;text-transform:uppercase;color:rgba(148,163,184,.55);">Recommendation</div><div style="font-size:1.05rem;font-weight:850;color:{_rec_color};">{_rec}</div><div style="font-size:0.72rem;color:rgba(148,163,184,.55);">{_rec_sub}</div>{_bar(_bar_pct,_rec_color)}</div>
           <div style="{_mc}border:1px solid rgba(148,163,184,.15);"><div style="font-size:0.68rem;font-weight:700;letter-spacing:0.06em;text-transform:uppercase;color:rgba(148,163,184,.55);">Confidence</div><div style="font-size:1.05rem;font-weight:850;color:{_conf_color};">{_conf}</div><div style="font-size:0.72rem;color:rgba(148,163,184,.55);">{_conf_sub}</div>{_bar(_conf_bar,_conf_color)}</div>
-          <div style="{_mc}border:1px solid rgba(148,163,184,.15);"><div style="font-size:0.68rem;font-weight:700;letter-spacing:0.06em;text-transform:uppercase;color:rgba(148,163,184,.55);">Market Mood</div><div style="font-size:1.05rem;font-weight:850;color:{_sent_color};">{_sent_lbl.split(" ")[0]}</div><div style="font-size:0.72rem;color:rgba(148,163,184,.55);">Score {_avg_sent:+.3f}</div>{_bar(min(100,int(abs(_avg_sent)*280)),_sent_color)}</div>
+          <div style="{_mc}border:1px solid rgba(148,163,184,.15);"><div style="font-size:0.68rem;font-weight:700;letter-spacing:0.06em;text-transform:uppercase;color:rgba(148,163,184,.55);">Market Mood</div><div style="font-size:1.05rem;font-weight:850;color:{_sent_color};">{_sent_lbl.split(" ")[0]}</div><div style="font-size:0.72rem;color:rgba(148,163,184,.55);">{_sent_score_txt}</div>{_bar(min(100,int(abs(_avg_sent)*280)),_sent_color)}</div>
         </div>
         {_price_row}
         <div style="color:rgba(148,163,184,.45);font-size:0.72rem;margin-bottom:14px;">{_mentions_ct} posts analysed · {_pts} price points</div>
@@ -1987,71 +1943,24 @@ def _render_deep_panel(ticker, sector, deep_results):
     _ev = st.session_state.get("deep_analysis_event_id")
     _done = st.session_state.setdefault("_logged_analyses", set())
     _log_key = (str(_ev), str(ticker), "discovery")
-    _should_log = _v is not None and _log_key not in _done
+    # Legacy deliveries are recorded too, as they now are on the other page. A
+    # scan-row analysis that falls back still costs a credit and still cannot
+    # be reconstructed later -- X's index is 7 days deep -- so "no verdict" is
+    # a row to write, not a row to skip.
+    _should_log = (_v is not None or _a.legacy_summary) and _log_key not in _done
 
     if _should_log:
         _done.add(_log_key)
-        try:
-            from utils import verdict_log
-            from utils.sentiment import MODEL_NAME as _mn
-            verdict_log.record(
-                ticker, _v.recommendation,
-                sector=sector or None, confidence=_v.confidence,
-                avg_sentiment=_v.social.direction,
-                red_flag_rate=_v.risk.soft_rate,
-                disagreement=1.0 if _v.social.conflict else 0.0,
-                total_mentions=_mentions_ct,
-                price_at_verdict=_last,
-                projected_p10=(_proj_r or {}).get("gain_p10"),
-                projected_p90=(_proj_r or {}).get("gain_p90"),
-                suggested_hold_days=(_proj_r or {}).get("suggested_hold_days"),
-                success_rate=(_proj_r or {}).get("success_rate"),
-                model=f"{_mn}|ledger|discovery",
-            )
-        except Exception:
-            logger.warning("discovery: verdict_log write failed", exc_info=True)
+        # ONE CALL, and the same one pages/Deep_Analysis.py makes. This page
+        # enumerated ~14 kwargs into verdict_log and ~20 into signal_log; the
+        # first list had already lost `event_id`, so Discovery's verdict rows
+        # could not be reconciled against the credit that paid for them.
+        #
+        # `route` keeps the |discovery tag. verdict_log has no feature column,
+        # so that string is the only thing separating a basket-query verdict
+        # from a typed one, and the two have different selection biases.
+        _persist(_a, feature="discovery", event_id=_ev, route="discovery")
 
-        # The wide record. Discovery runs far more often than Deep Analyze and
-        # is therefore the faster route to a scorable sample -- but its evidence
-        # comes from a basket query with its own selection bias, which is why
-        # `feature` is stored rather than the two being pooled.
-        try:
-            from utils import signal_log
-            from utils.sentiment import MODEL_NAME as _sl_mn
-            signal_log.record(
-                ticker, _v,
-                feature="discovery",
-                price_at_decision=_last,
-                decision_trade_date=_bar_date,
-                sector=sector or None,
-                # Matches verdict_log's discriminator so the two tables can be
-                # joined on (ticker, model).
-                model=f"{_sl_mn}|ledger|discovery",
-                event_id=_ev,
-                corpus_key=_sink.get("corpus_key"),
-                evidence_age_s=_sink.get("corpus_age_s"),
-                ledger=_led,
-                projection=_proj_r,
-                # See the matching note in pages/Deep_Analysis.py: raw corpora,
-                # because the ledger has already discarded the overlap that the
-                # measurement is about.
-                wire_posts=_sink.get("influencer_corpus"),
-                main_posts=_sink.get("ticker_corpus"),
-                # WHY the wire corpus is the size it is, and what it really
-                # cost. An empty corpus from an errored query and one from a
-                # genuinely quiet wire are the same [] without this.
-                wire_state=_sink.get("wire_state"),
-                wire_billed=_sink.get("wire_billed"),
-                # The counterfactual must see the same tape the real
-                # verdict did, or the cascade fails closed on absent
-                # price data and every Buy reads as wire-caused.
-                prices=_prices,
-                volumes=_vols,
-                benchmark_prices=_bench_prices,
-                benchmark=_bench_sym,
-            )
-        except Exception:
-            logger.warning("discovery: signal_log write failed", exc_info=True)
 
 # ── Results table ──
 if st.session_state.df_valid is not None:
@@ -2199,13 +2108,27 @@ if st.session_state.df_valid is not None:
                             # request id reverts to "-" without this.
                             _set_request_id(_drid)
                             try:
+                                # THE SHARED PIPELINE. This page used to run
+                                # retrieval here and then rebuild the ledger,
+                                # prices, benchmark, adjudication and projection
+                                # inside the render function -- a second copy of
+                                # pages/Deep_Analysis.py's own second copy. All
+                                # three are one implementation now, which is the
+                                # only way "the same ticker, the same day, one
+                                # credit" can mean the same product on both
+                                # entry routes.
                                 _disc_sink: dict = {}
-                                _disc_holder["result"] = run_deep_analysis(
-                                    ticker_symbol,
-                                    _disc_sector,
-                                    sink=_disc_sink,
-                                )
+                                _res = _analyze(ticker_symbol, _disc_sector,
+                                                corpus_sink=_disc_sink)
+                                _disc_holder["analysis"] = _res
+                                _disc_holder["result"] = _res.analysis_results
                                 _disc_holder["sink"] = _disc_sink
+                                # analyze() never raises; it reports through
+                                # .raised. Only a genuine exception is the error
+                                # panel -- an empty-but-valid answer takes the
+                                # "no results" path below, as it always has.
+                                if _res.raised and not _res.analysis_results:
+                                    _disc_holder["error"] = _res.error
                             except Exception as _e:
                                 _disc_holder["error"] = str(_e)
                                 logger.exception(f"Deep analysis error for {ticker_symbol}")
@@ -2250,13 +2173,29 @@ if st.session_state.df_valid is not None:
                             refund_credit("deep_analyze", _dcredit.event_id, "analysis returned no results")
                             _deep_error = (f"No results for {ticker_symbol}. "
                                            "Your credit was not used — try again in a moment.")
+                        elif not _summary_available(_disc_holder.get("analysis")):
+                            # Neither adjudicator produced anything. Falling
+                            # through here marked the run delivered, kept the
+                            # credit, wrote no row, and showed a grey box the
+                            # user cannot tell from a quiet market. The other
+                            # page refunds this state; so does this one now.
+                            logger.error("no verdict and no legacy summary for %s",
+                                         ticker_symbol)
+                            refund_credit("deep_analyze", _dcredit.event_id,
+                                          "no summary could be produced")
+                            _deep_error = (f"No analysis could be produced for "
+                                           f"{ticker_symbol}. Your credit was not "
+                                           "used — try again in a moment.")
                         else:
                             st.session_state.deep_analysis_results = _disc_holder.get("result")
-                            # The panel re-renders from session state on every
-                            # rerun, so the corpora have to survive with it or
-                            # the second render silently drops to the legacy
-                            # adjudicator.
-                            st.session_state.deep_analysis_sink = _disc_holder.get("sink") or {}
+                            # The ANALYSIS, not just the corpora. The panel used
+                            # to re-derive the ledger, prices, benchmark, verdict
+                            # and projection from the sink on every single
+                            # rerun: a sector change or a download click
+                            # re-adjudicated the call, so the row that was
+                            # logged and the numbers on screen could drift apart
+                            # within one paid analysis.
+                            st.session_state.deep_analysis = _disc_holder.get("analysis")
                             # Carried so the panel can identify WHICH paid
                             # analysis it is rendering. Without it the panel --
                             # which re-renders from session state on every
@@ -2289,10 +2228,22 @@ if st.session_state.df_valid is not None:
                             complete_work(_dcredit.event_id, "completed",
                                           f"ticker={ticker_symbol}")
                         else:
-                            refund_credit("deep_analyze", _dcredit.event_id,
-                                          "deep analysis did not complete")
-                            complete_work(_dcredit.event_id, "failed",
-                                          "aborted or errored")
+                            # Close the run ONLY if the refund actually landed --
+                            # the same choice the scan path in this file already
+                            # makes. refund_credit returns False without raising
+                            # when its RPC fails, and reap_orphaned_work scans
+                            # status='running' alone, so closing the row as
+                            # 'failed' after a failed refund deletes the credit
+                            # and disarms the backstop meant to return it.
+                            if refund_credit("deep_analyze", _dcredit.event_id,
+                                             "deep analysis did not complete"):
+                                complete_work(_dcredit.event_id, "failed",
+                                              "aborted or errored")
+                            else:
+                                logger.error(
+                                    "refund failed for event %s; leaving "
+                                    "work_run open so the reaper retries",
+                                    _dcredit.event_id)
             st.markdown("</div>", unsafe_allow_html=True)
 
             # ── Inline deep panel — renders immediately below this ticker's row ──

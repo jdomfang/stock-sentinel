@@ -216,9 +216,19 @@ def test_generate_ai_summary() -> None:
     check("thin evidence is not High confidence",
           generate_ai_summary(thin)["confidence"] != "High", True)
 
+    # DELIBERATELY WIDENED, 2026-08-22. red_flag_rate and disagreement were
+    # already computed inside this function and thrown away, so the legacy
+    # verdict_log row stored NULL -- "not measured" -- for two real readings.
+    # They are returned now. The lock is kept exact rather than loosened to a
+    # subset: the next key to appear should have to justify itself here too.
     check("returns the documented keys",
           sorted(generate_ai_summary(disjoint).keys()),
-          ["avg_sentiment", "confidence", "rationale", "recommendation"])
+          ["avg_sentiment", "confidence", "disagreement", "rationale",
+           "recommendation", "red_flag_rate"])
+    # The two new keys must be readings, not placeholders.
+    _rf = generate_ai_summary(disjoint)
+    check("red_flag_rate is a rate", 0.0 <= _rf["red_flag_rate"] <= 1.0, True)
+    check("disagreement is a spread", _rf["disagreement"] >= 0.0, True)
 
 
 # ── simple_projection ────────────────────────────────────────────────────────

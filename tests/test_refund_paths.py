@@ -197,13 +197,83 @@ def test_refunds_do_not_rely_only_on_except() -> None:
                   "only reachable on Exception; a Streamlit abort skips it")
 
 
+def test_an_empty_summary_is_refunded_not_rendered() -> None:
+    """A panel of dashes is worse than an error: it is a silent charge.
+
+    When the ledger yields no verdict the page falls back to the older prose
+    adjudicator. If THAT produces nothing the dict is empty, and
+    render_recommendation_panel .get()s its way to Signal "--", Confidence
+    "--" and a neutral score -- then sets the delivered flag, keeps the credit
+    and writes no row. Before the pipeline was extracted this state raised and
+    the finally refunded; the guard restores that outcome, and this pins it.
+    """
+    print("\nan empty summary must refund, not render a panel of dashes")
+    import ast
+    # DISCOVERY WAS CARVED OUT OF THIS by a one-element tuple, and it was the
+    # page that had the bug: it charged, marked the run completed, wrote no
+    # row, and showed a grey info box no user could tell from a quiet market.
+    # It guards the state in its button handler rather than at the render, so
+    # it is checked on its own terms below.
+    for page in ("Deep_Analysis.py",):
+        tree = ast.parse(open(os.path.join(REPO, "pages", page)).read())
+        guards = [n for n in ast.walk(tree)
+                  if isinstance(n, ast.If)
+                  and isinstance(n.test, ast.UnaryOp)
+                  and isinstance(n.test.op, ast.Not)
+                  and isinstance(n.test.operand, ast.Name)
+                  and n.test.operand.id == "ai_summary"]
+        check(f"{page} guards the empty-summary case", len(guards) == 1,
+              f"found {len(guards)}")
+        if not guards:
+            continue
+        body = guards[0].body
+        names = {_call_name(n) or "" for n in
+                 ast.walk(ast.Module(body=body, type_ignores=[]))} - {""}
+        check(f"{page} refunds on it", "refund_credit" in names, str(sorted(names)))
+        check(f"{page} stops before the panel renders",
+              any(isinstance(n, ast.Attribute) and n.attr == "stop"
+                  for n in ast.walk(ast.Module(body=body, type_ignores=[]))),
+              str(sorted(names)))
+
+    disc = open(os.path.join(REPO, "pages", "Discovery.py")).read()
+    tree = ast.parse(disc)
+    # The guard is a branch of the button handler's if/elif chain, sitting
+    # BEFORE the branch that marks the analysis delivered. Assert on the call
+    # graph, not on the text: a comment mentioning the refund is not a refund.
+    guards = [n for n in ast.walk(tree)
+              if isinstance(n, ast.If)
+              and isinstance(n.test, ast.UnaryOp)
+              and isinstance(n.test.op, ast.Not)
+              and _call_name(n.test.operand) == "_summary_available"]
+    # TWO of them, and they do different jobs. The button handler refunds
+    # before the run is ever marked delivered; the render guard only declines
+    # to draw, because by then the credit decision has already been taken on a
+    # previous script run. Asserting a single site would have accepted either
+    # one alone -- and the render guard alone is precisely the bug.
+    bodies = [{_call_name(n) or "" for n in
+               ast.walk(ast.Module(body=g.body, type_ignores=[]))} - {""}
+              for g in guards]
+    check("Discovery guards the empty-summary case at both points",
+          len(guards) == 2, f"found {len(guards)}")
+    check("...and the charging one refunds",
+          any("refund_credit" in b for b in bodies), str(bodies))
+    check("...and the rendering one declines to draw",
+          any("info" in b for b in bodies), str(bodies))
+    # Both pages must ask the question the SAME way, or one of them drifts back.
+    check("both pages share one definition of 'a summary exists'",
+          "_summary_available" in disc
+          and "legacy_summary" in open(
+              os.path.join(REPO, "pages", "Deep_Analysis.py")).read())
+
+
 def main() -> int:
     print("=" * 74)
     print("  Refund-path guards -- charged work must never be silently kept")
     print("=" * 74)
     for t in (test_streamlit_abort_is_baseexception,
               test_every_charge_has_a_finally_refund,
-              test_refunds_do_not_rely_only_on_except):
+              test_refunds_do_not_rely_only_on_except,
+              test_an_empty_summary_is_refunded_not_rendered):
         try:
             t()
         except Exception as e:

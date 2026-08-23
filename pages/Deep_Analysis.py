@@ -12,9 +12,12 @@ _da_logger = logging.getLogger(__name__)
 from utils.navigation import render_sidebar_navigation, render_top_nav
 from utils.ui import open_page, close_page, GENERIC_ERROR_TEXT, safe_ui, render_recommendation_panel, render_full_analysis_expander, render_evidence_check
 import streamlit.components.v1 as _components
-from utils.finance import get_stock_data
-from utils.projections import simple_projection
-from utils.deep_analysis import ANALYSIS_PROMPTS, run_deep_analysis, generate_ai_summary
+from utils.deep_analysis import ANALYSIS_PROMPTS
+# The pipeline itself. This page contributes credits, progress and pixels;
+# it no longer contains a second copy of the analysis.
+from utils.analyze import (analyze as _analyze, persist as _persist,
+                           price_tiles as _price_tiles,
+                           unique_mentions as _unique_mentions)
 
 # Page configuration
 st.set_page_config(
@@ -183,7 +186,7 @@ if _run_clicked or (_autorun and _prefill):
             import threading, time as _time
 
             _result_holder: dict = {}
-            # Filled by run_deep_analysis with the RAW corpora, so the evidence
+            # Filled by the retrieval step with the RAW corpora, so the evidence
             # ledger can be built from posts. Stays empty on a result-cache hit,
             # in which case the page falls back to the previous adjudicator --
             # a degradation, not a failure.
@@ -197,8 +200,23 @@ if _run_clicked or (_autorun and _prefill):
                 # would be stamped "-" and the id would correlate nothing.
                 _set_request_id(_rid)
                 try:
-                    _result_holder["result"] = run_deep_analysis(
-                        _run_ticker, sector, sink=_corpus_sink)
+                    # THE WHOLE PIPELINE, not just retrieval. Prices, the sector
+                    # benchmark, the ledger, adjudication and the projection used
+                    # to run on the main thread AFTER this progress bar had been
+                    # cleared. They are network waits, so inside it is where they
+                    # belong -- and there is now one implementation of them.
+                    _res = _analyze(_run_ticker, sector, corpus_sink=_corpus_sink)
+                    _result_holder["analysis"] = _res
+                    # analyze() never raises; it reports through .error. Only a
+                    # failure that produced NO results is the "Analysis failed"
+                    # panel. One that produced results but no verdict still falls
+                    # through to the legacy summary below, exactly as before.
+                    # `.raised` and not `.error`: an EXCEPTION gets the red
+                    # "Analysis failed" panel, while an empty-but-valid answer
+                    # stops silently and refunds, exactly as before. `.error` is
+                    # set in both cases and cannot tell them apart.
+                    if _res.raised and not _res.analysis_results:
+                        _result_holder["error"] = _res.error
                 except Exception as _e:
                     _da_logger.exception("deep_analyze failed ticker=%s", _run_ticker)
                     _result_holder["error"] = str(_e)
@@ -218,6 +236,16 @@ if _run_clicked or (_autorun and _prefill):
             ]
             _step_idx = 0
             _start = _time.time()
+            # DELIBERATELY only six st.* calls, then silence. Streamlit
+            # notices an abort -- another click, an edited ticker, navigating
+            # away -- only at an st.* call, so ticking every 1.5s here would
+            # make the whole tail abortable. That sounds like an improvement
+            # and is not: the X posts are already billed, X's index is 7 days
+            # deep, and an abort between the last tick and _persist below
+            # destroys the only record the analysis ever happened. Widening
+            # the abort window trades unrecoverable rows for a faster cancel.
+            # The right fix is to write the row off the main thread; until
+            # then this stays as it is.
             while not _done_flag.wait(timeout=1.5):
                 if _step_idx < len(_steps):
                     prog, msg = _steps[_step_idx]
@@ -250,139 +278,25 @@ if _run_clicked or (_autorun and _prefill):
                 )
                 st.stop()
 
-            analysis_results = _result_holder.get("result")
+            _a = _result_holder.get("analysis")
+            analysis_results = (_a.analysis_results if _a is not None else None)
             if not analysis_results:
                 refund_credit("deep_analyze", _credit.event_id, "analysis returned no results")
                 st.stop()
 
-            # Prices first: the adjudicator's price veto consumes them, and the
-            # projection below reuses the same series. Previously fetched after
-            # the summary, which would have left the veto permanently blind and
-            # therefore -- since it fails closed -- Buy permanently unreachable.
-            current_price, projected_gain, drawdown_first, price_points = (
-                "Unavailable", "Unavailable", "Unavailable", 0)
-            _last_close: float | None = None
-            _proj: dict = {}
-            prices_for_verdict: list | None = None
-            volumes_for_verdict: list | None = None
-            # The trading session _last_close belongs to. Recording the price
-            # without it makes forward return uncomputable: a verdict issued on
-            # a weekend or after hours has a created_at date that is not a
-            # trading day, and the join to price_history silently finds nothing.
-            _bar_date: str | None = None
-            try:
-                _sd = get_stock_data(_run_ticker)
-                if _sd.get("error") is None and _sd.get("prices"):
-                    prices_for_verdict = _sd["prices"]
-                    volumes_for_verdict = _sd.get("volumes") or None
-                    _bar_date = _sd.get("last_bar_date")
-                    price_points = len(prices_for_verdict)
-                    _lp = prices_for_verdict[-1]
-                    if isinstance(_lp, (int, float)):
-                        current_price = f"${_lp:.2f}"
-                        _last_close = float(_lp)
-            except Exception:
-                _da_logger.warning("price fetch failed", exc_info=True)
+            # Everything below READS the analysis; nothing is recomputed. This
+            # page used to fetch prices, fetch the benchmark, score both corpora,
+            # build the ledger, adjudicate and project inline -- a second
+            # hand-written copy of utils/analyze.py which had already drifted
+            # from it in three ways, each of them corrupting a table the two
+            # share. Only what the PAGE DRAWS is unpacked: the ledger, volumes,
+            # benchmark and bar date were held here solely to be typed back
+            # into two log calls, and persist() reads those off the analysis.
+            _verdict = _a.verdict
+            price_points = len(_a.prices or [])
+            _proj = _a.projection or {}
 
-            # The sector benchmark, so the veto can tell "this company fell"
-            # from "everything fell". One extra daily-bars call on the price
-            # provider -- NOT an X call -- and the ETF is shared across every
-            # ticker in the sector, so the existing price cache absorbs nearly
-            # all of it. Failure is silent and falls back to the absolute
-            # reading the veto has always used.
-            _bench_sym, _bench_prices = "", None
-            try:
-                if prices_for_verdict:
-                    from utils.relative import benchmark_prices as _bench
-                    _bench_sym, _bench_prices = _bench(_run_ticker, sector)
-            except Exception:
-                _da_logger.warning("benchmark fetch failed", exc_info=True)
-
-            # ---- Adjudicate from the evidence ledger ----
-            #
-            # Falls back to the previous adjudicator if anything here fails. The
-            # ledger path is new; the credit has already been taken; and a
-            # delivered analysis must not become an error because a new code
-            # path raised.
-            _verdict = None
-            ai_summary = None
-            # Bound here, not only inside the ledger branch below. signal_log
-            # reads it after delivery, and while `_verdict is not None` does
-            # currently imply the branch ran, that is an invariant across 200
-            # lines rather than a guarantee -- and the cost of it being wrong is
-            # a NameError on a page the user has already paid for.
-            _ledger: list = []
-            _building = st.empty()
-            try:
-                if _corpus_sink.get("ticker_corpus") is not None:
-                    # Keep an indicator alive. The progress bar is cleared by
-                    # now, and scoring both raw corpora is not instant: pass one
-                    # only scored posts that named the ticker, so every post
-                    # that did not is a genuinely new inference here.
-                    _building.markdown(
-                        '<div style="color:rgba(148,163,184,.85);font-size:0.9rem;">'
-                        '🧾 building the evidence ledger…</div>',
-                        unsafe_allow_html=True)
-                    from utils.evidence import build_ledger
-                    from utils.sentiment import analyze_sentiment_batch as _score
-                    from utils.verdict import adjudicate
-
-                    _alias_used = _corpus_sink.get("alias") or ""
-                    _ledger = []
-                    for _key, _chan in (("ticker_corpus", "social_base"),
-                                        ("influencer_corpus", "newswire")):
-                        _posts = _corpus_sink.get(_key) or []
-                        if not _posts:
-                            continue
-                        # Re-scoring is near-free: these exact texts were scored
-                        # moments ago and sentiment_cache serves them by hash.
-                        _texts = [(x.get("text") or "")[:512] for x in _posts]
-                        _dists = _score(_texts)
-                        _by_id = {}
-                        for _x, _d in zip(_posts, _dists):
-                            _pid = _x.get("id")
-                            if _pid is not None:
-                                _by_id[str(_pid)] = _d
-                        _seen = {r.post_id for r in _ledger}
-                        _new = build_ledger(_posts, _run_ticker, alias=_alias_used,
-                                            channel=_chan, scores=_by_id)
-                        # Both queries share the subject clause over overlapping
-                        # windows, so one post can land in both corpora and be
-                        # counted as two independent voices.
-                        _ledger += [r for r in _new if r.post_id not in _seen]
-                    # A recent sector scan may hold posts about this ticker
-                    # that its own query will never reach -- two arms on the
-                    # same ticker in the same window shared zero posts out of
-                    # 198. Free: those posts are already paid for.
-                    try:
-                        from utils import seed as _seed
-                        _seen_ids = {r.post_id for r in _ledger}
-                        _seed_posts = _seed.fetch(_run_ticker, sector,
-                                                  exclude_ids=_seen_ids)
-                        if _seed_posts:
-                            _st = [(x.get("text") or "")[:512] for x in _seed_posts]
-                            _sd2 = _score(_st)
-                            _sid = {str(x["id"]): d for x, d in zip(_seed_posts, _sd2)
-                                    if x.get("id") is not None}
-                            _ledger += build_ledger(_seed_posts, _run_ticker,
-                                                    alias=_alias_used,
-                                                    channel="discovery_seed",
-                                                    scores=_sid)
-                    except Exception:
-                        _da_logger.warning("seed reuse failed", exc_info=True)
-
-                    if _ledger:
-                        _verdict = adjudicate(_ledger, prices_for_verdict,
-                                              volumes_for_verdict,
-                                              benchmark_prices=_bench_prices,
-                                              benchmark=_bench_sym,
-                                              bar_date=_bar_date)
-            except Exception:
-                _da_logger.warning("ledger adjudication failed; using legacy path",
-                                   exc_info=True)
-                _verdict = None
-            finally:
-                _building.empty()
+            current_price = projected_gain = drawdown_first = "Unavailable"
 
             if _verdict is not None:
                 ai_summary = {
@@ -395,69 +309,49 @@ if _run_clicked or (_autorun and _prefill):
                     "rationale": [_verdict.reason],
                 }
             else:
-                ai_summary = generate_ai_summary(analysis_results)
+                # LEGACY FALLBACK, kept deliberately. When the ledger yields no
+                # verdict this page has always still rendered the older prose
+                # summary, the projection, and kept the credit -- a degradation,
+                # not a failure. Computed by the pipeline, so the page holds no
+                # opinion about which adjudicator ran.
+                ai_summary = _a.legacy_summary
+                if not ai_summary:
+                    # Neither adjudicator produced anything. Rendering this
+                    # dict anyway gives Signal "--", Confidence "--" and a
+                    # neutral score, sets _delivered, keeps the credit and
+                    # writes no row -- a silent charge for nothing. Before the
+                    # refactor generate_ai_summary raised here and the finally
+                    # refunded; that outcome is preserved, with a real message
+                    # in place of a Streamlit traceback.
+                    _da_logger.error("no verdict and no legacy summary for %s",
+                                     _run_ticker)
+                    refund_credit("deep_analyze", _credit.event_id,
+                                  "no summary could be produced")
+                    st.error(GENERIC_ERROR_TEXT)
+                    st.stop()
 
-            # Projection, from the prices already fetched above.
+            # BOTH paths, and selected by KEY, not by the label's wording. The
+            # tiles come from the single producer beside the state that
+            # justifies them; a renderer that formats the same number its own
+            # way is how the card came to contradict its own decision. Guarded
+            # because this now runs before _delivered: a formatting raise must
+            # degrade to "Unavailable", never cost a paid delivery.
             try:
-                if prices_for_verdict:
-                    # The real quality gate now, rather than an evidence-count
-                    # proxy: a tilt applied to a corpus not shown to be about
-                    # this company is the same error in a different place.
-                    # Buy only. A tilted band under an Avoid reads as a
-                    # short-side price target the system has no basis for.
-                    _q_ok = ((_verdict.quality.tier in ("moderate", "high")
-                              and _verdict.recommendation == "Buy")
-                             if _verdict is not None else
-                             len({str(_tid) for _r in analysis_results.values()
-                                  for _tid in (_r.get("tweet_ids") or [])}) >= 8)
-                    proj = simple_projection(prices_for_verdict,
-                                             ai_summary["avg_sentiment"],
-                                             days=30, quality_ok=_q_ok)
-                    _proj = proj or {}
-                    if proj.get("error") is None:
-                        # The SCENARIO RANGE, not a percentile band dressed as a
-                        # forecast. Centre is zero plus any evidence tilt.
-                        projected_gain = (f"{proj['scenario_bear']:.1f}% to "
-                                          f"{proj['scenario_bull']:.1f}%")
-                        # "Suggested hold: 12 days" was the mean day on which
-                        # the WINNING simulations first touched +5%, with the
-                        # paths that never got there simply dropped. On live
-                        # TSLA that printed "hold 6 days" beside a -21%
-                        # forecast, and the 25% hit-rate was never shown.
-                        # The hit rate is shown in the movement-profile table
-                        # beneath, where the DOWN column sits beside it --
-                        # publishing "+5% in 66% of paths" alone reads as a 66%
-                        # win rate, which is exactly what _movement_profile's
-                        # own docstring forbids.
-                        #
-                        # In its place, the drawdown that reaching +5% cost on
-                        # the way -- p75, not the median. Conditioning on
-                        # winners selects for paths that hit the target on day
-                        # one with no dip at all, so above ~8% daily volatility
-                        # the median pins to exactly 0 and the tile would print
-                        # "-0.0%" for the riskiest tickers in the product.
-                        # Absent rather than zero when the target was never
-                        # reached, and falsy-guarded so a true zero is shown as
-                        # "under 0.1%" rather than as no risk at all.
-                        _m5 = (proj.get("movement_profile") or {}).get("5%") or {}
-                        _mae = _m5.get("mae_p75")
-                        if _mae is not None:
-                            drawdown_first = ("under 0.1%" if _mae < 0.001
-                                              else f"-{_mae * 100:.1f}%")
+                for _tile in _price_tiles(_a):
+                    if _tile["key"] == "last_price":
+                        current_price = _tile["value"]
+                    elif _tile["key"] == "range_30d":
+                        projected_gain = _tile["value"]
+                    elif _tile["key"] == "drawdown_first":
+                        drawdown_first = _tile["value"]
             except Exception:
-                # Was a bare `pass`. Every other handler on this page logs, and
-                # this one now guards two more statements; a silent degrade to
-                # "Unavailable" beside a fully rendered movement-profile table
-                # is exactly the failure nobody would report.
-                _da_logger.warning("projection post-processing failed",
-                                   exc_info=True)
+                _da_logger.warning("price tiles failed", exc_info=True)
 
             # UNIQUE ids. Summing mention_count across the eight angles counts
             # a post once per angle it lands in -- angle 1 is the whole corpus
             # and most others are subsets -- printing 141 for a 98-post corpus
             # in which 90 were analysed, and logging that inflated figure.
-            _total_mentions = len({str(_t) for _r in analysis_results.values()
-                                   for _t in (_r.get("tweet_ids") or [])})
+            _total_mentions = _unique_mentions(_a)
 
             # Anchor + auto-scroll so panel comes into view immediately
             import streamlit as _st
@@ -585,86 +479,16 @@ if _run_clicked or (_autorun and _prefill):
             # record that this call was ever made: X's index is 7 days deep and
             # cannot be backfilled, so a verdict not written now can never be
             # scored against what the stock actually did.
-            try:
-                from utils import verdict_log
-                from utils.sentiment import MODEL_NAME
-                verdict_log.record(
-                    _run_ticker,
-                    ai_summary.get("recommendation", ""),
-                    sector=sector,
-                    confidence=ai_summary.get("confidence"),
-                    avg_sentiment=ai_summary.get("avg_sentiment"),
-                    red_flag_rate=(_verdict.risk.soft_rate if _verdict else None),
-                    disagreement=(1.0 if (_verdict and _verdict.social.conflict) else 0.0)
-                                 if _verdict else None,
-                    total_mentions=_total_mentions,
-                    price_at_verdict=_last_close,
-                    projected_p10=_proj.get("gain_p10"),
-                    projected_p90=_proj.get("gain_p90"),
-                    suggested_hold_days=_proj.get("suggested_hold_days"),
-                    success_rate=_proj.get("success_rate"),
-                    event_id=getattr(_credit, "event_id", None),
-                    # Which adjudicator produced this row. Without it the same
-                    # columns hold different quantities on different runs and
-                    # nothing downstream can separate them.
-                    model=f"{MODEL_NAME}|{'ledger' if _verdict else 'legacy'}",
-                )
-            except Exception:
-                _da_logger.warning("verdict_log call failed", exc_info=True)
-
-            # The wide record: everything the adjudicator SAW, not just what it
-            # said. Written for EVERY verdict, so the Watches that nearly became
-            # Buys are in the table too -- a Buy cohort with no comparison group
-            # cannot be evaluated, however long it accumulates.
             #
-            # A separate try, and deliberately not folded into the one above: a
-            # failure here must not cost the narrow verdict_log row, which is
-            # the one already accumulating and already relied on.
-            if _verdict is not None:
-                try:
-                    from utils import signal_log
-                    from utils.sentiment import MODEL_NAME as _sl_model
-                    signal_log.record(
-                        _run_ticker, _verdict,
-                        feature="deep_analyze",
-                        price_at_decision=_last_close,
-                        decision_trade_date=_bar_date,
-                        # `sector` is the literal "unknown" on this page -- the
-                        # analysis never needed one. Storing that string would
-                        # make every deep_analyze row look like a real sector
-                        # called "unknown" in any group-by, indistinguishable
-                        # from a lookup that failed. NULL says "not captured".
-                        sector=(sector if sector and sector != "unknown" else None),
-                        # Matches verdict_log's discriminator, so the two tables
-                        # can be joined on (ticker, model) at all.
-                        model=f"{_sl_model}|ledger",
-                        event_id=getattr(_credit, "event_id", None),
-                        corpus_key=_corpus_sink.get("corpus_key"),
-                        evidence_age_s=_corpus_sink.get("corpus_age_s"),
-                        ledger=_ledger,
-                        projection=_proj,
-                        # RAW corpora, so the overlap between the two paid arms
-                        # can be counted. The ledger has already dropped every
-                        # wire post the ticker arm found first, and that overlap
-                        # is exactly the measure of whether the second query was
-                        # worth making.
-                        wire_posts=_corpus_sink.get("influencer_corpus"),
-                        main_posts=_corpus_sink.get("ticker_corpus"),
-                        # WHY the wire corpus is the size it is, and what it really
-                        # cost. An empty corpus from an errored query and one from a
-                        # genuinely quiet wire are the same [] without this.
-                        wire_state=_corpus_sink.get("wire_state"),
-                        wire_billed=_corpus_sink.get("wire_billed"),
-                        # The counterfactual must see the same tape the real
-                        # verdict did, or the cascade fails closed on absent
-                        # price data and every Buy reads as wire-caused.
-                        prices=prices_for_verdict,
-                        volumes=volumes_for_verdict,
-                        benchmark_prices=_bench_prices,
-                        benchmark=_bench_sym,
-                    )
-                except Exception:
-                    _da_logger.warning("signal_log call failed", exc_info=True)
+            # ONE CALL. This page enumerated ~20 keyword arguments into
+            # verdict_log and ~20 more into signal_log, and utils/analyze.py
+            # enumerated them again -- which is how the two came to record
+            # different populations in total_mentions and to break the
+            # (ticker, model) join the two tables exist to support. persist()
+            # writes for a legacy delivery too -- that run was charged and
+            # cannot be reconstructed either -- and it swallows its own
+            # failures: a logging error must never cost a delivery.
+            _persist(_a, feature="deep_analyze", event_id=_credit.event_id)
 
         finally:
             # Backstop for every path the except blocks above cannot reach,
@@ -677,8 +501,19 @@ if _run_clicked or (_autorun and _prefill):
             if _delivered:
                 complete_work(_credit.event_id, "completed", f"ticker={_run_ticker}")
             else:
-                refund_credit("deep_analyze", _credit.event_id,
-                              "deep analysis did not complete")
-                complete_work(_credit.event_id, "failed", "aborted or errored")
+                # Close the run ONLY if the refund actually landed.
+                # refund_credit returns False without raising when its RPC
+                # fails, and reap_orphaned_work scans status='running' alone --
+                # so closing the row as 'failed' after a failed refund deletes
+                # the credit and switches off the one backstop designed to
+                # return it. Discovery already makes this choice; the two pages
+                # charge from the same ledger and must not differ here.
+                if refund_credit("deep_analyze", _credit.event_id,
+                                 "deep analysis did not complete"):
+                    complete_work(_credit.event_id, "failed", "aborted or errored")
+                else:
+                    _da_logger.error(
+                        "refund failed for event %s; leaving work_run open so "
+                        "the reaper retries", _credit.event_id)
 
 close_page()

@@ -53,7 +53,10 @@ logging.basicConfig(
 logger = logging.getLogger("core_api")
 
 SHARED_SECRET = os.getenv("CORE_API_SHARED_SECRET", "")
-SERVICE_VERSION = "2026.08.20-step2"
+# Bump this with every deploy that changes behaviour. /health is the only
+# way to tell WHICH build is answering, and "did the deploy actually land"
+# was guesswork on the last three.
+SERVICE_VERSION = "2026.08.23-step5"
 
 # THE BUDGET THE PORTAL HAS AND THIS SERVICE DOES NOT.
 #
@@ -215,6 +218,23 @@ def analyze(req: AnalyzeRequest,
     finally:
         _SLOTS.release()
     elapsed = round(time.time() - t0, 2)
+
+    # A LEGACY DELIVERY IS A DELIVERY. analyze() now produces a fallback
+    # summary, a projection and a card when the ledger yields no verdict, and
+    # the portal renders and records it. This service was still returning
+    # ok:false and writing nothing for that state -- discarding a product the
+    # caller has usually already charged for, and leaving the same
+    # debited-with-no-row hole persist() was widened to close.
+    if not a.ok and a.legacy_summary:
+        if req.persist:
+            write(a, feature="core_api", event_id=req.event_id)
+        logger.info("analyze %s event=%s -> legacy %s in %.2fs",
+                    a.ticker, req.event_id,
+                    a.legacy_summary.get("recommendation"), elapsed)
+        # ok:true, because a fallback that was delivered and billed is an
+        # answer. `card.adjudicator` is how a caller tells the two apart.
+        return {"ok": True, "elapsed_s": elapsed, "card": card(a),
+                "degraded": True}
 
     if not a.ok:
         # 200 with an error field, not a 5xx: the caller has usually already

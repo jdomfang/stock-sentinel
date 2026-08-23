@@ -12,6 +12,7 @@ from utils.supabase_client import get_admin_client, get_client
 from utils.cache import ttl_cache
 import numpy as np
 import logging
+import threading
 import time
 import random
 import json
@@ -297,6 +298,13 @@ def get_ticker_master_list() -> Dict[str, Dict]:
 # Rate limiting: minimum seconds between API calls
 API_RATE_LIMIT = 1.0  # 1 second between requests
 last_api_call = 0
+# read-modify-write on a module global, from more than one thread. Price
+# fetching used to run on the Streamlit script thread, which serialises; it now
+# runs on the per-analysis worker thread, so N concurrent analyses raced this
+# and every one of them read the same stale `last_api_call` and fired at once.
+# The limiter then guaranteed the burst it exists to prevent, and the 429s came
+# back as exponential backoff inside a window the user cannot interrupt.
+_rate_lock = threading.Lock()
 
 def _rate_limit(rate_limit_seconds=None):
     """Enforce rate limiting between API calls."""
@@ -304,11 +312,15 @@ def _rate_limit(rate_limit_seconds=None):
     # Allow temporary override of rate limit
     effective_limit = rate_limit_seconds if rate_limit_seconds is not None else API_RATE_LIMIT
 
-    elapsed = time.time() - last_api_call
-    if elapsed < effective_limit:
-        sleep_time = effective_limit - elapsed + random.uniform(0.1, 0.5)  # Add jitter
-        time.sleep(sleep_time)
-    last_api_call = time.time()
+    # The sleep is INSIDE the lock. Outside it, every waiter would compute its
+    # delay from the same timestamp and wake together -- a queue that arrives
+    # as a burst is not a queue.
+    with _rate_lock:
+        elapsed = time.time() - last_api_call
+        if elapsed < effective_limit:
+            sleep_time = effective_limit - elapsed + random.uniform(0.1, 0.5)  # Add jitter
+            time.sleep(sleep_time)
+        last_api_call = time.time()
 
 def _retry_with_backoff(func, max_retries=3, base_delay=2):
     """Retry a function with exponential backoff on 429 errors."""

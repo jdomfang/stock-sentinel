@@ -204,13 +204,65 @@ def test_the_card_is_built_from_state_not_from_the_verdict_word():
           "Strong" not in c["headline"], c["headline"])
     check("Moderate is named as the ceiling",
           "unvalidated" in c["confidence_note"].lower(), c["confidence_note"])
-    tiles = {t["label"] for t in c["tiles"]}
-    check("the retired review-window tile is gone", "Review window" not in tiles)
-    check("the drawdown tile is present", "Drawdown first" in tiles, str(tiles))
+    # BY KEY. Selecting a tile on its label couples the consumer to the copy,
+    # and the failure is silent -- reword the label and the tile simply stops
+    # arriving, with nothing raised anywhere. The label is still checked, but
+    # as prose attached to a key rather than as the identifier.
+    keys = {t["key"] for t in c["tiles"]}
+    labels = {t["label"] for t in c["tiles"]}
+    check("the retired review-window tile is gone", "Review window" not in labels)
+    check("the drawdown tile is present", "drawdown_first" in keys, str(keys))
+    check("...and every tile is keyed, so no consumer must match on prose",
+          all(t.get("key") for t in c["tiles"]), str(c["tiles"]))
 
     bad = card(type(a)(ticker="TSLA", error="boom"))
     check("a failed analysis produces an error card, not a crash",
           bad.get("error") == "boom")
+
+
+def test_a_legacy_delivery_is_served_and_recorded():
+    """A fallback the caller pays for is an answer, not a failure.
+
+    analyze() produces a prose summary, a projection and a card when the ledger
+    yields no verdict, and the portal renders and charges for exactly that. The
+    service used to return ok:false and write nothing for the same state --
+    discarding a delivered product and leaving a debited event with no row to
+    reconcile it against, on the 7-day X index that cannot be rebuilt.
+    """
+    print("\na legacy fallback is a delivered product, and gets recorded")
+    import core_api.main as M
+    c, M = client()
+    from utils.analyze import Analysis
+    import utils.analyze as UA
+    # Patch the SOURCE, not the module attribute: main.py does
+    # `from utils.analyze import ... persist as write` inside the handler, so
+    # the name is resolved per request and core_api.main has no such attribute
+    # to replace.
+    real, real_write = UA.analyze, UA.persist
+    wrote = {}
+    UA.analyze = lambda t, s="unknown": Analysis(
+        ticker=t, error="no usable evidence",
+        legacy_summary={"recommendation": "Watch", "confidence": "Low",
+                        "avg_sentiment": 0.03, "rationale": ["thin"]})
+    UA.persist = lambda a, **kw: wrote.update(kw, ticker=a.ticker)
+    try:
+        r = c.post("/analyze", json={"ticker": "ZZZZ", "event_id": "ev-legacy"},
+                   headers={"X-Core-Secret": "s3cret"})
+        check("200", r.status_code == 200, str(r.status_code))
+        body = r.json()
+        check("ok is True -- it was delivered", body["ok"] is True, str(body)[:90])
+        check("and flagged degraded, so a caller can tell",
+              body.get("degraded") is True, str(body)[:90])
+        check("a card is served", body.get("card", {}).get("verdict") == "Watch",
+              str(body.get("card"))[:90])
+        check("the card names the adjudicator",
+              (body.get("card") or {}).get("adjudicator") == "legacy",
+              str(body.get("card"))[:60])
+        check("the row is written", wrote.get("ticker") == "ZZZZ", str(wrote))
+        check("...with the credit event, so it reconciles",
+              wrote.get("event_id") == "ev-legacy", str(wrote))
+    finally:
+        UA.analyze, UA.persist = real, real_write
 
 
 def test_analyze_returns_an_answer_not_a_5xx():
@@ -271,6 +323,7 @@ def main() -> int:
     test_health_reports_what_would_change_an_answer()
     test_the_card_is_built_from_state_not_from_the_verdict_word()
     test_analyze_returns_an_answer_not_a_5xx()
+    test_a_legacy_delivery_is_served_and_recorded()
     test_persist_uses_a_feature_the_database_accepts()
     test_the_service_shares_utils_rather_than_copying_it()
     print("\n" + "=" * 74)

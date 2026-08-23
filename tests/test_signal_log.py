@@ -326,6 +326,33 @@ def test_the_migration_matches_what_is_written():
     check("decision_trade_date is a date column", "decision_trade_date date" in sql)
 
 
+def _code_only(path) -> str:
+    """Source with comments and docstrings removed.
+
+    A substring assertion over raw source is satisfied by prose. Stripping
+    first means the only thing that can satisfy it is the code.
+    """
+    import ast, io, tokenize
+    src = path.read_text()
+    out = []
+    for tok in tokenize.generate_tokens(io.StringIO(src).readline):
+        if tok.type == tokenize.COMMENT:
+            continue
+        out.append(tok)
+    stripped = tokenize.untokenize(out)
+    # Docstrings survive tokenisation; drop them with the AST.
+    tree = ast.parse(stripped)
+    for node in ast.walk(tree):
+        if isinstance(node, (ast.Module, ast.FunctionDef, ast.AsyncFunctionDef,
+                             ast.ClassDef)):
+            body = getattr(node, "body", None)
+            if (body and isinstance(body[0], ast.Expr)
+                    and isinstance(body[0].value, ast.Constant)
+                    and isinstance(body[0].value.value, str)):
+                body.pop(0)
+    return ast.unparse(tree)
+
+
 def test_the_write_sites_are_guarded_against_reruns():
     print("\none paid analysis is one row, even across Streamlit reruns")
     disc = (REPO / "pages" / "Discovery.py").read_text()
@@ -334,13 +361,61 @@ def test_the_write_sites_are_guarded_against_reruns():
     check("...and both writes sit behind it", "_should_log" in disc)
     check("Discovery passes event_id, so duplicates are detectable server-side",
           "event_id=_ev" in disc)
+    # The same invariant enforced on the other page. Discovery held the third
+    # hand-written copy of the pipeline and the fourth copy of the card's
+    # wording; both are gone and must not return.
+    check("Discovery holds no second copy of the write",
+          "verdict_log.record(" not in disc and "signal_log.record(" not in disc)
+    check("...nor a second copy of the pipeline",
+          "build_ledger" not in disc and "simple_projection" not in disc
+          and "adjudicate(" not in disc)
+    check("...nor its own copy of the card's wording",
+          "Evidence leans upside" not in disc and "Thin data" not in disc)
+    # Absence is not enough: deleting the wording AND not calling card() leaves
+    # a panel of em-dashes, which no negative assertion can see. Code-only, so
+    # a comment mentioning card() cannot satisfy it.
+    _disc_code = _code_only(REPO / "pages" / "Discovery.py")
+    check("...and it actually renders FROM the card",
+          "_card_for(_a)" in _disc_code and "_card.get(" in _disc_code)
+    check("...including the price tiles",
+          "_price_tiles(_a)" in _disc_code)
+    # The two pages must print the SAME sample size for one paid analysis.
+    # Discovery printed the corpus union -- ~90 posts -- beside a verdict
+    # resting on 5 independent voices, while the other page printed the 5.
+    # The USE, not just the mention: leaving the variable assigned and then
+    # not reading it passed a presence check while the panel quietly went back
+    # to printing the corpus union.
+    check("...and sizes the sample the way the other page does",
+          "_mentions_ct = _ev_ct" in _disc_code
+          and "eligible_clusters" in _code_only(REPO / "pages" / "Deep_Analysis.py"))
+    check("Discovery keeps its cohort tag, which verdict_log cannot otherwise "
+          "recover", 'route="discovery"' in disc)
     deep = (REPO / "pages" / "Deep_Analysis.py").read_text()
-    check("Deep Analyze passes the bar date", "decision_trade_date=_bar_date" in deep)
-    check("Deep Analyze does not store the literal 'unknown' sector",
-          'sector != "unknown"' in deep)
+    # CODE ONLY. These are substring tests, and the modules they read are
+    # deliberately comment-dense -- a comment saying "we used to write
+    # decision_trade_date=a.bar_date" satisfied the assertion below while the
+    # call passed None, which is item #1 on this suite's own list of silent
+    # failures. Comments cannot vouch for code.
+    ana = _code_only(REPO / "utils" / "analyze.py")
+    # These two assertions used to read Deep_Analysis.py, because the write
+    # lived there. It now lives in utils/analyze.persist and the page calls it,
+    # so they follow the behaviour rather than being deleted -- and the check
+    # below exists so a future edit cannot quietly reinstate the second copy
+    # they were originally written to guard.
+    check("Deep Analyze holds no second copy of the write",
+          "verdict_log.record(" not in deep and "signal_log.record(" not in deep,
+          "the page writes the tables directly again")
+    check("the pipeline passes the bar date",
+          "decision_trade_date=a.bar_date" in ana)
+    # Quote-agnostic: _code_only round-trips through ast.unparse, which
+    # normalises string delimiters. The behavioural version of this assertion
+    # lives in tests/test_analyze.py, which reads the kwarg the writer is
+    # actually called with; this one only guards the shape.
+    check("the pipeline does not store the literal 'unknown' sector",
+          'a.sector != "unknown"' in ana or "a.sector != 'unknown'" in ana)
     # The expander must render BEFORE the network writes, not after.
     i_exp = deep.find("render_full_analysis_expander(analysis_results)")
-    i_log = deep.find("verdict_log.record(")
+    i_log = deep.find("_persist(")
     check("the full analysis renders before the logging POSTs",
           -1 < i_exp < i_log, f"expander@{i_exp} log@{i_log}")
 

@@ -157,9 +157,29 @@ def test_drawdown_grows_with_volatility():
     check("mae_p50 is the trap it is documented to be -- not monotonic",
           not all(a < b for a, b in zip(p50, p50[1:])),
           " ".join(f"{x:.4f}" for x in p50))
-    check("...and the UI renders p75, never p50",
-          "mae_p75" in (REPO / "pages" / "Deep_Analysis.py").read_text()
-          and "mae_median" not in (REPO / "pages" / "Deep_Analysis.py").read_text())
+    # card() is where the drawdown tile is now built -- one producer for the
+    # portal and for core-api, so neither can pick the non-monotonic median on
+    # its own. The page is still checked, because the way this regresses is a
+    # renderer reaching past the card and formatting the payload itself.
+    _card_src = (REPO / "utils" / "analyze.py").read_text()
+    _page_src = (REPO / "pages" / "Deep_Analysis.py").read_text()
+    check("...and the card renders p75, never p50",
+          "mae_p75" in _card_src and "mae_median" not in _card_src)
+    # POSITIVE, because the negative form was vacuous: "mae_p50 not in page"
+    # is satisfied by an empty file, and deleting the page's whole tile loop
+    # left it green while the price row silently lost two of three tiles.
+    # This pins that the page still asks for the drawdown, and asks by KEY --
+    # selecting on the label coupled the page to prose, so rewording
+    # "Drawdown first" made the tile vanish with every suite still passing.
+    # BOTH renderers. Discovery draws its own markup rather than calling
+    # render_recommendation_panel, so it selects the same tiles independently
+    # and can lose one on its own.
+    _disc_src = (REPO / "pages" / "Discovery.py").read_text()
+    for _name, _src in (("Deep_Analysis", _page_src), ("Discovery", _disc_src)):
+        check(f"{_name} selects both price tiles, and does so by key",
+              '"drawdown_first"' in _src and '"range_30d"' in _src)
+    check("...and reaches past the card for neither",
+          "mae_p50" not in _page_src and "mae_median" not in _page_src)
 
 
 def test_drawdown_is_never_negative():

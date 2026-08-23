@@ -89,6 +89,106 @@ def test_selectively_copied_services_can_import():
             check(f"{svc} image imports its own modules", r.returncode == 0, detail[0])
 
 
+def _re_split(spec: str) -> str:
+    """The distribution name from a requirements line, extras and pin removed."""
+    import re
+    return re.split(r"[\[<>=!~; ]", spec, 1)[0].strip()
+
+
+def test_core_api_can_run_without_the_portal():
+    """core-api ships utils/ but no streamlit, no torch and no transformers.
+
+    The failure this prevents is the one that killed price-sync: an image that
+    BUILDS and then dies at import, or worse, imports fine and raises on the
+    first request that reaches a lazily-imported dependency the image does not
+    contain. utils/config.py, utils/deep_analysis.py, utils/supabase_client.py
+    and utils/sentiment.py all reach for one of those three -- every one of
+    them must stay inside a function AND inside a try, which is the contract
+    Step 1 of the migration established.
+    """
+    import ast
+
+    print("\ncore-api image: the portal's dependencies must stay optional")
+    df = REPO / "core_api" / "Dockerfile"
+    if not df.exists():
+        return
+
+    HEAVY = ("streamlit", "torch", "transformers")
+    closure, queue = set(), ["core_api/main.py"]
+    third: set[str] = set()
+    while queue:
+        rel = queue.pop()
+        if rel in closure:
+            continue
+        closure.add(rel)
+        path = REPO / rel
+        if not path.exists():
+            continue
+        tree = ast.parse(path.read_text())
+        parents = {c: n for n in ast.walk(tree) for c in ast.iter_child_nodes(n)}
+        for node in ast.walk(tree):
+            if isinstance(node, ast.Import):
+                mods = [a.name for a in node.names]
+            elif isinstance(node, ast.ImportFrom) and node.module and node.level == 0:
+                mods = [node.module]
+            else:
+                continue
+            for m in mods:
+                top = m.split(".")[0]
+                if top == "utils":
+                    cand = m.replace(".", "/") + ".py"
+                    if (REPO / cand).exists():
+                        queue.append(cand)
+                    continue
+                if top == "core_api":
+                    continue
+                if top in HEAVY:
+                    cur, guarded, in_func = node, False, False
+                    while cur in parents:
+                        cur = parents[cur]
+                        if isinstance(cur, ast.Try):
+                            guarded = True
+                        if isinstance(cur, (ast.FunctionDef, ast.AsyncFunctionDef)):
+                            in_func = True
+                    check(f"{rel}:{node.lineno} {top} import is optional",
+                          guarded and in_func,
+                          f"try={guarded} in_function={in_func} -- the image has no {top}")
+                elif top not in sys.stdlib_module_names:
+                    third.add(top)
+
+    # Every third-party module reachable at MODULE scope must be installed, or
+    # the container dies on the first import exactly as price-sync did.
+    # PARSED, not substring-matched. `"numpy" in text` is satisfied by the
+    # line "#numpy==1.26.4", so commenting a dependency out passed this check
+    # while the container lost the package.
+    installed = set()
+    for line in (REPO / "core_api" / "requirements.txt").read_text().splitlines():
+        line = line.split("#", 1)[0].strip().lower()
+        if not line:
+            continue
+        name = _re_split(line)
+        installed.add(name)
+    alias = {"polygon": "polygon-api-client", "dotenv": "python-dotenv",
+             "dateutil": "python-dateutil", "yaml": "pyyaml"}
+    for mod in sorted(third):
+        want = alias.get(mod, mod)
+        check(f"{mod} is in core_api/requirements.txt", want in installed,
+              f"imported by the closure; installed: {sorted(installed)}")
+    check("the closure was actually walked", len(closure) > 5, str(len(closure)))
+
+    # Every path the Dockerfile copies must exist, or the COPY fails the build.
+    import re as _re
+    for line in df.read_text().splitlines():
+        m = _re.match(r"\s*COPY\s+(.+)", line)
+        if not m:
+            continue
+        parts = m.group(1).split()
+        for src in parts[:-1]:
+            if src.startswith("--"):
+                continue
+            check(f"Dockerfile COPY {src} exists", (REPO / src).exists(), src)
+
+
 def main() -> int:
     major, minor = pinned_version()
     print("=" * 74)
@@ -163,6 +263,7 @@ def main() -> int:
                           False, "requires python 3.12")
 
     test_selectively_copied_services_can_import()
+    test_core_api_can_run_without_the_portal()
     print(f"\n  {len(PASSED)} passed, {len(FAILED)} failed")
     for n, d in FAILED:
         print(f"    - {n}: {d}")

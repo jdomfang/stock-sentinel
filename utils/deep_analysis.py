@@ -1385,4 +1385,9 @@ def generate_ai_summary(analysis_results: Dict[str, Dict]) -> Dict[str, Any]:
         "confidence": confidence,
         "avg_sentiment": avg_sentiment,
         "rationale": rationale,
+        # Both were computed above and then discarded. The legacy verdict_log
+        # row stored NULL in these two columns -- "not measured" -- for
+        # readings that existed three frames down this same function.
+        "red_flag_rate": red_flag_rate,
+        "disagreement": disagreement,
     }
