@@ -9,11 +9,11 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 import requests
 import json
 import pandas as pd
-from collections import defaultdict, deque
+from collections import defaultdict
 import logging
 
 from utils.navigation import render_sidebar_navigation, render_top_nav
-from utils.ui import apply_theme, close_page, render_recommendation_panel, render_full_analysis_expander, render_evidence_check
+from utils.ui import apply_theme, close_page, render_evidence_check
 from utils.sentiment import extract_tickers_detailed, analyze_sentiment_batch
 from utils import x_metrics
 from utils.finance import get_ticker_master_list, get_last_close_prices_best_effort
@@ -584,12 +584,30 @@ components.html(
 
 st.markdown('<div class="clawd-app-wrapper discovery-wrapper">', unsafe_allow_html=True)
 
+
+def _bail() -> None:
+    """Stop the script WITHOUT leaving the page half-drawn.
+
+    The mirror of pages/Deep_Analysis._bail, and it exists for the same reason:
+    st.stop() raises StopException, which unwinds past the close_page() at the
+    bottom of this module, so the wrapper div opened just above stays open and
+    the footer never renders. Every early exit below this line -- and the two
+    on the Deep Analyze button in particular -- is a routine outcome now, not
+    an exceptional one.
+
+    The two pages charge from the same ledger and must not differ in how they
+    fail; this file already says so about refunds.
+    """
+    close_page()
+    st.stop()
+
 if "selected_ticker" not in st.session_state:
     st.session_state.selected_ticker = None
 if "selected_sector" not in st.session_state:
     st.session_state.selected_sector = None
 if "deep_analysis_results" not in st.session_state:
     st.session_state.deep_analysis_results = None
+    st.session_state.deep_analysis_card = None
 if "df_valid" not in st.session_state:
     st.session_state.df_valid = None
 if "df_unvalidated" not in st.session_state:
@@ -767,7 +785,7 @@ if scan_triggered:
     # Must be logged in to scan.
     if not st.session_state.get("auth.user"):
         st.error("Please log in to scan.")
-        st.stop()
+        _bail()
 
     # Open a request scope BEFORE the charge, so the debit, every downstream X
     # and Supabase call, and any refund all log under one id -- and so the
@@ -780,7 +798,7 @@ if scan_triggered:
     if not _credit.ok:
         logger.info("scan refused reason=%s", _credit.reason)
         _upgrade_modal("You've used all your scan credits.", event_type="scan")
-        st.stop()
+        _bail()
 
     # Set when X refuses to serve us. Drives the refund below: the user paid for
     # a scan, so if the upstream never delivered any posts they must not be
@@ -823,7 +841,7 @@ if scan_triggered:
         ticker_master_list = get_ticker_master_list()
         if not ticker_master_list:
             st.error("❌ Could not load ticker database. Please check the data directory.")
-            st.stop()
+            _bail()
 
         # Nasdaq sector strings (stored in Supabase) for strict matching.
         #
@@ -957,7 +975,7 @@ if scan_triggered:
                 """,
                 unsafe_allow_html=True,
             )
-            st.stop()
+            _bail()
 
         # One identity for the whole basket set, so the corpus cache key and the
         # telemetry's query_hash change whenever the generated query changes --
@@ -1289,7 +1307,7 @@ if scan_triggered:
                 # A genuinely empty result is an answer, not a failure -- the
                 # scan ran and the sector simply had no chatter. Still charged.
                 st.warning("No posts returned from X for this query.")
-            st.stop()
+            _bail()
 
         # (status message removed - results table speaks for itself)
 
@@ -1426,6 +1444,7 @@ if scan_triggered:
             st.session_state.selected_sector = sector
             st.session_state.selected_ticker = None
             st.session_state.deep_analysis_results = None
+            st.session_state.deep_analysis_card = None
 
             # Results are durable in session_state: the scan ran and produced an
             # answer. An empty answer is still an answer -- the sector genuinely
@@ -1679,9 +1698,6 @@ def _render_deep_panel(ticker, sector, deep_results):
     different products at one credit price -- and only the typed path ever
     reached verdict_log, making that table a biased sample of one entry route.
     """
-    from utils.deep_analysis import ANALYSIS_PROMPTS
-    from utils.ui import render_evidence_check
-
     # READ, do not recompute. Everything below this line used to be re-derived
     # from the session-state corpus on every rerun -- roughly 90 posts rescored,
     # a price call, a benchmark call, a fresh adjudication and a fresh Monte
@@ -1700,7 +1716,11 @@ def _render_deep_panel(ticker, sector, deep_results):
         return
 
     _evidence = _card.get("evidence") or {}
-    _movement = _card.get("movement") or {}
+    # NOTE: the card carries a `movement` block (targets, band, horizon) and
+    # this page draws none of it, while pages/Deep_Analysis.py renders a full
+    # Movement Profile table from the same card for the same credit. Not read
+    # here on purpose -- adding the table is a product decision, not cleanup --
+    # but the asymmetry is real and is recorded here rather than left implicit.
     _pts = _evidence.get("price_points") or 0
 
     _price = _proj = _hold = "Unavailable"
@@ -2018,14 +2038,14 @@ if st.session_state.df_valid is not None:
                         logger.error("deep_analyze unavailable: core-api not configured")
                         st.error("Deep Analysis is temporarily unavailable. "
                                  "No credit has been used.")
-                        st.stop()
+                        _bail()
                     _dcredit = consume_credit(
                         "deep_analyze",
                         {"ticker": ticker_symbol, "sector": sector, "page": "discovery"},
                     )
                     if not _dcredit.ok:
                         _upgrade_modal(f"Unlock the full analysis for {ticker_symbol}.", event_type="deep_analyze")
-                        st.stop()
+                        _bail()
 
                     # Charged work: try/finally, not try/except. Streamlit's
                     # abort raises StopException/RerunException, which derive
@@ -2037,6 +2057,7 @@ if st.session_state.df_valid is not None:
 
                         st.session_state.selected_ticker = ticker_symbol
                         st.session_state.deep_analysis_results = None
+                        st.session_state.deep_analysis_card = None
 
                         _deep_error = None
                         _disc_prog = st.progress(0)
@@ -2048,7 +2069,7 @@ if st.session_state.df_valid is not None:
                         )
                         _disc_prog.progress(10)
 
-                        import threading as _th, time as _tm
+                        import threading as _th
 
                         _disc_holder: dict = {}
                         _disc_done = _th.Event()
@@ -2140,15 +2161,12 @@ if st.session_state.df_valid is not None:
                         else:
                             st.session_state.deep_analysis_results = _disc_holder.get("result")
                             st.session_state.deep_analysis_card = _disc_holder.get("card")
-                            # Carried so the panel can identify WHICH paid
-                            # analysis it is rendering. Without it the panel --
-                            # which re-renders from session state on every
-                            # rerun -- appended a fresh log row on each sector
-                            # change, download click or row selection, and the
-                            # duplicates were indistinguishable from two genuine
-                            # analyses minutes apart.
-                            st.session_state.deep_analysis_event_id = getattr(
-                                _dcredit, "event_id", None)
+                            # deep_analysis_event_id is GONE with the writes it
+                            # existed for. It let the panel key a rerun guard on
+                            # the credit event, back when the panel itself wrote
+                            # to verdict_log and signal_log on every rerun. The
+                            # service writes once per request now, so there is
+                            # no duplicate to guard against and nothing read it.
                             st.session_state.selected_ticker = ticker_symbol
                             st.session_state["_scroll_to_deep_panel"] = True
                             # Set BEFORE st.rerun(): it raises RerunException, so

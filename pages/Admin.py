@@ -14,13 +14,26 @@ render_top_nav()
 apply_theme()
 
 st.markdown('<div class="clawd-app-wrapper">', unsafe_allow_html=True)
+
+
+def _bail() -> None:
+    """Stop the script WITHOUT leaving the page half-drawn.
+
+    The same helper the two analysis pages use. st.stop() raises
+    StopException, which unwinds past the close_page() at the bottom of this
+    module -- so the wrapper div opened above stays open and the footer never
+    renders. This page bails on seven paths (not an admin, no service key,
+    lookup failed), so that was most of its exits.
+    """
+    close_page()
+    st.stop()
 st.markdown("# 🛠️ Admin Dashboard")
 
 if not is_logged_in():
     st.warning("Please log in first.")
     if st.button("Go to Login", type="primary"):
         st.switch_page("pages/Auth.py")
-    st.stop()
+    _bail()
 
 admin_email = st.secrets.get("ADMIN_EMAIL", "").lower().strip()
 user = get_user() or {}
@@ -30,7 +43,7 @@ user_email = (user_email_raw or "").lower().strip()
 # First guard: must match configured admin email
 if not admin_email or user_email != admin_email:
     st.error("Not authorized.")
-    st.stop()
+    _bail()
 
 st.caption("Admin tools use the Supabase service role key (server-side).")
 
@@ -131,7 +144,7 @@ for _m in _messages:
 
 sb = safe_ui(get_admin_client, context="admin.get_admin_client")
 if not sb:
-    st.stop()
+    _bail()
 
 st.subheader("👥 Users")
 
@@ -145,12 +158,12 @@ def _load_profiles():
 
 resp = safe_ui(_load_profiles, context="admin.load_profiles")
 if not resp:
-    st.stop()
+    _bail()
 rows = getattr(resp, "data", None) or []
 
 if not rows:
     st.info("No users found yet.")
-    st.stop()
+    _bail()
 
 st.dataframe(rows, use_container_width=True)
 
@@ -227,7 +240,7 @@ sel_email = st.selectbox("Select user", options=email_options)
 selected = next((r for r in rows if (r.get("email") or r.get("user_id")) == sel_email), None)
 
 if not selected:
-    st.stop()
+    _bail()
 
 uid = selected.get("user_id")
 
@@ -264,7 +277,7 @@ if st.button("💾 Save changes", type="primary"):
 
     if not actor_id:
         ui_error("Could not identify your account. Please log in again.")
-        st.stop()
+        _bail()
 
     def _save():
         # Was a direct service-role UPDATE on profiles, which bypassed RLS and

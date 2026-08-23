@@ -40,6 +40,8 @@ import os
 import sys
 
 REPO = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+from pathlib import Path as _Path
+REPO_P = _Path(REPO)
 TARGETS = ("pages/Discovery.py", "pages/Deep_Analysis.py")
 
 PASSED: list[str] = []
@@ -244,10 +246,25 @@ def test_an_empty_summary_is_refunded_not_rendered() -> None:
         names = {_call_name(n) or "" for n in
                  ast.walk(ast.Module(body=body, type_ignores=[]))} - {""}
         check(f"{page} refunds on it", "refund_credit" in names, str(sorted(names)))
-        check(f"{page} stops before the panel renders",
-              any(isinstance(n, ast.Attribute) and n.attr == "stop"
-                  for n in ast.walk(ast.Module(body=body, type_ignores=[]))),
-              str(sorted(names)))
+        # Either st.stop() directly, or _bail() -- which closes the page
+        # wrapper first, because StopException unwinds past the close_page()
+        # at the bottom of the module and leaves the footer unrendered.
+        stops = (any(isinstance(n, ast.Attribute) and n.attr == "stop"
+                     for n in ast.walk(ast.Module(body=body, type_ignores=[])))
+                 or "_bail" in names)
+        check(f"{page} stops before the panel renders", stops, str(sorted(names)))
+        if "_bail" in names:
+            # The indirection must actually terminate, or every guard above is
+            # decorative: refund, print a panel, and carry on rendering.
+            fn = next((n for n in ast.walk(tree)
+                       if isinstance(n, ast.FunctionDef) and n.name == "_bail"), None)
+            check(f"{page}'s _bail() really stops",
+                  fn is not None and any(
+                      isinstance(x, ast.Attribute) and x.attr == "stop"
+                      for x in ast.walk(fn)), "it does not call st.stop()")
+            check(f"{page}'s _bail() closes the page wrapper",
+                  fn is not None and _call_name_in(fn.body, "close_page"),
+                  "the <div> stays open and the footer never renders")
 
     disc = open(os.path.join(REPO, "pages", "Discovery.py")).read()
     deep = open(os.path.join(REPO, "pages", "Deep_Analysis.py")).read()
@@ -288,6 +305,46 @@ def test_an_empty_summary_is_refunded_not_rendered() -> None:
               "a charge with nothing to show for it")
 
 
+def test_no_page_bails_without_closing_itself() -> None:
+    """A page that opens a wrapper div must close it on EVERY exit.
+
+    st.stop() raises StopException, which unwinds past the close_page() at the
+    bottom of a page module -- so the <div class="clawd-app-wrapper"> stays
+    open and the footer never renders. That was tolerable when the only early
+    exit was "out of credits". Moving the analysis into core-api made bailing
+    routine: unconfigured, unreachable, or answering with no card.
+
+    Deep_Analysis was fixed first and Discovery was not, which is exactly the
+    divergence this codebase keeps warning about -- the two pages charge from
+    the same ledger. Asserted structurally so the next page cannot inherit it.
+    """
+    import ast
+    print("\nevery bail after the wrapper opens must close the page")
+    for page in sorted((REPO_P / "pages").glob("*.py")):
+        src = page.read_text()
+        if "clawd-app-wrapper" not in src:
+            continue          # no wrapper, nothing to close
+        lines = src.splitlines()
+        # The wrapper is sometimes emitted inside a multi-line markdown
+        # string, so match the div itself rather than the st.markdown call.
+        opened_at = next(i for i, l in enumerate(lines, 1)
+                         if "clawd-app-wrapper" in l)
+        tree = ast.parse(src)
+        # The one legitimate st.stop() is the one inside _bail itself.
+        bail = next((n for n in ast.walk(tree) if isinstance(n, ast.FunctionDef)
+                     and n.name == "_bail"), None)
+        # ast.arguments has no lineno, so ask for it defensively.
+        allowed = set(range(bail.lineno, max(
+            (getattr(x, "lineno", bail.lineno) for x in ast.walk(bail)),
+            default=bail.lineno) + 1)) if bail else set()
+        bare = [n.lineno for n in ast.walk(tree)
+                if isinstance(n, ast.Call) and isinstance(n.func, ast.Attribute)
+                and n.func.attr == "stop" and n.lineno > opened_at
+                and n.lineno not in allowed]
+        check(f"{page.name} has no bare st.stop() after its wrapper opens",
+              not bare, f"lines {bare} leave the div open and drop the footer")
+
+
 def main() -> int:
     print("=" * 74)
     print("  Refund-path guards -- charged work must never be silently kept")
@@ -295,7 +352,8 @@ def main() -> int:
     for t in (test_streamlit_abort_is_baseexception,
               test_every_charge_has_a_finally_refund,
               test_refunds_do_not_rely_only_on_except,
-              test_an_empty_summary_is_refunded_not_rendered):
+              test_an_empty_summary_is_refunded_not_rendered,
+              test_no_page_bails_without_closing_itself):
         try:
             t()
         except Exception as e:

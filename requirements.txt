@@ -3,10 +3,20 @@ pandas==2.2.2
 numpy==1.26.4
 requests==2.32.3
 polygon-api-client==1.13.7
-scipy==1.13.1
 supabase==2.5.0
 websockets==11.0.0
 setuptools>=69.0.0
+# NOT for building. It was added so `pkg_resources` would exist for an older
+# polygon-api-client that imported it unguarded; 1.13.7 uses
+# importlib.metadata instead, and setuptools >= 81 dropped pkg_resources
+# entirely, so this pin no longer supplies it. Kept because nothing has
+# proven Streamlit Cloud's image works without it.
+#
+# `pkg_resources.py` AT THE REPO ROOT is the thing that actually answers
+# `import pkg_resources` today -- the repo root precedes site-packages on
+# sys.path, so the shim SHADOWS the real module for the whole app. It greps
+# as imported-by-nothing and is one cleanup sweep away from being deleted.
+# See its docstring before touching either.
 
 sentry-sdk==2.66.1
 

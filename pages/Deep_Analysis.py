@@ -2,7 +2,6 @@ import html
 import logging
 import re
 import streamlit as st
-from typing import Dict, List, Any
 
 from utils.obs import install as _install_logging, new_request_id, set_request_id as _set_request_id
 
@@ -10,9 +9,9 @@ _install_logging()
 _da_logger = logging.getLogger(__name__)
 
 from utils.navigation import render_sidebar_navigation, render_top_nav
-from utils.ui import open_page, close_page, GENERIC_ERROR_TEXT, safe_ui, render_recommendation_panel, render_full_analysis_expander, render_evidence_check
+from utils.ui import (close_page, render_recommendation_panel,
+                      render_full_analysis_expander, render_evidence_check)
 import streamlit.components.v1 as _components
-from utils.deep_analysis import ANALYSIS_PROMPTS
 # NOT the pipeline. This page charges a credit, draws a progress bar and
 # renders a card; the analysis itself lives in core-api and is reached over
 # HTTPS. utils.analyze is deliberately absent from these imports -- the day it
@@ -111,6 +110,20 @@ from utils.guard import require_active_account
 from utils.credits import consume_credit, refund_credit, complete_work
 from utils.scan_intent import get_query_params
 
+
+def _bail() -> None:
+    """Stop the script WITHOUT leaving the page half-drawn.
+
+    st.stop() raises StopException, which unwinds past the close_page() at the
+    bottom of this module -- so the <div class="clawd-app-wrapper"> opened in
+    the hero above stays unclosed and the footer never renders. That was rare
+    when the only early exit was "out of credits"; the cutover made bailing a
+    routine outcome (core-api unconfigured, unreachable, or answering with no
+    card), so the chrome has to survive it.
+    """
+    close_page()
+    st.stop()
+
 _profile = require_active_account()
 
 # If we arrived via Home → Auth redirect, the ticker may be in query params.
@@ -167,13 +180,13 @@ if _run_clicked or (_autorun and _prefill):
             _da_logger.error("deep_analyze unavailable: core-api not configured")
             st.error("Deep Analysis is temporarily unavailable. "
                      "No credit has been used.")
-            st.stop()
+            _bail()
 
         _credit = consume_credit("deep_analyze", {"ticker": _run_ticker, "page": "deep_analysis"})
         if not _credit.ok:
             _da_logger.info("deep_analyze refused reason=%s", _credit.reason)
             st.error(_credit.message)
-            st.stop()
+            _bail()
         # Everything from here is charged work. It must be inside try/finally,
         # not try/except: Streamlit aborts a running script with StopException /
         # RerunException, both of which derive from BaseException, so an
@@ -315,7 +328,7 @@ if _run_clicked or (_autorun and _prefill):
                 # so the wording stops short of inviting one.
                 _fail_panel("Analysis failed", _refunded,
                             retry_ok=bool(_result_holder.get("pre_spend")))
-                st.stop()
+                _bail()
 
             _card = _result_holder.get("card") or {}
             # OPTIONAL, and deliberately so. analysis_results feeds the "Full
@@ -340,7 +353,7 @@ if _run_clicked or (_autorun and _prefill):
                 # could produce it; it is not any more.
                 _fail_panel("No analysis could be produced", _refunded,
                             retry_ok=False)
-                st.stop()
+                _bail()
 
             # EVERYTHING BELOW READS THE CARD -- not the Analysis, not the
             # Verdict. The card is the only thing the remote path can hand back
