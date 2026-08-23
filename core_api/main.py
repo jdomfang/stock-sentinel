@@ -56,7 +56,11 @@ SHARED_SECRET = os.getenv("CORE_API_SHARED_SECRET", "")
 # Bump this with every deploy that changes behaviour. /health is the only
 # way to tell WHICH build is answering, and "did the deploy actually land"
 # was guesswork on the last three.
-SERVICE_VERSION = "2026.08.23-step5"
+# The RESPONSE CONTRACT is part of this: step6 adds analysis_results and
+# the X-Core-Refused header, and a client that depends on either needs a
+# way to know which build answered. Bump it whenever the contract or the
+# behaviour moves -- it went stale within one commit of being added.
+SERVICE_VERSION = "2026.08.23-step6"
 
 # THE BUDGET THE PORTAL HAS AND THIS SERVICE DOES NOT.
 #
