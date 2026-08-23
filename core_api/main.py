@@ -60,7 +60,7 @@ SHARED_SECRET = os.getenv("CORE_API_SHARED_SECRET", "")
 # the X-Core-Refused header, and a client that depends on either needs a
 # way to know which build answered. Bump it whenever the contract or the
 # behaviour moves -- it went stale within one commit of being added.
-SERVICE_VERSION = "2026.08.23-step6b"
+SERVICE_VERSION = "2026.08.23-step6c"
 
 # THE BUDGET THE PORTAL HAS AND THIS SERVICE DOES NOT.
 #
@@ -166,8 +166,15 @@ def _scoring_config() -> dict:
     except Exception:
         MODEL_NAME = "unavailable"
     try:
-            gate = directional_margin()
+        from utils.evidence import directional_margin
+        gate = directional_margin()
     except Exception:
+        # LOGGED, not swallowed. The bare version of this handler turned a
+        # missing import into a null gate on /health with nothing anywhere to
+        # say why -- and the gate is half of the pair this function exists to
+        # surface. A silent None here reads as "not applicable" rather than
+        # "we could not tell you", which is the more alarming of the two.
+        logger.exception("scoring config: directional_margin unavailable")
         gate = None
     return {"model": MODEL_NAME, "directional_margin": gate}
 

@@ -290,9 +290,16 @@ def test_the_secret_can_be_checked_without_spending():
     # The pair that silently changes every verdict. A caller compares these
     # against its own config to catch a model mismatch before it issues
     # different answers from identical evidence.
-    check("it reports the model", "model" in body, str(body))
-    check("...and the gate that goes with it",
-          "directional_margin" in body, str(body))
+    # PRESENT AND POPULATED. A key that is always there and always null
+    # passes a `in body` check while telling a caller nothing -- which is
+    # exactly what shipped: a deleted import turned the gate into None on
+    # /health, swallowed by a bare except.
+    check("it reports the model",
+          isinstance(body.get("model"), str) and body["model"] != "unavailable",
+          str(body.get("model")))
+    check("...and the gate that goes with it, as a number",
+          isinstance(body.get("directional_margin"), (int, float)),
+          repr(body.get("directional_margin")))
     check("it reports which build answered", "version" in body, str(body))
 
     check("a wrong secret is 401",
@@ -315,6 +322,18 @@ def test_the_secret_can_be_checked_without_spending():
     c2, _ = client(secret="")
     check("with no secret configured it is 503, matching /analyze",
           c2.get("/auth-check", headers={"X-Core-Secret": "x"}).status_code == 503)
+
+
+def test_health_and_auth_check_cannot_disagree():
+    """Both report the pair that silently changes every verdict."""
+    print("\n/health and /auth-check read the same scoring config")
+    c, M = client()
+    h = c.get("/health").json()
+    a = c.get("/auth-check", headers={"X-Core-Secret": "s3cret"}).json()
+    for k in ("model", "directional_margin"):
+        check(f"{k} agrees across both endpoints", h.get(k) == a.get(k),
+              f"health={h.get(k)!r} auth-check={a.get(k)!r}")
+        check(f"{k} is populated on /health", h.get(k) is not None, repr(h.get(k)))
 
 
 def test_analyze_returns_an_answer_not_a_5xx():
@@ -396,6 +415,7 @@ def main() -> int:
     test_health_reports_what_would_change_an_answer()
     test_the_card_is_built_from_state_not_from_the_verdict_word()
     test_the_secret_can_be_checked_without_spending()
+    test_health_and_auth_check_cannot_disagree()
     test_analyze_returns_an_answer_not_a_5xx()
     test_a_legacy_delivery_is_served_and_recorded()
     test_persist_uses_a_feature_the_database_accepts()
