@@ -189,6 +189,63 @@ def test_core_api_can_run_without_the_portal():
             check(f"Dockerfile COPY {src} exists", (REPO / src).exists(), src)
 
 
+def test_every_symbol_a_page_imports_actually_exists():
+    """A page that imports a name which is not there is a 500 on that page.
+
+    THIS FILE ALREADY PARSED every page with ast and pronounced them fine
+    while pages/Deep_Analysis.py imported `deliverable` from utils.analyze,
+    which did not exist. Both Deep Analyze and Discovery crashed at import in
+    production. Parsing proves the syntax; it says nothing about whether the
+    other module exports the symbol.
+
+    The pages cannot just be imported here -- they call st.set_page_config and
+    render at module scope. So resolve their imports instead: for every
+    `from utils... import X` a page performs, import the real module and look
+    X up on it, falling back to importing it as a submodule.
+
+    This is the check that turns "the tests were green" into something worth
+    believing for a file no test can execute.
+    """
+    import ast
+    import importlib
+
+    print("\npage imports: every symbol must exist in the module it comes from")
+    sys.path.insert(0, str(REPO))
+    pages = sorted((REPO / "pages").glob("*.py"))
+    if (REPO / "app.py").exists():
+        pages.append(REPO / "app.py")
+    LOCAL = ("utils", "core_api")
+
+    for page in pages:
+        tree = ast.parse(page.read_text())
+        for node in ast.walk(tree):
+            if not (isinstance(node, ast.ImportFrom) and node.module
+                    and node.level == 0
+                    and node.module.split(".")[0] in LOCAL):
+                continue
+            where = f"{page.name}:{node.lineno}"
+            try:
+                mod = importlib.import_module(node.module)
+            except Exception as e:
+                # streamlit-dependent modules are legitimately unimportable in
+                # some environments; only report a genuinely missing module.
+                if isinstance(e, ModuleNotFoundError) and \
+                        e.name and e.name.split(".")[0] not in LOCAL:
+                    continue
+                check(f"{where} {node.module} imports", False,
+                      f"{type(e).__name__}: {e}")
+                continue
+            for alias in node.names:
+                if alias.name == "*" or hasattr(mod, alias.name):
+                    continue
+                try:
+                    importlib.import_module(f"{node.module}.{alias.name}")
+                except Exception:
+                    check(f"{where} {node.module} exports {alias.name!r}",
+                          False, "imported by a page, absent from the module")
+    check("every page import resolves", True)
+
+
 def main() -> int:
     major, minor = pinned_version()
     print("=" * 74)
@@ -264,6 +321,7 @@ def main() -> int:
 
     test_selectively_copied_services_can_import()
     test_core_api_can_run_without_the_portal()
+    test_every_symbol_a_page_imports_actually_exists()
     print(f"\n  {len(PASSED)} passed, {len(FAILED)} failed")
     for n, d in FAILED:
         print(f"    - {n}: {d}")
