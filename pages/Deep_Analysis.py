@@ -211,6 +211,16 @@ if _run_clicked or (_autorun and _prefill):
                             event_id=getattr(_credit, "event_id", None))
                         _result_holder["remote"] = _r
                         if _r.ok:
+                            # WHICH PATH SERVED THIS. Both paths write rows
+                            # that are byte-identical by design, so the tables
+                            # cannot answer "did it use the container?" and
+                            # neither can timing -- a warm remote call and a
+                            # warm local one land within a few hundred ms of
+                            # each other. One log line ends the guessing.
+                            _da_logger.info(
+                                "deep_analyze served by CORE-API in %.1fs "
+                                "(degraded=%s) ticker=%s",
+                                _r.elapsed_s or -1, _r.degraded, _run_ticker)
                             _result_holder["card"] = _r.card
                             _result_holder["analysis_results"] = _r.analysis_results
                             return
@@ -228,6 +238,11 @@ if _run_clicked or (_autorun and _prefill):
 
                     # SCAFFOLDING. The in-process path stays only until the
                     # remote one is confirmed in production, then comes out.
+                    _da_logger.info(
+                        "deep_analyze served IN-PROCESS ticker=%s (core-api %s)",
+                        _run_ticker,
+                        "configured but unusable" if _client.configured()
+                        else "not configured")
                     _res = _analyze(_run_ticker, sector, corpus_sink=_corpus_sink)
                     _result_holder["analysis"] = _res
                     _result_holder["analysis_results"] = _res.analysis_results
