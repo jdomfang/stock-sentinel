@@ -97,13 +97,22 @@ def price_tiles(a: "Analysis") -> list:
     # appearing, with no error anywhere.
     tiles = [{"key": "last_price", "label": "Last Price",
               "value": "Unavailable" if a.last_close is None else f"${a.last_close:.2f}"}]
-    if proj.get("error") is None and proj.get("band") is not None:
-        tiles.append({"key": "range_30d", "label": "30d range (vol)",
-                      "value": f"{proj['scenario_bear']:.1f}% to {proj['scenario_bull']:.1f}%"})
-        tiles.append({"key": "drawdown_first", "label": "Drawdown first",
-                      "value": ("under 0.1%" if (mae is not None and mae < 0.001)
-                                else "Unavailable" if mae is None
-                                else f"-{mae * 100:.1f}%")})
+    # GUARDED. These format numbers that came out of a Monte Carlo or across a
+    # network, and this is the single producer for both pages and the service.
+    # A raise here used to degrade three tiles to "Unavailable"; now that the
+    # page reads its whole card from here, the same raise would destroy a
+    # delivered analysis AND the only permanent record of it.
+    try:
+        if proj.get("error") is None and proj.get("band") is not None:
+            tiles.append({"key": "range_30d", "label": "30d range (vol)",
+                          "value": f"{proj['scenario_bear']:.1f}% to {proj['scenario_bull']:.1f}%"})
+            tiles.append({"key": "drawdown_first", "label": "Drawdown first",
+                          "value": ("under 0.1%" if (mae is not None and mae < 0.001)
+                                    else "Unavailable" if mae is None
+                                    else f"-{mae * 100:.1f}%")})
+    except Exception:
+        logger.warning("price_tiles: formatting failed for %s", a.ticker,
+                       exc_info=True)
     return tiles
 
 
@@ -359,6 +368,30 @@ def persist(a: Analysis, *, feature: str, event_id: str | None = None,
     Separate from analyze() because a service may want the analysis without the
     telemetry (a dry run, a replay), and because a logging failure must never
     turn a delivered analysis into an error.
+
+    WHAT A ROW MEANS CHANGED AT THE CUTOVER, and it is worth being exact.
+
+    While the portal ran the analysis itself, this was the last statement on the
+    main thread and it only ran after the panel had rendered -- so a row implied
+    a DELIVERED analysis, and a refund implied no row. core-api writes before it
+    can respond, so the portal may still refund afterwards: the user aborted
+    mid-render, the call timed out, the response was unusable. The row stands.
+
+    So a row now means COMPUTED, not DELIVERED. For scoring verdicts against
+    forward returns that is the better population -- it is not conditioned on
+    what the user did next. For "was this debit honoured?" it is not enough on
+    its own, and the answer is a join: a refund records the original event as
+    `original_event_id` in usage_events, so
+
+        verdict_log.event_id NOT IN (refunded original_event_ids)
+
+    is the delivered cohort. Nothing is lost; it takes two tables to ask.
+
+    The alternative -- have the service withhold the write until the portal
+    confirms delivery -- was rejected deliberately. It trades a row that exists
+    for an analysis nobody saw (harmless to scoring, detectable by join) for a
+    MISSING row after a delivered analysis, and X's 7-day index means a missing
+    row can never be rebuilt. Everything else in this module errs the same way.
     """
     # NOT `if not a.ok`. The legacy path -- no verdict, prose summary rendered,
     # credit kept -- is a DELIVERED analysis and has always been recorded, under

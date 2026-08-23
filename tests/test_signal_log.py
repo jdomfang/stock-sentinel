@@ -385,9 +385,15 @@ def test_the_write_sites_are_guarded_against_reruns():
     # The USE, not just the mention: leaving the variable assigned and then
     # not reading it passed a presence check while the panel quietly went back
     # to printing the corpus union.
-    check("...and sizes the sample the way the other page does",
-          "_mentions_ct = _ev_ct" in _disc_code
-          and "eligible_clusters" in _code_only(REPO / "pages" / "Deep_Analysis.py"))
+    # BOTH pages take the sample size off the card, so one paid analysis
+    # cannot be described as 5 posts on one page and ~90 on the other. Reading
+    # it off the card rather than off a Verdict is also what lets the remote
+    # path render at all -- it has no Verdict object.
+    _deep_code = _code_only(REPO / "pages" / "Deep_Analysis.py")
+    for _name, _src in (("Discovery", _disc_code), ("Deep_Analysis", _deep_code)):
+        check(f"{_name} sizes the sample from the card",
+              "independent_voices" in _src and "quality.eligible_clusters" not in _src,
+              _name)
     check("Discovery keeps its cohort tag, which verdict_log cannot otherwise "
           "recover", 'route="discovery"' in disc)
     deep = (REPO / "pages" / "Deep_Analysis.py").read_text()

@@ -197,6 +197,17 @@ def test_refunds_do_not_rely_only_on_except() -> None:
                   "only reachable on Exception; a Streamlit abort skips it")
 
 
+def _call_name_in(body, name: str) -> bool:
+    """Does this statement list actually CALL `name`?
+
+    Asserted on the call graph rather than on source text: a comment saying
+    the branch refunds is not a refund.
+    """
+    import ast
+    return any(_call_name(n) == name
+               for n in ast.walk(ast.Module(body=body, type_ignores=[])))
+
+
 def test_an_empty_summary_is_refunded_not_rendered() -> None:
     """A panel of dashes is worse than an error: it is a silent charge.
 
@@ -216,12 +227,15 @@ def test_an_empty_summary_is_refunded_not_rendered() -> None:
     # it is checked on its own terms below.
     for page in ("Deep_Analysis.py",):
         tree = ast.parse(open(os.path.join(REPO, "pages", page)).read())
+        # The page is now a card renderer, so the empty-result state is
+        # "no card" rather than "no ai_summary". Matched on the CARD name
+        # rather than the exact boolean shape, because the guard legitimately
+        # tests two things (absent card, or a card carrying an error).
         guards = [n for n in ast.walk(tree)
                   if isinstance(n, ast.If)
-                  and isinstance(n.test, ast.UnaryOp)
-                  and isinstance(n.test.op, ast.Not)
-                  and isinstance(n.test.operand, ast.Name)
-                  and n.test.operand.id == "ai_summary"]
+                  and any(isinstance(x, ast.Name) and x.id == "_card"
+                          for x in ast.walk(n.test))
+                  and _call_name_in(n.body, "refund_credit")]
         check(f"{page} guards the empty-summary case", len(guards) == 1,
               f"found {len(guards)}")
         if not guards:
@@ -244,7 +258,7 @@ def test_an_empty_summary_is_refunded_not_rendered() -> None:
               if isinstance(n, ast.If)
               and isinstance(n.test, ast.UnaryOp)
               and isinstance(n.test.op, ast.Not)
-              and _call_name(n.test.operand) == "_summary_available"]
+              and _call_name(n.test.operand) == "_deliverable"]
     # TWO of them, and they do different jobs. The button handler refunds
     # before the run is ever marked delivered; the render guard only declines
     # to draw, because by then the credit decision has already been taken on a
@@ -260,10 +274,16 @@ def test_an_empty_summary_is_refunded_not_rendered() -> None:
     check("...and the rendering one declines to draw",
           any("info" in b for b in bodies), str(bodies))
     # Both pages must ask the question the SAME way, or one of them drifts back.
-    check("both pages share one definition of 'a summary exists'",
-          "_summary_available" in disc
-          and "legacy_summary" in open(
-              os.path.join(REPO, "pages", "Deep_Analysis.py")).read())
+    # ONE definition, IMPORTED by both -- not two that happen to agree today.
+    # They did not agree: one gated on card()'s error stub and the other on the
+    # analysis, and the difference silently skipped the log write for a run
+    # that had produced a real verdict.
+    deep = open(os.path.join(REPO, "pages", "Deep_Analysis.py")).read()
+    for name, src in (("Discovery", disc), ("Deep_Analysis", deep)):
+        check(f"{name} imports the shared deliverable() predicate",
+              "deliverable as _deliverable" in src, name)
+        check(f"{name} defines no rival predicate",
+              "def _summary_available" not in src, name)
 
 
 def main() -> int:

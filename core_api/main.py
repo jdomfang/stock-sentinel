@@ -115,7 +115,8 @@ def _authorise(provided: str | None) -> None:
         # Fail CLOSED. An analysis buys X posts, and X bills per post returned,
         # so an open endpoint is a spending endpoint.
         raise HTTPException(status_code=503,
-                            detail="CORE_API_SHARED_SECRET is not configured")
+                            detail="CORE_API_SHARED_SECRET is not configured",
+                            headers={"X-Core-Refused": "config"})
     if not provided or not hmac.compare_digest(provided, SHARED_SECRET):
         raise HTTPException(status_code=401, detail="bad or missing secret")
 
@@ -131,6 +132,17 @@ class AnalyzeRequest(BaseModel):
     # Correlates this analysis with the credit the caller already charged, so a
     # disputed call can be reconstructed end to end.
     event_id: str | None = None
+    # WHOSE analysis this is. Written into signal_log.feature and, via `route`,
+    # into the model discriminator of both tables -- the only thing that
+    # separates a typed Deep Analyze from a basket-query one in verdict_log,
+    # which has no feature column. Defaulting these to "core_api" for a portal
+    # request would silently relabel every row from the cutover onward and
+    # break continuity with everything already recorded.
+    #
+    # Constrained, not free text: these land in database columns.
+    feature: str = Field(default="core_api",
+                         pattern=r"^(core_api|deep_analyze|discovery)$")
+    route: str | None = Field(default=None, pattern=r"^(discovery)$")
     # A caller that only wants the answer -- a replay, a dry run, a comparison
     # against the portal's own result -- must be able to skip the telemetry.
     persist: bool = True
@@ -193,30 +205,43 @@ def analyze(req: AnalyzeRequest,
     # corpus is not even cached on that path, so every retry re-buys it.
     blockers = _config_blockers()
     if blockers:
+        # The header is the contract. The client used to sniff the word
+        # "missing" out of the body, which both mis-classified the OTHER
+        # pre-spend 503 (an unset shared secret) and would have matched a
+        # platform 503 that happened to contain the word.
         raise HTTPException(status_code=503,
-                            detail=f"refusing to spend: missing {blockers}")
+                            detail=f"refusing to spend: missing {blockers}",
+                            headers={"X-Core-Refused": "config"})
 
     from utils.analyze import analyze as run, card, persist as write
 
-    if not _SLOTS.acquire(blocking=False):
-        # 429, never a queue. Queuing forty minute-long analyses is how the
-        # healthcheck starves and the container is restarted mid-spend.
-        raise HTTPException(status_code=429,
-                            detail=f"at capacity ({MAX_CONCURRENT} concurrent)")
     t0 = time.time()
-    try:
-        # Single-flight per ticker: the second caller waits and then reads the
-        # first one's corpus from cache rather than buying a second copy.
-        with _ticker_lock(req.ticker.upper()):
+    # SINGLE-FLIGHT FIRST, SLOT SECOND. The other order let a caller merely
+    # WAITING on the ticker lock hold a concurrency slot for the whole wait:
+    # three requests for one trending ticker put the third at ~120s of queueing
+    # plus ~60s of work, which is exactly the client's timeout -- and a client
+    # timeout does not cancel the server, so the analysis completes, spends,
+    # and writes a row for a user who was refunded and told it failed.
+    with _ticker_lock(req.ticker.upper()):
+        if not _SLOTS.acquire(blocking=False):
+            # 429, never a queue. Queuing forty minute-long analyses is how the
+            # healthcheck starves and the container is restarted mid-spend.
+            # Raised BEFORE any spending, which is why the client is allowed to
+            # run this one itself.
+            raise HTTPException(status_code=429,
+                                detail=f"at capacity ({MAX_CONCURRENT} concurrent)",
+                                headers={"X-Core-Refused": "capacity"})
+        try:
             a = run(req.ticker, req.sector)
-    except Exception as e:
-        # A raise here happens AFTER the money is spent, and a bare 500 invites
-        # the retry loop this endpoint is written to avoid.
-        logger.exception("analyze %s crashed", req.ticker)
-        return {"ok": False, "ticker": req.ticker.upper(),
-                "error": f"{type(e).__name__}", "elapsed_s": round(time.time()-t0, 2)}
-    finally:
-        _SLOTS.release()
+        except Exception as e:
+            # A raise here happens AFTER the money is spent, and a bare 500
+            # invites the retry loop this endpoint is written to avoid.
+            logger.exception("analyze %s crashed", req.ticker)
+            return {"ok": False, "ticker": req.ticker.upper(),
+                    "error": f"{type(e).__name__}",
+                    "elapsed_s": round(time.time()-t0, 2)}
+        finally:
+            _SLOTS.release()
     elapsed = round(time.time() - t0, 2)
 
     # A LEGACY DELIVERY IS A DELIVERY. analyze() now produces a fallback
@@ -227,14 +252,15 @@ def analyze(req: AnalyzeRequest,
     # debited-with-no-row hole persist() was widened to close.
     if not a.ok and a.legacy_summary:
         if req.persist:
-            write(a, feature="core_api", event_id=req.event_id)
+            write(a, feature=req.feature, event_id=req.event_id,
+                  route=req.route)
         logger.info("analyze %s event=%s -> legacy %s in %.2fs",
                     a.ticker, req.event_id,
                     a.legacy_summary.get("recommendation"), elapsed)
         # ok:true, because a fallback that was delivered and billed is an
         # answer. `card.adjudicator` is how a caller tells the two apart.
         return {"ok": True, "elapsed_s": elapsed, "card": card(a),
-                "degraded": True}
+                "analysis_results": a.analysis_results, "degraded": True}
 
     if not a.ok:
         # 200 with an error field, not a 5xx: the caller has usually already
@@ -251,10 +277,16 @@ def analyze(req: AnalyzeRequest,
                 "elapsed_s": elapsed}
 
     if req.persist:
-        write(a, feature="core_api", event_id=req.event_id)
+        write(a, feature=req.feature, event_id=req.event_id,
+              route=req.route)
 
     logger.info("analyze %s event=%s -> %s/%s branch=%s retrieved=%d in %.2fs",
                 a.ticker, req.event_id, a.verdict.recommendation,
                 a.verdict.confidence, a.verdict.branch,
                 len(a.corpus.get("ticker_corpus") or []), elapsed)
-    return {"ok": True, "elapsed_s": elapsed, "card": card(a)}
+    # analysis_results alongside the card: the portal's "Full breakdown"
+    # expander renders the per-angle summaries, and the card deliberately does
+    # not carry them. Without this the cutover would silently drop a panel the
+    # user paid for -- the card alone cannot rebuild it.
+    return {"ok": True, "elapsed_s": elapsed, "card": card(a),
+            "analysis_results": a.analysis_results}

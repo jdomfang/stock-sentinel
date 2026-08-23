@@ -243,7 +243,8 @@ def test_a_legacy_delivery_is_served_and_recorded():
     UA.analyze = lambda t, s="unknown": Analysis(
         ticker=t, error="no usable evidence",
         legacy_summary={"recommendation": "Watch", "confidence": "Low",
-                        "avg_sentiment": 0.03, "rationale": ["thin"]})
+                        "avg_sentiment": 0.03, "rationale": ["thin"]},
+        analysis_results={"a": {"tweet_ids": ["1"]}})
     UA.persist = lambda a, **kw: wrote.update(kw, ticker=a.ticker)
     try:
         r = c.post("/analyze", json={"ticker": "ZZZZ", "event_id": "ev-legacy"},
@@ -255,6 +256,13 @@ def test_a_legacy_delivery_is_served_and_recorded():
               body.get("degraded") is True, str(body)[:90])
         check("a card is served", body.get("card", {}).get("verdict") == "Watch",
               str(body.get("card"))[:90])
+        # The portal's "Full breakdown" expander renders the per-angle
+        # summaries and the card deliberately does not carry them. Dropping
+        # this field silently deletes a panel the user paid for -- there is
+        # nothing in the card to rebuild it from.
+        check("...alongside the breakdown the card cannot carry",
+              body.get("analysis_results") == {"a": {"tweet_ids": ["1"]}},
+              str(body.get("analysis_results"))[:90])
         check("the card names the adjudicator",
               (body.get("card") or {}).get("adjudicator") == "legacy",
               str(body.get("card"))[:60])
@@ -292,9 +300,30 @@ def test_persist_uses_a_feature_the_database_accepts():
     sql = (REPO / "supabase" / "migrations").glob("*signal_log*.sql")
     text = "\n".join(p.read_text() for p in sql)
     check("core_api is an allowed feature", "'core_api'" in text)
+
+    # The service no longer hardcodes its feature -- the CALLER owns it, so
+    # that a portal request is recorded as deep_analyze rather than silently
+    # relabelled and cut off from everything already in the table. That makes
+    # the real question "can a caller name a feature the database will
+    # reject?", and a rejected insert is a 23514 the writer swallows: the row
+    # is simply lost. So the accepted set must be a SUBSET of the DB's.
+    import re as _re
     src = (REPO / "core_api" / "main.py").read_text()
-    check("the service persists under that exact name",
-          'feature="core_api"' in src)
+    m = _re.search(r"feature: str = Field\(default=\"(\w+)\",\s*"
+                   r"pattern=r\"\^\(([^)]+)\)\$\"", src)
+    check("the request constrains feature to a fixed set", bool(m), src[:0])
+    if m:
+        allowed = set(m.group(2).split("|"))
+        db = set(_re.findall(r"'([a-z_]+)'",
+                             _re.search(r"feature in \(([^)]+)\)", text.split(
+                                 "signal_log_feature_chk")[-1]).group(1)))
+        check("every feature the service accepts is one the DB accepts",
+              allowed <= db, f"service={sorted(allowed)} db={sorted(db)}")
+        check("...and its default is still core_api", m.group(1) == "core_api")
+    # route is written into the model discriminator of BOTH tables, so it is
+    # constrained for the same reason.
+    check("route is constrained too",
+          'route: str | None = Field(default=None, pattern=' in src)
     check("...and the constraint change is re-runnable",
           "drop constraint signal_log_feature_chk" in text)
 

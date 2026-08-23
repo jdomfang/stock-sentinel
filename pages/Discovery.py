@@ -24,7 +24,7 @@ from utils.deep_analysis import ANALYSIS_PROMPTS
 # behind the panel is the same one pages/Deep_Analysis.py runs.
 from utils.analyze import (analyze as _analyze, card as _card_for,
                            persist as _persist, price_tiles as _price_tiles,
-                           unique_mentions as _unique_mentions)
+                           deliverable as _deliverable)
 
 
 # Verdicts we are willing to assert. Anything else is a statement about how
@@ -1669,22 +1669,6 @@ if st.session_state.df_valid is not None:
         # Never let UI extras break the page
         pass
 
-def _summary_available(a) -> bool:
-    """Did this analysis produce something a user can be shown and charged for?
-
-    The SAME condition utils.analyze.persist() uses to decide whether a row is
-    owed. Two places asking this question two different ways is how a paid
-    analysis came to be rendered but never recorded.
-    """
-    if a is None:
-        return False
-    # getattr, not attribute access: an Analysis stored in session state by an
-    # older deploy may predate a field this code reads, and an AttributeError
-    # here lands in the middle of a rendered page.
-    return (getattr(a, "verdict", None) is not None
-            or bool(getattr(a, "legacy_summary", None)))
-
-
 def _render_deep_panel(ticker, sector, deep_results):
     """Render the deep analysis panel inline below a ticker row.
 
@@ -1717,14 +1701,6 @@ def _render_deep_panel(ticker, sector, deep_results):
     # two log calls, and persist() reads those off the analysis itself.
     _v = _a.verdict
     _pts = len(_a.prices or [])
-    # THE NUMBER THAT DECIDED THE CALL, matching pages/Deep_Analysis.py. This
-    # page printed the corpus union -- ~90 of 98 posts -- beside a verdict
-    # resting on 5 independent voices, while the other page printed the 5. Same
-    # ticker, same credit, same day, two different sample sizes.
-    _ev_ct = (_a.verdict.quality.eligible_clusters
-              if _a.verdict is not None else None)
-    _mentions_ct = _ev_ct if _ev_ct is not None else _unique_mentions(_a)
-
     # EVERY string in the panel below comes from card(), built beside the state
     # that justifies it. This page previously carried its own copies of the
     # headline and confidence-note dictionaries and its own number formatting,
@@ -1733,7 +1709,7 @@ def _render_deep_panel(ticker, sector, deep_results):
     # stub instead meant an Analysis carrying both a verdict and an .error
     # returned here -- before the panel, before the evidence check and before
     # the log write -- on a run already charged and already marked completed.
-    if not _summary_available(_a):
+    if not _deliverable(_a):
         st.info("No analysis could be produced for this ticker.")
         return
 
@@ -1754,6 +1730,15 @@ def _render_deep_panel(ticker, sector, deep_results):
                 _hold = _t["value"]
     except Exception:
         logger.warning("discovery: card/tile build failed", exc_info=True)
+
+    # THE NUMBER THAT DECIDED THE CALL, matching pages/Deep_Analysis.py. This
+    # page printed the corpus union -- ~90 of 98 posts -- beside a verdict
+    # resting on 5 independent voices, while the other page printed the 5. Same
+    # ticker, same credit, same day, two different sample sizes.
+    _ev_ct = (_card.get("evidence") or {}).get("independent_voices")
+    _mentions_ct = (_ev_ct if _ev_ct is not None
+                    else (_card.get("evidence") or {}).get("mentions") or 0)
+
 
     _rec = _card.get("verdict") or "—"
     _conf = _card.get("confidence") or "—"
@@ -1924,9 +1909,11 @@ def _render_deep_panel(ticker, sector, deep_results):
     # NEITHER: a scan-row Deep Analyze produced no evidence check and no
     # verdict_log row, so the table built to measure this product only ever saw
     # users who typed the ticker on the other page.
-    if _v is not None:
+    if _card.get("pillars"):
         try:
-            render_evidence_check(_v, ticker)
+            # THE CARD, not the Verdict: one renderer, and the remote path
+            # has no Verdict object to hand it.
+            render_evidence_check(_card, ticker)
         except Exception:
             logger.warning("discovery: evidence check render failed", exc_info=True)
 
@@ -2173,7 +2160,7 @@ if st.session_state.df_valid is not None:
                             refund_credit("deep_analyze", _dcredit.event_id, "analysis returned no results")
                             _deep_error = (f"No results for {ticker_symbol}. "
                                            "Your credit was not used — try again in a moment.")
-                        elif not _summary_available(_disc_holder.get("analysis")):
+                        elif not _deliverable(_disc_holder.get("analysis")):
                             # Neither adjudicator produced anything. Falling
                             # through here marked the run delivered, kept the
                             # credit, wrote no row, and showed a grey box the

@@ -15,9 +15,10 @@ import streamlit.components.v1 as _components
 from utils.deep_analysis import ANALYSIS_PROMPTS
 # The pipeline itself. This page contributes credits, progress and pixels;
 # it no longer contains a second copy of the analysis.
-from utils.analyze import (analyze as _analyze, persist as _persist,
-                           price_tiles as _price_tiles,
-                           unique_mentions as _unique_mentions)
+from utils.analyze import (analyze as _analyze, card as _card_for,
+                           persist as _persist,
+                           deliverable as _deliverable)
+from utils import analyze_client as _client
 
 # Page configuration
 st.set_page_config(
@@ -200,17 +201,45 @@ if _run_clicked or (_autorun and _prefill):
                 # would be stamped "-" and the id would correlate nothing.
                 _set_request_id(_rid)
                 try:
-                    # THE WHOLE PIPELINE, not just retrieval. Prices, the sector
-                    # benchmark, the ledger, adjudication and the projection used
-                    # to run on the main thread AFTER this progress bar had been
-                    # cleared. They are network waits, so inside it is where they
-                    # belong -- and there is now one implementation of them.
+                    # THE CUTOVER. With CORE_API_URL set the analysis runs in
+                    # its own container and this page never touches the
+                    # pipeline; without it, nothing changes. Unsetting the
+                    # variable is the rollback, and it needs no deploy.
+                    if _client.configured():
+                        _r = _client.analyze_remote(
+                            _run_ticker, sector, feature="deep_analyze",
+                            event_id=getattr(_credit, "event_id", None))
+                        _result_holder["remote"] = _r
+                        if _r.ok:
+                            _result_holder["card"] = _r.card
+                            _result_holder["analysis_results"] = _r.analysis_results
+                            return
+                        if not _r.retryable:
+                            # The service answered, or it may have spent. Either
+                            # way this page must not run the analysis again:
+                            # verdict_log has no unique constraint on event_id,
+                            # so a second write is a second row that nothing
+                            # downstream can tell from a real second analysis.
+                            _result_holder["error"] = _r.error
+                            return
+                        _da_logger.warning(
+                            "core-api unusable (%s); running in-process for %s",
+                            _r.error, _run_ticker)
+
+                    # SCAFFOLDING. The in-process path stays only until the
+                    # remote one is confirmed in production, then comes out.
                     _res = _analyze(_run_ticker, sector, corpus_sink=_corpus_sink)
                     _result_holder["analysis"] = _res
-                    # analyze() never raises; it reports through .error. Only a
-                    # failure that produced NO results is the "Analysis failed"
-                    # panel. One that produced results but no verdict still falls
-                    # through to the legacy summary below, exactly as before.
+                    _result_holder["analysis_results"] = _res.analysis_results
+                    if _deliverable(_res):
+                        # Its OWN try. Presentation is not analysis: a format
+                        # failure here must not turn a completed, billed
+                        # analysis into the red panel, a refund, and no row.
+                        try:
+                            _result_holder["card"] = _card_for(_res)
+                        except Exception:
+                            _da_logger.exception("card build failed for %s",
+                                                 _run_ticker)
                     # `.raised` and not `.error`: an EXCEPTION gets the red
                     # "Analysis failed" panel, while an empty-but-valid answer
                     # stops silently and refunds, exactly as before. `.error` is
@@ -260,98 +289,103 @@ if _run_clicked or (_autorun and _prefill):
             _da_status.empty()
             _da_progress.empty()
 
+            def _fail_panel(headline: str, refunded: bool) -> None:
+                """ONE panel. The same paid outcome rendered as a red box on
+                the remote path and a blank page on the local one -- two
+                products for one failure, which is the opposite of what
+                sharing an implementation is for."""
+                st.markdown(
+                    '<div style="border:1px solid rgba(239,68,68,.30);border-radius:14px;padding:18px 20px;'
+                    'background:rgba(239,68,68,.05);text-align:center;margin:0.5rem 0;">'
+                    '<div style="font-size:1.2rem;margin-bottom:6px;">⚠️</div>'
+                    f'<div style="font-weight:700;color:rgba(248,113,113,.95);">{html.escape(headline)}</div>'
+                    '<div style="color:rgba(148,163,184,.75);font-size:0.85rem;margin-top:4px;">'
+                    + ("Your credit was not used — try again in a moment."
+                       if refunded else "Try again in a moment — this is usually temporary.")
+                    + '</div></div>',
+                    unsafe_allow_html=True,
+                )
+
             if "error" in _result_holder:
                 # The credit was taken before the work began. The work failed, so
                 # give it back rather than charging for an upstream outage.
                 _refunded = refund_credit("deep_analyze", _credit.event_id,
                                           f"analysis failed: {_result_holder['error'][:120]}")
-                st.markdown(
-                    '<div style="border:1px solid rgba(239,68,68,.30);border-radius:14px;padding:18px 20px;'
-                    'background:rgba(239,68,68,.05);text-align:center;margin:0.5rem 0;">'
-                    '<div style="font-size:1.2rem;margin-bottom:6px;">⚠️</div>'
-                    '<div style="font-weight:700;color:rgba(248,113,113,.95);">Analysis failed</div>'
-                    '<div style="color:rgba(148,163,184,.75);font-size:0.85rem;margin-top:4px;">'
-                    + ("Your credit was not used — try again in a moment."
-                       if _refunded else "Try again in a moment — this is usually temporary.")
-                    + '</div></div>',
-                    unsafe_allow_html=True,
-                )
+                _fail_panel("Analysis failed", _refunded)
                 st.stop()
 
-            _a = _result_holder.get("analysis")
-            analysis_results = (_a.analysis_results if _a is not None else None)
-            if not analysis_results:
-                refund_credit("deep_analyze", _credit.event_id, "analysis returned no results")
+            _a = _result_holder.get("analysis")          # local path only
+            _card = _result_holder.get("card") or {}
+            # OPTIONAL, and deliberately so. analysis_results feeds the "Full
+            # breakdown" expander and nothing else. A core-api one deploy
+            # behind returns a perfectly good card without it; refusing to
+            # deliver then would refund a user for an analysis the service had
+            # already run, billed and recorded, and show them a blank page.
+            analysis_results = _result_holder.get("analysis_results") or {}
+
+            # THE CARD IS THE PRODUCT. Gating on it -- rather than on the
+            # breakdown, or on card()'s error stub -- is the same condition
+            # persist() uses to decide a row is owed, so the page cannot refuse
+            # to render something the database was told to record.
+            if not _card:
+                _da_logger.error("no card produced for %s", _run_ticker)
+                _refunded = refund_credit("deep_analyze", _credit.event_id,
+                                          "no summary could be produced")
+                _fail_panel("No analysis could be produced", _refunded)
                 st.stop()
 
-            # Everything below READS the analysis; nothing is recomputed. This
-            # page used to fetch prices, fetch the benchmark, score both corpora,
-            # build the ledger, adjudicate and project inline -- a second
-            # hand-written copy of utils/analyze.py which had already drifted
-            # from it in three ways, each of them corrupting a table the two
-            # share. Only what the PAGE DRAWS is unpacked: the ledger, volumes,
-            # benchmark and bar date were held here solely to be typed back
-            # into two log calls, and persist() reads those off the analysis.
-            _verdict = _a.verdict
-            price_points = len(_a.prices or [])
-            _proj = _a.projection or {}
+            # EVERYTHING BELOW READS THE CARD -- not the Analysis, not the
+            # Verdict. The card is the only thing the remote path can hand back
+            # and the only thing card() guarantees agrees with the decision, so
+            # identical code now draws an analysis computed in this process and
+            # one computed in a container. The two cannot present the same
+            # verdict differently, which is the property the whole migration is
+            # for.
+            _evidence = _card.get("evidence") or {}
+            _movement = _card.get("movement") or {}
+            price_points = _evidence.get("price_points") or 0
+
+            ai_summary = {
+                # "—" rather than None: render_recommendation_panel calls
+                # .lower() on the recommendation, so a card missing it raised
+                # AttributeError mid-page, before _delivered.
+                "recommendation": _card.get("verdict") or "—",
+                "confidence": _card.get("confidence") or "—",
+                # NOT `or 0.0`. card() returns None when the fallback reported
+                # no score, precisely so a renderer cannot print
+                # "Neutral (+0.00)" as a finding nobody made. Discovery honours
+                # that; this page must not disagree about the same card.
+                "avg_sentiment": _card.get("avg_sentiment"),
+                # The reason only. would_change belongs to the evidence check
+                # below; duplicating it here printed "more independent voices,
+                # not more posts" as a REASON for the signal.
+                "rationale": _card.get("rationale") or [],
+            }
 
             current_price = projected_gain = drawdown_first = "Unavailable"
-
-            if _verdict is not None:
-                ai_summary = {
-                    "recommendation": _verdict.recommendation,
-                    "confidence": _verdict.confidence,
-                    "avg_sentiment": _verdict.social.direction,
-                    # The reason only. would_change belongs to the evidence
-                    # check below; duplicating it here printed "more independent
-                    # voices, not more posts" as a REASON for the signal.
-                    "rationale": [_verdict.reason],
-                }
-            else:
-                # LEGACY FALLBACK, kept deliberately. When the ledger yields no
-                # verdict this page has always still rendered the older prose
-                # summary, the projection, and kept the credit -- a degradation,
-                # not a failure. Computed by the pipeline, so the page holds no
-                # opinion about which adjudicator ran.
-                ai_summary = _a.legacy_summary
-                if not ai_summary:
-                    # Neither adjudicator produced anything. Rendering this
-                    # dict anyway gives Signal "--", Confidence "--" and a
-                    # neutral score, sets _delivered, keeps the credit and
-                    # writes no row -- a silent charge for nothing. Before the
-                    # refactor generate_ai_summary raised here and the finally
-                    # refunded; that outcome is preserved, with a real message
-                    # in place of a Streamlit traceback.
-                    _da_logger.error("no verdict and no legacy summary for %s",
-                                     _run_ticker)
-                    refund_credit("deep_analyze", _credit.event_id,
-                                  "no summary could be produced")
-                    st.error(GENERIC_ERROR_TEXT)
-                    st.stop()
-
-            # BOTH paths, and selected by KEY, not by the label's wording. The
-            # tiles come from the single producer beside the state that
-            # justifies them; a renderer that formats the same number its own
-            # way is how the card came to contradict its own decision. Guarded
-            # because this now runs before _delivered: a formatting raise must
-            # degrade to "Unavailable", never cost a paid delivery.
-            try:
-                for _tile in _price_tiles(_a):
-                    if _tile["key"] == "last_price":
-                        current_price = _tile["value"]
-                    elif _tile["key"] == "range_30d":
-                        projected_gain = _tile["value"]
-                    elif _tile["key"] == "drawdown_first":
-                        drawdown_first = _tile["value"]
-            except Exception:
-                _da_logger.warning("price tiles failed", exc_info=True)
+            # Selected by KEY, not by the label's wording: rewording a label
+            # would otherwise delete a tile with nothing raised anywhere.
+            for _tile in (_card.get("tiles") or []):
+                if _tile.get("key") == "last_price":
+                    current_price = _tile.get("value", "Unavailable")
+                elif _tile.get("key") == "range_30d":
+                    projected_gain = _tile.get("value", "Unavailable")
+                elif _tile.get("key") == "drawdown_first":
+                    drawdown_first = _tile.get("value", "Unavailable")
 
             # UNIQUE ids. Summing mention_count across the eight angles counts
             # a post once per angle it lands in -- angle 1 is the whole corpus
             # and most others are subsets -- printing 141 for a 98-post corpus
             # in which 90 were analysed, and logging that inflated figure.
-            _total_mentions = _unique_mentions(_a)
+            # THE NUMBER ON THE CARD MUST BE THE NUMBER THAT DECIDED THE CALL.
+            # The corpus union is ~90 of 98 posts and rendered as "90 posts
+            # analysed" beside a verdict resting on 5 independent voices -- the
+            # one figure a reader takes as sample size, off by ~18x. Both come
+            # from the card, so this page and Discovery cannot disagree about
+            # which of them is being shown.
+            _shown_mentions = (_evidence.get("independent_voices")
+                               if _evidence.get("independent_voices") is not None
+                               else _evidence.get("mentions") or 0)
 
             # Anchor + auto-scroll so panel comes into view immediately
             import streamlit as _st
@@ -361,14 +395,6 @@ if _run_clicked or (_autorun and _prefill):
                 height=0,
             )
 
-            # THE NUMBER ON THE CARD MUST BE THE NUMBER THAT DECIDED THE CALL.
-            # `_total_mentions` is the union of ids across all eight analysis
-            # angles -- effectively the whole retrieved corpus, ~90 of 98 -- and
-            # it rendered as "90 posts analysed" beside a verdict resting on 5
-            # independent voices. The one figure a reader takes as sample size
-            # was off by ~18x from the sample.
-            _shown_mentions = (_verdict.quality.eligible_clusters
-                               if _verdict is not None else _total_mentions)
             render_recommendation_panel(
                 ticker=_run_ticker,
                 sector=sector,
@@ -388,9 +414,9 @@ if _run_clicked or (_autorun and _prefill):
             # EVIDENCE CHECK. Which gates passed, which failed, and what would
             # change the call. Generated from cascade state, so it cannot
             # contradict the verdict above it.
-            if _verdict is not None:
+            if _card.get("pillars"):
                 try:
-                    render_evidence_check(_verdict, _run_ticker)
+                    render_evidence_check(_card, _run_ticker)
                 except Exception:
                     _da_logger.warning("evidence check render failed", exc_info=True)
 
@@ -400,9 +426,9 @@ if _run_clicked or (_autorun and _prefill):
             # shown together and always: volatility is symmetric, so publishing
             # "+5% in 66% of paths" alone would be read as a 66% win rate.
             try:
-                _mp = (_proj or {}).get("movement_profile") or {}
+                _mp = _movement.get("targets") or {}
                 if _mp:
-                    _hz = int(_proj.get("decision_horizon_days") or 10)
+                    _hz = int(_movement.get("horizon_days") or 10)
                     _parts = [
                         "<tr style='color:rgba(148,163,184,.6);font-size:0.74rem;"
                         "text-transform:uppercase;letter-spacing:.05em;'>"
@@ -455,7 +481,7 @@ if _run_clicked or (_autorun and _prefill):
                         "<div style='font-weight:700;margin-bottom:2px;'>Movement profile</div>"
                         "<div style='color:rgba(148,163,184,.8);font-size:0.82rem;margin-bottom:10px;'>"
                         f"How far {_tk} normally travels, from its own recent "
-                        f"volatility (&plusmn;{_proj.get('band', 0):.1f}% over 30 days). Not a "
+                        f"volatility (&plusmn;{_movement.get('band_pct') or 0:.1f}% over 30 days). Not a "
                         "forecast &mdash; the same volatility carries it both ways.</div>"
                         f"<table style='font-size:0.9rem;'>{''.join(_parts)}</table>"
                         f"{_first}</div>",
@@ -480,15 +506,15 @@ if _run_clicked or (_autorun and _prefill):
             # cannot be backfilled, so a verdict not written now can never be
             # scored against what the stock actually did.
             #
-            # ONE CALL. This page enumerated ~20 keyword arguments into
-            # verdict_log and ~20 more into signal_log, and utils/analyze.py
-            # enumerated them again -- which is how the two came to record
-            # different populations in total_mentions and to break the
-            # (ticker, model) join the two tables exist to support. persist()
-            # writes for a legacy delivery too -- that run was charged and
-            # cannot be reconstructed either -- and it swallows its own
-            # failures: a logging error must never cost a delivery.
-            _persist(_a, feature="deep_analyze", event_id=_credit.event_id)
+            # ONE CALL, and only on the local path. When the analysis ran in
+            # core-api the service already wrote both rows -- it was handed
+            # feature="deep_analyze" and this credit's event_id precisely so
+            # that row is indistinguishable from one this page wrote. Writing
+            # again here would duplicate it: signal_log's unique
+            # (event_id, ticker, feature) rejects the second, but verdict_log
+            # has no such constraint and would simply gain a row.
+            if _a is not None:
+                _persist(_a, feature="deep_analyze", event_id=_credit.event_id)
 
         finally:
             # Backstop for every path the except blocks above cannot reach,
