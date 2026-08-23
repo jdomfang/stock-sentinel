@@ -60,7 +60,7 @@ SHARED_SECRET = os.getenv("CORE_API_SHARED_SECRET", "")
 # the X-Core-Refused header, and a client that depends on either needs a
 # way to know which build answered. Bump it whenever the contract or the
 # behaviour moves -- it went stale within one commit of being added.
-SERVICE_VERSION = "2026.08.23-step6"
+SERVICE_VERSION = "2026.08.23-step6b"
 
 # THE BUDGET THE PORTAL HAS AND THIS SERVICE DOES NOT.
 #
@@ -152,14 +152,29 @@ class AnalyzeRequest(BaseModel):
     persist: bool = True
 
 
-@app.get("/health")
-async def health() -> dict:
-    """Liveness plus what would actually change an answer."""
-    from utils.evidence import directional_margin
+def _scoring_config() -> dict:
+    """The model and the gate its confidences are judged against.
+
+    THE PAIR, always together and from one place. They are what silently
+    changes every verdict -- 0.15 goes with FinBERT, 0.70 with FinTwitBERT --
+    so a caller can compare both against its own config and catch a mismatch
+    before it issues different answers from identical evidence. Reported by
+    /health and /auth-check, which must never be able to disagree.
+    """
     try:
         from utils.sentiment import MODEL_NAME
     except Exception:
         MODEL_NAME = "unavailable"
+    try:
+            gate = directional_margin()
+    except Exception:
+        gate = None
+    return {"model": MODEL_NAME, "directional_margin": gate}
+
+
+@app.get("/health")
+async def health() -> dict:
+    """Liveness plus what would actually change an answer."""
     blockers = _config_blockers()
     return {
         # NOT ok without inference. Without INFERENCE_URL this service falls to
@@ -173,8 +188,7 @@ async def health() -> dict:
         "missing_config": blockers,
         # Reported because it is the pair that silently changes every verdict:
         # the model, and the gate its confidences are judged against.
-        "model": MODEL_NAME,
-        "directional_margin": directional_margin(),
+        **_scoring_config(),
     }
 
 
@@ -194,6 +208,28 @@ async def ready() -> dict:
         raise HTTPException(status_code=503, detail={
             "secret_configured": bool(SHARED_SECRET), "missing": blockers})
     return {"ok": True}
+
+
+@app.get("/auth-check")
+def auth_check(x_core_secret: str | None = Header(default=None,
+                                                  alias="X-Core-Secret")) -> dict:
+    """Does this caller's secret match? Costs nothing to ask.
+
+    Until this existed the only authenticated endpoint was /analyze, so the
+    only way to find out whether the portal's CORE_API_SHARED_SECRET matched
+    the service's was to run an analysis -- which buys up to 400 billed X
+    posts. A wrong secret was therefore diagnosable only by spending money, or
+    by reading it off two dashboards and comparing by eye.
+
+    It also fails the useful way round: a mismatch is a 401 here, exactly as it
+    would be on /analyze, so a green answer means the cutover will authenticate.
+    """
+    _authorise(x_core_secret)
+    return {"ok": True, "service": "core-api", "version": SERVICE_VERSION,
+            # The pair that silently changes every verdict. A caller comparing
+            # these against its own config catches the misconfiguration that
+            # produces different answers from identical evidence.
+            **_scoring_config()}
 
 
 @app.post("/analyze")

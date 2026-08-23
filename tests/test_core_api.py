@@ -273,6 +273,50 @@ def test_a_legacy_delivery_is_served_and_recorded():
         UA.analyze, UA.persist = real, real_write
 
 
+def test_the_secret_can_be_checked_without_spending():
+    """A wrong shared secret must be diagnosable for free.
+
+    Before /auth-check the only authenticated route was /analyze, so the only
+    way to learn that the portal's secret did not match was to run an analysis
+    -- up to 400 billed X posts to discover a typo. That is the one class of
+    bug the owner's standing rule about X spend most wants caught early.
+    """
+    print("\nthe shared secret is checkable without buying a corpus")
+    c, M = client()
+    r = c.get("/auth-check", headers={"X-Core-Secret": "s3cret"})
+    check("a matching secret is 200", r.status_code == 200, str(r.status_code))
+    body = r.json()
+    check("and says so", body.get("ok") is True, str(body))
+    # The pair that silently changes every verdict. A caller compares these
+    # against its own config to catch a model mismatch before it issues
+    # different answers from identical evidence.
+    check("it reports the model", "model" in body, str(body))
+    check("...and the gate that goes with it",
+          "directional_margin" in body, str(body))
+    check("it reports which build answered", "version" in body, str(body))
+
+    check("a wrong secret is 401",
+          c.get("/auth-check", headers={"X-Core-Secret": "nope"}).status_code == 401)
+    check("no header is 401", c.get("/auth-check").status_code == 401)
+
+    # It must be genuinely free: no analysis, no spend, even when authorised.
+    import utils.analyze as UA
+    real = UA.analyze
+    UA.analyze = lambda *a, **k: (_ for _ in ()).throw(
+        AssertionError("/auth-check ran an analysis"))
+    try:
+        check("...and it never touches the pipeline",
+              c.get("/auth-check", headers={"X-Core-Secret": "s3cret"}).status_code == 200)
+    finally:
+        UA.analyze = real
+
+    # Unconfigured, it fails the same way /analyze does, so a green answer
+    # here genuinely predicts a green /analyze.
+    c2, _ = client(secret="")
+    check("with no secret configured it is 503, matching /analyze",
+          c2.get("/auth-check", headers={"X-Core-Secret": "x"}).status_code == 503)
+
+
 def test_analyze_returns_an_answer_not_a_5xx():
     print("\na ticker with no evidence is an ANSWER, and the caller already paid")
     import core_api.main as M
@@ -351,6 +395,7 @@ def main() -> int:
     test_concurrency_is_bounded()
     test_health_reports_what_would_change_an_answer()
     test_the_card_is_built_from_state_not_from_the_verdict_word()
+    test_the_secret_can_be_checked_without_spending()
     test_analyze_returns_an_answer_not_a_5xx()
     test_a_legacy_delivery_is_served_and_recorded()
     test_persist_uses_a_feature_the_database_accepts()
