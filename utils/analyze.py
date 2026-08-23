@@ -73,6 +73,18 @@ class Analysis:
         return self.error is None and self.verdict is not None
 
 
+def deliverable(a: "Analysis") -> bool:
+    """Did this produce something a user can be shown and charged for?
+
+    ONE definition. The pages and persist() each grew their own and they
+    disagreed: gating a render on card()'s error stub rejects an Analysis
+    carrying a verdict AND an .error, which persist() considers owed a row --
+    so the page refunded and stopped before writing a real verdict.
+    """
+    return (getattr(a, "verdict", None) is not None
+            or bool(getattr(a, "legacy_summary", None)))
+
+
 def unique_mentions(a: "Analysis") -> int:
     """Unique post ids across the analysis angles -- the retrieved corpus.
 
@@ -398,7 +410,7 @@ def persist(a: Analysis, *, feature: str, event_id: str | None = None,
     # a `|legacy` discriminator that exists for no other purpose. Skipping it
     # left a debited usage_events row with no verdict_log row to reconcile
     # against, on exactly the runs a user is most likely to dispute.
-    if a.verdict is None and not a.legacy_summary:
+    if not deliverable(a):
         return
     if model is None:
         try:
