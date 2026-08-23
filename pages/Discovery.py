@@ -22,9 +22,10 @@ from utils import sector_query
 from utils.deep_analysis import ANALYSIS_PROMPTS
 # This page contributes a table, a credit and a panel. The analysis
 # behind the panel is the same one pages/Deep_Analysis.py runs.
-from utils.analyze import (analyze as _analyze, card as _card_for,
-                           persist as _persist, price_tiles as _price_tiles,
-                           deliverable as _deliverable)
+# NOT the pipeline. Both routes into Deep Analyze -- this page's per-row
+# button and pages/Deep_Analysis.py -- now call core-api. The sector SCAN
+# above is still local and imports what it needs directly.
+from utils import analyze_client as _client
 
 
 # Verdicts we are willing to assert. Anything else is a statement about how
@@ -1687,58 +1688,35 @@ def _render_deep_panel(ticker, sector, deep_results):
     # Carlo, each time the user changed a sector or clicked a download button.
     # The analysis is now computed once, by the same function the other page
     # calls, and carried in session state.
-    _a = st.session_state.get("deep_analysis")
-    if _a is None:
-        # Only reachable if session state outlived the code that wrote it.
-        # Streamlit clears state on reboot, so this is defensive rather than
-        # expected -- and re-running is free of X spend inside the corpus TTL.
+    # THE CARD, computed by core-api and carried in session state. This panel
+    # used to re-derive the whole analysis from the corpus on every rerun, then
+    # (briefly) read an in-process Analysis object. Both are gone: the same
+    # service answers this button and the Deep Analysis page, so one credit
+    # buys one product regardless of which one the user pressed.
+    _card = st.session_state.get("deep_analysis_card") or {}
+    if not _card:
         st.info("This analysis is from an earlier session. Run Deep Analyze "
                 "again to see it.")
         return
 
-    # Only what the PANEL DRAWS. The ledger, corpora, volumes, benchmark, bar
-    # date and projection dict were unpacked here solely to be typed back into
-    # two log calls, and persist() reads those off the analysis itself.
-    _v = _a.verdict
-    _pts = len(_a.prices or [])
-    # EVERY string in the panel below comes from card(), built beside the state
-    # that justifies it. This page previously carried its own copies of the
-    # headline and confidence-note dictionaries and its own number formatting,
-    # and they had already drifted from utils.ui.render_recommendation_panel.
-    # THE SAME PREDICATE persist() USES. Gating the render on card()'s error
-    # stub instead meant an Analysis carrying both a verdict and an .error
-    # returned here -- before the panel, before the evidence check and before
-    # the log write -- on a run already charged and already marked completed.
-    if not _deliverable(_a):
-        st.info("No analysis could be produced for this ticker.")
-        return
+    _evidence = _card.get("evidence") or {}
+    _movement = _card.get("movement") or {}
+    _pts = _evidence.get("price_points") or 0
 
-    # GUARDED, as the equivalent call on pages/Deep_Analysis.py is. A raise in
-    # card() or price_tiles() here costs the panel AND both table rows, and
-    # because the analysis lives in session state the traceback reproduces on
-    # every subsequent rerun -- the page stays broken until a new scan, on an
-    # analysis the user has already paid for.
-    _card, _price, _proj, _hold = {}, "Unavailable", "Unavailable", "Unavailable"
-    try:
-        _card = _card_for(_a)
-        for _t in _price_tiles(_a):
-            if _t["key"] == "last_price":
-                _price = _t["value"]
-            elif _t["key"] == "range_30d":
-                _proj = _t["value"]
-            elif _t["key"] == "drawdown_first":
-                _hold = _t["value"]
-    except Exception:
-        logger.warning("discovery: card/tile build failed", exc_info=True)
+    _price = _proj = _hold = "Unavailable"
+    for _t in (_card.get("tiles") or []):
+        if _t.get("key") == "last_price":
+            _price = _t.get("value", "Unavailable")
+        elif _t.get("key") == "range_30d":
+            _proj = _t.get("value", "Unavailable")
+        elif _t.get("key") == "drawdown_first":
+            _hold = _t.get("value", "Unavailable")
 
     # THE NUMBER THAT DECIDED THE CALL, matching pages/Deep_Analysis.py. This
     # page printed the corpus union -- ~90 of 98 posts -- beside a verdict
-    # resting on 5 independent voices, while the other page printed the 5. Same
-    # ticker, same credit, same day, two different sample sizes.
-    _ev_ct = (_card.get("evidence") or {}).get("independent_voices")
-    _mentions_ct = (_ev_ct if _ev_ct is not None
-                    else (_card.get("evidence") or {}).get("mentions") or 0)
-
+    # resting on 5 independent voices, while the other page printed the 5.
+    _ev_ct = _evidence.get("independent_voices")
+    _mentions_ct = _ev_ct if _ev_ct is not None else (_evidence.get("mentions") or 0)
 
     _rec = _card.get("verdict") or "—"
     _conf = _card.get("confidence") or "—"
@@ -1917,36 +1895,14 @@ def _render_deep_panel(ticker, sector, deep_results):
         except Exception:
             logger.warning("discovery: evidence check render failed", exc_info=True)
 
-    # ONE PAID ANALYSIS, ONE ROW. This function is not called by the button
-    # handler -- it is called from the results-table row loop whenever the row
-    # is selected and results are in session state, which survives every
-    # Streamlit rerun. So without this guard a sector change, a download click
-    # or opening another row each appended another verdict_log AND signal_log
-    # row for the same analysis, silently weighting every future cohort mean by
-    # how often the user happened to click something.
+    # NO WRITE HERE. core-api persisted both rows before it answered, under
+    # feature="discovery" and route="discovery" -- the tags this page used to
+    # apply itself, passed on the request so the cohort is unchanged.
     #
-    # Keyed on the credit event, not the ticker: two genuine analyses of the
-    # same ticker are two events and must both be recorded.
-    _ev = st.session_state.get("deep_analysis_event_id")
-    _done = st.session_state.setdefault("_logged_analyses", set())
-    _log_key = (str(_ev), str(ticker), "discovery")
-    # Legacy deliveries are recorded too, as they now are on the other page. A
-    # scan-row analysis that falls back still costs a credit and still cannot
-    # be reconstructed later -- X's index is 7 days deep -- so "no verdict" is
-    # a row to write, not a row to skip.
-    _should_log = (_v is not None or _a.legacy_summary) and _log_key not in _done
-
-    if _should_log:
-        _done.add(_log_key)
-        # ONE CALL, and the same one pages/Deep_Analysis.py makes. This page
-        # enumerated ~14 kwargs into verdict_log and ~20 into signal_log; the
-        # first list had already lost `event_id`, so Discovery's verdict rows
-        # could not be reconciled against the credit that paid for them.
-        #
-        # `route` keeps the |discovery tag. verdict_log has no feature column,
-        # so that string is the only thing separating a basket-query verdict
-        # from a typed one, and the two have different selection biases.
-        _persist(_a, feature="discovery", event_id=_ev, route="discovery")
+    # The rerun guard that used to live here is unnecessary as a result: this
+    # function runs on every rerun that re-selects the row, but it no longer
+    # writes anything, so a sector change or a download click cannot append a
+    # duplicate. One request, one write, decided by the service.
 
 
 # ── Results table ──
@@ -2055,6 +2011,14 @@ if st.session_state.df_valid is not None:
                     # with nothing debited. It also left every log line from this
                     # path stamped "-", so the ledger row pointed at no logs.
                     _drid = new_request_id()
+                    # NOTHING TO CALL, SO NOTHING TO CHARGE -- checked before
+                    # the debit, exactly as pages/Deep_Analysis.py does. A
+                    # misconfiguration must never take a credit and refund it.
+                    if not _client.configured():
+                        logger.error("deep_analyze unavailable: core-api not configured")
+                        st.error("Deep Analysis is temporarily unavailable. "
+                                 "No credit has been used.")
+                        st.stop()
                     _dcredit = consume_credit(
                         "deep_analyze",
                         {"ticker": ticker_symbol, "sector": sector, "page": "discovery"},
@@ -2095,27 +2059,27 @@ if st.session_state.df_valid is not None:
                             # request id reverts to "-" without this.
                             _set_request_id(_drid)
                             try:
-                                # THE SHARED PIPELINE. This page used to run
-                                # retrieval here and then rebuild the ledger,
-                                # prices, benchmark, adjudication and projection
-                                # inside the render function -- a second copy of
-                                # pages/Deep_Analysis.py's own second copy. All
-                                # three are one implementation now, which is the
-                                # only way "the same ticker, the same day, one
-                                # credit" can mean the same product on both
-                                # entry routes.
-                                _disc_sink: dict = {}
-                                _res = _analyze(ticker_symbol, _disc_sector,
-                                                corpus_sink=_disc_sink)
-                                _disc_holder["analysis"] = _res
-                                _disc_holder["result"] = _res.analysis_results
-                                _disc_holder["sink"] = _disc_sink
-                                # analyze() never raises; it reports through
-                                # .raised. Only a genuine exception is the error
-                                # panel -- an empty-but-valid answer takes the
-                                # "no results" path below, as it always has.
-                                if _res.raised and not _res.analysis_results:
-                                    _disc_holder["error"] = _res.error
+                                # THE SAME SERVICE THE OTHER PAGE CALLS. This
+                                # button charges the same deep_analyze credit
+                                # for the same product; leaving it in-process
+                                # while Deep_Analysis went remote meant a
+                                # broken container was loud on one route and
+                                # silent on the other, and which button the
+                                # user pressed decided what they got.
+                                _r = _client.analyze_remote(
+                                    ticker_symbol, _disc_sector,
+                                    feature="discovery", route="discovery",
+                                    event_id=getattr(_dcredit, "event_id", None))
+                                if _r.ok:
+                                    logger.info(
+                                        "discovery deep_analyze served by "
+                                        "CORE-API in %.1fs ticker=%s",
+                                        _r.elapsed_s or -1, ticker_symbol)
+                                    _disc_holder["card"] = _r.card
+                                    _disc_holder["result"] = _r.analysis_results
+                                else:
+                                    _disc_holder["error"] = _r.error
+                                    _disc_holder["pre_spend"] = _r.retryable
                             except Exception as _e:
                                 _disc_holder["error"] = str(_e)
                                 logger.exception(f"Deep analysis error for {ticker_symbol}")
@@ -2160,7 +2124,7 @@ if st.session_state.df_valid is not None:
                             refund_credit("deep_analyze", _dcredit.event_id, "analysis returned no results")
                             _deep_error = (f"No results for {ticker_symbol}. "
                                            "Your credit was not used — try again in a moment.")
-                        elif not _deliverable(_disc_holder.get("analysis")):
+                        elif not _disc_holder.get("card"):
                             # Neither adjudicator produced anything. Falling
                             # through here marked the run delivered, kept the
                             # credit, wrote no row, and showed a grey box the
@@ -2175,14 +2139,7 @@ if st.session_state.df_valid is not None:
                                            "used — try again in a moment.")
                         else:
                             st.session_state.deep_analysis_results = _disc_holder.get("result")
-                            # The ANALYSIS, not just the corpora. The panel used
-                            # to re-derive the ledger, prices, benchmark, verdict
-                            # and projection from the sink on every single
-                            # rerun: a sector change or a download click
-                            # re-adjudicated the call, so the row that was
-                            # logged and the numbers on screen could drift apart
-                            # within one paid analysis.
-                            st.session_state.deep_analysis = _disc_holder.get("analysis")
+                            st.session_state.deep_analysis_card = _disc_holder.get("card")
                             # Carried so the panel can identify WHICH paid
                             # analysis it is rendering. Without it the panel --
                             # which re-renders from session state on every

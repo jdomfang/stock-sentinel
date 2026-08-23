@@ -250,40 +250,42 @@ def test_an_empty_summary_is_refunded_not_rendered() -> None:
               str(sorted(names)))
 
     disc = open(os.path.join(REPO, "pages", "Discovery.py")).read()
-    tree = ast.parse(disc)
-    # The guard is a branch of the button handler's if/elif chain, sitting
-    # BEFORE the branch that marks the analysis delivered. Assert on the call
-    # graph, not on the text: a comment mentioning the refund is not a refund.
-    guards = [n for n in ast.walk(tree)
-              if isinstance(n, ast.If)
-              and isinstance(n.test, ast.UnaryOp)
-              and isinstance(n.test.op, ast.Not)
-              and _call_name(n.test.operand) == "_deliverable"]
-    # TWO of them, and they do different jobs. The button handler refunds
-    # before the run is ever marked delivered; the render guard only declines
-    # to draw, because by then the credit decision has already been taken on a
-    # previous script run. Asserting a single site would have accepted either
-    # one alone -- and the render guard alone is precisely the bug.
-    bodies = [{_call_name(n) or "" for n in
-               ast.walk(ast.Module(body=g.body, type_ignores=[]))} - {""}
-              for g in guards]
-    check("Discovery guards the empty-summary case at both points",
-          len(guards) == 2, f"found {len(guards)}")
-    check("...and the charging one refunds",
-          any("refund_credit" in b for b in bodies), str(bodies))
-    check("...and the rendering one declines to draw",
-          any("info" in b for b in bodies), str(bodies))
-    # Both pages must ask the question the SAME way, or one of them drifts back.
-    # ONE definition, IMPORTED by both -- not two that happen to agree today.
-    # They did not agree: one gated on card()'s error stub and the other on the
-    # analysis, and the difference silently skipped the log write for a run
-    # that had produced a real verdict.
     deep = open(os.path.join(REPO, "pages", "Deep_Analysis.py")).read()
-    for name, src in (("Discovery", disc), ("Deep_Analysis", deep)):
-        check(f"{name} imports the shared deliverable() predicate",
-              "deliverable as _deliverable" in src, name)
-        check(f"{name} defines no rival predicate",
-              "def _summary_available" not in src, name)
+
+    # BOTH ROUTES INTO THE PAID FEATURE. Discovery's results table has its own
+    # per-row Deep Analyze button charging the same deep_analyze credit. While
+    # it ran in-process and Deep_Analysis called core-api, a broken container
+    # was loud on one route and silent on the other -- and which button the
+    # user pressed decided what they got for one credit.
+    for name, src in (("Deep_Analysis", deep), ("Discovery", disc)):
+        check(f"{name} holds no in-process analysis pipeline",
+              "from utils.analyze import" not in src and "_analyze(" not in src,
+              "the local path came back")
+        # ON THE AST, not the text: Discovery's charge is a multi-line call,
+        # so a substring index silently failed to find it.
+        tree0 = ast.parse(src)
+        charge = min((n.lineno for n in ast.walk(tree0)
+                      if _call_name(n) == "consume_credit" and n.args
+                      and getattr(n.args[0], "value", None) == "deep_analyze"),
+                     default=None)
+        gate = min((n.lineno for n in ast.walk(tree0)
+                    if isinstance(n, ast.Call)
+                    and isinstance(n.func, ast.Attribute)
+                    and n.func.attr == "configured"), default=None)
+        check(f"{name} refuses BEFORE charging when core-api is unconfigured",
+              charge is not None and gate is not None and gate < charge,
+              f"gate@{gate} charge@{charge} -- a misconfiguration must never take a credit")
+        # A charged run that produces no card must refund, not render a panel
+        # of em-dashes and keep the money.
+        tree = ast.parse(src)
+        guards = [n for n in ast.walk(tree)
+                  if isinstance(n, ast.If)
+                  and any(isinstance(x, ast.Name) and x.id in ("_card", "_disc_holder")
+                          or (isinstance(x, ast.Constant) and x.value == "card")
+                          for x in ast.walk(n.test))
+                  and _call_name_in(n.body, "refund_credit")]
+        check(f"{name} refunds when no card came back", bool(guards),
+              "a charge with nothing to show for it")
 
 
 def main() -> int:

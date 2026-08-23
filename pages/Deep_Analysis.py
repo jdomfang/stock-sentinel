@@ -13,11 +13,10 @@ from utils.navigation import render_sidebar_navigation, render_top_nav
 from utils.ui import open_page, close_page, GENERIC_ERROR_TEXT, safe_ui, render_recommendation_panel, render_full_analysis_expander, render_evidence_check
 import streamlit.components.v1 as _components
 from utils.deep_analysis import ANALYSIS_PROMPTS
-# The pipeline itself. This page contributes credits, progress and pixels;
-# it no longer contains a second copy of the analysis.
-from utils.analyze import (analyze as _analyze, card as _card_for,
-                           persist as _persist,
-                           deliverable as _deliverable)
+# NOT the pipeline. This page charges a credit, draws a progress bar and
+# renders a card; the analysis itself lives in core-api and is reached over
+# HTTPS. utils.analyze is deliberately absent from these imports -- the day it
+# comes back is the day there are two implementations again.
 from utils import analyze_client as _client
 
 # Page configuration
@@ -160,6 +159,16 @@ if _run_clicked or (_autorun and _prefill):
         _rid = new_request_id()
         _da_logger.info("deep_analyze requested ticker=%s", _run_ticker)
 
+        # NOTHING TO CALL, SO NOTHING TO CHARGE. The in-process pipeline is
+        # gone from this page: Deep Analyze is core-api or it is nothing. That
+        # check belongs BEFORE the debit -- a misconfiguration must not cost a
+        # credit and then be refunded, it must never take one.
+        if not _client.configured():
+            _da_logger.error("deep_analyze unavailable: core-api not configured")
+            st.error("Deep Analysis is temporarily unavailable. "
+                     "No credit has been used.")
+            st.stop()
+
         _credit = consume_credit("deep_analyze", {"ticker": _run_ticker, "page": "deep_analysis"})
         if not _credit.ok:
             _da_logger.info("deep_analyze refused reason=%s", _credit.reason)
@@ -187,11 +196,6 @@ if _run_clicked or (_autorun and _prefill):
             import threading, time as _time
 
             _result_holder: dict = {}
-            # Filled by the retrieval step with the RAW corpora, so the evidence
-            # ledger can be built from posts. Stays empty on a result-cache hit,
-            # in which case the page falls back to the previous adjudicator --
-            # a degradation, not a failure.
-            _corpus_sink: dict = {}
             _done_flag = threading.Event()
 
             def _run():
@@ -201,66 +205,37 @@ if _run_clicked or (_autorun and _prefill):
                 # would be stamped "-" and the id would correlate nothing.
                 _set_request_id(_rid)
                 try:
-                    # THE CUTOVER. With CORE_API_URL set the analysis runs in
-                    # its own container and this page never touches the
-                    # pipeline; without it, nothing changes. Unsetting the
-                    # variable is the rollback, and it needs no deploy.
-                    if _client.configured():
-                        _r = _client.analyze_remote(
-                            _run_ticker, sector, feature="deep_analyze",
-                            event_id=getattr(_credit, "event_id", None))
-                        _result_holder["remote"] = _r
-                        if _r.ok:
-                            # WHICH PATH SERVED THIS. Both paths write rows
-                            # that are byte-identical by design, so the tables
-                            # cannot answer "did it use the container?" and
-                            # neither can timing -- a warm remote call and a
-                            # warm local one land within a few hundred ms of
-                            # each other. One log line ends the guessing.
-                            _da_logger.info(
-                                "deep_analyze served by CORE-API in %.1fs "
-                                "(degraded=%s) ticker=%s",
-                                _r.elapsed_s or -1, _r.degraded, _run_ticker)
-                            _result_holder["card"] = _r.card
-                            _result_holder["analysis_results"] = _r.analysis_results
-                            return
-                        if not _r.retryable:
-                            # The service answered, or it may have spent. Either
-                            # way this page must not run the analysis again:
-                            # verdict_log has no unique constraint on event_id,
-                            # so a second write is a second row that nothing
-                            # downstream can tell from a real second analysis.
-                            _result_holder["error"] = _r.error
-                            return
-                        _da_logger.warning(
-                            "core-api unusable (%s); running in-process for %s",
-                            _r.error, _run_ticker)
-
-                    # SCAFFOLDING. The in-process path stays only until the
-                    # remote one is confirmed in production, then comes out.
-                    _da_logger.info(
-                        "deep_analyze served IN-PROCESS ticker=%s (core-api %s)",
-                        _run_ticker,
-                        "configured but unusable" if _client.configured()
-                        else "not configured")
-                    _res = _analyze(_run_ticker, sector, corpus_sink=_corpus_sink)
-                    _result_holder["analysis"] = _res
-                    _result_holder["analysis_results"] = _res.analysis_results
-                    if _deliverable(_res):
-                        # Its OWN try. Presentation is not analysis: a format
-                        # failure here must not turn a completed, billed
-                        # analysis into the red panel, a refund, and no row.
-                        try:
-                            _result_holder["card"] = _card_for(_res)
-                        except Exception:
-                            _da_logger.exception("card build failed for %s",
-                                                 _run_ticker)
-                    # `.raised` and not `.error`: an EXCEPTION gets the red
-                    # "Analysis failed" panel, while an empty-but-valid answer
-                    # stops silently and refunds, exactly as before. `.error` is
-                    # set in both cases and cannot tell them apart.
-                    if _res.raised and not _res.analysis_results:
-                        _result_holder["error"] = _res.error
+                    # ONE PATH. The in-process branch that used to sit here was
+                    # scaffolding for the cutover, and it was hiding the thing
+                    # it was meant to de-risk: a fallback that fires silently
+                    # makes "did this use the container?" unanswerable, and
+                    # every misconfiguration looks like success. Removing it
+                    # means a broken core-api is loud and immediate.
+                    _r = _client.analyze_remote(
+                        _run_ticker, sector, feature="deep_analyze",
+                        event_id=getattr(_credit, "event_id", None))
+                    if _r.ok:
+                        _da_logger.info(
+                            "deep_analyze served by CORE-API in %.1fs "
+                            "(degraded=%s) ticker=%s",
+                            _r.elapsed_s or -1, _r.degraded, _run_ticker)
+                        _result_holder["card"] = _r.card
+                        _result_holder["analysis_results"] = _r.analysis_results
+                    else:
+                        _result_holder["error"] = _r.error
+                        if _r.posts_billed:
+                            # The one fact a refund conversation turns on. The
+                            # service returns it for that reason and nothing
+                            # was reading it.
+                            _da_logger.warning(
+                                "core-api spent %s X posts on a failed "
+                                "deep_analyze ticker=%s", _r.posts_billed,
+                                _run_ticker)
+                        # Kept, though nothing falls back on it any more: it
+                        # still says whether the service could have spent, and
+                        # that decides whether "try again" is honest advice or
+                        # an invitation to buy the same corpus twice.
+                        _result_holder["pre_spend"] = _r.retryable
                 except Exception as _e:
                     _da_logger.exception("deep_analyze failed ticker=%s", _run_ticker)
                     _result_holder["error"] = str(_e)
@@ -285,7 +260,7 @@ if _run_clicked or (_autorun and _prefill):
             # away -- only at an st.* call, so ticking every 1.5s here would
             # make the whole tail abortable. That sounds like an improvement
             # and is not: the X posts are already billed, X's index is 7 days
-            # deep, and an abort between the last tick and _persist below
+            # deep, and an abort between the last tick and delivery
             # destroys the only record the analysis ever happened. Widening
             # the abort window trades unrecoverable rows for a faster cancel.
             # The right fix is to write the row off the main thread; until
@@ -304,19 +279,28 @@ if _run_clicked or (_autorun and _prefill):
             _da_status.empty()
             _da_progress.empty()
 
-            def _fail_panel(headline: str, refunded: bool) -> None:
-                """ONE panel. The same paid outcome rendered as a red box on
-                the remote path and a blank page on the local one -- two
-                products for one failure, which is the opposite of what
-                sharing an implementation is for."""
+            def _fail_panel(headline: str, refunded: bool,
+                            retry_ok: bool = True) -> None:
+                """ONE panel for every failure. The same paid outcome used to
+                render as a red box on one path and a blank page on the other
+                -- two products for one failure."""
                 st.markdown(
                     '<div style="border:1px solid rgba(239,68,68,.30);border-radius:14px;padding:18px 20px;'
                     'background:rgba(239,68,68,.05);text-align:center;margin:0.5rem 0;">'
                     '<div style="font-size:1.2rem;margin-bottom:6px;">⚠️</div>'
                     f'<div style="font-weight:700;color:rgba(248,113,113,.95);">{html.escape(headline)}</div>'
                     '<div style="color:rgba(148,163,184,.75);font-size:0.85rem;margin-top:4px;">'
-                    + ("Your credit was not used — try again in a moment."
-                       if refunded else "Try again in a moment — this is usually temporary.")
+                    # TWO INDEPENDENT FACTS, and they were tangled: whether
+                    # the credit came back, and whether retrying is safe. When
+                    # the refund RPC failed after a possible spend the old
+                    # expression fell through to the most retry-inviting
+                    # string in the function -- the one case where a retry
+                    # re-buys up to 400 X posts and adds a second verdict_log
+                    # row that no constraint will catch.
+                    + ("Your credit was not used." if refunded else
+                       "If your credit was not returned it will be released "
+                       "automatically within 15 minutes.")
+                    + (" Try again in a moment." if retry_ok else "")
                     + '</div></div>',
                     unsafe_allow_html=True,
                 )
@@ -326,10 +310,13 @@ if _run_clicked or (_autorun and _prefill):
                 # give it back rather than charging for an upstream outage.
                 _refunded = refund_credit("deep_analyze", _credit.event_id,
                                           f"analysis failed: {_result_holder['error'][:120]}")
-                _fail_panel("Analysis failed", _refunded)
+                # "Try again" is only honest when the service provably did not
+                # spend. Otherwise a retry buys the same corpus a second time,
+                # so the wording stops short of inviting one.
+                _fail_panel("Analysis failed", _refunded,
+                            retry_ok=bool(_result_holder.get("pre_spend")))
                 st.stop()
 
-            _a = _result_holder.get("analysis")          # local path only
             _card = _result_holder.get("card") or {}
             # OPTIONAL, and deliberately so. analysis_results feeds the "Full
             # breakdown" expander and nothing else. A core-api one deploy
@@ -346,7 +333,13 @@ if _run_clicked or (_autorun and _prefill):
                 _da_logger.error("no card produced for %s", _run_ticker)
                 _refunded = refund_credit("deep_analyze", _credit.event_id,
                                           "no summary could be produced")
-                _fail_panel("No analysis could be produced", _refunded)
+                # NOT retryable. This branch is now reachable only when
+                # core-api answered ok:true with an unusable card -- by which
+                # point it has bought the corpus and written both rows under
+                # this event_id. It was retry-safe when the in-process path
+                # could produce it; it is not any more.
+                _fail_panel("No analysis could be produced", _refunded,
+                            retry_ok=False)
                 st.stop()
 
             # EVERYTHING BELOW READS THE CARD -- not the Analysis, not the
@@ -514,27 +507,29 @@ if _run_clicked or (_autorun and _prefill):
             # raises RerunException (a BaseException, so no `except Exception`
             # catches it) and the user is charged for an analysis they never
             # fully saw.
-            render_full_analysis_expander(analysis_results)
+            # SKIPPED when empty. A core-api older than the analysis_results
+            # field returns a good card without it, and drawing the expander
+            # anyway gives the user an empty panel where a breakdown belongs.
+            if analysis_results:
+                render_full_analysis_expander(analysis_results)
 
             # Written AFTER delivery, and unable to affect it. This is the only
             # record that this call was ever made: X's index is 7 days deep and
             # cannot be backfilled, so a verdict not written now can never be
             # scored against what the stock actually did.
             #
-            # ONE CALL, and only on the local path. When the analysis ran in
-            # core-api the service already wrote both rows -- it was handed
+            # NO WRITE HERE, and there must never be one again. core-api
+            # persisted both rows before it answered -- it was handed
             # feature="deep_analyze" and this credit's event_id precisely so
-            # that row is indistinguishable from one this page wrote. Writing
-            # again here would duplicate it: signal_log's unique
+            # the row is indistinguishable from one this page used to write.
+            # A write here would duplicate it: signal_log's unique
             # (event_id, ticker, feature) rejects the second, but verdict_log
             # has no such constraint and would simply gain a row.
-            if _a is not None:
-                _persist(_a, feature="deep_analyze", event_id=_credit.event_id)
 
         finally:
             # Backstop for every path the except blocks above cannot reach,
-            # including the Streamlit abort and any failure in generate_ai_summary
-            # or the render calls, which sit outside the worker's try. Overlaps
+            # including the Streamlit abort and any failure in the render
+            # calls, which sit outside the worker's try. Overlaps
             # safely with the explicit refunds: refund_credit is idempotent, so a
             # second attempt returns already_refunded and the more specific reason
             # recorded earlier wins. Does NOT cover an OOM kill -- SIGKILL runs no

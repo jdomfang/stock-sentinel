@@ -336,6 +336,63 @@ def test_health_and_auth_check_cannot_disagree():
         check(f"{k} is populated on /health", h.get(k) is not None, repr(h.get(k)))
 
 
+def test_a_second_caller_for_one_ticker_is_refused_not_queued():
+    """The single-flight wait is BOUNDED, and refusal happens before spending.
+
+    The lock had no timeout, so callers piling onto one trending ticker queued
+    indefinitely: caller two waited out caller one's 40-60s, caller three waited
+    out both. At depth ~4 the client's 180s read timeout fires -- and a client
+    timeout does not cancel a sync handler, so the service finishes, buys the
+    posts and writes both rows for a user who was already refunded and told it
+    failed. X's index is 7 days deep, so that analysis is unrecoverable.
+
+    Refusing with a pre-spend 429 turns an expensive silent loss into a cheap
+    honest one.
+    """
+    print("\ntwo callers, one ticker: the second is refused, not queued")
+    import threading
+    import time as _t
+    c, M = client()
+    M.TICKER_WAIT_S = 0.3          # 75s in production; bounded is the point
+
+    import utils.analyze as UA
+    from utils.analyze import Analysis
+    real = UA.analyze
+    started = threading.Event()
+
+    def _slow(t, s="unknown"):
+        started.set()
+        _t.sleep(1.5)
+        return Analysis(ticker=t, error="no usable evidence")
+
+    UA.analyze = _slow
+    try:
+        out = {}
+        first = threading.Thread(target=lambda: out.__setitem__(
+            "a", c.post("/analyze", json={"ticker": "TSLA"},
+                        headers={"X-Core-Secret": "s3cret"})))
+        first.start()
+        started.wait(timeout=5)
+        t0 = _t.time()
+        second = c.post("/analyze", json={"ticker": "TSLA"},
+                        headers={"X-Core-Secret": "s3cret"})
+        waited = _t.time() - t0
+        first.join(timeout=10)
+
+        check("the second caller is refused", second.status_code == 429,
+              str(second.status_code))
+        check("...quickly, not after the client would have timed out",
+              waited < 5, f"waited {waited:.1f}s")
+        check("...and stamped as a pre-spend refusal, so a retry is safe",
+              second.headers.get("X-Core-Refused") == "ticker-busy",
+              str(dict(second.headers)))
+        check("a DIFFERENT ticker is not blocked by it",
+              c.post("/analyze", json={"ticker": "MSFT"},
+                     headers={"X-Core-Secret": "s3cret"}).status_code == 200)
+    finally:
+        UA.analyze = real
+
+
 def test_analyze_returns_an_answer_not_a_5xx():
     print("\na ticker with no evidence is an ANSWER, and the caller already paid")
     import core_api.main as M
@@ -416,6 +473,7 @@ def main() -> int:
     test_the_card_is_built_from_state_not_from_the_verdict_word()
     test_the_secret_can_be_checked_without_spending()
     test_health_and_auth_check_cannot_disagree()
+    test_a_second_caller_for_one_ticker_is_refused_not_queued()
     test_analyze_returns_an_answer_not_a_5xx()
     test_a_legacy_delivery_is_served_and_recorded()
     test_persist_uses_a_feature_the_database_accepts()

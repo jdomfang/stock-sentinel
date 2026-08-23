@@ -60,7 +60,7 @@ SHARED_SECRET = os.getenv("CORE_API_SHARED_SECRET", "")
 # the X-Core-Refused header, and a client that depends on either needs a
 # way to know which build answered. Bump it whenever the contract or the
 # behaviour moves -- it went stale within one commit of being added.
-SERVICE_VERSION = "2026.08.23-step6c"
+SERVICE_VERSION = "2026.08.23-step7"
 
 # THE BUDGET THE PORTAL HAS AND THIS SERVICE DOES NOT.
 #
@@ -82,9 +82,28 @@ _INFLIGHT_GUARD = threading.Lock()
 app = FastAPI(title="Stock Sentinel Core API")
 
 
+# How long a second caller for the SAME ticker will wait for the first to
+# finish. One analysis is 40-60s, so this admits the common case -- caller two
+# waits and then reads caller one's corpus from cache for free -- and refuses
+# the pathological one. Unbounded, a queue four deep outlasts the client's
+# read timeout, and a client timeout does NOT cancel a sync handler: the
+# service finishes, buys the posts and writes both rows for a user who was
+# already refunded and told it failed. Better to refuse before spending.
+TICKER_WAIT_S = 75
+
+
 def _ticker_lock(t: str) -> threading.Lock:
     with _INFLIGHT_GUARD:
-        return _INFLIGHT.setdefault(t, threading.Lock())
+        lock = _INFLIGHT.get(t)
+        if lock is None:
+            # BOUNDED. One Lock per ticker, never evicted, over a ~4,000-ticker
+            # universe is a slow leak in a long-lived container. Locks that
+            # nobody holds are safe to drop; the dict is only a rendezvous.
+            if len(_INFLIGHT) >= 512:
+                for k in [k for k, v in _INFLIGHT.items() if not v.locked()][:256]:
+                    _INFLIGHT.pop(k, None)
+            lock = _INFLIGHT.setdefault(t, threading.Lock())
+        return lock
 
 
 def _config_blockers() -> list[str]:
@@ -269,12 +288,21 @@ def analyze(req: AnalyzeRequest,
     # plus ~60s of work, which is exactly the client's timeout -- and a client
     # timeout does not cancel the server, so the analysis completes, spends,
     # and writes a row for a user who was refunded and told it failed.
-    with _ticker_lock(req.ticker.upper()):
+    _lock = _ticker_lock(req.ticker.upper())
+    if not _lock.acquire(timeout=TICKER_WAIT_S):
+        # Refused BEFORE spending, so the caller may safely try again -- and
+        # the header says so. The alternative is waiting past the client's read
+        # timeout and then doing the work anyway for nobody.
+        raise HTTPException(
+            status_code=429,
+            detail=f"another analysis of {req.ticker.upper()} is still running",
+            headers={"X-Core-Refused": "ticker-busy"})
+    try:
         if not _SLOTS.acquire(blocking=False):
             # 429, never a queue. Queuing forty minute-long analyses is how the
             # healthcheck starves and the container is restarted mid-spend.
-            # Raised BEFORE any spending, which is why the client is allowed to
-            # run this one itself.
+            # Raised BEFORE any spending, and stamped as such, so a caller
+            # can retry without risking a second corpus purchase.
             raise HTTPException(status_code=429,
                                 detail=f"at capacity ({MAX_CONCURRENT} concurrent)",
                                 headers={"X-Core-Refused": "capacity"})
@@ -289,6 +317,8 @@ def analyze(req: AnalyzeRequest,
                     "elapsed_s": round(time.time()-t0, 2)}
         finally:
             _SLOTS.release()
+    finally:
+        _lock.release()
     elapsed = round(time.time() - t0, 2)
 
     # A LEGACY DELIVERY IS A DELIVERY. analyze() now produces a fallback

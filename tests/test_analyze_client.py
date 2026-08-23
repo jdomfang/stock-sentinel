@@ -174,9 +174,13 @@ def test_plaintext_is_refused():
     r = C.analyze_remote("TSLA")
     check("http:// is refused", r.ok is False and "https" in (r.error or ""),
           str(r.error))
-    # Nothing was sent, so running locally cannot duplicate anything -- a typo
-    # in a config value must not cost the user a refused paid request.
-    check("...and the caller may run it locally", r.retryable is True)
+    # There is no local path left to fall back to, and a typo persists until
+    # someone edits config -- so this must NOT tell the user to try again.
+    check("...and it does not invite a pointless retry", r.retryable is False)
+    # configured() has to reject it too, or the caller charges a credit and
+    # only then discovers it cannot call anything.
+    check("...and configured() refuses it before a credit is taken",
+          C.configured() is False)
 
     install(cfg={"CORE_API_URL": "core.test"})
     check("a scheme-less URL is refused too",

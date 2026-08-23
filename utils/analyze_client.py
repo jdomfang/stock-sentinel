@@ -81,22 +81,37 @@ class RemoteResult:
 
 
 def configured() -> bool:
-    """Is the portal pointed at a core-api? Unset means keep running in-process."""
+    """Can this portal actually call a core-api?
+
+    NOT "are both values non-empty". The caller uses this to decide whether to
+    charge a credit at all, so it has to ask the same question _base() asks:
+    a URL of "core.example.com" or "http://..." or "HTTPS://..." passed the
+    non-empty test, took the credit, then failed on the very next line and
+    refunded it -- permanently, once per click, with each refund another
+    chance for the RPC to fail and lose the credit for real.
+    """
     from utils import config as _c
-    return bool(_c.get("CORE_API_URL") and _c.get("CORE_API_SHARED_SECRET"))
+    if not _c.get("CORE_API_SHARED_SECRET"):
+        return False
+    try:
+        _base()
+    except ValueError:
+        return False
+    return True
 
 
 def _base() -> str:
     from utils import config as _c
     url = (_c.get("CORE_API_URL") or "").strip().rstrip("/")
+    lowered = url.lower()
     # The shared secret travels in a header. Over plaintext it travels in the
     # clear, and this secret is worth up to 400 billed X posts per request to
     # whoever reads it. Railway redirects http->https, but urllib follows the
     # redirect only AFTER the first request has already left with the header.
-    if url.startswith("http://"):
+    if lowered.startswith("http://"):
         raise ValueError("CORE_API_URL must be https:// -- the shared secret "
                          "is sent as a request header")
-    if not url.startswith("https://"):
+    if not lowered.startswith("https://"):
         raise ValueError("CORE_API_URL must be an absolute https:// URL")
     return url
 
@@ -118,10 +133,11 @@ def analyze_remote(ticker: str, sector: str = "unknown", *,
     try:
         base = _base()
     except ValueError as e:
-        # Misconfiguration, not an outage. Nothing was sent, so the caller may
-        # run it locally rather than refusing a paid request over a typo.
+        # Reachable only if configured() was not consulted first. Nothing was
+        # sent, but "retry" is the wrong advice for a typo that persists until
+        # someone edits config, so this does not invite one.
         logger.error("core-api URL rejected: %s", e)
-        return RemoteResult(error=str(e), retryable=True)
+        return RemoteResult(error=str(e), retryable=False)
 
     secret = _c.get("CORE_API_SHARED_SECRET") or ""
     body = json.dumps({
