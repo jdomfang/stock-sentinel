@@ -58,6 +58,10 @@ MIGRATIONS = [
     REPO / "supabase/migrations/20260801050000_grant_credits.sql",
     REPO / "supabase/migrations/20260801060000_work_runs.sql",
     REPO / "supabase/migrations/20260802010000_caller_identity.sql",
+    # Redefines reap_orphaned_work. Omitting it meant this suite exercised the
+    # PREVIOUS function and passed while the fix went untested -- a hand-picked
+    # list is only equal to production if somebody keeps picking.
+    REPO / "supabase/migrations/20260824020000_reaper_already_refunded.sql",
 ]
 
 PASSED: list[str] = []
@@ -311,6 +315,75 @@ def test_user_cannot_forge_a_run(cur):
     check("run is still running", run_status(cur, ev) == "running")
 
 
+def test_an_already_refunded_orphan_is_closed_not_retried_forever(cur):
+    """The reaper crashed the worker every five minutes over one tidy row.
+
+    A scan failed, the PAGE refunded the credit explicitly, and a work_run was
+    still left 'running'. The reaper called refund_credit, got
+    {ok:false, reason:'already_refunded'}, counted that as a FAILED refund,
+    left the row 'running' "so the next pass retries", and worker/reap.py
+    exited 1. The reason can never change, so the retry was a loop with no
+    exit -- Railway showed Crashed every five minutes, indefinitely, for a
+    user who had already been made whole.
+
+    utils/credits.py has always had this right ("already_refunded is the
+    idempotent path, not a failure"). Only the SQL disagreed.
+    """
+    print("\nreaper: an already-refunded orphan is closed, not retried forever")
+    uid = seed(cur)
+    before = balance(cur, uid)
+    ev = rpc(cur, "consume_credit", uid, "scan", "{}", "rq_already")["event_id"]
+
+    # The page refunds explicitly, as it does on a failed scan...
+    first = rpc(cur, "refund_credit", uid, "scan", ev, "page refund")
+    check("the page's own refund lands", first.get("ok") is True, str(first))
+    check("the credit is back", balance(cur, uid) == before)
+
+    # ...and the lifecycle row is left running anyway.
+    cur.execute("update public.work_runs set status='running' where event_id=%s", (ev,))
+    age(cur, ev)
+
+    res = rpc(cur, "reap_orphaned_work", "15 minutes")
+    check("the reaper reports NO failure", res.get("failed") == 0, str(res))
+    check("...it reports the row as closed", res.get("closed") == 1, str(res))
+    # reaped means "a user was charged and got nothing" and triggers a NOTICE
+    # telling someone to investigate. This is bookkeeping behind a refund that
+    # already happened; folding them together would cry wolf.
+    check("...and NOT as reaped", res.get("reaped") == 0, str(res))
+    check("the run is closed", run_status(cur, ev) == "orphaned")
+
+    again = rpc(cur, "reap_orphaned_work", "15 minutes")
+    check("a second pass finds nothing -- the loop is gone",
+          again.get("closed") == 0 and again.get("failed") == 0, str(again))
+    check("the credit came back exactly once", balance(cur, uid) == before,
+          "a double refund would exceed the opening balance")
+    check("ledger reconciles", reconciles(cur, uid))
+
+
+def test_a_refund_that_truly_failed_still_stops_the_worker(cur):
+    """The distinction the fix preserves.
+
+    Closing a row whose refund never landed would strand a user who was
+    charged and never repaid -- the exact outcome the reaper exists to
+    prevent. Only already_refunded is safe to close.
+    """
+    print("\nreaper: a refund that could not be applied must still fail loudly")
+    uid = seed(cur)
+    # A work_run pointing at an event that is not a debit: refund_credit
+    # refuses with a reason that is NOT already_refunded.
+    cur.execute("insert into public.usage_events (user_id,event_type,cost_scan_credits)"
+                " values (%s,'scan',0) returning id", (uid,))
+    bogus = cur.fetchone()[0]
+    cur.execute("insert into public.work_runs (user_id,event_id,kind,status,started_at)"
+                " values (%s,%s,'scan','running', now() - interval '1 hour')",
+                (uid, bogus))
+    res = rpc(cur, "reap_orphaned_work", "15 minutes")
+    check("it is reported as a failure", res.get("failed") == 1, str(res))
+    check("...and not quietly closed", res.get("closed") == 0, str(res))
+    check("the row stays running so the next pass retries",
+          run_status(cur, bogus) == "running")
+
+
 def main() -> int:
     print("=" * 74)
     print("  work_runs -- detect and refund paid work that never finished")
@@ -325,6 +398,8 @@ def main() -> int:
                   test_reaper_leaves_live_work_alone,
                   test_reaper_does_not_double_refund,
                   test_reaper_ignores_completed_work,
+                  test_an_already_refunded_orphan_is_closed_not_retried_forever,
+                  test_a_refund_that_truly_failed_still_stops_the_worker,
                   test_concurrent_reapers_do_not_collide,
                   test_execute_and_rls_locked_down,
                   test_user_cannot_forge_a_run):

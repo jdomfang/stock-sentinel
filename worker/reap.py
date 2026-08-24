@@ -109,14 +109,41 @@ def main() -> int:
 
     reaped = int(payload.get("reaped") or 0)
     failed = int(payload.get("failed") or 0)
-    log(f"reaped={reaped} failed={failed}")
+    closed = int(payload.get("closed") or 0)
+
+    # ALREADY REFUNDED IS NOT A FAILURE. The credit is back -- that is the
+    # whole objective -- and the reason can never become anything else, so
+    # retrying it is a loop with no exit. It crashed this worker every five
+    # minutes for an hour on 2026-08-23 over one row whose page had already
+    # refunded it explicitly.
+    #
+    # utils/credits.py:221 has always said so ("already_refunded is the
+    # idempotent path, not a failure") and returns True for it. The SQL
+    # reaper called the identical reason a failure. One event, two verdicts.
+    #
+    # Filtered HERE as well as in the function, so a worker deployed against
+    # an older database stops crashing immediately rather than waiting on a
+    # migration.
+    _fails = [f for f in (payload.get("failures") or [])
+              if (f or {}).get("reason") != "already_refunded"]
+    _idempotent = failed - len(_fails)
+    if _idempotent:
+        closed += _idempotent
+        failed = len(_fails)
+
+    log(f"reaped={reaped} closed={closed} failed={failed}")
+
+    if closed:
+        # Worth one line, not an alarm: the user was refunded by the page and
+        # the reaper is only tidying the lifecycle row behind it.
+        log(f"NOTICE closed {closed} run(s) whose credit was already refunded")
 
     # A refund that could not be applied leaves the row 'running' so the next
     # pass retries. That is the right behaviour -- closing it would strand a
     # charged user -- but it must not look like a clean run, or a permanently
     # stuck orphan would repeat forever in silence.
     if failed:
-        log(f"ERROR {failed} refund(s) failed: {json.dumps(payload.get('failures'))[:500]}")
+        log(f"ERROR {failed} refund(s) failed: {json.dumps(_fails)[:500]}")
         ping(hc, "/fail")
         return 1
 
