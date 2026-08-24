@@ -346,25 +346,18 @@ def test_no_page_bails_without_closing_itself() -> None:
 
 
 def test_the_scan_route_says_which_path_served_it() -> None:
-    """A silent fallback is what made "did this use the container?"
-    unanswerable for Deep Analyze. The scan keeps its in-process branch while
-    the remote one is verified, so the logging is what stops the same thing
-    happening twice -- and the fallback must be gated on a failure that
-    provably did not spend, or a retry buys the corpus a second time.
+    """The scan is core-api or nothing, and every run says which served it.
+
+    A silent fallback is what made "did this use the container?" unanswerable
+    for Deep Analyze. It is worse here: core-api refuses a concurrent scan of
+    one sector with 429 sector-busy precisely BECAUSE another request is
+    buying that corpus, so substituting a local scan defeats the
+    duplicate-suppression the service exists for and buys the same 300 posts
+    again -- unbounded, since the portal has no concurrency cap.
     """
     import ast
-    print("\nthe scan cutover must be attributable, and must not double-spend")
+    print("\nthe scan runs in the container, and says so")
     src = open(os.path.join(REPO, "pages", "Discovery.py")).read()
-    check("the scan calls core-api", "scan_remote(" in src)
-    check("...and says so when it does", "served by CORE-API" in src)
-    check("...and says so when it does not", "served IN-PROCESS" in src)
-    # NO FALLBACK from remote to local, at all. `retryable` answers "did THIS
-    # request spend?", which is the wrong question: core-api refuses a
-    # concurrent scan of one sector with 429 sector-busy precisely BECAUSE
-    # another request is buying that corpus right now. Substituting a local
-    # scan there defeats the duplicate-suppression the service exists for and
-    # buys the same 300 posts again -- unbounded, since the portal has no
-    # concurrency cap of its own.
     # SCOPED to the scan handler. This page also hosts the per-row Deep
     # Analyze button, which legitimately runs a worker and legitimately reads
     # retryable to word its message; asserting over the whole file conflates
@@ -373,6 +366,10 @@ def test_the_scan_route_says_which_path_served_it() -> None:
     _s1 = src.index("# \u2500\u2500 Results table") if "\u2500\u2500 Results table" in src \
         else src.index("_render_deep_panel")
     scan_src = src[_s0:_s1]
+    check("the scan calls core-api", "scan_remote(" in scan_src)
+    check("...and says so when it does", "served by CORE-API" in scan_src)
+    check("...with no in-process path left to say so about",
+          "served IN-PROCESS" not in scan_src)
     check("a remote scan never falls back to a local one",
           "_r.retryable" not in scan_src,
           "the fallback re-buys the corpus core-api is already buying")
@@ -382,42 +379,34 @@ def test_the_scan_route_says_which_path_served_it() -> None:
     check("the scan handler starts exactly one worker",
           scan_src.count("threading.Thread(") == 1,
           f"{scan_src.count('threading.Thread(')} threads in the scan handler")
+    # THE LOCAL PATH IS GONE. Verified through the service on all three
+    # shapes -- warm cache, a cold 260-post fetch, and a classified failure --
+    # so the scaffolding came out. utils.scan is still imported for a
+    # constant; what must not come back is a call to it.
+    check("the page does not run a scan itself",
+          "scan_mod.scan(" not in src and "scan.scan(" not in src,
+          "the in-process pipeline came back")
 
     # ON THE AST. Substring checks pass against a mutated condition -- `if
-    # _client.configured() and False:` still contains the call, and `if _rows
-    # or _ok:` still contains _rows. Four mutations survived that way before
-    # these were rewritten.
-    # Parsed from the WHOLE file and filtered by line range: scan_src is an
-    # indented slice and does not parse on its own.
+    # _client.configured() and False:` still contains the call.
     _lo = src[:_s0].count("\n") + 1
     _hi = src[:_s1].count("\n") + 1
     ftree = ast.parse(src)
     def _in_scan(n):
         return _lo <= getattr(n, "lineno", 0) <= _hi
 
-    remote_ifs = [n for n in ast.walk(ftree) if _in_scan(n) and isinstance(n, ast.If)
-                  and isinstance(n.test, ast.Call)
-                  and isinstance(n.test.func, ast.Attribute)
-                  and n.test.func.attr == "configured"]
-    check("the remote branch is taken on configured() ALONE",
-          len(remote_ifs) == 1,
-          "a compound condition can disable the service invisibly")
-
-    # The OUTER guard. persist also sits under a nested `if _scan is not
-    # None:` (local path only), so "an If whose body contains persist" matches
-    # two nodes; the one that matters is the one testing the rows.
     persist_ifs = [n for n in ast.walk(ftree) if _in_scan(n) and isinstance(n, ast.If)
                    and _call_name_in(n.body, "persist")]
-    outer = [n for n in persist_ifs
-             if isinstance(n.test, ast.Name) and n.test.id == "_rows"]
-    check("the results branch is guarded on the ROWS alone",
-          len(outer) == 1,
-          "guarding on _ok makes it unconditional and kills the else: "
-          f"tests are {[ast.unparse(n.test) for n in persist_ifs]}")
+    check("the page writes no scan rows of its own", not persist_ifs,
+          "core-api already wrote them under this credit's event_id")
+
+    rows_ifs = [n for n in ast.walk(ftree) if _in_scan(n) and isinstance(n, ast.If)
+                and isinstance(n.test, ast.Name) and n.test.id == "_rows"]
+    check("the results branch is guarded on the ROWS alone", len(rows_ifs) == 1,
+          "guarding on _ok makes it unconditional and kills the else")
 
     # A quiet sector is an ANSWER and stays charged. Without the flag the
-    # finally refunds every time, making it an unlimited supply of free scans
-    # paid for at X.
+    # finally refunds every time, making it an unlimited supply of free scans.
     warn_ifs = [n for n in ast.walk(ftree) if _in_scan(n) and isinstance(n, ast.If)
                 and "No posts returned" in ast.unparse(n)]
     marks = [n for w in warn_ifs for n in ast.walk(w)
@@ -425,6 +414,17 @@ def test_the_scan_route_says_which_path_served_it() -> None:
              and isinstance(n.ctx, ast.Store)]
     check("an empty-but-valid scan is marked delivered, not refunded",
           bool(marks), "the finally would refund a scan that really ran")
+
+    # Mandatory now that nothing else can serve.
+    charge = min((n.lineno for n in ast.walk(ftree)
+                  if _call_name(n) == "consume_credit" and n.args
+                  and getattr(n.args[0], "value", None) == "scan"), default=None)
+    gate = min((n.lineno for n in ast.walk(ftree)
+                if isinstance(n, ast.Call) and isinstance(n.func, ast.Attribute)
+                and n.func.attr == "configured"), default=None)
+    check("the scan refuses BEFORE charging when core-api is unconfigured",
+          charge and gate and gate < charge,
+          f"gate@{gate} charge@{charge}")
 
     # The service persists before it answers; a second write here would
     # duplicate every per-ticker row for one buy.
@@ -435,8 +435,8 @@ def test_the_scan_route_says_which_path_served_it() -> None:
                     and n.func.attr == "persist")]
     check("the page persists at most one scan, and only a local one",
           len(persists) <= 1, f"{len(persists)} persist calls")
-    check("...guarded on the local Scan existing",
-          "if _scan is not None:" in src)
+    # That guard is gone with the local Scan it guarded -- the page writes
+    # nothing at all now, which the persist_ifs check above asserts directly.
 
 
 def main() -> int:
