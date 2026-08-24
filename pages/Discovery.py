@@ -24,6 +24,7 @@ from utils.deep_analysis import ANALYSIS_PROMPTS
 # button and pages/Deep_Analysis.py -- now call core-api. The sector SCAN
 # above is still local and imports what it needs directly.
 from utils import analyze_client as _client
+from utils import billing
 
 
 # Verdicts we are willing to assert. Anything else is a statement about how
@@ -620,7 +621,7 @@ with st.container(key="discovery_scan_card"):
         unsafe_allow_html=True,
     )
 
-    sel_col, btn_col, _pad = st.columns([1.4, 0.9, 1.7])
+    sel_col, btn_col, meter_col = st.columns([1.4, 0.9, 1.7])
 
     with sel_col:
         SECTOR_OPTIONS = [
@@ -669,6 +670,15 @@ with st.container(key="discovery_scan_card"):
             use_container_width=True,
         )
 
+    with meter_col:
+        # The same 1.68rem spacer btn_col uses, so the meter sits on the
+        # button's baseline rather than floating above it.
+        st.markdown("<div style='height:1.68rem'></div>", unsafe_allow_html=True)
+        # The pad this column has always been. Balance and buy sit beside the
+        # button that spends the credit, so buying never requires running out
+        # first -- and nothing about the layout moves to make room.
+        billing.render_credit_meter(kind="scan", profile=_profile, key="discovery")
+
     # Last scan context line
     _last_sector = st.session_state.get("selected_sector")
     _last_count = len(st.session_state.df_valid) if st.session_state.get("df_valid") is not None else None
@@ -706,76 +716,10 @@ from utils.scan import SENTIMENT_MARGIN  # noqa: E402
 scan_triggered = bool(scan_clicked or _autostart_scan)
 
 # Scan button
-def _get_checkout_url(user_id: str) -> str | None:
-    """Call Railway payments API to create a Stripe checkout session."""
-    try:
-        base = st.secrets.get("PAYMENTS_API_BASE_URL", "").rstrip("/")
-        secret = st.secrets.get("PAYMENTS_API_SHARED_SECRET", "")
-        if not base or not secret:
-            return None
-        import requests as _req
-        r = _req.post(
-            f"{base}/create-checkout-session",
-            json={"user_id": user_id},
-            headers={"X-Payments-Shared-Secret": secret},
-            timeout=8,
-        )
-        if r.status_code == 200:
-            return r.json().get("checkout_url")
-    except Exception:
-        pass
-    return None
-
-
-def _upgrade_modal(reason: str, event_type: str = "scan") -> None:
-    """Show a premium upgrade modal inline when out of credits."""
-    user = st.session_state.get("auth.user") or {}
-    uid = (user.get("id") if isinstance(user, dict) else getattr(user, "id", None)) or ""
-
-    if event_type == "scan":
-        icon, title, what_you_get = "📡", "Unlock more scans", [
-            "Scan any sector for momentum signals",
-            "Processed from real X data in seconds",
-            "Shortlist of validated US tickers",
-        ]
-    else:
-        icon, what_you_get = "🔍", [
-            "Full sentiment breakdown",
-            "Confidence score + trend context",
-            "Catalysts, red flags & projections",
-            "Clear Buy / Watch / Avoid signal",
-        ]
-        title = f"Unlock Deep Analysis"
-
-    st.markdown(
-        f"""
-        <div style="
-          border:1px solid rgba(56,189,248,.35);
-          background:linear-gradient(180deg,rgba(56,189,248,.06),rgba(15,23,42,.92));
-          border-radius:16px;
-          padding:24px 24px 20px 24px;
-          margin:1rem 0;
-          box-shadow:0 0 0 1px rgba(56,189,248,.15),0 12px 32px rgba(56,189,248,.08);
-        ">
-          <div style="font-size:1.4rem;font-weight:800;color:rgba(248,250,252,.98);margin-bottom:6px;">{icon} {title}</div>
-          <div style="color:rgba(148,163,184,.85);font-size:0.93rem;margin-bottom:14px;">{reason}</div>
-          <ul style="list-style:none;padding:0;margin:0 0 18px 0;">
-            {"".join(f'<li style="color:rgba(229,231,235,.90);font-size:0.93rem;margin-bottom:6px;">✓ {item}</li>' for item in what_you_get)}
-          </ul>
-        </div>
-        """,
-        unsafe_allow_html=True,
-    )
-
-    checkout_url = _get_checkout_url(uid) if uid else None
-    col_a, col_b = st.columns([1.2, 2.8])
-    with col_a:
-        if checkout_url:
-            st.link_button("Buy credits →", checkout_url, type="primary", use_container_width=True)
-        else:
-            st.button("Buy credits →", type="primary", disabled=True, use_container_width=True)
-    with col_b:
-        st.caption("Secure checkout via Stripe. Credits never expire.")
+# _get_checkout_url and _upgrade_modal used to live here, page-private -- which
+# is precisely why pages/Deep_Analysis.py had no buy option and dead-ended
+# instead. They are in utils/billing.py now, and this page is one of three
+# callers rather than the owner.
 
 
 if scan_triggered:
@@ -811,7 +755,8 @@ if scan_triggered:
     _credit = consume_credit("scan", {"sector": sector, "page": "discovery"})
     if not _credit.ok:
         logger.info("scan refused reason=%s", _credit.reason)
-        _upgrade_modal("You've used all your scan credits.", event_type="scan")
+        billing.render_upgrade_modal("You've used all your scan credits.",
+                                    event_type="scan", key="scan")
         _bail()
 
     # Set when X refuses to serve us. Drives the refund below: the user paid for
@@ -1641,7 +1586,9 @@ if st.session_state.df_valid is not None:
                         {"ticker": ticker_symbol, "sector": sector, "page": "discovery"},
                     )
                     if not _dcredit.ok:
-                        _upgrade_modal(f"Unlock the full analysis for {ticker_symbol}.", event_type="deep_analyze")
+                        billing.render_upgrade_modal(
+                        f"Unlock the full analysis for {ticker_symbol}.",
+                        event_type="deep_analyze", key="row")
                         _bail()
 
                     # Charged work: try/finally, not try/except. Streamlit's

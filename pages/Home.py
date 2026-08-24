@@ -727,6 +727,17 @@ if is_logged_in():
 
     user = get_user() or {}
     uid = (user.get("id") if isinstance(user, dict) else getattr(user, "id", None)) or ""
+
+    # BEFORE the balance is read, and above where it renders. app.py captured
+    # the ?payment= Stripe redirects back to -- it cannot be read here, because
+    # st.switch_page clears query params on the way. The message deliberately
+    # does not claim credits have arrived: the webhook that grants them is
+    # asynchronous, so the number below may still be the old one.
+    from utils import billing
+    if st.session_state.get("billing.return"):
+        _get_credits.clear()
+    billing.render_payment_return()
+
     scan_c, deep_c = _get_credits(uid)
 
 
@@ -750,16 +761,20 @@ if is_logged_in():
                 <span style="color:rgba(148,163,184,.80);font-size:0.76rem;font-weight:600;text-transform:uppercase;letter-spacing:0.04em;">Analyze Credits</span>
                 <span style="color:rgba(56,189,248,.98);font-size:1.20rem;font-weight:800;line-height:1;">{deep_c}</span>
               </div>
-              <span style="
-                color:rgba(148,163,184,.35);font-size:0.80rem;font-weight:600;
-                cursor:not-allowed;margin-left:2px;"
-                title="Coming soon">
-                + Buy Credits
-              </span>
             </div>
             """,
             unsafe_allow_html=True,
         )
+
+        # WAS AN INERT <span>: cursor:not-allowed, title="Coming soon", greyed
+        # to 35%. The control the owner wanted has been on this page the whole
+        # time, disabled. A real widget cannot live inside that markdown blob,
+        # so it renders beneath it rather than inline -- the pills keep their
+        # exact layout and nothing above them moves.
+        from utils import billing
+        _bc, _bpad = st.columns([1.1, 3.9])
+        with _bc:
+            billing.render_buy_credits(key="home")
 
 else:
     # ── LOGGED-OUT: Marketing view ─────────────────────────────────────────────

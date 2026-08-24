@@ -92,9 +92,22 @@ def _mark_stripe_event_processed(*, event_id: str, user_id: str | None = None, s
         ).execute()
         return True
     except Exception as e:
-        # Supabase/PostgREST client errors differ by version; detect unique violation defensively.
+        # THE CODE FIRST, the message only as a fallback. Reading "already
+        # processed" out of an error we merely failed to parse is the dangerous
+        # direction: it makes the caller skip the grant and return 200, so a
+        # paying customer gets nothing and Stripe never retries. The word
+        # "unique" appearing in an unrelated message is enough to do that.
+        # 23505 is the Postgres unique_violation code and PostgREST returns it
+        # verbatim, so this almost never falls through.
+        code = str(getattr(e, "code", "") or "")
+        if code == "23505":
+            return False
+        if code:
+            # A structured code we recognise as NOT a duplicate. Raising makes
+            # Stripe retry, which is the recoverable failure.
+            raise
         msg = str(e).lower()
-        if "duplicate" in msg or "23505" in msg or "unique" in msg:
+        if "23505" in msg or "duplicate key" in msg or "unique constraint" in msg:
             return False
         raise
 
@@ -143,6 +156,56 @@ def _record_purchase(
         )
 
 
+# WHAT A GIVEN AMOUNT BUYS. The single source of truth, used to price a
+# Checkout Session AND to decide what a completed one grants.
+#
+# The grant used to read `metadata.scan_credits`, defaulting to 1. Metadata is
+# a free-text dict that WE write at session creation -- but a session created
+# from the Stripe dashboard, a payment link, or a future pack whose key drifts
+# carries whatever metadata someone typed, and the `or 1` turned every one of
+# those into a silent 1+1 grant against an unknown amount of money. Money paid
+# is the one fact Stripe guarantees and nobody can typo, so credits are derived
+# from it and an unrecognised amount is refused rather than guessed.
+PACKS: dict[tuple[str, int], tuple[int, int]] = {
+    # (currency, amount in minor units): (scan_credits, deep_credits)
+    ("usd", 500): (1, 1),
+}
+
+
+def _credits_for(currency: str | None, amount_total: int | None) -> tuple[int, int] | None:
+    """What this payment buys, or None if we do not recognise the amount.
+
+    None is a refusal, never a default. The caller makes Stripe retry so the
+    payment is visible and recoverable once the pack is added here, rather than
+    granting an arbitrary quantity against real money.
+    """
+    if amount_total is None or not currency:
+        return None
+    return PACKS.get((str(currency).lower(), int(amount_total)))
+
+
+def _purchase_by_payment_intent(payment_intent_id: str) -> dict[str, Any] | None:
+    """The purchase row we wrote when we granted for this payment, if any.
+
+    THE BEST SOURCE FOR A REVOCATION. Stripe metadata says what a session was
+    *marked* as buying; this row says what we actually *granted*. Undoing the
+    grant is the only definition of a revocation that cannot drift -- if the
+    pack table changed between the purchase and the refund, deriving from the
+    amount would revoke the wrong quantity, and metadata never knew.
+    """
+    try:
+        sb = _supabase_admin_client()
+        res = (sb.table("purchases")
+                 .select("user_id,scan_credits_granted,deep_credits_granted,amount_total,currency")
+                 .eq("payment_intent_id", payment_intent_id)
+                 .limit(1).execute())
+        rows = getattr(res, "data", None) or []
+        return rows[0] if rows else None
+    except Exception:
+        logger.exception("purchases lookup failed for payment_intent=%s", payment_intent_id)
+        return None
+
+
 def _require_shared_secret(x_payments_shared_secret: str | None) -> None:
     # Simple shared-secret auth for the Streamlit -> API call.
     if not PAYMENTS_API_SHARED_SECRET:
@@ -189,12 +252,19 @@ async def create_checkout_session(
     if not APP_BASE_URL:
         raise HTTPException(status_code=500, detail="APP_BASE_URL not configured")
 
-    # We keep the pack simple for now: $5 → +1 scan, +1 deep
+    # One pack for now: $5 -> +1 scan, +1 deep. Priced FROM the table the
+    # webhook grants from, so the two can never drift apart.
+    pack_currency, pack_amount = "usd", 500
+    pack_scan, pack_deep = PACKS[(pack_currency, pack_amount)]
+
+    # Metadata still carries user_id -- it is the only way to know WHO paid, and
+    # nothing else supplies it. It no longer decides HOW MUCH: the credit counts
+    # below are advisory, recorded for debugging, and the webhook ignores them.
     pack_meta = {
         "user_id": str(user_id),
-        "pack": "5_usd_1_scan_1_deep",
-        "scan_credits": "1",
-        "deep_credits": "1",
+        "pack": f"{pack_amount}_{pack_currency}_{pack_scan}_scan_{pack_deep}_deep",
+        "scan_credits": str(pack_scan),
+        "deep_credits": str(pack_deep),
     }
 
     try:
@@ -203,8 +273,8 @@ async def create_checkout_session(
             line_items=[
                 {
                     "price_data": {
-                        "currency": "usd",
-                        "unit_amount": 500,
+                        "currency": pack_currency,
+                        "unit_amount": pack_amount,
                         "product_data": {"name": "Sentinel Credits"},
                     },
                     "quantity": 1,
@@ -245,17 +315,33 @@ async def stripe_webhook(request: Request):
         raise HTTPException(status_code=400, detail="Invalid signature")
 
     etype = event.get("type")
+    # Hoisted. It used to be assigned inside the checkout branch only, while the
+    # revocation branch below read it in its fallback revoke key -- so a refund
+    # whose charge carried no payment_intent raised UnboundLocalError, returned
+    # 500, and made Stripe retry a revocation that could never succeed.
+    event_id = event.get("id")
 
     # Default: acknowledge (Stripe retries on non-2xx)
     try:
-        if etype == "checkout.session.completed":
-            event_id = event.get("id")
+        # BOTH events, one handler. `completed` fires the moment the customer
+        # finishes the Checkout flow -- which for an async method (SEPA, Bacs,
+        # boleto, OXXO) is BEFORE the money moves: payment_status is 'unpaid'
+        # and settlement arrives later as async_payment_succeeded, or never, as
+        # async_payment_failed. Granting on `completed` alone hands out credits
+        # for money that may never arrive. Gating on payment_status without
+        # handling the async event would trade that for the opposite bug -- a
+        # customer who really paid, waiting forever -- so neither is optional.
+        #
+        # A card payment (the only method enabled today) settles synchronously
+        # and arrives 'paid' on `completed`, which is exactly why testing with
+        # 4242 4242 4242 4242 cannot reveal any of this.
+        if etype in ("checkout.session.completed",
+                     "checkout.session.async_payment_succeeded"):
             session = event["data"]["object"]
             session_id = session.get("id")
             meta = session.get("metadata") or {}
             user_id = meta.get("user_id")
-            scan_delta = int(meta.get("scan_credits") or 1)
-            deep_delta = int(meta.get("deep_credits") or 1)
+            pay_status = (session.get("payment_status") or "").lower()
 
             # Refuse rather than proceed unguarded. Stripe always sends an id, so
             # this is theoretical -- but the safe default on a money path is to
@@ -263,6 +349,18 @@ async def stripe_webhook(request: Request):
             if not event_id:
                 logger.error("Stripe event missing id; refusing to process unguarded")
                 raise HTTPException(status_code=400, detail="Stripe event missing id")
+
+            # NOT AN ERROR, and must not be retried: the customer completed
+            # checkout and the bank has not settled yet. Acknowledge and wait for
+            # async_payment_succeeded. Returning 500 here would bury a normal
+            # async purchase under three days of failing retries.
+            if pay_status not in ("paid", "no_payment_required"):
+                logger.info(
+                    "Checkout completed but not paid yet (payment_status=%s) "
+                    "session_id=%s -- awaiting async settlement, granting nothing",
+                    pay_status or "?", session_id,
+                )
+                return {"ok": True}
 
             # Validate BEFORE writing the idempotency guard. Previously the guard
             # row committed first and `if user_id:` was checked after, so a
@@ -283,59 +381,122 @@ async def stripe_webhook(request: Request):
                 # written, so a retry after a fix will work.
                 return JSONResponse(status_code=500, content={"ok": False, "error": "missing user_id"})
 
-            if not _mark_stripe_event_processed(event_id=event_id, user_id=user_id, session_id=session_id):
-                logger.info("Duplicate Stripe event ignored event_id=%s type=%s", event_id, etype)
+            # WHAT THE MONEY BUYS -- from the amount, not from metadata.
+            amount_total = session.get("amount_total")
+            currency = session.get("currency")
+            grant = _credits_for(currency, amount_total)
+            if grant is None:
+                logger.critical(
+                    "PAID CHECKOUT FOR AN UNRECOGNISED AMOUNT -- no credits granted. "
+                    "event_id=%s session_id=%s user_id=%s amount=%s %s. Add it to PACKS "
+                    "and let Stripe retry, or reconcile manually.",
+                    event_id, session_id, user_id, amount_total, currency,
+                )
+                # Same reasoning as missing user_id: no guard row written, so a
+                # retry after adding the pack grants correctly.
+                return JSONResponse(status_code=500, content={"ok": False, "error": "unknown amount"})
+            scan_delta, deep_delta = grant
+
+            # KEYED ON THE SESSION, not the event. One purchase can now reach us
+            # as two different event ids -- `completed` (unpaid) followed by
+            # `async_payment_succeeded` (paid) -- and an event-id guard would let
+            # both through, granting twice for one payment. The session id is the
+            # purchase. This is the same correction the revocation path below
+            # already carries for payment_intent.
+            grant_key = f"grant:{session_id}" if session_id else f"grant:evt:{event_id}"
+            if not _mark_stripe_event_processed(event_id=grant_key, user_id=user_id, session_id=session_id):
+                logger.info("Duplicate grant ignored %s (event_id=%s type=%s)",
+                            grant_key, event_id, etype)
                 return {"ok": True}
 
-            if user_id:
+            try:
+                _apply_credit_delta(user_id=user_id, scan_delta=scan_delta,
+                                    deep_delta=deep_delta, reason=etype,
+                                    request_id=grant_key)
+            except Exception:
+                # The guard row committed in its own transaction BEFORE this
+                # ran. Leaving it in place would make Stripe's retry a no-op
+                # and strand a paid customer with zero credits, recoverable
+                # only by log archaeology. Release it so the retry can work.
                 try:
-                    _apply_credit_delta(user_id=user_id, scan_delta=scan_delta,
-                                        deep_delta=deep_delta, reason=etype,
-                                        request_id=event_id)
+                    _supabase_admin_client().table("stripe_events_processed") \
+                        .delete().eq("event_id", grant_key).execute()
                 except Exception:
-                    # The guard row committed in its own transaction BEFORE this
-                    # ran. Leaving it in place would make Stripe's retry a no-op
-                    # and strand a paid customer with zero credits, recoverable
-                    # only by log archaeology. Release it so the retry can work.
-                    try:
-                        _supabase_admin_client().table("stripe_events_processed") \
-                            .delete().eq("event_id", event_id).execute()
-                    except Exception:
-                        logger.exception(
-                            "CRITICAL: paid purchase not granted and idempotency guard "
-                            "not released for event_id=%s user_id=%s -- MANUAL CREDIT "
-                            "GRANT REQUIRED", event_id, user_id,
-                        )
-                    raise
-                _record_purchase(
-                    user_id=user_id,
-                    event_id=event_id or None,
-                    checkout_session_id=session_id,
-                    payment_intent_id=session.get("payment_intent"),
-                    amount_total=session.get("amount_total"),
-                    currency=session.get("currency"),
-                    status=session.get("payment_status") or session.get("status"),
-                    scan_credits_granted=scan_delta,
-                    deep_credits_granted=deep_delta,
-                )
+                    logger.exception(
+                        "CRITICAL: paid purchase not granted and idempotency guard "
+                        "not released for %s user_id=%s -- MANUAL CREDIT "
+                        "GRANT REQUIRED", grant_key, user_id,
+                    )
+                raise
+            _record_purchase(
+                user_id=user_id,
+                event_id=event_id or None,
+                checkout_session_id=session_id,
+                payment_intent_id=session.get("payment_intent"),
+                amount_total=amount_total,
+                currency=currency,
+                status=pay_status or session.get("status"),
+                scan_credits_granted=scan_delta,
+                deep_credits_granted=deep_delta,
+            )
 
         elif etype in {"charge.refunded", "charge.dispute.created"}:
             # Revoke credits on refund/dispute.
             charge = event["data"]["object"]
             payment_intent = charge.get("payment_intent")
             user_id = None
-            scan_delta = -1
-            deep_delta = -1
+            # 0, not -1. These are overwritten by every path that learns the
+            # real quantity below; as a DEFAULT, -1 was a guess about somebody
+            # else's money that only ever ran when we knew the least.
+            scan_delta = 0
+            deep_delta = 0
 
-            if payment_intent and STRIPE_SECRET_KEY:
+            # A partial refund still revokes the whole pack. That is the
+            # existing behaviour and it is deliberate: a credit is indivisible,
+            # so there is no honest way to give back 40% of one. Logged below so
+            # it is visible rather than assumed.
+            if charge.get("amount_refunded") and charge.get("amount") and \
+                    int(charge["amount_refunded"]) < int(charge["amount"]):
+                logger.warning(
+                    "Partial refund (%s of %s) revokes the full pack payment_intent=%s",
+                    charge.get("amount_refunded"), charge.get("amount"), payment_intent,
+                )
+
+            # 1. What we actually granted. Authoritative when present.
+            row = _purchase_by_payment_intent(payment_intent) if payment_intent else None
+            if row:
+                user_id = row.get("user_id")
+                scan_delta = -int(row.get("scan_credits_granted") or 0)
+                deep_delta = -int(row.get("deep_credits_granted") or 0)
+
+            # 2. No purchase row -- the grant predates this table, or its insert
+            #    failed. Fall back to Stripe: metadata for WHO (nothing else
+            #    knows), the amount for HOW MUCH (metadata must not decide that,
+            #    for the same reason it must not decide a grant).
+            elif payment_intent and STRIPE_SECRET_KEY:
                 try:
                     pi = stripe.PaymentIntent.retrieve(payment_intent)
-                    meta = (pi.get("metadata") or {}) if isinstance(pi, dict) else {}
-                    user_id = meta.get("user_id")
-                    scan_delta = -int(meta.get("scan_credits") or 1)
-                    deep_delta = -int(meta.get("deep_credits") or 1)
+                    pi = pi if isinstance(pi, dict) else {}
+                    user_id = (pi.get("metadata") or {}).get("user_id")
+                    derived = _credits_for(pi.get("currency"), pi.get("amount"))
+                    if derived is None:
+                        logger.critical(
+                            "REFUND FOR AN UNRECOGNISED AMOUNT and no purchases row -- "
+                            "nothing revoked. payment_intent=%s user_id=%s amount=%s %s. "
+                            "Reconcile manually.",
+                            payment_intent, user_id, pi.get("amount"), pi.get("currency"),
+                        )
+                        user_id = None
+                    else:
+                        scan_delta, deep_delta = -derived[0], -derived[1]
                 except Exception:
+                    logger.exception("PaymentIntent lookup failed for %s", payment_intent)
                     user_id = None
+
+            if user_id and scan_delta == 0 and deep_delta == 0:
+                logger.info("Refund revokes nothing (zero-credit purchase) payment_intent=%s",
+                            payment_intent)
+                return {"ok": True}
 
             if user_id:
                 # Guard on the PAYMENT INTENT, not the event id. The event-id
@@ -392,8 +553,10 @@ def _apply_credit_delta(
     row in one transaction, and is idempotent on request_id -- which matters
     because Stripe retries a failed webhook for roughly three days.
 
-    request_id must be stable per business event, not per call: the Stripe event
-    id for a grant, revoke:<payment_intent> for a revocation.
+    request_id must be stable per business event, not per call -- and a Stripe
+    EVENT id is not that. One purchase can arrive as two events (`completed`
+    unpaid, then `async_payment_succeeded` paid), so the keys are per business
+    object: grant:<checkout_session> and revoke:<payment_intent>.
     """
     sb = _supabase_admin_client()
 

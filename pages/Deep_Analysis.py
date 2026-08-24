@@ -17,6 +17,7 @@ import streamlit.components.v1 as _components
 # HTTPS. utils.analyze is deliberately absent from these imports -- the day it
 # comes back is the day there are two implementations again.
 from utils import analyze_client as _client
+from utils import billing
 
 # Page configuration
 st.set_page_config(
@@ -141,7 +142,7 @@ _autorun = bool(st.session_state.pop("_autorun_deep_analysis", False))
 
 # ── Compact scan card ──
 with st.container(key="da_scan_card"):
-    ticker_col, btn_col, _pad = st.columns([0.55, 0.45, 2.0])
+    ticker_col, btn_col, meter_col = st.columns([0.55, 0.45, 2.0])
     with ticker_col:
         ticker = st.text_input(
             "Ticker",
@@ -153,6 +154,13 @@ with st.container(key="da_scan_card"):
         )
     with btn_col:
         _run_clicked = st.button("Deep Analyze", type="primary", use_container_width=True)
+
+    with meter_col:
+        # This page showed no balance at all -- a user could spend their last
+        # analysis without ever seeing a number, and running out here was a
+        # bare st.error() with no way to buy. The count comes from the profile
+        # require_active_account() already fetched above, so it costs nothing.
+        billing.render_credit_meter(kind="deep", profile=_profile, key="deep")
 
 # Auto-sector: Deep analysis can run without sector input. Default to unknown.
 sector = "unknown"
@@ -184,8 +192,12 @@ if _run_clicked or (_autorun and _prefill):
 
         _credit = consume_credit("deep_analyze", {"ticker": _run_ticker, "page": "deep_analysis"})
         if not _credit.ok:
+            # THE MODAL, not a bare error. This was a dead end: st.error() and
+            # nothing to click, on the page whose whole purpose is the thing
+            # the user just ran out of.
             _da_logger.info("deep_analyze refused reason=%s", _credit.reason)
-            st.error(_credit.message)
+            billing.render_upgrade_modal(_credit.message,
+                                         event_type="deep_analyze", key="page")
             _bail()
         # Everything from here is charged work. It must be inside try/finally,
         # not try/except: Streamlit aborts a running script with StopException /
