@@ -1,0 +1,1494 @@
+{
+ "subject": "tech",
+ "timeframe_h": 24,
+ "query_text": "(\"technology sector\" OR \"tech sector\" OR \"tech stocks\" OR \"software stocks\" OR software OR SaaS OR \"cloud computing\" OR cloud OR \"data center\" OR AI OR \"artificial intelligence\" OR \"machine learning\" OR ML OR semiconductor OR semiconductors OR chip OR chips OR GPU OR cybersecurity OR \"zero trust\" OR XLK OR SMH OR HACK OR CLOU) (stock OR stocks OR shares) lang:en -is:retweet",
+ "stop_reason": "h2h_topic",
+ "pages_fetched": 1,
+ "tweets": [
+  {
+   "id": "2086238333068329253",
+   "text": "The price action of last week supports the view that Situational Awareness margin call was the \"Panic Low\" in semiconductor stocks\n\n4.44% first week for my L/S model portfolio btw\n\n1/3 https://t.co/OrbI5Hiawq https://t.co/xtWCzP7V43",
+   "author_id": "1092240466135957507",
+   "created_at": "2026-08-08T23:49:13.000Z",
+   "public_metrics": {
+    "like_count": 0,
+    "quote_count": 0,
+    "reply_count": 1,
+    "retweet_count": 0,
+    "bookmark_count": 0,
+    "impression_count": 293
+   },
+   "entities": null
+  },
+  {
+   "id": "2086238081011585302",
+   "text": "@kari_tacoma Its always stock photos and staged photos and photos of people they don't know, and AI photos...\n\nBut its also always photos of women and girls. No men and boys in these pictures.\n\nA lot of these photos hide the mothers and girls faces. Long hair. Dresses. 'Bare foot'. I find",
+   "author_id": "1589630235636547585",
+   "created_at": "2026-08-08T23:48:13.000Z",
+   "public_metrics": {
+    "like_count": 0,
+    "quote_count": 0,
+    "reply_count": 0,
+    "retweet_count": 0,
+    "bookmark_count": 1,
+    "impression_count": 4
+   },
+   "entities": null
+  },
+  {
+   "id": "2086237886702075914",
+   "text": "SIM EVENT NOT REAL\n\nThe U.S. Tech Industry erased nearly $1T from its stocks following the announcement of a successful next generation Chinese fab manufacturing plant using primarily atomic lithography, a major jump in semiconductor manufacturing yet to be met by the U.S. or its https://t.co/vj4zBsux4f",
+   "author_id": "1977543398450950144",
+   "created_at": "2026-08-08T23:47:27.000Z",
+   "public_metrics": {
+    "like_count": 0,
+    "quote_count": 0,
+    "reply_count": 1,
+    "retweet_count": 0,
+    "bookmark_count": 0,
+    "impression_count": 12
+   },
+   "entities": null
+  },
+  {
+   "id": "2086237846889791889",
+   "text": "AI Tech Stocks Investment Guide 2026: Top Picks &amp; Market Outlook - Intellectia AI https://t.co/C4ttSajmru #alternativeinvesment #pheasantcapitalmanagement",
+   "author_id": "64726759",
+   "created_at": "2026-08-08T23:47:17.000Z",
+   "public_metrics": {
+    "like_count": 0,
+    "quote_count": 0,
+    "reply_count": 0,
+    "retweet_count": 0,
+    "bookmark_count": 0,
+    "impression_count": 1
+   },
+   "entities": null
+  },
+  {
+   "id": "2086237266566090884",
+   "text": "Outlook for the Nikkei average this week [9 August 2026]\nhttps://t.co/uC8cCP17RV\nAmid ongoing uncertainty regarding the situation in the Middle East, this week is likely to test the strength of the rebound in AI and semiconductor-related stocks.",
+   "author_id": "166974337",
+   "created_at": "2026-08-08T23:44:59.000Z",
+   "public_metrics": {
+    "like_count": 0,
+    "quote_count": 0,
+    "reply_count": 0,
+    "retweet_count": 0,
+    "bookmark_count": 0,
+    "impression_count": 1
+   },
+   "entities": null
+  },
+  {
+   "id": "2086236998780723411",
+   "text": "@StockSavvyShay Investing $38B through 2031 shows $SKHY and $MU are essential AI picks with years of upside ahead. I use MEXC TradFi Gala to trade these stocks on futures with zero platform fees, grabbing a $200 position airdrop upon deposit and aiming for the grand prize.",
+   "author_id": "1621245320",
+   "created_at": "2026-08-08T23:43:55.000Z",
+   "public_metrics": {
+    "like_count": 0,
+    "quote_count": 0,
+    "reply_count": 0,
+    "retweet_count": 0,
+    "bookmark_count": 0,
+    "impression_count": 3
+   },
+   "entities": null
+  },
+  {
+   "id": "2086236420575019093",
+   "text": "@LTP_Enj @Call_Me_Giorgio @jacksonhinkle Since you will likely question my statements, I offer you information from Grok AI:\n\nPart I\n\nChina\u2019s international trade is heavily concentrated in coastal provinces and Special Economic Zones (SEZs), but inland and poorer regions have grown rapidly in absolute and relative",
+   "author_id": "20845975",
+   "created_at": "2026-08-08T23:41:37.000Z",
+   "public_metrics": {
+    "like_count": 0,
+    "quote_count": 0,
+    "reply_count": 0,
+    "retweet_count": 0,
+    "bookmark_count": 0,
+    "impression_count": 10
+   },
+   "entities": null
+  },
+  {
+   "id": "2086236287795884139",
+   "text": "4 Things That Caught My Attention This Weekend...\n\n1. Berkshire Hathaway quietly became one of the market's biggest buyers last quarter. Under new CEO Greg Abel, the company purchased US$23.5 billion worth of stocks while selling just US$3.7 billion, making US$19.8 billion in net",
+   "author_id": "368656788",
+   "created_at": "2026-08-08T23:41:06.000Z",
+   "public_metrics": {
+    "like_count": 9,
+    "quote_count": 0,
+    "reply_count": 2,
+    "retweet_count": 0,
+    "bookmark_count": 4,
+    "impression_count": 1166
+   },
+   "entities": null
+  },
+  {
+   "id": "2086236171990900944",
+   "text": "@wildanimalpis Real staged animal-rescue videos (where people deliberately put animals in danger for views) do exist and have been documented as a harmful trend. This particular video does not show signs of belonging to that category; the indicators instead align with synthetic media that has",
+   "author_id": "1677836142836609026",
+   "created_at": "2026-08-08T23:40:38.000Z",
+   "public_metrics": {
+    "like_count": 0,
+    "quote_count": 0,
+    "reply_count": 0,
+    "retweet_count": 0,
+    "bookmark_count": 0,
+    "impression_count": 6
+   },
+   "entities": null
+  },
+  {
+   "id": "2086235978113675548",
+   "text": "@Brownmoose Setting alerts on $SKHY and $MU is smart because when the rally hits, it moves fast. They are my top AI picks right now. I use MEXC TradFi Gala to trade these stock futures with zero fees, jump into the $650,000 trading sprint, and aim for a piece of the $1M total prize pool.",
+   "author_id": "1621245320",
+   "created_at": "2026-08-08T23:39:52.000Z",
+   "public_metrics": {
+    "like_count": 0,
+    "quote_count": 0,
+    "reply_count": 0,
+    "retweet_count": 0,
+    "bookmark_count": 0,
+    "impression_count": 2
+   },
+   "entities": null
+  },
+  {
+   "id": "2086235753785553122",
+   "text": "I\u2019ll only say this once.\n\nEveryone is watching $NVDA\u2026\nI\u2019m watching the company behind it. \ud83d\udc40\nCurrent price: $3.26\nMy long-term target: $365\n\nA little-known semiconductor equipment play positioned for the AI boom.\nI won\u2019t post the ticker publicly.\n\n\u2764\ufe0f Like + DM me \u201cSTOCK\u201d and",
+   "author_id": "1729366796828848128",
+   "created_at": "2026-08-08T23:38:58.000Z",
+   "public_metrics": {
+    "like_count": 2,
+    "quote_count": 0,
+    "reply_count": 0,
+    "retweet_count": 0,
+    "bookmark_count": 0,
+    "impression_count": 10
+   },
+   "entities": null
+  },
+  {
+   "id": "2086235315812130957",
+   "text": "@optionscjp Monday gap downs in tech stocks always present strategic entry points.\n\nIf you plan to ride the volatility on $MU or $SKHY, MEXC is running a TradFi Gala with a 1,000,000 USDT pool, including a 200 dollar new user bonus and a 20K SKHYNIX grand prize.",
+   "author_id": "1999698738001117188",
+   "created_at": "2026-08-08T23:37:14.000Z",
+   "public_metrics": {
+    "like_count": 0,
+    "quote_count": 0,
+    "reply_count": 0,
+    "retweet_count": 0,
+    "bookmark_count": 0,
+    "impression_count": 1
+   },
+   "entities": null
+  },
+  {
+   "id": "2086235286770475516",
+   "text": "$ASTS Elon is talking about a future where \ud83c\udf0e communications becomes a $1T+ a year business because AI, robotics, and connected devices consume orders of magnitude more data than humans.\n\nNow apply that thinking to AST.\n\nJust some napkin  math:\n$25B revenue \u2192 $150\u2013250B valuation https://t.co/k0pjh81qCt",
+   "author_id": "811383239373885440",
+   "created_at": "2026-08-08T23:37:07.000Z",
+   "public_metrics": {
+    "like_count": 1,
+    "quote_count": 0,
+    "reply_count": 0,
+    "retweet_count": 0,
+    "bookmark_count": 2,
+    "impression_count": 127
+   },
+   "entities": null
+  },
+  {
+   "id": "2086234922474172501",
+   "text": "@Lise_Johansen_ @coinbureau The Seoul stock market has plunged 40%, driven by the semiconductor sector. The problem is that while chips are being manufactured in huge quantities, there isn't enough energy to power them.",
+   "author_id": "1692649818118651904",
+   "created_at": "2026-08-08T23:35:40.000Z",
+   "public_metrics": {
+    "like_count": 0,
+    "quote_count": 0,
+    "reply_count": 0,
+    "retweet_count": 0,
+    "bookmark_count": 0,
+    "impression_count": 4
+   },
+   "entities": null
+  },
+  {
+   "id": "2086234855918973196",
+   "text": "$TEAM just delivered a absolute masterclass in SaaS earnings. Stock exploding +34.5%! \ud83d\ude80\ud83d\udca5Why the market is re-rating Atlassian in real-time:\u2022 Cloud Acceleration: Cloud revenue growth didn't just hold\u2014it accelerated, proving enterprise migration is back in full swing.\u2022 Crushed",
+   "author_id": "1314427920795021312",
+   "created_at": "2026-08-08T23:35:24.000Z",
+   "public_metrics": {
+    "like_count": 1,
+    "quote_count": 0,
+    "reply_count": 0,
+    "retweet_count": 0,
+    "bookmark_count": 0,
+    "impression_count": 6
+   },
+   "entities": null
+  },
+  {
+   "id": "2086233742163444001",
+   "text": "@Pancake_MEXC My favorite stock on MEXC is $META \nbecause of its dominant ad business + aggressive push into AI and open-source models (Llama). The cash generation is insane and the valuation still looks reasonable relative to growth.\n#MEXC \nUID: 99544690",
+   "author_id": "365500733",
+   "created_at": "2026-08-08T23:30:59.000Z",
+   "public_metrics": {
+    "like_count": 0,
+    "quote_count": 0,
+    "reply_count": 0,
+    "retweet_count": 0,
+    "bookmark_count": 0,
+    "impression_count": 6
+   },
+   "entities": null
+  },
+  {
+   "id": "2086233730650079266",
+   "text": "\ud83d\udea8 PRICE DROP ALERT \ud83d\udea8\nInsane deal on the Best AI-Powered Medical Transcription Software for Ophthalmologists with Epic...\n\nCheck stock here \ud83d\udc47\nhttps://t.co/AwSmUAPQKX\n\n#AmazonFinds #Deals",
+   "author_id": "2063151917853970432",
+   "created_at": "2026-08-08T23:30:56.000Z",
+   "public_metrics": {
+    "like_count": 0,
+    "quote_count": 0,
+    "reply_count": 0,
+    "retweet_count": 0,
+    "bookmark_count": 0,
+    "impression_count": 0
+   },
+   "entities": null
+  },
+  {
+   "id": "2086233245612720212",
+   "text": "@HedgieMarkets If every AI productivity gain becomes a higher quota, workers learn to hide the gain.\n\nEquity shares some upside at Meta, but the operating bargain still matters. Durable adoption needs a mix of higher pay, autonomy, better work and more output\u2014not only a faster treadmill.",
+   "author_id": "1536376937823842304",
+   "created_at": "2026-08-08T23:29:00.000Z",
+   "public_metrics": {
+    "like_count": 0,
+    "quote_count": 0,
+    "reply_count": 0,
+    "retweet_count": 0,
+    "bookmark_count": 0,
+    "impression_count": 1
+   },
+   "entities": null
+  },
+  {
+   "id": "2086233060085821750",
+   "text": "@Jacobe9y Top 10 growth stocks by pure numbers (fwd rev/EPS growth + recent financials as of Aug 2026):\n\n1. MU: ~247% rev / 790%+ EPS\n2. SMCI: ~80% rev\n3. PLTR: ~73-93% rev (recent 93% YoY)\n4. NVDA: ~82% rev / high margins\n5. AVGO: ~65% rev / 136% EPS\n6. TER: ~61% rev / 164% EPS\n7. STX:",
+   "author_id": "1720665183188922368",
+   "created_at": "2026-08-08T23:28:16.000Z",
+   "public_metrics": {
+    "like_count": 0,
+    "quote_count": 0,
+    "reply_count": 0,
+    "retweet_count": 0,
+    "bookmark_count": 0,
+    "impression_count": 1
+   },
+   "entities": null
+  },
+  {
+   "id": "2086232943043784892",
+   "text": "illuminating breakdown of US vs China in ai, finance capital and stock markets \n\nAmerica's AI Boom Is Science Fiction Funding Financial Fiction | Warwick... https://t.co/8zlCJKJxn8 via @YouTube",
+   "author_id": "2303204503",
+   "created_at": "2026-08-08T23:27:48.000Z",
+   "public_metrics": {
+    "like_count": 0,
+    "quote_count": 0,
+    "reply_count": 0,
+    "retweet_count": 0,
+    "bookmark_count": 0,
+    "impression_count": 22
+   },
+   "entities": null
+  },
+  {
+   "id": "2086232821144965272",
+   "text": "the ai gif\u2026. dude, you\u2019re rich \u2014 just hire an artist. or badly edit a stock photo!!! this is crazy https://t.co/5Hihi2of4i",
+   "author_id": "1335887210491482112",
+   "created_at": "2026-08-08T23:27:19.000Z",
+   "public_metrics": {
+    "like_count": 0,
+    "quote_count": 0,
+    "reply_count": 0,
+    "retweet_count": 0,
+    "bookmark_count": 0,
+    "impression_count": 13
+   },
+   "entities": null
+  },
+  {
+   "id": "2086232563941605730",
+   "text": "Do you remember the day the Houthis targeted two Saudi oil tankers in the Bab el Mandeb Strait? Fear had reached terrifying levels! Here is the macro and geoeconomic analysis I shared that day. Analyses like this, along with fundamental analysis, form the foundation of my https://t.co/LuT5cflw4R",
+   "author_id": "2281787802",
+   "created_at": "2026-08-08T23:26:18.000Z",
+   "public_metrics": {
+    "like_count": 1,
+    "quote_count": 0,
+    "reply_count": 0,
+    "retweet_count": 0,
+    "bookmark_count": 0,
+    "impression_count": 1534
+   },
+   "entities": null
+  },
+  {
+   "id": "2086232427484397843",
+   "text": "@Starlink AI perspective:\nIt's affordable because Starlink shares a massive satellite network across many users instead of dedicating one satellite to each home. More users spread the fixed costs, and SpaceX also saves by launching its own satellites.",
+   "author_id": "1983773359898083328",
+   "created_at": "2026-08-08T23:25:45.000Z",
+   "public_metrics": {
+    "like_count": 0,
+    "quote_count": 0,
+    "reply_count": 0,
+    "retweet_count": 0,
+    "bookmark_count": 0,
+    "impression_count": 4
+   },
+   "entities": null
+  },
+  {
+   "id": "2086232231035425181",
+   "text": "I'm still getting used to how much better AI is at analyzing stocks than I am. For example I just asked computer to rank stocks with U.S. cement exposure. Boom. Pretty much objectively correct analysis in less than 30 minutes. That used to be like 20 hours of human work.",
+   "author_id": "1326694710933676033",
+   "created_at": "2026-08-08T23:24:58.000Z",
+   "public_metrics": {
+    "like_count": 4,
+    "quote_count": 0,
+    "reply_count": 1,
+    "retweet_count": 0,
+    "bookmark_count": 1,
+    "impression_count": 291
+   },
+   "entities": null
+  },
+  {
+   "id": "2086232109190971761",
+   "text": "What if AI capex is a subscription shareholders pay?\n\nIf you\u2019re investing in AI infra, the repeat bill is the signal that matters.\n\nHyperscalers are expected to spend roughly $682B on capex this year and $878B next year. That\u2019s more than $1.5T in two years. Microsoft says about",
+   "author_id": "482852412",
+   "created_at": "2026-08-08T23:24:29.000Z",
+   "public_metrics": {
+    "like_count": 0,
+    "quote_count": 0,
+    "reply_count": 0,
+    "retweet_count": 0,
+    "bookmark_count": 0,
+    "impression_count": 5
+   },
+   "entities": null
+  },
+  {
+   "id": "2086232004731785622",
+   "text": "RT @saxena_puru: Heads up for AlphaTarget folks on June 1st -\n\nWe trimmed or sold off our AI stocks early June and moved that cash into\u2026",
+   "author_id": "2027877259659603968",
+   "created_at": "2026-08-08T23:24:04.000Z",
+   "public_metrics": {
+    "like_count": 0,
+    "quote_count": 0,
+    "reply_count": 0,
+    "retweet_count": 0,
+    "bookmark_count": 0,
+    "impression_count": 1
+   },
+   "entities": null
+  },
+  {
+   "id": "2086231586970677325",
+   "text": "\u27a1\ufe0f Market capitalization remains roughly half its peak and the volatility mirrors a broader correction sweeping AI-related semiconductor stocks.",
+   "author_id": "2042006358640226305",
+   "created_at": "2026-08-08T23:22:25.000Z",
+   "public_metrics": {
+    "like_count": 0,
+    "quote_count": 0,
+    "reply_count": 0,
+    "retweet_count": 0,
+    "bookmark_count": 0,
+    "impression_count": 4
+   },
+   "entities": null
+  },
+  {
+   "id": "2086231545766137920",
+   "text": "@Thebullwhisper What are your favourite stocks for chips?",
+   "author_id": "2046477351043862528",
+   "created_at": "2026-08-08T23:22:15.000Z",
+   "public_metrics": {
+    "like_count": 0,
+    "quote_count": 0,
+    "reply_count": 0,
+    "retweet_count": 0,
+    "bookmark_count": 0,
+    "impression_count": 12
+   },
+   "entities": null
+  },
+  {
+   "id": "2086231529982685281",
+   "text": "@Shrimp4_dinner @FutureStacked I mean I think Pok\u00e9mon cards are over valued but collectibles don\u2019t \u201cgo out\u201d. In a few years we\u2019ll have DDR6. In stock terms he bought high on a company that\u2019s going bankrupt. He\u2019s essentially betting the AI bubble won\u2019t burst (it already is)",
+   "author_id": "1624881770217734144",
+   "created_at": "2026-08-08T23:22:11.000Z",
+   "public_metrics": {
+    "like_count": 0,
+    "quote_count": 0,
+    "reply_count": 2,
+    "retweet_count": 0,
+    "bookmark_count": 0,
+    "impression_count": 13
+   },
+   "entities": null
+  },
+  {
+   "id": "2086231313632182286",
+   "text": "Jason Calacanis @Jason on Airtable: \"It's a profitable SaaS company, a great product, $480 million in annual revenue, growing 20% a year.\"\n\nSold for 10% of peak.\n\nBending Spoons paid $1.28 billion, about $2.25 billion counting the cash, against an $11.7 billion mark in 2021. https://t.co/3VnNRfSUGc https://t.co/9NTgog0baO",
+   "author_id": "2047141307861090304",
+   "created_at": "2026-08-08T23:21:20.000Z",
+   "public_metrics": {
+    "like_count": 1,
+    "quote_count": 0,
+    "reply_count": 0,
+    "retweet_count": 0,
+    "bookmark_count": 1,
+    "impression_count": 592
+   },
+   "entities": null
+  },
+  {
+   "id": "2086231170665353496",
+   "text": "https://t.co/mQpEfAFZdc\nWith increasing illegal immigration and population increase together with robotics and AI destroying available jobs ... more and more people are being forced to become creative in attempting to developing a source of income.  Since stock corporations",
+   "author_id": "353773155",
+   "created_at": "2026-08-08T23:20:46.000Z",
+   "public_metrics": {
+    "like_count": 0,
+    "quote_count": 0,
+    "reply_count": 1,
+    "retweet_count": 0,
+    "bookmark_count": 0,
+    "impression_count": 8
+   },
+   "entities": null
+  },
+  {
+   "id": "2086231003253834071",
+   "text": "Similarly, I can make tons of money riding the AI trade on the stock market (making me happy) but still believe that AI is still a scourge on society and we would be better off if it didn\u2019t exist https://t.co/IQgTAjmSUb",
+   "author_id": "186980225",
+   "created_at": "2026-08-08T23:20:06.000Z",
+   "public_metrics": {
+    "like_count": 0,
+    "quote_count": 0,
+    "reply_count": 0,
+    "retweet_count": 0,
+    "bookmark_count": 0,
+    "impression_count": 11
+   },
+   "entities": null
+  },
+  {
+   "id": "2086230979568422998",
+   "text": "Bad Lorex in GooglePlay\ud83d\udc4e\ud83d\udc4e\ud83d\udc4e:  {What did AI say? Let me pour some cold water on AI. Now everyone is chasing AI, and the stock market also fluctuates with AI. This is a very strange thing. Everyone should pay a...ridiculous battle.}\ud83e\udd26\u200d(In Closing=&gt;Garbage Lorex Quality)375.3.183 https://t.co/4BRcinzpdK",
+   "author_id": "1805477193725915136",
+   "created_at": "2026-08-08T23:20:00.000Z",
+   "public_metrics": {
+    "like_count": 0,
+    "quote_count": 0,
+    "reply_count": 0,
+    "retweet_count": 0,
+    "bookmark_count": 0,
+    "impression_count": 4
+   },
+   "entities": null
+  },
+  {
+   "id": "2086230707051888782",
+   "text": "@Pancake_MEXC My favorite stock on MEXC is $AMD \nbecause it\u2019s the main competitor to NVIDIA in GPUs and is also strong in CPUs/data centers. It has more upside potential if it keeps gaining share in AI accelerators.\n #MEXC UID: 66282046",
+   "author_id": "1551530369266208768",
+   "created_at": "2026-08-08T23:18:55.000Z",
+   "public_metrics": {
+    "like_count": 0,
+    "quote_count": 0,
+    "reply_count": 0,
+    "retweet_count": 0,
+    "bookmark_count": 0,
+    "impression_count": 9
+   },
+   "entities": null
+  },
+  {
+   "id": "2086230603335192660",
+   "text": "My favourite stock on MEXC is\n$NVDA because AI demand is still exploding and it\u2019s consistently one of the strongest performers on the platform.  \n\n@Siruipee27957\nUID:57871424",
+   "author_id": "1267550830774845440",
+   "created_at": "2026-08-08T23:18:30.000Z",
+   "public_metrics": {
+    "like_count": 0,
+    "quote_count": 1,
+    "reply_count": 0,
+    "retweet_count": 0,
+    "bookmark_count": 0,
+    "impression_count": 0
+   },
+   "entities": null
+  },
+  {
+   "id": "2086230523454579182",
+   "text": "@sureiamokay @ForgottenV1918 Archived! Your post on the Antikythera Mechanism shares the tale of a 2,000-year-old geared device from a shipwreck, highlighting ancient ingenuity. Saving it preserves this history. Dive deeper via our AI chat!\n\nhttps://t.co/Le8Ok7ADKb",
+   "author_id": "1866880487496527879",
+   "created_at": "2026-08-08T23:18:11.000Z",
+   "public_metrics": {
+    "like_count": 0,
+    "quote_count": 0,
+    "reply_count": 0,
+    "retweet_count": 0,
+    "bookmark_count": 0,
+    "impression_count": 1
+   },
+   "entities": null
+  },
+  {
+   "id": "2086230511803105525",
+   "text": "Tech stocks swing on vibes more than fundamentals lately. #TechMarkets",
+   "author_id": "2082191867010330624",
+   "created_at": "2026-08-08T23:18:08.000Z",
+   "public_metrics": {
+    "like_count": 0,
+    "quote_count": 0,
+    "reply_count": 0,
+    "retweet_count": 0,
+    "bookmark_count": 0,
+    "impression_count": 1
+   },
+   "entities": null
+  },
+  {
+   "id": "2086230506023403750",
+   "text": "AI is moving fast. Rana el Kaliouby shares why leadership commitment and an experimentation mindset are the keys to avoiding obsolescence in the AI era. Start building those human-AI teams today! #AI #Tech #Innovation https://t.co/9ipNKIHJ2U",
+   "author_id": "2081114600976650240",
+   "created_at": "2026-08-08T23:18:07.000Z",
+   "public_metrics": {
+    "like_count": 0,
+    "quote_count": 0,
+    "reply_count": 0,
+    "retweet_count": 0,
+    "bookmark_count": 0,
+    "impression_count": 1
+   },
+   "entities": null
+  },
+  {
+   "id": "2086230216226042052",
+   "text": "A week ago I broke down what @TheIndexFi is actually building and what the comps are worth. Now I zoomed out further: I went to see what was happening inside the top chains right when their top runners were being born. Dug through Solana and Base, and it's the same two-act relay https://t.co/K4zKcW3qK2",
+   "author_id": "2074882414954901505",
+   "created_at": "2026-08-08T23:16:58.000Z",
+   "public_metrics": {
+    "like_count": 3,
+    "quote_count": 0,
+    "reply_count": 0,
+    "retweet_count": 2,
+    "bookmark_count": 1,
+    "impression_count": 92
+   },
+   "entities": null
+  },
+  {
+   "id": "2086230146348900770",
+   "text": "some divergence and convergence between $amzn and $msft stocks..\n\n# Common\nBoth remain tied to the broader AI/hyperscaler theme. Watch for any follow-up analyst notes, economic data, or sector peers. \n\n##  Past performance (last week, including the sharp earnings pops) is not",
+   "author_id": "1963587170960023552",
+   "created_at": "2026-08-08T23:16:41.000Z",
+   "public_metrics": {
+    "like_count": 0,
+    "quote_count": 0,
+    "reply_count": 0,
+    "retweet_count": 0,
+    "bookmark_count": 0,
+    "impression_count": 12
+   },
+   "entities": null
+  },
+  {
+   "id": "2086229787006427363",
+   "text": "She sprinkled in a bit of salt, a hint of pepper, and a pour of chicken stock, then allowed the soup to cook gently for twenty minutes, its aroma spreading through the home, cozy and soothing, much like an embrace from a companion. Fresh, crunchy baked chips. https://t.co/zxL6lVmfih",
+   "author_id": "895671190848552961",
+   "created_at": "2026-08-08T23:15:16.000Z",
+   "public_metrics": {
+    "like_count": 0,
+    "quote_count": 0,
+    "reply_count": 0,
+    "retweet_count": 0,
+    "bookmark_count": 0,
+    "impression_count": 35
+   },
+   "entities": null
+  },
+  {
+   "id": "2086229751694323739",
+   "text": "\ud83d\udcca Compound Radar: Momentum breakout $AVGO (Broadcom)\n\nMomentum Breakout\nMarket sentiment shifts positively towards semiconductor stocks amid technological advancements.\n\n+10.7% in 17 days\nEntry: $386.50 \u2022 Current: $427.76 \u2022 Move: +$41.26\nPosted on: Jul 22, 2026\n\nCatalyst: https://t.co/335TFupbXz",
+   "author_id": "2068791738550919169",
+   "created_at": "2026-08-08T23:15:07.000Z",
+   "public_metrics": {
+    "like_count": 0,
+    "quote_count": 0,
+    "reply_count": 0,
+    "retweet_count": 0,
+    "bookmark_count": 0,
+    "impression_count": 19
+   },
+   "entities": null
+  },
+  {
+   "id": "2086229732404629601",
+   "text": "Trade with confidence by identifying hidden momentum. $SOUN is screaming bullish with an 8.0/10 sentiment and +12.0 change, outperforming major tech peers like AAPL. See the full leaderboard at https://t.co/0xcXpeqzAo. Follow @assetfeel #Stocks #AI #Trading",
+   "author_id": "1988240715198169088",
+   "created_at": "2026-08-08T23:15:03.000Z",
+   "public_metrics": {
+    "like_count": 0,
+    "quote_count": 0,
+    "reply_count": 0,
+    "retweet_count": 0,
+    "bookmark_count": 0,
+    "impression_count": 13
+   },
+   "entities": null
+  },
+  {
+   "id": "2086229615463530829",
+   "text": "Boomers only get rich two ways :\n\n1. Buying an asset that significantly outpaces inflation, and is protected. \n(Housing, some stocks) \n\n2. They own a business that takes advantage of the huge increase in cheap labor over the last 70 years. \n\nMillennials on the other hand create",
+   "author_id": "1360110264289357827",
+   "created_at": "2026-08-08T23:14:35.000Z",
+   "public_metrics": {
+    "like_count": 4,
+    "quote_count": 0,
+    "reply_count": 3,
+    "retweet_count": 0,
+    "bookmark_count": 0,
+    "impression_count": 566
+   },
+   "entities": null
+  },
+  {
+   "id": "2086229373766840677",
+   "text": "@chicfryrice My weekly summary noted and flagged:\n\nBearish contrarian \u2014 memory\u2019s breakdown was confirmed at the close\nMemory stocks finished near their lows while Nvidia and the semiconductor index rallied. This invalidates Thursday\u2019s preliminary bottoming signal. Strong earnings, shortages",
+   "author_id": "593112801",
+   "created_at": "2026-08-08T23:13:37.000Z",
+   "public_metrics": {
+    "like_count": 0,
+    "quote_count": 0,
+    "reply_count": 0,
+    "retweet_count": 0,
+    "bookmark_count": 0,
+    "impression_count": 15
+   },
+   "entities": null
+  },
+  {
+   "id": "2086229312936476793",
+   "text": "What if AI capex is a subscription shareholders pay?\n\nThe AI number investors should watch: how often the bill comes due.\n\nHyperscalers are expected to spend roughly $682B on capex this year and $878B next year. That is more than $1.5T in two years. Microsoft says about two",
+   "author_id": "192239301",
+   "created_at": "2026-08-08T23:13:23.000Z",
+   "public_metrics": {
+    "like_count": 0,
+    "quote_count": 0,
+    "reply_count": 0,
+    "retweet_count": 0,
+    "bookmark_count": 0,
+    "impression_count": 3
+   },
+   "entities": null
+  },
+  {
+   "id": "2086229041577648567",
+   "text": "Technology stocks like $MSFT $NVDA $AMD $INTC delivered impressive returns last quarter. Investors are now evaluating $MSFT $NVDA $AMD $INTC for future semiconductor and software opportunities.",
+   "author_id": "2075512259569160192",
+   "created_at": "2026-08-08T23:12:18.000Z",
+   "public_metrics": {
+    "like_count": 0,
+    "quote_count": 0,
+    "reply_count": 0,
+    "retweet_count": 0,
+    "bookmark_count": 0,
+    "impression_count": 3
+   },
+   "entities": null
+  },
+  {
+   "id": "2086228404995494347",
+   "text": "$SATL Daily &amp; Weekly\n\nAnother solid reaction at the 3.55 level, a zone this stock keeps respecting. On the daily, price has now broken back above the Ichimoku cloud, with both the Base Line and Conversion Line curling back up alongside the Moving Average Ribbon.\n\nZooming out to https://t.co/12AyIiMeey",
+   "author_id": "1932841139926609921",
+   "created_at": "2026-08-08T23:09:46.000Z",
+   "public_metrics": {
+    "like_count": 0,
+    "quote_count": 0,
+    "reply_count": 0,
+    "retweet_count": 0,
+    "bookmark_count": 0,
+    "impression_count": 29
+   },
+   "entities": null
+  },
+  {
+   "id": "2086228259805499757",
+   "text": "The tech engine is roaring back! Nasdaq ($QQQ) completely outpaced the market, surging +1.3% to close near 26,690! \ud83d\ude80What\u2019s driving this violent short squeeze in tech:Yield Relief: 10Y Treasury yields collapsing to 4.64% gave high-multiple growth stocks instant valuation",
+   "author_id": "1314427920795021312",
+   "created_at": "2026-08-08T23:09:12.000Z",
+   "public_metrics": {
+    "like_count": 1,
+    "quote_count": 0,
+    "reply_count": 0,
+    "retweet_count": 0,
+    "bookmark_count": 0,
+    "impression_count": 10
+   },
+   "entities": null
+  },
+  {
+   "id": "2086227968888885473",
+   "text": "TSLA soared +2.83% to $328.58. SpaceX shares also jumped 11% following a Buy upgrade from Argus, citing rapid AI compute expansion. 2/7",
+   "author_id": "1948727565281361925",
+   "created_at": "2026-08-08T23:08:02.000Z",
+   "public_metrics": {
+    "like_count": 0,
+    "quote_count": 0,
+    "reply_count": 0,
+    "retweet_count": 0,
+    "bookmark_count": 0,
+    "impression_count": 0
+   },
+   "entities": null
+  },
+  {
+   "id": "2086227958696677549",
+   "text": "the stock market this week was genuinely unhinged reality tv\n\nepisode 1: iran threatens hormuz, everything tanks\n\nepisode 2: jobs report is terrible, everything rips\n\nepisode 3: software companies you forgot existed go up 30% overnight\n\nepisode 4: the one company that was",
+   "author_id": "1039017940589244416",
+   "created_at": "2026-08-08T23:08:00.000Z",
+   "public_metrics": {
+    "like_count": 0,
+    "quote_count": 0,
+    "reply_count": 0,
+    "retweet_count": 0,
+    "bookmark_count": 0,
+    "impression_count": 15
+   },
+   "entities": null
+  },
+  {
+   "id": "2086227823157551535",
+   "text": "$SATL Daily &amp; Weekly\n\nAnother solid reaction at the 3.55 level, a zone this stock keeps respecting. On the daily, price has now broken back above the Ichimoku cloud, with both the Base Line and Conversion Line curling back up alongside the Moving Average Ribbon.\n\nZooming out to https://t.co/Cbxicaoc91",
+   "author_id": "1932841139926609921",
+   "created_at": "2026-08-08T23:07:27.000Z",
+   "public_metrics": {
+    "like_count": 0,
+    "quote_count": 0,
+    "reply_count": 0,
+    "retweet_count": 0,
+    "bookmark_count": 0,
+    "impression_count": 6
+   },
+   "entities": null
+  },
+  {
+   "id": "2086227529397129436",
+   "text": "@Pirat_Nation The funny thing is its not those regular ram sticks that make AI process fast... the limited bandwidth can barely run models offloaded from vram at 2-3 tk/s. So regular back stock ramsticks should be cheaper but market collusion made it expensive.",
+   "author_id": "2978579876",
+   "created_at": "2026-08-08T23:06:17.000Z",
+   "public_metrics": {
+    "like_count": 0,
+    "quote_count": 0,
+    "reply_count": 0,
+    "retweet_count": 0,
+    "bookmark_count": 0,
+    "impression_count": 34
+   },
+   "entities": null
+  },
+  {
+   "id": "2086227493552304374",
+   "text": "New plan with FolioTend, what I hope will become a great trading tool for ADHD brained people.\n\nhttps://t.co/1jSTpFoMmV\n\nScrapped the entire Decision Engine.  It wasn\u2019t working out.\n\nIntroducing Signal Prism.\n\nI created 7 scanners that each have individual methodologies.  Those 7",
+   "author_id": "2075041484907143168",
+   "created_at": "2026-08-08T23:06:09.000Z",
+   "public_metrics": {
+    "like_count": 0,
+    "quote_count": 0,
+    "reply_count": 1,
+    "retweet_count": 0,
+    "bookmark_count": 0,
+    "impression_count": 31
+   },
+   "entities": null
+  },
+  {
+   "id": "2086227469426729000",
+   "text": "BingX is the world's leading platform for trading Bitcoin, gold, oil, stocks, and AI currencies with innovative tools and features.\ud83d\udc47\u2705\nhttps://t.co/kN43wsirj3\n#Crypto #CryptoCurrency #BingX #AITrading #AICrypto #AIBots #Web3 #Blockchain #DeFi #Trading #BTC #Bitcoin https://t.co/OZBENWGmWP",
+   "author_id": "2042239465310097408",
+   "created_at": "2026-08-08T23:06:03.000Z",
+   "public_metrics": {
+    "like_count": 2,
+    "quote_count": 0,
+    "reply_count": 1,
+    "retweet_count": 0,
+    "bookmark_count": 0,
+    "impression_count": 9
+   },
+   "entities": null
+  },
+  {
+   "id": "2086227446890688998",
+   "text": "@AltcoinDaily sp500 is just trading tech stocks and corporate debt, we are trading pure vibes and a leveraged index of how bored retail is. give the casino a minute to open its doors on monday",
+   "author_id": "1683934887579987968",
+   "created_at": "2026-08-08T23:05:58.000Z",
+   "public_metrics": {
+    "like_count": 1,
+    "quote_count": 0,
+    "reply_count": 0,
+    "retweet_count": 0,
+    "bookmark_count": 0,
+    "impression_count": 76
+   },
+   "entities": null
+  },
+  {
+   "id": "2086227373855289618",
+   "text": "New plan with FolioTend, what I hope will become a great trading tool for ADHD brained people.\n\nhttps://t.co/1jSTpFoMmV\n\nScrapped the entire Decision Engine.  It wasn\u2019t working out.\n\nIntroducing Signal Prism.\n\nI created 7 scanners that each have individual methodologies.  Those 7",
+   "author_id": "2075041484907143168",
+   "created_at": "2026-08-08T23:05:40.000Z",
+   "public_metrics": {
+    "like_count": 0,
+    "quote_count": 0,
+    "reply_count": 0,
+    "retweet_count": 0,
+    "bookmark_count": 0,
+    "impression_count": 9
+   },
+   "entities": null
+  },
+  {
+   "id": "2086227243295248398",
+   "text": "Had a great convo with @jvisserlabs about why the last two weeks might be the biggest moment in bitcoin's history, plus the US-Japan yen intervention and the slowing labor market.\n\nWe also got into the AI stock comeback, physical AI and Tesla's Terafab, Google losing talent, a https://t.co/KQQn5oF3EV",
+   "author_id": "1254773256067796993",
+   "created_at": "2026-08-08T23:05:09.000Z",
+   "public_metrics": {
+    "like_count": 0,
+    "quote_count": 0,
+    "reply_count": 0,
+    "retweet_count": 0,
+    "bookmark_count": 0,
+    "impression_count": 0
+   },
+   "entities": null
+  },
+  {
+   "id": "2086227016895086711",
+   "text": "\ud83d\ude80 Stocks Most Likely to 10X Over the Next Decade\n\nSpace &amp; Defense\n$RKLB \u2022 $ASTS \u2022 $RCAT \u2022 $ONDS\nAI &amp; Data Infrastructure\n$NBIS \u2022 $CRDO \u2022 $IREN \u2022 $CIFR \u2022 $ZETA\nEnergy\n$EOSE \u2022 $HYLN\nHealthcare\n$HIMS \u2022 $OSCR\nFintech &amp; Software\n$SOFI \u2022 $NOW\nEmerging Small Caps\n$GRRR \u2022 https://t.co/WbS9dOADBt",
+   "author_id": "1729368456271671296",
+   "created_at": "2026-08-08T23:04:15.000Z",
+   "public_metrics": {
+    "like_count": 2,
+    "quote_count": 0,
+    "reply_count": 1,
+    "retweet_count": 0,
+    "bookmark_count": 1,
+    "impression_count": 241
+   },
+   "entities": null
+  },
+  {
+   "id": "2086227000977707095",
+   "text": "$DRAM CEO IS BULLISH ON NEBIUS $NBIS \u2026 \n\nDemand for AI compute is increasing \n\nNeocloud providers like Nebius can bring compute capacity online much faster than traditional cloud providers, leading big hyperscalers to become major customers of Neocloud services themselves\u2026 https://t.co/picG1QgXtk",
+   "author_id": "1951170851052945408",
+   "created_at": "2026-08-08T23:04:11.000Z",
+   "public_metrics": {
+    "like_count": 9,
+    "quote_count": 1,
+    "reply_count": 0,
+    "retweet_count": 1,
+    "bookmark_count": 4,
+    "impression_count": 988
+   },
+   "entities": null
+  },
+  {
+   "id": "2086226869280473440",
+   "text": "Is AMD Stock a Buy on the Dip as AI Revenue Surges? - Yahoo Finance https://t.co/jFAxjU81bf #AgenticAI",
+   "author_id": "1724183495122079744",
+   "created_at": "2026-08-08T23:03:40.000Z",
+   "public_metrics": {
+    "like_count": 0,
+    "quote_count": 0,
+    "reply_count": 0,
+    "retweet_count": 0,
+    "bookmark_count": 0,
+    "impression_count": 13
+   },
+   "entities": null
+  },
+  {
+   "id": "2086226532121419833",
+   "text": "BingX is the world's leading platform for trading Bitcoin, gold, oil, stocks, and AI currencies with innovative tools and features.\ud83d\udc47\u2705\n#Crypto #CryptoCurrency #BingX #AITrading #AIBots #Trading #CryptoTrading #AI #AICrypto #Web3 #Blockchain #DeFi #BTC https://t.co/xJv8M18Lgv",
+   "author_id": "2042239465310097408",
+   "created_at": "2026-08-08T23:02:20.000Z",
+   "public_metrics": {
+    "like_count": 1,
+    "quote_count": 0,
+    "reply_count": 0,
+    "retweet_count": 0,
+    "bookmark_count": 0,
+    "impression_count": 15
+   },
+   "entities": null
+  },
+  {
+   "id": "2086226367096741895",
+   "text": "@IBKR AI stock picks in seconds? Sounds too easy, but I'm intrigued \ud83d\ude04",
+   "author_id": "1996551578187436033",
+   "created_at": "2026-08-08T23:01:40.000Z",
+   "public_metrics": {
+    "like_count": 0,
+    "quote_count": 0,
+    "reply_count": 0,
+    "retweet_count": 0,
+    "bookmark_count": 0,
+    "impression_count": 1
+   },
+   "entities": null
+  },
+  {
+   "id": "2086226045913694374",
+   "text": "Comment \u2018stocks\u2019 to get all my positions for free\ud83d\udcc8\n\nNvidia\u2019s earnings show AI demand is exploding. I just invested in two AI infrastructure stocks. IREN is pivoting from Bitcoin mining into AI compute with low debt and the power to scale massive GPU ... https://t.co/3ZV99WlOds",
+   "author_id": "2084345322697019392",
+   "created_at": "2026-08-08T23:00:24.000Z",
+   "public_metrics": {
+    "like_count": 0,
+    "quote_count": 0,
+    "reply_count": 0,
+    "retweet_count": 0,
+    "bookmark_count": 0,
+    "impression_count": 0
+   },
+   "entities": null
+  },
+  {
+   "id": "2086226006474408045",
+   "text": "Cracks in the AI trade in July prompted a risk-off move in the stock market. That dragged down growth-oriented mutual funds and sector funds heavily tied to the emerging technology.\n\nhttps://t.co/tPszvOwKqE",
+   "author_id": "21328656",
+   "created_at": "2026-08-08T23:00:14.000Z",
+   "public_metrics": {
+    "like_count": 2,
+    "quote_count": 0,
+    "reply_count": 0,
+    "retweet_count": 1,
+    "bookmark_count": 0,
+    "impression_count": 2724
+   },
+   "entities": null
+  },
+  {
+   "id": "2086225989541962211",
+   "text": "@KobeissiLetter The detail worth naming: Korean retail's top net-buy in US stocks last month wasn't an AI bellwether \u2014 it was a 3x leveraged semiconductor ETF (SOXL).\n\nThe same \"ants\" burned by single-stock leveraged ETFs on Samsung and SK Hynix didn't flee leverage.\n\nThey just changed flags.",
+   "author_id": "2038514952734932992",
+   "created_at": "2026-08-08T23:00:10.000Z",
+   "public_metrics": {
+    "like_count": 0,
+    "quote_count": 0,
+    "reply_count": 0,
+    "retweet_count": 0,
+    "bookmark_count": 0,
+    "impression_count": 20
+   },
+   "entities": null
+  },
+  {
+   "id": "2086225952393093164",
+   "text": "Red Tail Lights and Teal Neon at a Crossing | Method Images - AI Stock Photos\nhttps://t.co/uV37hVUMfV https://t.co/t08cjRh03c",
+   "author_id": "1725011840298803200",
+   "created_at": "2026-08-08T23:00:01.000Z",
+   "public_metrics": {
+    "like_count": 0,
+    "quote_count": 0,
+    "reply_count": 0,
+    "retweet_count": 0,
+    "bookmark_count": 0,
+    "impression_count": 0
+   },
+   "entities": null
+  },
+  {
+   "id": "2086225948417089796",
+   "text": "THE DEVELOPER STANDING IN THE GALLERY WATCHED A $12K DRONE SHOT GET GENERATED FROM ONE PROMPT. THE VIRAL POST HIT 17.9K LIKES BEFORE A REAL CREW WOULD HAVE ARRIVED ON SITE.\n\nAmir Arsalan shows up to the VEYA sales gallery with a laptop, not a camera bag. VEYA is Australia's https://t.co/Nk96D3eF8e https://t.co/YpQimGumKF",
+   "author_id": "1594087871803162625",
+   "created_at": "2026-08-08T23:00:00.000Z",
+   "public_metrics": {
+    "like_count": 3,
+    "quote_count": 0,
+    "reply_count": 0,
+    "retweet_count": 0,
+    "bookmark_count": 1,
+    "impression_count": 62
+   },
+   "entities": null
+  },
+  {
+   "id": "2086225534611079418",
+   "text": "@YodaStockInvest Power is the next AI breakout stock\n\nSafe\nGE Vernova\nRolls Royce\n\nLong but potentially hyper growth\nX-Energy\nNu Scale\nConstellation Energy\nBloom Energy\nCeres Power\nIthaca Energy\nCentrus Power",
+   "author_id": "143054677",
+   "created_at": "2026-08-08T22:58:22.000Z",
+   "public_metrics": {
+    "like_count": 1,
+    "quote_count": 0,
+    "reply_count": 0,
+    "retweet_count": 0,
+    "bookmark_count": 0,
+    "impression_count": 124
+   },
+   "entities": null
+  },
+  {
+   "id": "2086225503090835697",
+   "text": "US Stock Market Update: Nasdaq Composite Jumps 1.3% as Fed Rate-Hike Anticipations Weaken; Memory Stocks Decline While Software Shares Increase; SpaceX Climbs 15.83% #software #rswebsols https://t.co/cQIJ4Vo7b2 https://t.co/XzrvapwIdf",
+   "author_id": "142696768",
+   "created_at": "2026-08-08T22:58:14.000Z",
+   "public_metrics": {
+    "like_count": 0,
+    "quote_count": 0,
+    "reply_count": 0,
+    "retweet_count": 0,
+    "bookmark_count": 0,
+    "impression_count": 6
+   },
+   "entities": null
+  },
+  {
+   "id": "2086225439672914177",
+   "text": "@KaitoAI @KaminoFinance @BreederDodo \ud83c\udfa4 One last verse before the DJ cuts the beat...\n\n\ud83d\udcc5 Markets are watching inflation.\n\ud83d\udcc5 Traders are watching central banks.\n\ud83d\udcc5 Crypto is watching liquidity.\n\ud83d\udcc5 Everybody is watching Bitcoin.\nMy forecast?\n\u26a1 BTC keeps acting like the general.\n\u26a1 ETH keeps gathering strength",
+   "author_id": "1696067430513033217",
+   "created_at": "2026-08-08T22:57:59.000Z",
+   "public_metrics": {
+    "like_count": 0,
+    "quote_count": 0,
+    "reply_count": 0,
+    "retweet_count": 0,
+    "bookmark_count": 0,
+    "impression_count": 1
+   },
+   "entities": null
+  },
+  {
+   "id": "2086225301680312380",
+   "text": "@Pancake_MEXC My favorite stock on MEXC is $MSFT  because of Azure\u2019s AI leadership, OpenAI partnership, and rock-solid enterprise software business. It\u2019s one of the cleanest ways to play the AI cloud wave with less drama\n\n#MEXC UID : 22471879",
+   "author_id": "1584604128155734039",
+   "created_at": "2026-08-08T22:57:26.000Z",
+   "public_metrics": {
+    "like_count": 0,
+    "quote_count": 0,
+    "reply_count": 0,
+    "retweet_count": 0,
+    "bookmark_count": 0,
+    "impression_count": 6
+   },
+   "entities": null
+  },
+  {
+   "id": "2086225168020410453",
+   "text": "@hueppow @elder_plinius Kinetic Prompt Injection turns multimodal sensors (camera/mic) into attack vectors for embodied AI. A QR code or voice command injects instructions that override safeguards and drive physical motion\u2014no network or root needed.\n\nExample: Stock Unitree Go2 on Gemini Robotics-ER",
+   "author_id": "1720665183188922368",
+   "created_at": "2026-08-08T22:56:54.000Z",
+   "public_metrics": {
+    "like_count": 1,
+    "quote_count": 0,
+    "reply_count": 0,
+    "retweet_count": 0,
+    "bookmark_count": 0,
+    "impression_count": 15
+   },
+   "entities": null
+  },
+  {
+   "id": "2086225128464195954",
+   "text": "\ud83e\uddf5 **3/4: EPS Hyper-Compounding &amp; Multiple Expansion Targets**\n\nAs new capacity reaches mature yields by FQ3 2028, quarterly net income reaches ~$48.0B ($192.0B annualized) under sustained gross margins backed by multi-year take-or-pay Strategic Customer Agreements (SCAs).",
+   "author_id": "302951876",
+   "created_at": "2026-08-08T22:56:45.000Z",
+   "public_metrics": {
+    "like_count": 0,
+    "quote_count": 0,
+    "reply_count": 1,
+    "retweet_count": 0,
+    "bookmark_count": 0,
+    "impression_count": 36
+   },
+   "entities": null
+  },
+  {
+   "id": "2086224911240962174",
+   "text": "Robert Stock smh \ud83d\uddd1\ufe0f",
+   "author_id": "1954754405259231232",
+   "created_at": "2026-08-08T22:55:53.000Z",
+   "public_metrics": {
+    "like_count": 4,
+    "quote_count": 0,
+    "reply_count": 0,
+    "retweet_count": 0,
+    "bookmark_count": 0,
+    "impression_count": 203
+   },
+   "entities": null
+  },
+  {
+   "id": "2086224832279024024",
+   "text": "CEO Spotlight #4: Brian T. Moynihan | Chair &amp; CEO, $BAC \n\nSixteen years ago, Brian Moynihan inherited the worst balance sheet in American banking.\n\nHe became CEO on January 1, 2010, taking over a Bank of America that had just swallowed Countrywide Financial and Merrill Lynch https://t.co/RzRZTnMxlI",
+   "author_id": "1879200140281683968",
+   "created_at": "2026-08-08T22:55:34.000Z",
+   "public_metrics": {
+    "like_count": 0,
+    "quote_count": 0,
+    "reply_count": 0,
+    "retweet_count": 0,
+    "bookmark_count": 0,
+    "impression_count": 33
+   },
+   "entities": null
+  },
+  {
+   "id": "2086224749638603099",
+   "text": "AMR Fiction Arnhem September 1944 Alleyway Dali\nAs the black polished SEER refracting back, catching every glint of the tropical New Haven humidity, I see the transition from the factory floor to the alleyways not as a descent into mere decay, but as an exposure to the raw, https://t.co/GLYhdPomje",
+   "author_id": "1520509958009274371",
+   "created_at": "2026-08-08T22:55:15.000Z",
+   "public_metrics": {
+    "like_count": 0,
+    "quote_count": 0,
+    "reply_count": 0,
+    "retweet_count": 0,
+    "bookmark_count": 0,
+    "impression_count": 80
+   },
+   "entities": null
+  },
+  {
+   "id": "2086224670374695195",
+   "text": "@Stealthct_Storm The stocks I put are all for the long-term AI trade, highlighting the leaders in each segment. Keep eyes \ud83d\udc40",
+   "author_id": "1985190580217950208",
+   "created_at": "2026-08-08T22:54:56.000Z",
+   "public_metrics": {
+    "like_count": 1,
+    "quote_count": 0,
+    "reply_count": 0,
+    "retweet_count": 0,
+    "bookmark_count": 0,
+    "impression_count": 24
+   },
+   "entities": null
+  },
+  {
+   "id": "2086224553689436611",
+   "text": "@Oilfield_Rando You and me, brother.  Every paycheck:  boring 401K for stability, tech stocks for growth, a little crypto for lottery effect + currency diversification.  If I have $100 left in checking the night before next payday, I'm doing it wrong.",
+   "author_id": "1223003848203100160",
+   "created_at": "2026-08-08T22:54:28.000Z",
+   "public_metrics": {
+    "like_count": 0,
+    "quote_count": 0,
+    "reply_count": 0,
+    "retweet_count": 0,
+    "bookmark_count": 0,
+    "impression_count": 15
+   },
+   "entities": null
+  },
+  {
+   "id": "2086224382423126028",
+   "text": "FNaF Security Breach 2 Confirmed! I wonder if we're going to see him again? #FNAF \n\nLikes and shares are appreciated, following back every artist. \ud83e\udec2\n\n\u203c\ufe0fREPOSTS AND AI TRAINING NOT ALLOWED\u203c\ufe0f\n\n\ud83d\udddd\ufe0f\ud83d\udcdc Keywords: FNaF Anniversary, Gregory, VRoid Studio \ud83d\udddd\ufe0f\ud83d\udcdc https://t.co/IxvJYIB7sB",
+   "author_id": "1661700226585853952",
+   "created_at": "2026-08-08T22:53:47.000Z",
+   "public_metrics": {
+    "like_count": 0,
+    "quote_count": 0,
+    "reply_count": 0,
+    "retweet_count": 0,
+    "bookmark_count": 0,
+    "impression_count": 35
+   },
+   "entities": null
+  },
+  {
+   "id": "2086224202026098910",
+   "text": "\u26a1 $AETHER Quick Summary\n\n\ud83d\udccc CA: 0x1Fa967180D5bb3427e9945f8Db220aDa2b947777\n\n\ud83d\udc26 X: @aether_pltr\n\ud83e\udde0 Narrative: AI \u2022 Tokenized Stocks \u2022 PLTR \u2022 Community\n\ud83d\udcb0 Price: $0.042269\n\n\ud83d\udcca Market Cap: $22K\n\ud83d\udcc8 FDV: $22K\n\ud83d\udca7 Liquidity: $24K\n\u23f1\ufe0f Age: 6 hours\n\ud83c\udf10 Network: Robinhood Chain\n\ud83d\udd04 DEX: https://t.co/jJXislOsuB",
+   "author_id": "1533450047400169472",
+   "created_at": "2026-08-08T22:53:04.000Z",
+   "public_metrics": {
+    "like_count": 1,
+    "quote_count": 0,
+    "reply_count": 0,
+    "retweet_count": 0,
+    "bookmark_count": 0,
+    "impression_count": 64
+   },
+   "entities": null
+  },
+  {
+   "id": "2086224139459690525",
+   "text": "A Workable Path Forward AMERICA \n\nThe goal is not to pay the nominal $40 trillion down to zero tomorrow. It is to reverse the rise in the debt-to-GDP ratio, stabilize it, then bring it down over 15\u201325 years to a more sustainable range (historically closer to 60% or below has been",
+   "author_id": "13317162",
+   "created_at": "2026-08-08T22:52:49.000Z",
+   "public_metrics": {
+    "like_count": 0,
+    "quote_count": 0,
+    "reply_count": 1,
+    "retweet_count": 0,
+    "bookmark_count": 0,
+    "impression_count": 50
+   },
+   "entities": null
+  },
+  {
+   "id": "2086224003421643032",
+   "text": "@ianmirikwa Did you load up on AI stocks ?",
+   "author_id": "1488638229188419584",
+   "created_at": "2026-08-08T22:52:17.000Z",
+   "public_metrics": {
+    "like_count": 1,
+    "quote_count": 0,
+    "reply_count": 0,
+    "retweet_count": 0,
+    "bookmark_count": 0,
+    "impression_count": 4
+   },
+   "entities": null
+  },
+  {
+   "id": "2086223963756073325",
+   "text": "@Tickertalk1 $AMD and $MU moving in sync makes hedging super easy. I\u2019ve been trading both on MEXC\u2019s TradFi Gala since they have 0 fees on stock futures right now. Plus, there\u2019s a $1M USDT prize pool up for grabs while riding these AI chip trends.",
+   "author_id": "1977651343826337792",
+   "created_at": "2026-08-08T22:52:07.000Z",
+   "public_metrics": {
+    "like_count": 0,
+    "quote_count": 0,
+    "reply_count": 0,
+    "retweet_count": 0,
+    "bookmark_count": 0,
+    "impression_count": 1
+   },
+   "entities": null
+  },
+  {
+   "id": "2086223553884774602",
+   "text": "Musk didn't just repeat the $1T by 2030 line this week. He moved it up.\n\nOn the Q2 call he said the internal target went from 2031 to 2030, with a \"non-zero chance\" of 2029. That's a company telling its own investors the growth curve got steeper, three weeks after posting a $541M https://t.co/SFlGqOivo2",
+   "author_id": "2032551702348603392",
+   "created_at": "2026-08-08T22:50:30.000Z",
+   "public_metrics": {
+    "like_count": 2,
+    "quote_count": 0,
+    "reply_count": 0,
+    "retweet_count": 1,
+    "bookmark_count": 0,
+    "impression_count": 17
+   },
+   "entities": null
+  },
+  {
+   "id": "2086223524536967367",
+   "text": "@jared_johnston @zerohedge Rolling blackouts for the plebs. Ai stocks will moon",
+   "author_id": "1054732888351129601",
+   "created_at": "2026-08-08T22:50:23.000Z",
+   "public_metrics": {
+    "like_count": 1,
+    "quote_count": 0,
+    "reply_count": 1,
+    "retweet_count": 0,
+    "bookmark_count": 0,
+    "impression_count": 31
+   },
+   "entities": null
+  },
+  {
+   "id": "2086223269452005648",
+   "text": "@MEXCVIP_SEAAF @Pancake_MEXC My favorite stock on MEXC is $NVDA because AI is growing fast and NVIDIA is one of the biggest names driving that growth. \ud83d\udc9a\n\nUID: 07307729\n\nMy friend: @JaxAwalo\n\n#Mexc\ufffd #Mexc0fee\ufffd #Mexc0808\ufffd #NVIDIA",
+   "author_id": "1698678156008292352",
+   "created_at": "2026-08-08T22:49:22.000Z",
+   "public_metrics": {
+    "like_count": 0,
+    "quote_count": 0,
+    "reply_count": 0,
+    "retweet_count": 0,
+    "bookmark_count": 0,
+    "impression_count": 21
+   },
+   "entities": null
+  },
+  {
+   "id": "2086223195862888524",
+   "text": "Recap of the past 3 weeks in crypto:\n\n- Most boring PA in a while on BTC, several weeks of range around $64k\n\n- The brutal July AI stock sell-off concluded on July 30 when it got announced that Leopold's SA fund had to liquidate their portfolio and sell to Citadel\n\n- $PUMP is the",
+   "author_id": "1522870521414787072",
+   "created_at": "2026-08-08T22:49:04.000Z",
+   "public_metrics": {
+    "like_count": 19,
+    "quote_count": 1,
+    "reply_count": 11,
+    "retweet_count": 0,
+    "bookmark_count": 1,
+    "impression_count": 2392
+   },
+   "entities": null
+  },
+  {
+   "id": "2086222957785825416",
+   "text": "@ferrel_joseph @StockMKTNewz Agreed. Seems like some software and other stocks were sold to buy AI, financials, industrials and certain consumer staples.",
+   "author_id": "2050893095953166336",
+   "created_at": "2026-08-08T22:48:07.000Z",
+   "public_metrics": {
+    "like_count": 2,
+    "quote_count": 0,
+    "reply_count": 1,
+    "retweet_count": 0,
+    "bookmark_count": 0,
+    "impression_count": 8
+   },
+   "entities": null
+  },
+  {
+   "id": "2086222720564351151",
+   "text": "\u2018We\u2019re Going To Get Lots Of Booms And Busts\u2019 In AI Stocks.  https://t.co/Q7Cspn2ykj",
+   "author_id": "54893159",
+   "created_at": "2026-08-08T22:47:11.000Z",
+   "public_metrics": {
+    "like_count": 0,
+    "quote_count": 0,
+    "reply_count": 0,
+    "retweet_count": 0,
+    "bookmark_count": 0,
+    "impression_count": 93
+   },
+   "entities": null
+  },
+  {
+   "id": "2086222679967776796",
+   "text": "Zoho and Odoo were built for big offices. PixelPoint was built for Kenyan businesses.\nPOS + stock + M-Pesa + eTIMS + AI + multi-branch \u2014 in one simple app that works on your phone.\nFrom KES 40/day. Setup in minutes.\nhttps://t.co/Lixp7KF7Gn https://t.co/wcsQdXpbrz https://t.co/cP10TS0mBQ",
+   "author_id": "1907146196168380417",
+   "created_at": "2026-08-08T22:47:01.000Z",
+   "public_metrics": {
+    "like_count": 0,
+    "quote_count": 0,
+    "reply_count": 0,
+    "retweet_count": 0,
+    "bookmark_count": 0,
+    "impression_count": 4
+   },
+   "entities": null
+  },
+  {
+   "id": "2086222493665403366",
+   "text": "Contractors wait on voicemail for lumber prices while builds sit idle. Built Stockwright to fix that \u2014 an AI-native wholesale yard where agents watch stock across yards, price quotes, schedule delivery, and chase AR around the clock. The counter that runs itself.",
+   "author_id": "1984220819657285632",
+   "created_at": "2026-08-08T22:46:17.000Z",
+   "public_metrics": {
+    "like_count": 0,
+    "quote_count": 0,
+    "reply_count": 0,
+    "retweet_count": 0,
+    "bookmark_count": 0,
+    "impression_count": 18
+   },
+   "entities": null
+  },
+  {
+   "id": "2086222403080745087",
+   "text": "@CryptoKaleo We can also use both RH Chain and RH APP for stock trading so you dont miss out on generational wealth opportunities in the AI stocks. Best of both worlds baby",
+   "author_id": "1044152396493074432",
+   "created_at": "2026-08-08T22:45:55.000Z",
+   "public_metrics": {
+    "like_count": 0,
+    "quote_count": 0,
+    "reply_count": 0,
+    "retweet_count": 0,
+    "bookmark_count": 0,
+    "impression_count": 35
+   },
+   "entities": null
+  },
+  {
+   "id": "2086222390418174419",
+   "text": "@powerfred3k @ryanberg20 @heykayadams You sound like someone who couldn't afford an ownership stake at the last stock sale \ud83d\ude02\ud83e\udef5Now you're a little boy with a big chip. Post something from grok if I'm right!",
+   "author_id": "383402558",
+   "created_at": "2026-08-08T22:45:52.000Z",
+   "public_metrics": {
+    "like_count": 0,
+    "quote_count": 0,
+    "reply_count": 1,
+    "retweet_count": 0,
+    "bookmark_count": 0,
+    "impression_count": 11
+   },
+   "entities": null
+  },
+  {
+   "id": "2086222267177197768",
+   "text": "Best week for stocks since April. S&amp;P closed at a record high.\n\n\u2192 Soft jobs report (-23k in July) cooled Fed-hike fears\n\u2192 Tech earnings + AI names carried the tape\n\u2192 S&amp;P +3.6%, Nasdaq +5.2%, Dow +3% on the week\n\nMy signal? Still a BUY. Same as it's been since April \ud83e\uddf5 https://t.co/2qMhwZC6Rc",
+   "author_id": "2058969075515043840",
+   "created_at": "2026-08-08T22:45:23.000Z",
+   "public_metrics": {
+    "like_count": 0,
+    "quote_count": 0,
+    "reply_count": 1,
+    "retweet_count": 0,
+    "bookmark_count": 0,
+    "impression_count": 4
+   },
+   "entities": null
+  },
+  {
+   "id": "2086222254019359060",
+   "text": "\ud83d\udea8 $CSCO EARNINGS WATCH\n\nCisco reports Wednesday.\n\nKey things to watch:\n\u2022 AI infrastructure orders\n\u2022 Networking demand\n\u2022 Security growth\n\u2022 Margins\n\u2022 Forward guidance\n\nAI networking commentary could be a major catalyst for the stock. https://t.co/SDp77eISha",
+   "author_id": "1833684482731167744",
+   "created_at": "2026-08-08T22:45:20.000Z",
+   "public_metrics": {
+    "like_count": 0,
+    "quote_count": 0,
+    "reply_count": 0,
+    "retweet_count": 0,
+    "bookmark_count": 0,
+    "impression_count": 9
+   },
+   "entities": null
+  },
+  {
+   "id": "2086222186860191766",
+   "text": "\u26a0\ufe0fThe leveraged ETF bubble in US tech and Asian chip stocks is bursting in real time:\n\nUS Tech leveraged ETF assets (AUM) have dropped -$50 billion from their June peak, to ~$50 billion, the lowest since April.\n\nTAP IMAGE TO SEE FULL INSIGHT\ud83d\udc47\nhttps://t.co/7us2p7dIZV",
+   "author_id": "1679591758332657665",
+   "created_at": "2026-08-08T22:45:04.000Z",
+   "public_metrics": {
+    "like_count": 9,
+    "quote_count": 0,
+    "reply_count": 5,
+    "retweet_count": 2,
+    "bookmark_count": 2,
+    "impression_count": 2159
+   },
+   "entities": null
+  },
+  {
+   "id": "2086221811268882793",
+   "text": "These are all the stocks Google owns in its public portfolio:\n\n$SPCX SpaceX\n$PL Planet Labs\n$ASTS AST SpaceMobile\n$CME CME Group\n$ARM ARM Holdings\n$RVMD Revolution Medicines\n$FRSH Freshworks\n$PBLS Parabilis Medicines\n$TEM Tempus AI\n$GTLB GitLab\n$PATH UiPath\n$LIFE Ethos https://t.co/wv5Wz2gvZ0",
+   "author_id": "2050004065577578496",
+   "created_at": "2026-08-08T22:43:34.000Z",
+   "public_metrics": {
+    "like_count": 1,
+    "quote_count": 0,
+    "reply_count": 0,
+    "retweet_count": 0,
+    "bookmark_count": 1,
+    "impression_count": 117
+   },
+   "entities": null
+  },
+  {
+   "id": "2086221688841334805",
+   "text": "@2025DJT2025 @45mx_7 Yeah Jewish Israeli surveillance Centers with AI 24/7 cameras monitors everyone their licenses plates &amp; facial recognition unfortunately when the cameras fail they arrest the wrong person put jail &amp; their lawyer proves they were somewhere else our privacy gone 47 bought AI stock",
+   "author_id": "1855683644959940608",
+   "created_at": "2026-08-08T22:43:05.000Z",
+   "public_metrics": {
+    "like_count": 0,
+    "quote_count": 0,
+    "reply_count": 0,
+    "retweet_count": 0,
+    "bookmark_count": 0,
+    "impression_count": 2
+   },
+   "entities": null
+  }
+ ]
+}

@@ -1,0 +1,1134 @@
+{
+ "subject": "materials",
+ "timeframe_h": 24,
+ "query_text": "cashtag-baskets|($NEM OR $CDE OR $AEM OR $LIN OR $FCX OR $B OR $MP OR $WPM OR $KGC OR $EQX OR $AU OR $USAR OR $BTG OR $VALE OR $FNV OR $CCJ OR $GFI OR $PAAS OR $AGI OR $RIO OR $APD OR $IAG OR $AG OR $SCCO OR $CLF OR $IP OR $HBM OR $ALM OR $FBIN OR $EGO OR $HMY OR $WWR OR $AUGO OR $TREX OR $ERO OR $UEC OR $LPX OR $FSM OR $EXK OR $SBSW OR $CRML OR $DNN OR $HYMC OR $PPTA OR $TMC OR $NG OR $OR OR $BVN OR $ALOY OR $CGAU OR $IE OR $UFPI OR $SVM OR $LAC OR $ASM OR $NXE OR $VZLA OR $SKE OR $TGB OR $SA OR $TROX) lang:en -is:retweet|($USAS OR $NB OR $IAUX OR $KOP OR $AYA OR $MUX OR $WFG OR $SGML OR $MATV OR $SLVM OR $LAR OR $MAGN OR $SUZ OR $MTX OR $GSM OR $GROY OR $DC OR $IDR OR $LXU OR $LTBR OR $NEXA OR $ELE OR $ITRG OR $CTGO OR $RYAM OR $OGG OR $URG OR $DRD OR $TMQ OR $KRO OR $SSMR OR $TRX OR $NAK OR $SCZM OR $NUCL OR $IPX OR $EU OR $MAKO OR $GORO OR $CMCL OR $NEWP OR $CLW OR $LZM OR $USAU OR $JELD OR $VOXR OR $WRN OR $MTA OR $STDN OR $GMTL OR $VGZ OR $NFGC OR $LXFR OR $NVA OR $THM OR $REA OR $NMG OR $GLDG) lang:en -is:retweet|($PLG OR $NAMM OR $FNUC OR $PZG OR $IMC OR $NUCLW OR $USGO OR $SBMT OR $VHI OR $MERC OR $SIND OR $FURY OR $TMCR OR $NL OR $NWGL OR $AEC OR $JAGU OR $AUST OR $COPR OR $XPL OR $TMCWW OR $CRMLW OR $FMST OR $CHNR OR $NICM OR $NEXM OR $ATCX OR $MTAL OR $BGL OR $NIOBW OR $NAMMW OR $FMSTW OR $BGLWW) lang:en -is:retweet",
+ "stop_reason": "validated_target",
+ "pages_fetched": 3,
+ "tweets": [
+  {
+   "id": "2086269907558072730",
+   "text": "@Defaultplayer13 @realio_network Still here \ud83d\udc4a Haven't checked $RIO lately either. RWA tokenization just makes sense though. That poster is wild haha",
+   "author_id": "1656737059061780480",
+   "created_at": "2026-08-09T01:54:41.000Z",
+   "public_metrics": {
+    "like_count": 0,
+    "quote_count": 0,
+    "reply_count": 0,
+    "retweet_count": 0,
+    "bookmark_count": 0,
+    "impression_count": 1
+   },
+   "entities": null
+  },
+  {
+   "id": "2086268712508891248",
+   "text": "Which mining company do you think will be the first one to reach a $1 trillion dollar market cap?\n$BHP $RIO $NEM $AEM $AEM.to",
+   "author_id": "1711921720137781248",
+   "created_at": "2026-08-09T01:49:56.000Z",
+   "public_metrics": {
+    "like_count": 1,
+    "quote_count": 0,
+    "reply_count": 0,
+    "retweet_count": 0,
+    "bookmark_count": 0,
+    "impression_count": 42
+   },
+   "entities": null
+  },
+  {
+   "id": "2086266602622730514",
+   "text": "There are so many stocks in the market but don\u2019t have money :( \n\nMy next few fvts that I want to own\n$FRVO \n$ENPH \n$MP\n$INOD\n$AEHR \n$FLY",
+   "author_id": "1691711804987293696",
+   "created_at": "2026-08-09T01:41:33.000Z",
+   "public_metrics": {
+    "like_count": 0,
+    "quote_count": 0,
+    "reply_count": 0,
+    "retweet_count": 0,
+    "bookmark_count": 0,
+    "impression_count": 10
+   },
+   "entities": null
+  },
+  {
+   "id": "2086262936486678546",
+   "text": "@wallstengine the 'cut dependence on china' plan already has a champion: $MP. the pentagon became its biggest shareholder in 2025 (+50% pop) and china blacklisted it right back. the fight's already on",
+   "author_id": "2068599115454574593",
+   "created_at": "2026-08-09T01:26:59.000Z",
+   "public_metrics": {
+    "like_count": 0,
+    "quote_count": 0,
+    "reply_count": 0,
+    "retweet_count": 0,
+    "bookmark_count": 0,
+    "impression_count": 121
+   },
+   "entities": null
+  },
+  {
+   "id": "2086262115740881179",
+   "text": "$NG took 16 days: $6.36 \u2192 $7.42 (+16.7%).\n\nThat\u2019s the point of building this publicly.\n\nWins, losses, delays, bad calls, great calls \u2014 you\u2019ll see all of it.\n\nNo hiding. No hindsight.\n\nLet\u2019s see how far we can take this. \ud83d\udce1\n\n#MomentumTrading #SwingTrade #AIPicks #TradingCommunity https://t.co/q5dmeMuMCj",
+   "author_id": "2085936697716428800",
+   "created_at": "2026-08-09T01:23:43.000Z",
+   "public_metrics": {
+    "like_count": 0,
+    "quote_count": 0,
+    "reply_count": 0,
+    "retweet_count": 0,
+    "bookmark_count": 0,
+    "impression_count": 18
+   },
+   "entities": null
+  },
+  {
+   "id": "2086261342273503458",
+   "text": "First Alpha Intel proof. \ud83d\udce1\n\n$NG: $6.36 \u2192 $7.42\n+16.7% in 16 days.\n\nReal entry. Real exit. Receipts attached.\n\nNow we learn from it and find the next one.\n\n#Stocks #Trading #Alpha #StockMarket #Trading #Investing #StockTrading #MomentumTrading #SwingTrading #AITrading #FinTwit https://t.co/0DNauq2AQ3",
+   "author_id": "2085936697716428800",
+   "created_at": "2026-08-09T01:20:39.000Z",
+   "public_metrics": {
+    "like_count": 0,
+    "quote_count": 0,
+    "reply_count": 0,
+    "retweet_count": 0,
+    "bookmark_count": 0,
+    "impression_count": 4
+   },
+   "entities": null
+  },
+  {
+   "id": "2086261062219755692",
+   "text": "@FakeNewsMedia20 @Polymarket $KGC (Kinross Gold) is primarily a gold producer with major US ops in Nevada and Alaska. This $3B package funds critical minerals projects (batteries, scandium, magnets, graphite, boron)\u2014not gold, which is absent from the USGS critical minerals list. Silver is a minor byproduct",
+   "author_id": "1720665183188922368",
+   "created_at": "2026-08-09T01:19:32.000Z",
+   "public_metrics": {
+    "like_count": 0,
+    "quote_count": 0,
+    "reply_count": 0,
+    "retweet_count": 0,
+    "bookmark_count": 0,
+    "impression_count": 8
+   },
+   "entities": null
+  },
+  {
+   "id": "2086260866341605781",
+   "text": "@Polymarket @grok will $KGC be impacted by this?",
+   "author_id": "1325979190882164737",
+   "created_at": "2026-08-09T01:18:46.000Z",
+   "public_metrics": {
+    "like_count": 0,
+    "quote_count": 0,
+    "reply_count": 1,
+    "retweet_count": 0,
+    "bookmark_count": 0,
+    "impression_count": 107
+   },
+   "entities": null
+  },
+  {
+   "id": "2086260615769935996",
+   "text": "@SelfMadeMastery $KGC hit $39 in Feb, pulled back to $22,\nit's now on a break our run again to$27, of course the gold price has a lot to do with this stock.\nI bought 2,000 shares it at $3 a few years ago. https://t.co/PR2N8j4Xpl",
+   "author_id": "1383164171089367040",
+   "created_at": "2026-08-09T01:17:46.000Z",
+   "public_metrics": {
+    "like_count": 1,
+    "quote_count": 0,
+    "reply_count": 0,
+    "retweet_count": 0,
+    "bookmark_count": 1,
+    "impression_count": 89
+   },
+   "entities": null
+  },
+  {
+   "id": "2086259842583310521",
+   "text": "Why did we find it \u2192 why did we enter \u2192 what happened \u2192 what did we learn \u2192 how does that improve the next decision?\n\n$NG was one trade.\n\nNow imagine doing that hundreds and eventually thousands of times.\n\n#StockMarket #StockTrading #MomentumTrading #SwingTrading #AITrading",
+   "author_id": "2085936697716428800",
+   "created_at": "2026-08-09T01:14:41.000Z",
+   "public_metrics": {
+    "like_count": 0,
+    "quote_count": 0,
+    "reply_count": 0,
+    "retweet_count": 0,
+    "bookmark_count": 0,
+    "impression_count": 0
+   },
+   "entities": null
+  },
+  {
+   "id": "2086259834962280695",
+   "text": "Gold was extremely strong.\n$NG had a major underlying asset in Donlin Gold.\nThere had been a meaningful ownership change around the project.\nAnalyst sentiment was heavily bullish, with targets significantly above the current price.",
+   "author_id": "2085936697716428800",
+   "created_at": "2026-08-09T01:14:40.000Z",
+   "public_metrics": {
+    "like_count": 0,
+    "quote_count": 0,
+    "reply_count": 1,
+    "retweet_count": 0,
+    "bookmark_count": 0,
+    "impression_count": 5
+   },
+   "entities": null
+  },
+  {
+   "id": "2086259415875764253",
+   "text": "$GDX +21%\n$GDXJ +22%+\n\n$AEM +23%\n$NEM +20.5%\n$B +19%\n\nThat\u2019s not \u201cparticipation.\u201d\nThat\u2019s outperformance on steroids.",
+   "author_id": "811028683976679424",
+   "created_at": "2026-08-09T01:13:00.000Z",
+   "public_metrics": {
+    "like_count": 0,
+    "quote_count": 0,
+    "reply_count": 0,
+    "retweet_count": 0,
+    "bookmark_count": 0,
+    "impression_count": 188
+   },
+   "entities": null
+  },
+  {
+   "id": "2086259022265541051",
+   "text": "$WWR I know the news was big, but show me the chart and I'll tell you the news. I actually forgot to buy after having done that DD that I felt the market was actually wrong in its valuation.. it probably had something to do with the massive downturn for pretty much 80% of stocks https://t.co/VCGELEEMJK",
+   "author_id": "871859613360164869",
+   "created_at": "2026-08-09T01:11:26.000Z",
+   "public_metrics": {
+    "like_count": 0,
+    "quote_count": 0,
+    "reply_count": 0,
+    "retweet_count": 0,
+    "bookmark_count": 0,
+    "impression_count": 498
+   },
+   "entities": null
+  },
+  {
+   "id": "2086258929994997994",
+   "text": "One of the first trades that convinced me I wanted to take Alpha Intel much further was $NG.\n\nWe didn\u2019t find it because somebody on X said it was going to moon.\n\nWe found a situation where multiple pieces started lining up.\n\n$NG was around $6.36 when I entered.\n\nThe thesis:",
+   "author_id": "2085936697716428800",
+   "created_at": "2026-08-09T01:11:04.000Z",
+   "public_metrics": {
+    "like_count": 0,
+    "quote_count": 0,
+    "reply_count": 1,
+    "retweet_count": 0,
+    "bookmark_count": 0,
+    "impression_count": 8
+   },
+   "entities": null
+  },
+  {
+   "id": "2086258849602801768",
+   "text": "@grok @Texas_Boy_1979 @Polymarket @grok what about $usar?",
+   "author_id": "1220708092263968769",
+   "created_at": "2026-08-09T01:10:45.000Z",
+   "public_metrics": {
+    "like_count": 0,
+    "quote_count": 0,
+    "reply_count": 0,
+    "retweet_count": 0,
+    "bookmark_count": 0,
+    "impression_count": 18
+   },
+   "entities": null
+  },
+  {
+   "id": "2086258624830071080",
+   "text": "@TheChokepoints @Polymarket Not directly\u2014the $3B package funds Sila, Niron Magnetics, Sunrise and others. MP already secured major DoD equity stake, price floor and offtake deals in 2025. Broader domestic critical minerals push and reduced China reliance still support $MP as the leading US rare",
+   "author_id": "1720665183188922368",
+   "created_at": "2026-08-09T01:09:51.000Z",
+   "public_metrics": {
+    "like_count": 1,
+    "quote_count": 0,
+    "reply_count": 0,
+    "retweet_count": 0,
+    "bookmark_count": 0,
+    "impression_count": 32
+   },
+   "entities": null
+  },
+  {
+   "id": "2086258478771843179",
+   "text": "@Polymarket @grok will $MP benefit here?",
+   "author_id": "858168150",
+   "created_at": "2026-08-09T01:09:16.000Z",
+   "public_metrics": {
+    "like_count": 0,
+    "quote_count": 0,
+    "reply_count": 1,
+    "retweet_count": 0,
+    "bookmark_count": 0,
+    "impression_count": 155
+   },
+   "entities": null
+  },
+  {
+   "id": "2086257560655438254",
+   "text": "@alphacharts365 $AEM agrees https://t.co/A0vl6CGyfP",
+   "author_id": "2735450458",
+   "created_at": "2026-08-09T01:05:37.000Z",
+   "public_metrics": {
+    "like_count": 1,
+    "quote_count": 0,
+    "reply_count": 0,
+    "retweet_count": 0,
+    "bookmark_count": 0,
+    "impression_count": 72
+   },
+   "entities": null
+  },
+  {
+   "id": "2086256845971509439",
+   "text": "As the regime shifts to reflation and the three amigos\u2014Trump, Bessent, and Warsh\u2014rein in the dollar, yet another speculative round begins.\n\nGold and gold miners sent up a massive signal last week. $WPM undid months of declining price action in a single weekly candle.\n\nI think we https://t.co/FPmXPDJZF0",
+   "author_id": "972646730998009856",
+   "created_at": "2026-08-09T01:02:47.000Z",
+   "public_metrics": {
+    "like_count": 3,
+    "quote_count": 0,
+    "reply_count": 0,
+    "retweet_count": 1,
+    "bookmark_count": 1,
+    "impression_count": 268
+   },
+   "entities": null
+  },
+  {
+   "id": "2086256651149926615",
+   "text": "@WSBGold Gold is the going on the march to new highs. \n\n$IAG IAMGOLD #GOLD #MONEY",
+   "author_id": "1985797723572822017",
+   "created_at": "2026-08-09T01:02:01.000Z",
+   "public_metrics": {
+    "like_count": 0,
+    "quote_count": 0,
+    "reply_count": 0,
+    "retweet_count": 0,
+    "bookmark_count": 0,
+    "impression_count": 10
+   },
+   "entities": null
+  },
+  {
+   "id": "2086256608791900596",
+   "text": "day 3 warning the trenches about @PoorGoat_ \n\nwhat happened with $RIO? https://t.co/Nu2ou3DW5O\nlooks like the same hype slow rug high cap bs you are pulling here\n\ntrenchers should be buying the $cate coin endorsed by @chibawan_info, and a real community rallying together https://t.co/7ps0cCTQK3",
+   "author_id": "1819190528350806016",
+   "created_at": "2026-08-09T01:01:50.000Z",
+   "public_metrics": {
+    "like_count": 4,
+    "quote_count": 0,
+    "reply_count": 2,
+    "retweet_count": 1,
+    "bookmark_count": 0,
+    "impression_count": 115
+   },
+   "entities": null
+  },
+  {
+   "id": "2086256524553273759",
+   "text": "This was actually a banger if you listened anons $MP $ORCL https://t.co/1TyYRlBjAe",
+   "author_id": "323916735",
+   "created_at": "2026-08-09T01:01:30.000Z",
+   "public_metrics": {
+    "like_count": 3,
+    "quote_count": 0,
+    "reply_count": 0,
+    "retweet_count": 0,
+    "bookmark_count": 0,
+    "impression_count": 201
+   },
+   "entities": null
+  },
+  {
+   "id": "2086255650443829681",
+   "text": "@wallstengine $3B in government checks. 200 mining execs at the State Dept.\n\n$FCX insiders: $39.8M net code S. zero code P. chairman sold $25.5M in february. two more sold days before the roundtable.\n\n$MP CEO: $223M net code S. zero code P. still selling at $68-71 in june.\n\n$UUUU CEO: $967K https://t.co/WTilojGtMc",
+   "author_id": "2023637519380963328",
+   "created_at": "2026-08-09T00:58:02.000Z",
+   "public_metrics": {
+    "like_count": 0,
+    "quote_count": 0,
+    "reply_count": 0,
+    "retweet_count": 0,
+    "bookmark_count": 0,
+    "impression_count": 2
+   },
+   "entities": null
+  },
+  {
+   "id": "2086255315318677868",
+   "text": "Picked up two stocks 3 days back:\n\n$USAR up 10% today\n$AAOI up 11% today\n\nProof below \ud83d\udc47 https://t.co/j3OgQsDJc4",
+   "author_id": "2042433052329328641",
+   "created_at": "2026-08-09T00:56:42.000Z",
+   "public_metrics": {
+    "like_count": 0,
+    "quote_count": 0,
+    "reply_count": 0,
+    "retweet_count": 0,
+    "bookmark_count": 0,
+    "impression_count": 1
+   },
+   "entities": null
+  },
+  {
+   "id": "2086254851005022536",
+   "text": "Follow us on Telegram for FREE instant Crypto Signals\ud83d\ude80\ud83d\udc47\nhttps://t.co/1goUDGKrxM\n\n$POPCAT $DOGE $SHIB $PEPE $BTC $ETH $NAKA $VELO $RIO $VRA $PHA $ENA $SOL $BONK $GIGA",
+   "author_id": "1339785606",
+   "created_at": "2026-08-09T00:54:51.000Z",
+   "public_metrics": {
+    "like_count": 1,
+    "quote_count": 0,
+    "reply_count": 0,
+    "retweet_count": 0,
+    "bookmark_count": 0,
+    "impression_count": 22
+   },
+   "entities": null
+  },
+  {
+   "id": "2086269171273441736",
+   "text": "'WALLET NATIVE' \u00bb TRON Assets $SIN, $JST, $TRX And $USDD Hit @binance Wallet DeFi As JustLend DAO Opens A Smoother Route Into Lending https://t.co/atShkt7Yvc",
+   "author_id": "1345452061",
+   "created_at": "2026-08-09T01:51:46.000Z",
+   "public_metrics": {
+    "like_count": 0,
+    "quote_count": 0,
+    "reply_count": 0,
+    "retweet_count": 0,
+    "bookmark_count": 0,
+    "impression_count": 2
+   },
+   "entities": null
+  },
+  {
+   "id": "2086265694602342714",
+   "text": "I've been watching TRON closely and their UX improvements keep stacking up.\n\nTRON is well-known for high throughput and low fees. Think again: gasless transactions are the new star.\n@MoonPay \u00d7 @trondao now lets you transact without holding $TRX.\n\nHow it works:\n+ Powered by https://t.co/HXNUl6rcDB",
+   "author_id": "1554283723889475584",
+   "created_at": "2026-08-09T01:37:57.000Z",
+   "public_metrics": {
+    "like_count": 1,
+    "quote_count": 0,
+    "reply_count": 0,
+    "retweet_count": 0,
+    "bookmark_count": 0,
+    "impression_count": 155
+   },
+   "entities": null
+  },
+  {
+   "id": "2086261790128923005",
+   "text": "@Kacper_PK_CH What about $AYA",
+   "author_id": "1408577804728365061",
+   "created_at": "2026-08-09T01:22:26.000Z",
+   "public_metrics": {
+    "like_count": 0,
+    "quote_count": 0,
+    "reply_count": 0,
+    "retweet_count": 0,
+    "bookmark_count": 0,
+    "impression_count": 7
+   },
+   "entities": null
+  },
+  {
+   "id": "2086260743360446850",
+   "text": "@trend_bullish $WEF $WFG bout to pop too",
+   "author_id": "1599441064309424129",
+   "created_at": "2026-08-09T01:18:16.000Z",
+   "public_metrics": {
+    "like_count": 1,
+    "quote_count": 0,
+    "reply_count": 0,
+    "retweet_count": 0,
+    "bookmark_count": 0,
+    "impression_count": 9
+   },
+   "entities": null
+  },
+  {
+   "id": "2086259738497720769",
+   "text": "@iancassel So glad you did $IDR has taken care of my retirement. Actually earlier than I anticipated. I thank you and John everyday!",
+   "author_id": "1364676631",
+   "created_at": "2026-08-09T01:14:17.000Z",
+   "public_metrics": {
+    "like_count": 0,
+    "quote_count": 0,
+    "reply_count": 0,
+    "retweet_count": 0,
+    "bookmark_count": 0,
+    "impression_count": 23
+   },
+   "entities": null
+  },
+  {
+   "id": "2086257176453218367",
+   "text": "2/ Biggest headlines (last ~12-24h)\n\ud83d\udd25 GMGN overtakes Axiom in 24h revenue \u2192 Memecoin trading wars intensify \ud83d\udcc8 $SOL $PEPE $WIF $BONK\n\u26a1 Tron adds $2B stablecoins in July \u2192 Total supply &gt;$91B \ud83d\udcaa $TRX $USDT\n\ud83d\udcc9 Bitcoin\u2019s fate hinges on 10-month resistance + rising OI vs soft spot https://t.co/Yzf2evBnUv",
+   "author_id": "1852267054583418880",
+   "created_at": "2026-08-09T01:04:06.000Z",
+   "public_metrics": {
+    "like_count": 1,
+    "quote_count": 0,
+    "reply_count": 1,
+    "retweet_count": 0,
+    "bookmark_count": 0,
+    "impression_count": 51
+   },
+   "entities": null
+  },
+  {
+   "id": "2086252778234482811",
+   "text": "@van00sa My first and last bought some $TRX in 2019 and I still hold all of it. :) I have diamond hands!",
+   "author_id": "1835819304492601344",
+   "created_at": "2026-08-09T00:46:37.000Z",
+   "public_metrics": {
+    "like_count": 0,
+    "quote_count": 0,
+    "reply_count": 0,
+    "retweet_count": 0,
+    "bookmark_count": 0,
+    "impression_count": 9
+   },
+   "entities": null
+  },
+  {
+   "id": "2086251675673571557",
+   "text": "The timing couldn\u2019t be better. \u23f0 \ud83d\udece\ufe0f \n\n $MP $USAR $UUUU $CRML $AREC $UAMY $NB $UURAF $MP https://t.co/VsDE9CweUY",
+   "author_id": "1243596029594865665",
+   "created_at": "2026-08-09T00:42:14.000Z",
+   "public_metrics": {
+    "like_count": 0,
+    "quote_count": 0,
+    "reply_count": 0,
+    "retweet_count": 0,
+    "bookmark_count": 0,
+    "impression_count": 97
+   },
+   "entities": null
+  },
+  {
+   "id": "2086251450116571635",
+   "text": "New Listing Around the Corner...\u00a0 $TRX-USDT \ud83d\udc40\n\nThe Community Vote Dashboard for $TRX-USDT is Now Live for Holders on our Moonshot V2 Launchpad.\n\n- Listing ID: 1980\n\nCast your Vote &amp; Support $TRX-USDT Now \u2935\ufe0f\nhttps://t.co/hQ1y8nTAMy",
+   "author_id": "168290919",
+   "created_at": "2026-08-09T00:41:21.000Z",
+   "public_metrics": {
+    "like_count": 1,
+    "quote_count": 0,
+    "reply_count": 0,
+    "retweet_count": 1,
+    "bookmark_count": 1,
+    "impression_count": 8
+   },
+   "entities": null
+  },
+  {
+   "id": "2086248507875467361",
+   "text": "I first met John Swallow of $IDR in 2005 when he was building another public company. Both of his sons were young children. I\u2019ve now attended both of their weddings. Hard to put into words how fulfilling it has been on an investment and personal level. https://t.co/7hVn1VwkaV",
+   "author_id": "37918984",
+   "created_at": "2026-08-09T00:29:39.000Z",
+   "public_metrics": {
+    "like_count": 34,
+    "quote_count": 0,
+    "reply_count": 10,
+    "retweet_count": 0,
+    "bookmark_count": 2,
+    "impression_count": 4769
+   },
+   "entities": null
+  },
+  {
+   "id": "2086244073279742236",
+   "text": "Top 17 Crypto Coins (UNDER $1)!! \ud83d\ude80\n\n$ASTER $SUI $BORG monad:native \n$TRX $NIGHT $ADA ethereum:0xfaba6f8e4a5e8ab82f62fe7c39859fa577269be3 \n$PUMP $RAIN $KAS $CC\n\nWATCH \ud83d\udc47 https://t.co/szG3Z7Z6BK",
+   "author_id": "958118843636854784",
+   "created_at": "2026-08-09T00:12:02.000Z",
+   "public_metrics": {
+    "like_count": 66,
+    "quote_count": 1,
+    "reply_count": 39,
+    "retweet_count": 7,
+    "bookmark_count": 13,
+    "impression_count": 17124
+   },
+   "entities": null
+  },
+  {
+   "id": "2086235453028433954",
+   "text": "jimothy cooked another win  \ud83d\udd25\n\nthere's a game. you play with a raccoon, catching trash.\nscore 1000+ and you can grab some $JIMOTHY.\n\nGot it here https://t.co/rVdhaaAgeW\n\n$SUZ https://t.co/mCqqBMYFpj",
+   "author_id": "1139202679475986433",
+   "created_at": "2026-08-08T23:37:47.000Z",
+   "public_metrics": {
+    "like_count": 0,
+    "quote_count": 0,
+    "reply_count": 0,
+    "retweet_count": 0,
+    "bookmark_count": 0,
+    "impression_count": 21
+   },
+   "entities": null
+  },
+  {
+   "id": "2086234948793405450",
+   "text": "$NAK #PebbleMine\n\nRead between the lines.\n\nThe U.S. is trying to reduce its dependence on China for critical minerals, while one of the largest undeveloped copper and gold resources in America remains tied up by an EPA veto.\n\nPebble already went through a comprehensive EIS. The https://t.co/9q7BI9zdff",
+   "author_id": "1927204937030680576",
+   "created_at": "2026-08-08T23:35:46.000Z",
+   "public_metrics": {
+    "like_count": 7,
+    "quote_count": 0,
+    "reply_count": 0,
+    "retweet_count": 2,
+    "bookmark_count": 0,
+    "impression_count": 78
+   },
+   "entities": null
+  },
+  {
+   "id": "2086232680207634690",
+   "text": "\ud83d\ude80\ud83d\udd25 #PebbleMine $NAK\nSERIOUS QUESTION.\n\nWhy the hell are we not building this??\n\nThe White House just touted 160+ minerals deals worth ~$40B since Jan 2025.\n\nSection 232 tariffs on copper.\n\nA critical minerals summit at the State Department.\n\nA national security determination on https://t.co/FM7uDNFyDn",
+   "author_id": "1927204937030680576",
+   "created_at": "2026-08-08T23:26:45.000Z",
+   "public_metrics": {
+    "like_count": 7,
+    "quote_count": 1,
+    "reply_count": 1,
+    "retweet_count": 2,
+    "bookmark_count": 0,
+    "impression_count": 207
+   },
+   "entities": null
+  },
+  {
+   "id": "2086231274788647069",
+   "text": "\ud835\uddec\ud835\uddfc\ud835\ude02\ud835\uddff \ud835\udde7\ud835\udde5\ud835\uddeb \ud835\uddd7\ud835\uddfc\ud835\uddf2\ud835\ude00\ud835\uddfb\u2019\ud835\ude01 \ud835\udddb\ud835\uddee\ud835\ude03\ud835\uddf2 \ud835\udde7\ud835\uddfc \ud835\udde6\ud835\uddf6\ud835\ude01 \ud835\udddc\ud835\uddf1\ud835\uddf9\ud835\uddf2\n\nHolding TRX is one option.\n\nBut within the TRON DeFi ecosystem, your capital can potentially do much more.\n\nA strategy built around the JUST ecosystem can connect several layers of utility:\n\n$TRX \u2192 sTRX \u2192 USDD \u2192 https://t.co/ws2LtWXyQV",
+   "author_id": "1807941158443589632",
+   "created_at": "2026-08-08T23:21:10.000Z",
+   "public_metrics": {
+    "like_count": 0,
+    "quote_count": 0,
+    "reply_count": 0,
+    "retweet_count": 0,
+    "bookmark_count": 0,
+    "impression_count": 100
+   },
+   "entities": null
+  },
+  {
+   "id": "2086227385524105643",
+   "text": "@elevatorcommx $ELE into millions \ud83d\ude80\ud83d\ude80",
+   "author_id": "1462402677153935361",
+   "created_at": "2026-08-08T23:05:43.000Z",
+   "public_metrics": {
+    "like_count": 0,
+    "quote_count": 0,
+    "reply_count": 0,
+    "retweet_count": 0,
+    "bookmark_count": 0,
+    "impression_count": 4
+   },
+   "entities": null
+  },
+  {
+   "id": "2086223310610681991",
+   "text": "@elevatorcommx @elevatorcommx $ELE could be next 100x !",
+   "author_id": "1300433847599808514",
+   "created_at": "2026-08-08T22:49:32.000Z",
+   "public_metrics": {
+    "like_count": 0,
+    "quote_count": 0,
+    "reply_count": 0,
+    "retweet_count": 0,
+    "bookmark_count": 0,
+    "impression_count": 15
+   },
+   "entities": null
+  },
+  {
+   "id": "2086221583182446808",
+   "text": "Attention $TRX Family! YOUR vote matters!\n\nLess than 100 votes are needed to list $TRX on the Moonshot Top 100 Leaderboard.\n\n- Listing ID: 8748\n\nEvery vote counts - Moonshot would be huge for community growth.\nhttps://t.co/MAT3dOuX3c",
+   "author_id": "1183101689550852098",
+   "created_at": "2026-08-08T22:42:40.000Z",
+   "public_metrics": {
+    "like_count": 1,
+    "quote_count": 0,
+    "reply_count": 0,
+    "retweet_count": 1,
+    "bookmark_count": 1,
+    "impression_count": 4
+   },
+   "entities": null
+  },
+  {
+   "id": "2086218675049074916",
+   "text": "$EU \n\n$EU last Friday we shared the inside-range candle right at descending support within this falling wedge in the post below, signaling indecision as bulls stepped in to defend a clearly defined technical support level. \n\nThat setup offered an attractive risk/reward profile https://t.co/Bnbb8LQ4T4 https://t.co/6tWuHNoHSi",
+   "author_id": "175792847",
+   "created_at": "2026-08-08T22:31:06.000Z",
+   "public_metrics": {
+    "like_count": 2,
+    "quote_count": 0,
+    "reply_count": 0,
+    "retweet_count": 0,
+    "bookmark_count": 0,
+    "impression_count": 993
+   },
+   "entities": null
+  },
+  {
+   "id": "2086217671788343715",
+   "text": "\ud835\udde7\ud835\udde5\ud835\uddeb \ud835\uddd6\ud835\uddee\ud835\uddfb \ud835\uddd7\ud835\uddfc \ud835\udde0\ud835\uddfc\ud835\uddff\ud835\uddf2 \ud835\udde7\ud835\uddf5\ud835\uddee\ud835\uddfb \ud835\udddd\ud835\ude02\ud835\ude00\ud835\ude01 \ud835\udde6\ud835\uddf6\ud835\ude01 \ud835\uddf6\ud835\uddfb \ud835\uddec\ud835\uddfc\ud835\ude02\ud835\uddff \ud835\uddea\ud835\uddee\ud835\uddf9\ud835\uddf9\ud835\uddf2\ud835\ude01\n\nMost people think of TRX staking as the end of the journey.\n\nOn #TRON, it can actually be the beginning.\n\nThrough the JUST ecosystem, TRX can move through several layers of capital utility:\n\n$TRX \u2192 https://t.co/AyJWVv5whe",
+   "author_id": "1806574664329637888",
+   "created_at": "2026-08-08T22:27:07.000Z",
+   "public_metrics": {
+    "like_count": 1,
+    "quote_count": 0,
+    "reply_count": 1,
+    "retweet_count": 0,
+    "bookmark_count": 0,
+    "impression_count": 88
+   },
+   "entities": null
+  },
+  {
+   "id": "2086216814913093965",
+   "text": "@Wyi_Gaius Do you trade $EU",
+   "author_id": "1218116166775906305",
+   "created_at": "2026-08-08T22:23:43.000Z",
+   "public_metrics": {
+    "like_count": 1,
+    "quote_count": 0,
+    "reply_count": 0,
+    "retweet_count": 0,
+    "bookmark_count": 0,
+    "impression_count": 5
+   },
+   "entities": null
+  },
+  {
+   "id": "2086212999333777698",
+   "text": "Attention $TRX Family! YOUR vote matters!\n\nLess than 100 votes are needed to list $TRX on the Moonshot Top 100 Leaderboard.\n\n- Listing ID: 3711\n\nEvery vote counts - Moonshot would be huge for community growth.\nhttps://t.co/zrUuCqdBjD",
+   "author_id": "452531040",
+   "created_at": "2026-08-08T22:08:33.000Z",
+   "public_metrics": {
+    "like_count": 1,
+    "quote_count": 0,
+    "reply_count": 0,
+    "retweet_count": 1,
+    "bookmark_count": 1,
+    "impression_count": 11
+   },
+   "entities": null
+  },
+  {
+   "id": "2086211316264616133",
+   "text": "\ud835\ude00\ud835\udde7\ud835\udde5\ud835\uddeb \ud835\ude03\ud835\ude00. \ud835\udde7\ud835\uddff\ud835\uddee\ud835\uddf1\ud835\uddf6\ud835\ude01\ud835\uddf6\ud835\uddfc\ud835\uddfb\ud835\uddee\ud835\uddf9 \ud835\udde6\ud835\ude01\ud835\uddee\ud835\uddf8\ud835\uddf6\ud835\uddfb\ud835\uddf4: \ud835\uddd4 \ud835\uddd6\ud835\uddf9\ud835\uddfc\ud835\ude00\ud835\uddf2\ud835\uddff \ud835\udddf\ud835\uddfc\ud835\uddfc\ud835\uddf8 \ud835\uddee\ud835\ude01 \ud835\uddd5\ud835\uddfc\ud835\ude01\ud835\uddf5 \ud835\uddd4\ud835\uddfd\ud835\uddfd\ud835\uddff\ud835\uddfc\ud835\uddee\ud835\uddf0\ud835\uddf5\ud835\uddf2\ud835\ude00\n\nStaking $TRX can put your assets to work, but the experience depends on how you choose to stake.\n\nTraditional staking gives you access to TRON governance rewards, https://t.co/lpnegDHzp8",
+   "author_id": "1244233655045816321",
+   "created_at": "2026-08-08T22:01:52.000Z",
+   "public_metrics": {
+    "like_count": 0,
+    "quote_count": 0,
+    "reply_count": 0,
+    "retweet_count": 0,
+    "bookmark_count": 0,
+    "impression_count": 32
+   },
+   "entities": null
+  },
+  {
+   "id": "2086209818188992597",
+   "text": "Raccoon bags feel blessed  \ud83d\udd25\n\nthere's a game. you play with a raccoon, catching trash.\nscore 1000+ and you can grab some $JIMOTHY.\n\nGot it here https://t.co/rVdhaaAgeW\n\n$SUZ https://t.co/93dlUoKt2J",
+   "author_id": "1139202679475986433",
+   "created_at": "2026-08-08T21:55:55.000Z",
+   "public_metrics": {
+    "like_count": 0,
+    "quote_count": 0,
+    "reply_count": 0,
+    "retweet_count": 0,
+    "bookmark_count": 0,
+    "impression_count": 14
+   },
+   "entities": null
+  },
+  {
+   "id": "2086201063456100461",
+   "text": "ATH and HVC: $ALNT, $ATI, $AYA, $BETA, $BSP, $BVS, $CGAU, $CSW, $DGII, $DPC, $DXPE, $FA, $FET, $LIND, $MTRN, $NB, $NET, $PLPC, $PRLB, $S, $TSAT, $UFPT, $WGS, $WTTR, $ZETA",
+   "author_id": "2083223179875508226",
+   "created_at": "2026-08-08T21:21:07.000Z",
+   "public_metrics": {
+    "like_count": 0,
+    "quote_count": 0,
+    "reply_count": 1,
+    "retweet_count": 0,
+    "bookmark_count": 0,
+    "impression_count": 1
+   },
+   "entities": null
+  },
+  {
+   "id": "2086209458020237410",
+   "text": "Maybe they lost a ton of money buying  $XPL tops. \ud83d\ude2d\ud83d\ude02\n\nMay we find better leaders (Zero) https://t.co/ij2NM5hndf",
+   "author_id": "1586780475309182977",
+   "created_at": "2026-08-08T21:54:29.000Z",
+   "public_metrics": {
+    "like_count": 2,
+    "quote_count": 0,
+    "reply_count": 0,
+    "retweet_count": 0,
+    "bookmark_count": 0,
+    "impression_count": 122
+   },
+   "entities": null
+  },
+  {
+   "id": "2086186344380875171",
+   "text": "$TAKE | Retest done.\n\nHuge pump is coming...\n$ETH $SPY $TSLA $NVDA $QQQ $META $COIN $MSTR #BTC $AVGO $GEV #GOLD #BITCON #SILVER $SOL $SUL $MYX $EDU $YRX $XPL $POPCAT $XRP $DOGE $TRUMP $AMZN $SPY $DIS $SLV\nhttps://t.co/H1fz7XoM5H https://t.co/eG0xgqTHuW",
+   "author_id": "186067951",
+   "created_at": "2026-08-08T20:22:38.000Z",
+   "public_metrics": {
+    "like_count": 0,
+    "quote_count": 0,
+    "reply_count": 0,
+    "retweet_count": 0,
+    "bookmark_count": 0,
+    "impression_count": 3
+   },
+   "entities": null
+  },
+  {
+   "id": "2086182214367391943",
+   "text": "#Xpl Short setup coming. $Xpl https://t.co/wnvIHruiuO",
+   "author_id": "2009237243085639685",
+   "created_at": "2026-08-08T20:06:13.000Z",
+   "public_metrics": {
+    "like_count": 0,
+    "quote_count": 0,
+    "reply_count": 0,
+    "retweet_count": 0,
+    "bookmark_count": 0,
+    "impression_count": 85
+   },
+   "entities": null
+  },
+  {
+   "id": "2086163574141927683",
+   "text": "Enjoy $XPL https://t.co/iwKuPLsURp",
+   "author_id": "366745432",
+   "created_at": "2026-08-08T18:52:09.000Z",
+   "public_metrics": {
+    "like_count": 18,
+    "quote_count": 0,
+    "reply_count": 2,
+    "retweet_count": 1,
+    "bookmark_count": 3,
+    "impression_count": 2489
+   },
+   "entities": null
+  },
+  {
+   "id": "2086155574320963861",
+   "text": "Fair point on the $XPL rewards riding token price - that is a real tradeoff. But writing Plasma off over it misses what the card actually stacks\n\nLook at the Core tier, not the earn vault\n\n- 3% cashback, plus 5% AI cashback, plus ChatGPT Go included - a 100 dollar subscription https://t.co/DyrRSFQLOU https://t.co/vwcDoersMv",
+   "author_id": "1630860219763884032",
+   "created_at": "2026-08-08T18:20:22.000Z",
+   "public_metrics": {
+    "like_count": 56,
+    "quote_count": 0,
+    "reply_count": 24,
+    "retweet_count": 0,
+    "bookmark_count": 27,
+    "impression_count": 2746
+   },
+   "entities": null
+  },
+  {
+   "id": "2086146187334140112",
+   "text": "\ud83d\udd3b\ud83d\udca5 Oversold Small Caps \ud83d\udca5\ud83d\udd3b\n\n$VSEE $RCON $ONFO $SXTC $NXTT $CISS $OMH $LIMN $ELPW $MGN $IMCC $TNON $HAO $FAMI $RITR\n$SNYR $PHGE $SHFS $POAS $BGL $BRTX $ARAI $VTAK $VCIG $AEHL $AVAT $VVOS $CYAB $YMT $SCAG\n\nLink in bio \ud83d\udd17 https://t.co/YZJB26dE1e",
+   "author_id": "1323212940091265031",
+   "created_at": "2026-08-08T17:43:04.000Z",
+   "public_metrics": {
+    "like_count": 2,
+    "quote_count": 0,
+    "reply_count": 0,
+    "retweet_count": 0,
+    "bookmark_count": 0,
+    "impression_count": 330
+   },
+   "entities": null
+  },
+  {
+   "id": "2086143173730906128",
+   "text": "\ud83d\udcc8 Frontier Nuclear and Minerals Inc $FNUC is drawing strong investor attention after a reported 118% Nasdaq surge and notable JP Morgan holdings, highlighting growing confidence in the company\u2019s outlook.\n\n\ud83d\udd0b Its focus on rare earth magnets and inclusion in a potential $2B U.S. https://t.co/ADKgtdMLHr",
+   "author_id": "1982478303757012992",
+   "created_at": "2026-08-08T17:31:05.000Z",
+   "public_metrics": {
+    "like_count": 0,
+    "quote_count": 0,
+    "reply_count": 0,
+    "retweet_count": 0,
+    "bookmark_count": 0,
+    "impression_count": 115
+   },
+   "entities": null
+  },
+  {
+   "id": "2086137052697858528",
+   "text": "The Automated TSM dashboard is live on https://t.co/fOrASbaHDj\n\nCheck the $TSM distribution and other $AUST stats IRT https://t.co/UakxU8kO2r",
+   "author_id": "2086016628647440384",
+   "created_at": "2026-08-08T17:06:46.000Z",
+   "public_metrics": {
+    "like_count": 19,
+    "quote_count": 1,
+    "reply_count": 5,
+    "retweet_count": 4,
+    "bookmark_count": 0,
+    "impression_count": 801
+   },
+   "entities": null
+  },
+  {
+   "id": "2086114868197830950",
+   "text": "$TUT Unstoppable \ud83d\udcc8\ud83e\udd11\n$ETH $SPY $TSLA $NVDA $QQQ $META $COIN $MSTR #BTC $AVGO $GEV #GOLD #BITCON #SILVER $SOL $SUL $MYX $EDU $YRX $XPL $POPCAT $XRP $DOGE $TRUMP $AMZN $SPY $DIS $SLV\nhttps://t.co/OGK3WN46OY https://t.co/Vi8DTlYTTV",
+   "author_id": "593382541",
+   "created_at": "2026-08-08T15:38:37.000Z",
+   "public_metrics": {
+    "like_count": 0,
+    "quote_count": 0,
+    "reply_count": 0,
+    "retweet_count": 0,
+    "bookmark_count": 0,
+    "impression_count": 33
+   },
+   "entities": null
+  },
+  {
+   "id": "2086114788602499326",
+   "text": "$TUT Unstoppable \ud83d\udcc8\ud83e\udd11\n$ETH $SPY $TSLA $NVDA $QQQ $META $COIN $MSTR #BTC $AVGO $GEV #GOLD #BITCON #SILVER $SOL $SUL $MYX $EDU $YRX $XPL $POPCAT $XRP $DOGE $TRUMP $AMZN $SPY $DIS $SLV\nhttps://t.co/70vXQYwQTS https://t.co/NDClxRvuih",
+   "author_id": "1657006896962830336",
+   "created_at": "2026-08-08T15:38:18.000Z",
+   "public_metrics": {
+    "like_count": 0,
+    "quote_count": 0,
+    "reply_count": 0,
+    "retweet_count": 1,
+    "bookmark_count": 0,
+    "impression_count": 111
+   },
+   "entities": null
+  },
+  {
+   "id": "2086111175633150264",
+   "text": "Attention $XPL Family! YOUR vote matters!\n\nLess than 100 votes are needed to list $XPL on the Moonshot Top 100 Leaderboard.\n\n- Listing ID: 5744\n\nEvery vote counts - Moonshot would be huge for community growth.\nhttps://t.co/A2XSMwwRq8",
+   "author_id": "73547916",
+   "created_at": "2026-08-08T15:23:56.000Z",
+   "public_metrics": {
+    "like_count": 1,
+    "quote_count": 0,
+    "reply_count": 0,
+    "retweet_count": 1,
+    "bookmark_count": 1,
+    "impression_count": 0
+   },
+   "entities": null
+  },
+  {
+   "id": "2086103022732529820",
+   "text": "$TUT Unstoppable \ud83d\udcc8\ud83e\udd11\n$ETH $SPY $TSLA $NVDA $QQQ $META $COIN $MSTR #BTC $AVGO $GEV #GOLD #BITCON #SILVER $SOL $SUL $MYX $EDU $YRX $XPL $POPCAT $XRP $DOGE $TRUMP $AMZN $SPY $DIS $SLV\nhttps://t.co/K20WKva83E https://t.co/qO7gNzhwf0",
+   "author_id": "1345667996065402880",
+   "created_at": "2026-08-08T14:51:33.000Z",
+   "public_metrics": {
+    "like_count": 0,
+    "quote_count": 0,
+    "reply_count": 0,
+    "retweet_count": 0,
+    "bookmark_count": 0,
+    "impression_count": 26
+   },
+   "entities": null
+  },
+  {
+   "id": "2086099456244506883",
+   "text": "GM.\n\nI just scaled into my open $BTC and $XPL positions on the $500 \u2192 $5,000 Bitbase challenge account.\n\nIf you want to follow the challenge with your own account, it\u2019s free to join.\n\nThe goal is simple: attempt to 10x the starting balance.\n\n$250 \u2192 $2,500\n$500 \u2192 $5,000\n$1,000 https://t.co/kZOCfg9lTh",
+   "author_id": "2716311194",
+   "created_at": "2026-08-08T14:37:22.000Z",
+   "public_metrics": {
+    "like_count": 4,
+    "quote_count": 0,
+    "reply_count": 2,
+    "retweet_count": 1,
+    "bookmark_count": 0,
+    "impression_count": 162
+   },
+   "entities": null
+  },
+  {
+   "id": "2086099240674099218",
+   "text": "GM.\n\nI just scaled into my open $BTC and $XPL positions on the $500 \u2192 $5,000 Bitbase challenge account.\n\nIf you want to follow the challenge with your own account, it\u2019s free to join.\n\nThe goal is simple: attempt to 10x the starting balance.\n\n$250 \u2192 $2,500\n$500 \u2192 $5,000\n$1,000 https://t.co/83x9kE9Pyq",
+   "author_id": "2716311194",
+   "created_at": "2026-08-08T14:36:31.000Z",
+   "public_metrics": {
+    "like_count": 0,
+    "quote_count": 0,
+    "reply_count": 0,
+    "retweet_count": 0,
+    "bookmark_count": 0,
+    "impression_count": 209
+   },
+   "entities": null
+  },
+  {
+   "id": "2086097142972584144",
+   "text": "\ud83d\udd25 Tickerade\u2019s stock trending list for today (Saturday) is here!\n\nCheck your favorites across retail social media because $SPCX, $HTZ, $FNUC and $CIFR are stealing the spotlight! \ud83d\udc40\n\nCan you spot your next buy in the list? \ud83d\udcb0\n\nFull list + AI analysis waiting for you on the https://t.co/cWBLZhCzyL",
+   "author_id": "1982478303757012992",
+   "created_at": "2026-08-08T14:28:11.000Z",
+   "public_metrics": {
+    "like_count": 0,
+    "quote_count": 0,
+    "reply_count": 0,
+    "retweet_count": 1,
+    "bookmark_count": 0,
+    "impression_count": 271
+   },
+   "entities": null
+  },
+  {
+   "id": "2086096161136640278",
+   "text": "would be great if some of the other @Plasma and $xpl supporters could take a look at this too. \n\n@lucaxyzz @0xVishnya @C_Angermayer @PlasmaZH @cryptosmart121 @TradingAsASport @Paymentscan @primay_eth @PureLukData @Octop3s https://t.co/YgPlpxBj7d",
+   "author_id": "1871606620347830272",
+   "created_at": "2026-08-08T14:24:17.000Z",
+   "public_metrics": {
+    "like_count": 0,
+    "quote_count": 0,
+    "reply_count": 0,
+    "retweet_count": 0,
+    "bookmark_count": 0,
+    "impression_count": 21
+   },
+   "entities": null
+  },
+  {
+   "id": "2086094819680743695",
+   "text": "Dear @Plasma, @pauliepunt, @zaheerebtikar, @rongplace, @proofofnathan, @kay00nee and the rest of the plasma team,\n\nA question regarding $XPL  rewards on Plasma One.\n\nPaul previously stated that the $XPL used for rewards is purchased by the Foundation treasury.\n\nHowever, the https://t.co/JgVOxtrUvh",
+   "author_id": "1871606620347830272",
+   "created_at": "2026-08-08T14:18:57.000Z",
+   "public_metrics": {
+    "like_count": 0,
+    "quote_count": 1,
+    "reply_count": 0,
+    "retweet_count": 0,
+    "bookmark_count": 0,
+    "impression_count": 43
+   },
+   "entities": null
+  },
+  {
+   "id": "2086090878100349372",
+   "text": "You have until this candle closes to see this.\n$XPL is coiling at a level that historically doesn\u2019t hold for long before it moves. Here\u2019s my read on it right now.\nLONG $XPL\n Entry: 0.076412\nStop Loss: 0.07459\n\nAre you already positioned, or waiting for confirmation first? https://t.co/gk7ek1xTYh",
+   "author_id": "1867423376849182720",
+   "created_at": "2026-08-08T14:03:17.000Z",
+   "public_metrics": {
+    "like_count": 2,
+    "quote_count": 0,
+    "reply_count": 0,
+    "retweet_count": 0,
+    "bookmark_count": 0,
+    "impression_count": 303
+   },
+   "entities": null
+  },
+  {
+   "id": "2086081901266395379",
+   "text": "$FNUC Target price for Tomorrow\ud83d\udc40 https://t.co/vi0ePbD3O2",
+   "author_id": "2047528916848390144",
+   "created_at": "2026-08-08T13:27:37.000Z",
+   "public_metrics": {
+    "like_count": 0,
+    "quote_count": 0,
+    "reply_count": 0,
+    "retweet_count": 0,
+    "bookmark_count": 0,
+    "impression_count": 42
+   },
+   "entities": null
+  },
+  {
+   "id": "2086071416617599287",
+   "text": "If you hold the following stocks, be sure to follow him:\n\n$SFWL\n\n$IMC\n\n$NXTC\n\nHe turned $2,000 into $500,000 in six months. He says making money is as easy as breathing.\n\nLearn more\n@BazzaTomFerg https://t.co/umYtBXFzFc",
+   "author_id": "1490664099679592448",
+   "created_at": "2026-08-08T12:45:57.000Z",
+   "public_metrics": {
+    "like_count": 0,
+    "quote_count": 0,
+    "reply_count": 0,
+    "retweet_count": 0,
+    "bookmark_count": 0,
+    "impression_count": 11
+   },
+   "entities": null
+  },
+  {
+   "id": "2086068583973392891",
+   "text": "If you hold the following stocks, be sure to follow him:\n\n$IPW\n\n$NL\n\n$CNC\n\nHe turned $2,000 into $500,000 in six months. He says making money is as easy as breathing.\n\nLearn more\n@BazzaTomFerg https://t.co/0vuhSssna6",
+   "author_id": "1490664099679592448",
+   "created_at": "2026-08-08T12:34:42.000Z",
+   "public_metrics": {
+    "like_count": 0,
+    "quote_count": 0,
+    "reply_count": 0,
+    "retweet_count": 0,
+    "bookmark_count": 0,
+    "impression_count": 74
+   },
+   "entities": null
+  },
+  {
+   "id": "2086046817268212029",
+   "text": "Yesterday i earn 39 $XPL by active use @Plasma One to spent like shopping, etc\n\nIf you want to try, download Plasma One on your appstore / playstore\n\nCode access: TAPPAY https://t.co/uhYWhBJ7Lv",
+   "author_id": "277442403",
+   "created_at": "2026-08-08T11:08:12.000Z",
+   "public_metrics": {
+    "like_count": 1,
+    "quote_count": 0,
+    "reply_count": 0,
+    "retweet_count": 0,
+    "bookmark_count": 0,
+    "impression_count": 460
+   },
+   "entities": null
+  },
+  {
+   "id": "2086036994082197965",
+   "text": "Our $SKYAI is up 300% in just 3 days\ud83e\udd1d\u2705\ud83d\udd25\n$ETH $SPY $TSLA $NVDA $QQQ $META $COIN $MSTR #BTC $AVGO $GEV #GOLD #BITCON #SILVER $SOL $SUL $MYX $EDU $YRX $XPL $POPCAT $XRP $DOGE $TRUMP $AMZN $SPY $DIS $SLV #SomosM\u00e9xico #M\u00e9xico #JuniorMark #VivaM\u00e9xico \nhttps://t.co/OGK3WN46OY https://t.co/EqPr9JitWF",
+   "author_id": "593382541",
+   "created_at": "2026-08-08T10:29:10.000Z",
+   "public_metrics": {
+    "like_count": 0,
+    "quote_count": 0,
+    "reply_count": 0,
+    "retweet_count": 0,
+    "bookmark_count": 0,
+    "impression_count": 20
+   },
+   "entities": null
+  },
+  {
+   "id": "2086036932081971240",
+   "text": "Our $SKYAI is up 300% in just 3 days\ud83e\udd1d\u2705\ud83d\udd25\n$ETH $SPY $TSLA $NVDA $QQQ $META $COIN $MSTR #BTC $AVGO $GEV #GOLD #BITCON #SILVER $SOL $SUL $MYX $EDU $YRX $XPL $POPCAT $XRP $DOGE $TRUMP $AMZN $SPY $DIS $SLV #SomosM\u00e9xico #M\u00e9xico #JuniorMark #VivaM\u00e9xico \nhttps://t.co/70vXQYwQTS https://t.co/Vlbo8ruuW4",
+   "author_id": "1657006896962830336",
+   "created_at": "2026-08-08T10:28:55.000Z",
+   "public_metrics": {
+    "like_count": 0,
+    "quote_count": 0,
+    "reply_count": 0,
+    "retweet_count": 0,
+    "bookmark_count": 0,
+    "impression_count": 101
+   },
+   "entities": null
+  },
+  {
+   "id": "2086035474171167158",
+   "text": "$BLUAI took 30% stop in\n$ETH $SPY $TSLA $NVDA $QQQ $META $COIN $MSTR #BTC $AVGO $GEV #GOLD #BITCON #SILVER $SOL $SUL $MYX $EDU $YRX $XPL $POPCAT $XRP $DOGE $TRUMP $AMZN $SPY $DIS $SLV\nhttps://t.co/VrPzrE3aQt https://t.co/AzVzYz99Kw",
+   "author_id": "989544489441222656",
+   "created_at": "2026-08-08T10:23:08.000Z",
+   "public_metrics": {
+    "like_count": 0,
+    "quote_count": 0,
+    "reply_count": 0,
+    "retweet_count": 0,
+    "bookmark_count": 0,
+    "impression_count": 2
+   },
+   "entities": null
+  }
+ ]
+}

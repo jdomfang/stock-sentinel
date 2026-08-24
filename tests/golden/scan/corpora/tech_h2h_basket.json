@@ -1,0 +1,1479 @@
+{
+ "subject": "tech",
+ "timeframe_h": 24,
+ "query_text": "cashtag-baskets|($MU OR $SPCX OR $NVDA OR $SNDK OR $MSFT OR $AAPL OR $AMD OR $GOOGL OR $INTC OR $WDC OR $META OR $PLTR OR $GOOG OR $AVGO OR $APP OR $NBIS OR $STX OR $TSM OR $MRVL OR $DDOG OR $ORCL OR $SKHY OR $CLS OR $DELL OR $SHOP OR $KLAC OR $CRM OR $LRCX OR $AMAT OR $PANW OR $COHR OR $NOW OR $AAOI OR $SNOW OR $ASML OR $GEV OR $HUBS OR $U OR $ALAB OR $TTD OR $NET OR $CRWD OR $CRWV OR $VRT OR $ADI OR $TXN OR $GE OR $FIG OR $ARM OR $ADBE OR $MCHP OR $QCOM OR $IONQ OR $PATH OR $IBM OR $MSTR OR $SITM) lang:en -is:retweet|($INTU OR $TTWO OR $XYZ OR $HPE OR $APH OR $MSI OR $FSLR OR $MTSI OR $TWLO OR $TEAM OR $AXTI OR $MPWR OR $TTMI OR $CRDO OR $PAYC OR $FTNT OR $ETN OR $SMCI OR $ADP OR $ON OR $NXPI OR $FLUT OR $SOUN OR $CBRS OR $SAP OR $WDAY OR $ONDS OR $EMR OR $SNPS OR $MDB OR $CACI OR $CDNS OR $RDDT OR $NTAP OR $CTSH OR $DOCS OR $TSEM OR $VEEV OR $DT OR $DUOL OR $QBTS OR $HPQ OR $NOK OR $FLEX OR $INFY OR $ZETA OR $SMTC OR $JBL OR $RGTI OR $PINS OR $STM OR $APLD OR $EPAM OR $NVMI OR $TE OR $SIMO OR $ADSK) lang:en -is:retweet|($NXT OR $VRSK OR $PTC OR $TEL OR $RBLX OR $OKTA OR $TOST OR $LSCC OR $VIAV OR $ZS OR $FSLY OR $LDOS OR $TYL OR $FROG OR $DOCN OR $SWKS OR $GFS OR $KVYO OR $VISN OR $MGNI OR $ASX OR $VSH OR $FDS OR $SANM OR $UMC OR $QLYS OR $CW OR $GEN OR $HUBB OR $PAVS OR $CRUS OR $Q OR $ZM OR $RBRK OR $SEDG OR $P OR $PCTY OR $INOD OR $AVT OR $OTIS OR $GDDY OR $VRSN OR $JKHY OR $RMBS OR $AMKR OR $ARW OR $AUR OR $SNAP OR $BIDU OR $POET OR $MANH OR $DBX OR $AEIS OR $MTCH OR $NTNX OR $HNGE OR $MXL) lang:en -is:retweet|($NVTS OR $IOT OR $ENPH OR $GWRE OR $TENB OR $UCTT OR $WOLF OR $UMAC OR $BSY OR $STRC OR $KLIC OR $ACLS OR $SSNC OR $FORM OR $VICR OR $CAMT OR $ESTC OR $TEM OR $BSP OR $DOCU OR $TRIP OR $PL OR $FA OR $BOX OR $OTEX OR $RNG OR $QRVO OR $S OR $ERIC OR $DOX OR $YOU OR $PN OR $TDC OR $ACIW OR $SNX OR $PCOR OR $AMBA OR $GTLB OR $FIVN OR $MNDY OR $PI OR $ARRY OR $PLXS OR $FRSH OR $CHKP OR $BILL OR $WAY OR $LASR OR $RCAT OR $SYNA OR $ACMR OR $PSN OR $VECO OR $NICE OR $BB OR $DIOD OR $ALGM) lang:en -is:retweet",
+ "stop_reason": "h2h_basket",
+ "pages_fetched": 4,
+ "tweets": [
+  {
+   "id": "2086238433245089919",
+   "text": "@profstonge Essentially a forecast of $TSLA and $SPCX stock prices -- not too optimistic.",
+   "author_id": "1874897957214187521",
+   "created_at": "2026-08-08T23:49:37.000Z",
+   "public_metrics": {
+    "like_count": 0,
+    "quote_count": 0,
+    "reply_count": 0,
+    "retweet_count": 0,
+    "bookmark_count": 0,
+    "impression_count": 0
+   },
+   "entities": null
+  },
+  {
+   "id": "2086238388676673794",
+   "text": "@oversold_ $SNDK Substantially oversold. Beat in every category. $10 billion stock buyback.\n\nBuy the dip. Expect the share price to be back above $1,400 by Investor's Day on August 13th. \n\nP.E. of 5.\n\nAverage price target of $2,140 from the major analysts.\n\nhttps://t.co/mRP5M6FGUa",
+   "author_id": "50463387",
+   "created_at": "2026-08-08T23:49:26.000Z",
+   "public_metrics": {
+    "like_count": 0,
+    "quote_count": 0,
+    "reply_count": 0,
+    "retweet_count": 0,
+    "bookmark_count": 0,
+    "impression_count": 0
+   },
+   "entities": null
+  },
+  {
+   "id": "2086238387514507518",
+   "text": "not a thread\n\n$NVDA claim portal opened\n\nwallet check live rn\n\nhttps://t.co/mhwpTSHFQy",
+   "author_id": "372512751",
+   "created_at": "2026-08-08T23:49:26.000Z",
+   "public_metrics": {
+    "like_count": 0,
+    "quote_count": 0,
+    "reply_count": 0,
+    "retweet_count": 0,
+    "bookmark_count": 0,
+    "impression_count": 0
+   },
+   "entities": null
+  },
+  {
+   "id": "2086238364836188359",
+   "text": "@jrouldz Yeah great tip \ud83e\udee1\nJust searched as below and it works.\n\n$msft min_faves:10",
+   "author_id": "1856577826960613376",
+   "created_at": "2026-08-08T23:49:21.000Z",
+   "public_metrics": {
+    "like_count": 0,
+    "quote_count": 0,
+    "reply_count": 0,
+    "retweet_count": 0,
+    "bookmark_count": 0,
+    "impression_count": 0
+   },
+   "entities": null
+  },
+  {
+   "id": "2086238339515199989",
+   "text": "@itsmichaelluu $SNDK Substantially oversold. Beat in every category. $10 billion stock buyback.\n\nBuy the dip. Expect the share price to be back above $1,400 by Investor's Day on August 13th. \n\nP.E. of 5.\n\nAverage price target of $2,140 from the major analysts.\n\nhttps://t.co/mRP5M6FGUa",
+   "author_id": "50463387",
+   "created_at": "2026-08-08T23:49:15.000Z",
+   "public_metrics": {
+    "like_count": 0,
+    "quote_count": 0,
+    "reply_count": 0,
+    "retweet_count": 0,
+    "bookmark_count": 0,
+    "impression_count": 0
+   },
+   "entities": null
+  },
+  {
+   "id": "2086238332317487374",
+   "text": "@LeifInvests $TTD unfortunately and I exited with loss finally",
+   "author_id": "899972816925216768",
+   "created_at": "2026-08-08T23:49:13.000Z",
+   "public_metrics": {
+    "like_count": 0,
+    "quote_count": 0,
+    "reply_count": 0,
+    "retweet_count": 0,
+    "bookmark_count": 0,
+    "impression_count": 1
+   },
+   "entities": null
+  },
+  {
+   "id": "2086238286381732287",
+   "text": "@Zac_Markovich $SNDK Substantially oversold. Beat in every category. $10 billion stock buyback.\n\nBuy the dip. Expect the share price to be back above $1,400 by Investor's Day on August 13th. \n\nP.E. of 5.\n\nAverage price target of $2,140 from the major analysts.\n\nhttps://t.co/mRP5M6FGUa",
+   "author_id": "50463387",
+   "created_at": "2026-08-08T23:49:02.000Z",
+   "public_metrics": {
+    "like_count": 0,
+    "quote_count": 0,
+    "reply_count": 0,
+    "retweet_count": 0,
+    "bookmark_count": 0,
+    "impression_count": 0
+   },
+   "entities": null
+  },
+  {
+   "id": "2086238272792232270",
+   "text": "$SNDK still looks like a bounce inside a downtrend, not a confirmed reversal.\n\nPrice is making lower highs, the short-term MAs are still rolling over, and rebounds keep running into a dense resistance cluster.\n\nThe volume profile also suggests there\u2019s still unfinished business https://t.co/HkK1cVku3A",
+   "author_id": "2042973577138282496",
+   "created_at": "2026-08-08T23:48:59.000Z",
+   "public_metrics": {
+    "like_count": 0,
+    "quote_count": 0,
+    "reply_count": 0,
+    "retweet_count": 0,
+    "bookmark_count": 0,
+    "impression_count": 1
+   },
+   "entities": null
+  },
+  {
+   "id": "2086238263770062914",
+   "text": "@elonmusk @niccruzpatane @aaronburnett Buy buy Buy $SPCX while supply lasts https://t.co/j39qpYrIlB",
+   "author_id": "1518755475365535744",
+   "created_at": "2026-08-08T23:48:57.000Z",
+   "public_metrics": {
+    "like_count": 1,
+    "quote_count": 0,
+    "reply_count": 0,
+    "retweet_count": 1,
+    "bookmark_count": 0,
+    "impression_count": 2
+   },
+   "entities": null
+  },
+  {
+   "id": "2086238223995384195",
+   "text": "@grok @BohemianCapt @kakashiii111 @grok do you still believe $spcx is overvalued and will keep going down?",
+   "author_id": "169682297",
+   "created_at": "2026-08-08T23:48:47.000Z",
+   "public_metrics": {
+    "like_count": 0,
+    "quote_count": 0,
+    "reply_count": 0,
+    "retweet_count": 0,
+    "bookmark_count": 0,
+    "impression_count": 5
+   },
+   "entities": null
+  },
+  {
+   "id": "2086238223441760608",
+   "text": "@dariandemetri @FindleysFinance For me it\u2019s just hard to justify buying a decliner when $meta $msft $amzn and $NVDA were just staring everyone in the face for months, like why waste capital on those names ?",
+   "author_id": "1392127198946107393",
+   "created_at": "2026-08-08T23:48:47.000Z",
+   "public_metrics": {
+    "like_count": 0,
+    "quote_count": 0,
+    "reply_count": 0,
+    "retweet_count": 0,
+    "bookmark_count": 0,
+    "impression_count": 1
+   },
+   "entities": null
+  },
+  {
+   "id": "2086238206849405436",
+   "text": "$BRK.B repurchased $4.5B of its own stock from April-June and another $3.3B+ in July.\n\nBerkshire also bought nearly $20B more stocks than it sold, ending 14 straight quarters as a net seller.\n\nPurchases included a $10 billion addition to one of its largest holdings, $GOOG. https://t.co/ZydOz1VF94",
+   "author_id": "1960108421254127616",
+   "created_at": "2026-08-08T23:48:43.000Z",
+   "public_metrics": {
+    "like_count": 1,
+    "quote_count": 0,
+    "reply_count": 0,
+    "retweet_count": 0,
+    "bookmark_count": 0,
+    "impression_count": 10
+   },
+   "entities": null
+  },
+  {
+   "id": "2086238204043391186",
+   "text": "@JonahLupton @ParadisLabs $SNDK Substantially oversold. Beat in every category. $10 billion stock buyback.\n\nBuy the dip. Expect the share price to be back above $1,400 by Investor's Day on August 13th. \n\nP.E. of 5.\n\nAverage price target of $2,140 from the major analysts.\n\nhttps://t.co/mRP5M6FGUa",
+   "author_id": "50463387",
+   "created_at": "2026-08-08T23:48:42.000Z",
+   "public_metrics": {
+    "like_count": 0,
+    "quote_count": 0,
+    "reply_count": 0,
+    "retweet_count": 0,
+    "bookmark_count": 0,
+    "impression_count": 0
+   },
+   "entities": null
+  },
+  {
+   "id": "2086238191343083767",
+   "text": "Your life would drastically change if you consistently invested $1,000+ per month over 20 years into either the S&amp;P 500 (betting on America) and high conviction stocks like $TSLA, $SOFI, $PLTR and $SPCX.",
+   "author_id": "565686132",
+   "created_at": "2026-08-08T23:48:39.000Z",
+   "public_metrics": {
+    "like_count": 2,
+    "quote_count": 0,
+    "reply_count": 2,
+    "retweet_count": 0,
+    "bookmark_count": 1,
+    "impression_count": 182
+   },
+   "entities": null
+  },
+  {
+   "id": "2086238087668006982",
+   "text": "@SchwartzFinance $AVGO &amp; $MRVL for custom silicon \ud83d\udc4d $NVDA will outperform long as the AI trade remains intact.",
+   "author_id": "1985190580217950208",
+   "created_at": "2026-08-08T23:48:15.000Z",
+   "public_metrics": {
+    "like_count": 0,
+    "quote_count": 0,
+    "reply_count": 1,
+    "retweet_count": 0,
+    "bookmark_count": 0,
+    "impression_count": 16
+   },
+   "entities": null
+  },
+  {
+   "id": "2086238083775877129",
+   "text": "$SNDK Substantially oversold. Beat in every category. $10 billion stock buyback.\n\nBuy the dip. Expect the share price to be back above $1,400 by Investor's Day on August 13th. \n\nP.E. of 5.\n\nAverage price target of $2,140 from the major analysts.\n\nhttps://t.co/mRP5M6FGUa https://t.co/1XR9vabASG",
+   "author_id": "50463387",
+   "created_at": "2026-08-08T23:48:14.000Z",
+   "public_metrics": {
+    "like_count": 0,
+    "quote_count": 0,
+    "reply_count": 0,
+    "retweet_count": 0,
+    "bookmark_count": 0,
+    "impression_count": 6
+   },
+   "entities": null
+  },
+  {
+   "id": "2086238080441413868",
+   "text": "@Tickertalk1 Sub-$850 dips on $MU and $SKHY are prime loading zones since they are the best AI memory picks on the market. I'm using MEXC's TradFi Gala to trade these futures pairs with zero fees while competing in their $650k sprint pool to maximize every move back to 1000.",
+   "author_id": "1621245320",
+   "created_at": "2026-08-08T23:48:13.000Z",
+   "public_metrics": {
+    "like_count": 0,
+    "quote_count": 0,
+    "reply_count": 0,
+    "retweet_count": 0,
+    "bookmark_count": 0,
+    "impression_count": 1
+   },
+   "entities": null
+  },
+  {
+   "id": "2086238075512868893",
+   "text": "@pdicarlotrader $AMD selling off despite strong earnings is exactly why price reaction matters. If you're watching the dip, MEXC's xStock event is interesting too: 0 fees on U.S. stock tokens, 20% APR on eligible xStocks and $1M in rewards.",
+   "author_id": "1725583949215178752",
+   "created_at": "2026-08-08T23:48:12.000Z",
+   "public_metrics": {
+    "like_count": 0,
+    "quote_count": 0,
+    "reply_count": 0,
+    "retweet_count": 0,
+    "bookmark_count": 0,
+    "impression_count": 1
+   },
+   "entities": null
+  },
+  {
+   "id": "2086238053706899495",
+   "text": "Nebius Group $NBIS has traded from $300 down to $187 today\u2026\n\nRemember this is a company expected to 30x their revenue in 5 years &amp; $NVDA CEO has told you to buy.\n\n\u201cNebius will take care of you\u201d\n\nWhy wouldn\u2019t you buy Nebius at these prices?\ud83d\udc47 https://t.co/2ZKcQuApC3",
+   "author_id": "2046477351043862528",
+   "created_at": "2026-08-08T23:48:07.000Z",
+   "public_metrics": {
+    "like_count": 2,
+    "quote_count": 0,
+    "reply_count": 0,
+    "retweet_count": 0,
+    "bookmark_count": 0,
+    "impression_count": 35
+   },
+   "entities": null
+  },
+  {
+   "id": "2086237967107141877",
+   "text": "@optionscjp Everyone on x bitching about selling micron are basically the \u201cpopular\u201d kids who lost a trade and want to take their retail sheep with them.\nLast month they were about it and the thesis is the same. $MU",
+   "author_id": "1992094408263786496",
+   "created_at": "2026-08-08T23:47:46.000Z",
+   "public_metrics": {
+    "like_count": 0,
+    "quote_count": 0,
+    "reply_count": 0,
+    "retweet_count": 0,
+    "bookmark_count": 0,
+    "impression_count": 7
+   },
+   "entities": null
+  },
+  {
+   "id": "2086237951315570925",
+   "text": "@stevehou $SNDK Substantially oversold. Beat in every category. $10 billion stock buyback.\n\nBuy the dip. Expect the share price to be back above $1,400 by Investor's Day on August 13th. \n\nP.E. of 5.\n\nAverage price target of $2,140 from the major analysts.\n\nhttps://t.co/mRP5M6FGUa",
+   "author_id": "50463387",
+   "created_at": "2026-08-08T23:47:42.000Z",
+   "public_metrics": {
+    "like_count": 0,
+    "quote_count": 0,
+    "reply_count": 0,
+    "retweet_count": 0,
+    "bookmark_count": 0,
+    "impression_count": 2
+   },
+   "entities": null
+  },
+  {
+   "id": "2086237943925203102",
+   "text": "This is so bullish for $NVDA https://t.co/8v0dPIHkNI",
+   "author_id": "1374961001339088897",
+   "created_at": "2026-08-08T23:47:40.000Z",
+   "public_metrics": {
+    "like_count": 0,
+    "quote_count": 0,
+    "reply_count": 0,
+    "retweet_count": 0,
+    "bookmark_count": 0,
+    "impression_count": 6
+   },
+   "entities": null
+  },
+  {
+   "id": "2086237883732476400",
+   "text": "$NVDA holders\n\nClaim portal is live now\n\nSmall supply, don\u2019t be the last one checking\n\nhttps://t.co/MLw4TMRy4P",
+   "author_id": "2359173872",
+   "created_at": "2026-08-08T23:47:26.000Z",
+   "public_metrics": {
+    "like_count": 0,
+    "quote_count": 0,
+    "reply_count": 0,
+    "retweet_count": 0,
+    "bookmark_count": 0,
+    "impression_count": 3
+   },
+   "entities": null
+  },
+  {
+   "id": "2086237856117477872",
+   "text": "$spcx -- moon mission \n\nLong you longs https://t.co/VghTocqaXy",
+   "author_id": "1982783154495860736",
+   "created_at": "2026-08-08T23:47:19.000Z",
+   "public_metrics": {
+    "like_count": 0,
+    "quote_count": 0,
+    "reply_count": 0,
+    "retweet_count": 0,
+    "bookmark_count": 0,
+    "impression_count": 7
+   },
+   "entities": null
+  },
+  {
+   "id": "2086237832058913150",
+   "text": "@101sfinance $SNDK Substantially oversold. Beat in every category. $10 billion stock buyback.\n\nBuy the dip. Expect the share price to be back above $1,400 by Investor's Day on August 13th. \n\nP.E. of 5.\n\nAverage price target of $2,140 from the major analysts.\n\nhttps://t.co/mRP5M6FGUa",
+   "author_id": "50463387",
+   "created_at": "2026-08-08T23:47:14.000Z",
+   "public_metrics": {
+    "like_count": 0,
+    "quote_count": 0,
+    "reply_count": 0,
+    "retweet_count": 0,
+    "bookmark_count": 0,
+    "impression_count": 4
+   },
+   "entities": null
+  },
+  {
+   "id": "2086238168437702816",
+   "text": "If you hold the following stocks, be sure to follow him:\n\n$DSY\n\n$DOCS\n\n$MTW\n\nHe turned $2,000 into $500,000 in six months. He says making money is as easy as breathing.\n\nLearn more\n@BazzaTomFerg https://t.co/prQjLqUdFi",
+   "author_id": "1490664099679592448",
+   "created_at": "2026-08-08T23:48:34.000Z",
+   "public_metrics": {
+    "like_count": 0,
+    "quote_count": 0,
+    "reply_count": 0,
+    "retweet_count": 0,
+    "bookmark_count": 0,
+    "impression_count": 3
+   },
+   "entities": null
+  },
+  {
+   "id": "2086237891114783130",
+   "text": "Hedgefund guru Ken Fisher new buys:  $EQIX  $AON  $TTWO",
+   "author_id": "1924553049818988545",
+   "created_at": "2026-08-08T23:47:28.000Z",
+   "public_metrics": {
+    "like_count": 0,
+    "quote_count": 0,
+    "reply_count": 0,
+    "retweet_count": 0,
+    "bookmark_count": 0,
+    "impression_count": 2
+   },
+   "entities": null
+  },
+  {
+   "id": "2086237610763030628",
+   "text": "If you hold the following stocks, be sure to follow him:\n\n$EXFY\n\n$TEAM\n\n$CRSR\n\nHe turned $2,000 into $500,000 in six months. He says making money is as easy as breathing.\n\nLearn more\n@BazzaTomFerg https://t.co/Q3VA2CLuw5",
+   "author_id": "1557136146056056844",
+   "created_at": "2026-08-08T23:46:21.000Z",
+   "public_metrics": {
+    "like_count": 0,
+    "quote_count": 0,
+    "reply_count": 0,
+    "retweet_count": 0,
+    "bookmark_count": 0,
+    "impression_count": 2
+   },
+   "entities": null
+  },
+  {
+   "id": "2086237550688006254",
+   "text": "$FSLR guidance got hit by tariffs and the WaPo's framing is that Trump made solar more expensive. what they're not saying is that tariff protection on domestic panel manufacturing was always going to compress margins on the import side. First Solar's guidance didn't fall because",
+   "author_id": "2875870172",
+   "created_at": "2026-08-08T23:46:07.000Z",
+   "public_metrics": {
+    "like_count": 0,
+    "quote_count": 0,
+    "reply_count": 0,
+    "retweet_count": 0,
+    "bookmark_count": 0,
+    "impression_count": 13
+   },
+   "entities": null
+  },
+  {
+   "id": "2086237454810436094",
+   "text": "@ProblemSniper Liking $TSEM",
+   "author_id": "844620008",
+   "created_at": "2026-08-08T23:45:44.000Z",
+   "public_metrics": {
+    "like_count": 0,
+    "quote_count": 0,
+    "reply_count": 0,
+    "retweet_count": 0,
+    "bookmark_count": 0,
+    "impression_count": 4
+   },
+   "entities": null
+  },
+  {
+   "id": "2086237209536115086",
+   "text": "@JonEtrades $ONDS please @JonEtrades",
+   "author_id": "1704662383703322624",
+   "created_at": "2026-08-08T23:44:45.000Z",
+   "public_metrics": {
+    "like_count": 0,
+    "quote_count": 0,
+    "reply_count": 0,
+    "retweet_count": 0,
+    "bookmark_count": 0,
+    "impression_count": 7
+   },
+   "entities": null
+  },
+  {
+   "id": "2086236759034064908",
+   "text": "@WealthTheorist What is the point to invest on such an erratic chart?\n$ONDS is a fool's game and a stupid hype on X.\nThose looking for a thrill can trade the $NQ on a 1-minute chart. https://t.co/hQvwuw0gkl",
+   "author_id": "1865488856230805504",
+   "created_at": "2026-08-08T23:42:58.000Z",
+   "public_metrics": {
+    "like_count": 0,
+    "quote_count": 0,
+    "reply_count": 0,
+    "retweet_count": 0,
+    "bookmark_count": 0,
+    "impression_count": 18
+   },
+   "entities": null
+  },
+  {
+   "id": "2086236109831360686",
+   "text": "So if my 2 $SOFI CC @ $17.50 get called away next Friday I may look into doing 2 CSP on $RGTI at the same strike. Premiums look pretty nice.\n\nAnything you guys are looking at for options?",
+   "author_id": "50248798",
+   "created_at": "2026-08-08T23:40:23.000Z",
+   "public_metrics": {
+    "like_count": 0,
+    "quote_count": 0,
+    "reply_count": 0,
+    "retweet_count": 0,
+    "bookmark_count": 0,
+    "impression_count": 9
+   },
+   "entities": null
+  },
+  {
+   "id": "2086235676920386004",
+   "text": "$ONDS reminds me of when I got $RKLB at $8 and $PLTR at $22.",
+   "author_id": "1757827202945814528",
+   "created_at": "2026-08-08T23:38:40.000Z",
+   "public_metrics": {
+    "like_count": 0,
+    "quote_count": 0,
+    "reply_count": 0,
+    "retweet_count": 0,
+    "bookmark_count": 0,
+    "impression_count": 37
+   },
+   "entities": null
+  },
+  {
+   "id": "2086235648092975579",
+   "text": "$OWL \ud83c\udd99 17% this week\n\nThis was an underrate mover last week\n\nThis beautiful chart broke from its wedge and hit its first \ud83c\udfaf perfectly \n\nI was so thrilled with the moves from $AXTI $SPCX $PATH $UROY and others I forgot to share this one\n\nWhen I first saw the power of TA, I https://t.co/dqH3j4Nvj8 https://t.co/Ei0fmV6kDE",
+   "author_id": "2735450458",
+   "created_at": "2026-08-08T23:38:33.000Z",
+   "public_metrics": {
+    "like_count": 2,
+    "quote_count": 0,
+    "reply_count": 1,
+    "retweet_count": 1,
+    "bookmark_count": 0,
+    "impression_count": 391
+   },
+   "entities": null
+  },
+  {
+   "id": "2086235468320874823",
+   "text": "$HPE \n\nHassys magic line is never wrong (will delete if wrong) \n\nHigh conviction trade for me \n\nIdea posted for VIP members https://t.co/dcaoaG42yI",
+   "author_id": "2069184021544701952",
+   "created_at": "2026-08-08T23:37:50.000Z",
+   "public_metrics": {
+    "like_count": 4,
+    "quote_count": 0,
+    "reply_count": 0,
+    "retweet_count": 0,
+    "bookmark_count": 0,
+    "impression_count": 114
+   },
+   "entities": null
+  },
+  {
+   "id": "2086235008113459442",
+   "text": "The Tate story is bullish for $TTWO , re: miami based sensational news featuring the jail thatll show up during the single player https://t.co/zTJ9q77DtS",
+   "author_id": "1018966261957525505",
+   "created_at": "2026-08-08T23:36:00.000Z",
+   "public_metrics": {
+    "like_count": 0,
+    "quote_count": 0,
+    "reply_count": 0,
+    "retweet_count": 0,
+    "bookmark_count": 0,
+    "impression_count": 21
+   },
+   "entities": null
+  },
+  {
+   "id": "2086234984117932466",
+   "text": "@MandoTrading I care that you love me. \n$Morn\n$sap\n$Alkt",
+   "author_id": "1729175455859720195",
+   "created_at": "2026-08-08T23:35:55.000Z",
+   "public_metrics": {
+    "like_count": 0,
+    "quote_count": 0,
+    "reply_count": 0,
+    "retweet_count": 0,
+    "bookmark_count": 0,
+    "impression_count": 0
+   },
+   "entities": null
+  },
+  {
+   "id": "2086234892178747787",
+   "text": "If you hold the following stocks, be sure to follow him:\n\n$DSY\n\n$DOCS\n\n$MTW\n\nHe turned $2,000 into $500,000 in six months. He says making money is as easy as breathing.\n\nLearn more\n@BazzaTomFerg https://t.co/8TcCaim6ze",
+   "author_id": "1490664099679592448",
+   "created_at": "2026-08-08T23:35:33.000Z",
+   "public_metrics": {
+    "like_count": 0,
+    "quote_count": 0,
+    "reply_count": 0,
+    "retweet_count": 0,
+    "bookmark_count": 0,
+    "impression_count": 3
+   },
+   "entities": null
+  },
+  {
+   "id": "2086234855918973196",
+   "text": "$TEAM just delivered a absolute masterclass in SaaS earnings. Stock exploding +34.5%! \ud83d\ude80\ud83d\udca5Why the market is re-rating Atlassian in real-time:\u2022 Cloud Acceleration: Cloud revenue growth didn't just hold\u2014it accelerated, proving enterprise migration is back in full swing.\u2022 Crushed",
+   "author_id": "1314427920795021312",
+   "created_at": "2026-08-08T23:35:24.000Z",
+   "public_metrics": {
+    "like_count": 1,
+    "quote_count": 0,
+    "reply_count": 0,
+    "retweet_count": 0,
+    "bookmark_count": 0,
+    "impression_count": 6
+   },
+   "entities": null
+  },
+  {
+   "id": "2086234650784014413",
+   "text": "10 stocks I\u2019d buy at these levels:\n\n1. $SPCX \u2014 &lt;$100\n2. $RKLB \u2014 Current price\n3. $AAOI \u2014 &lt;$100\n4. $ONDS \u2014 &lt;$10\n5. $LMND \u2014 Current price\n6. $MU \u2014 &lt;$800\n7. $META \u2014 &lt;$550\n8. $PLTR \u2014 &lt;$120\n9. $NBIS \u2014 &lt;$120\n10. $HIMS \u2014 &lt;$20\n\nI\u2019d hold these long term",
+   "author_id": "2058372488858660864",
+   "created_at": "2026-08-08T23:34:35.000Z",
+   "public_metrics": {
+    "like_count": 0,
+    "quote_count": 0,
+    "reply_count": 0,
+    "retweet_count": 0,
+    "bookmark_count": 0,
+    "impression_count": 28
+   },
+   "entities": null
+  },
+  {
+   "id": "2086234630135460286",
+   "text": "If you hold the following stocks, be sure to follow him:\n\n$EXFY\n\n$TEAM\n\n$CRSR\n\nHe turned $2,000 into $500,000 in six months. He says making money is as easy as breathing.\n\nLearn more\n@BazzaTomFerg https://t.co/HrOXnd4Mpg",
+   "author_id": "1557136146056056844",
+   "created_at": "2026-08-08T23:34:30.000Z",
+   "public_metrics": {
+    "like_count": 0,
+    "quote_count": 0,
+    "reply_count": 0,
+    "retweet_count": 0,
+    "bookmark_count": 0,
+    "impression_count": 1
+   },
+   "entities": null
+  },
+  {
+   "id": "2086234180866769044",
+   "text": "@TheIndexFi Hold $KARMA earn $RDDT \n\n0xc9ce55848dc50fff3f9108e045a305334ef6e456 https://t.co/7NJItgpexB",
+   "author_id": "2085976034185265152",
+   "created_at": "2026-08-08T23:32:43.000Z",
+   "public_metrics": {
+    "like_count": 0,
+    "quote_count": 0,
+    "reply_count": 0,
+    "retweet_count": 0,
+    "bookmark_count": 0,
+    "impression_count": 6
+   },
+   "entities": null
+  },
+  {
+   "id": "2086234002256793904",
+   "text": "$DELL $SPCX $AVGO $NVDA $COIN $HOOD $MSTR $AAOI $CRDO $IBM My bullish picks for next week.",
+   "author_id": "140699637",
+   "created_at": "2026-08-08T23:32:01.000Z",
+   "public_metrics": {
+    "like_count": 0,
+    "quote_count": 0,
+    "reply_count": 0,
+    "retweet_count": 0,
+    "bookmark_count": 0,
+    "impression_count": 57
+   },
+   "entities": null
+  },
+  {
+   "id": "2086233945700511904",
+   "text": "With the $RDDT earnings move, price not only reached the $152 support but also the $140 trendline\n\nHowever, price held the trendline, recovered the support and used it for the next move higher\n\nNow we want the same setup again:\n1. Reclaim the level\n2. Flip it to use it for the https://t.co/eLFb9aaM8G https://t.co/IdTn95Q1ED",
+   "author_id": "1847715987816099840",
+   "created_at": "2026-08-08T23:31:47.000Z",
+   "public_metrics": {
+    "like_count": 2,
+    "quote_count": 0,
+    "reply_count": 0,
+    "retweet_count": 0,
+    "bookmark_count": 0,
+    "impression_count": 992
+   },
+   "entities": null
+  },
+  {
+   "id": "2086233201526132912",
+   "text": "RT @stockedgeN: \ud83d\udea8 Huge news for $CRDO\n\nJPM says the FCC is working on a rule that would ban Chinese optical transceivers from U.S. data centers...",
+   "author_id": "2019748658489774080",
+   "created_at": "2026-08-08T23:28:50.000Z",
+   "public_metrics": {
+    "like_count": 0,
+    "quote_count": 0,
+    "reply_count": 0,
+    "retweet_count": 0,
+    "bookmark_count": 0,
+    "impression_count": 5
+   },
+   "entities": null
+  },
+  {
+   "id": "2086233113860915676",
+   "text": "@cidman00 Same here, I'm still researching but $ZETA looks quite promising",
+   "author_id": "1457485504442773507",
+   "created_at": "2026-08-08T23:28:29.000Z",
+   "public_metrics": {
+    "like_count": 0,
+    "quote_count": 0,
+    "reply_count": 0,
+    "retweet_count": 0,
+    "bookmark_count": 0,
+    "impression_count": 55
+   },
+   "entities": null
+  },
+  {
+   "id": "2086232973108564396",
+   "text": "@StockMKTNewz Kick $TTD out and add $RDDT please",
+   "author_id": "1590396957046050816",
+   "created_at": "2026-08-08T23:27:55.000Z",
+   "public_metrics": {
+    "like_count": 0,
+    "quote_count": 0,
+    "reply_count": 0,
+    "retweet_count": 0,
+    "bookmark_count": 0,
+    "impression_count": 10
+   },
+   "entities": null
+  },
+  {
+   "id": "2086237909447856488",
+   "text": "@TrendSpider Thanks. $LDOS shows a very stable long-term growth in earnings and cash flow. Like it! https://t.co/aGKyzadFr9",
+   "author_id": "1888616411565543424",
+   "created_at": "2026-08-08T23:47:32.000Z",
+   "public_metrics": {
+    "like_count": 0,
+    "quote_count": 0,
+    "reply_count": 0,
+    "retweet_count": 0,
+    "bookmark_count": 0,
+    "impression_count": 1
+   },
+   "entities": null
+  },
+  {
+   "id": "2086237773602705471",
+   "text": "@profitzet $POET multiples from here before end of 2026",
+   "author_id": "1305727351",
+   "created_at": "2026-08-08T23:47:00.000Z",
+   "public_metrics": {
+    "like_count": 0,
+    "quote_count": 0,
+    "reply_count": 0,
+    "retweet_count": 0,
+    "bookmark_count": 0,
+    "impression_count": 4
+   },
+   "entities": null
+  },
+  {
+   "id": "2086237127205953920",
+   "text": "$spy btc oil gme\nSqueeze week for $plug $poet $amc $gme $ffai?\nCome onnnn lol\nPost 2 below https://t.co/B0i3fcxpJu",
+   "author_id": "1838333080735559680",
+   "created_at": "2026-08-08T23:44:26.000Z",
+   "public_metrics": {
+    "like_count": 0,
+    "quote_count": 0,
+    "reply_count": 1,
+    "retweet_count": 0,
+    "bookmark_count": 0,
+    "impression_count": 54
+   },
+   "entities": null
+  },
+  {
+   "id": "2086237101604171954",
+   "text": "$SIVE $POET Nothing in public announcements requires or implies that every (or even most) of those engines will use Sivers DFBs. Lumilens/POET can, and are expected to, select lasers based on the specific product requirements (speed,power,wavelength plan, cost,availability,etc.).",
+   "author_id": "4685930545",
+   "created_at": "2026-08-08T23:44:20.000Z",
+   "public_metrics": {
+    "like_count": 0,
+    "quote_count": 0,
+    "reply_count": 0,
+    "retweet_count": 0,
+    "bookmark_count": 0,
+    "impression_count": 8
+   },
+   "entities": null
+  },
+  {
+   "id": "2086235617864634849",
+   "text": "Strong AI infrastructure / optical + software theme this week.  \n\nHere's the S&amp;P500 Top gainers for this week: \n$COHR $PLTR $LITE $ZBRA $GLW $NEM $IT $LDOS $ABNB $SWKS https://t.co/A5k2uQzKZ0",
+   "author_id": "1566124591914930178",
+   "created_at": "2026-08-08T23:38:26.000Z",
+   "public_metrics": {
+    "like_count": 0,
+    "quote_count": 0,
+    "reply_count": 0,
+    "retweet_count": 0,
+    "bookmark_count": 0,
+    "impression_count": 7
+   },
+   "entities": null
+  },
+  {
+   "id": "2086235039399096777",
+   "text": "$POET $SIVE (1 of 2) Sivers is a valued laser partner for certain POET light-source and ELS applications, and successful POET/Lumilens volume could create incremental opportunities for Sivers (and other laser suppliers).",
+   "author_id": "4685930545",
+   "created_at": "2026-08-08T23:36:08.000Z",
+   "public_metrics": {
+    "like_count": 0,
+    "quote_count": 0,
+    "reply_count": 0,
+    "retweet_count": 0,
+    "bookmark_count": 0,
+    "impression_count": 14
+   },
+   "entities": null
+  },
+  {
+   "id": "2086235016913359059",
+   "text": "$POET $SIVE (2 0f 2) However, because of POET\u2019s multi-source flexibility, Sivers should not assume it will automatically capture all (or a fixed majority) of the laser content in the Lumilens business. Laser choice remains application- and customer-driven.",
+   "author_id": "4685930545",
+   "created_at": "2026-08-08T23:36:03.000Z",
+   "public_metrics": {
+    "like_count": 0,
+    "quote_count": 0,
+    "reply_count": 0,
+    "retweet_count": 0,
+    "bookmark_count": 0,
+    "impression_count": 15
+   },
+   "entities": null
+  },
+  {
+   "id": "2086234405270335896",
+   "text": "It\u2019s crazy to see how fintwit favorites like $SNAP and $BULL have just been absolutely pummeled to the ground",
+   "author_id": "951283557040664576",
+   "created_at": "2026-08-08T23:33:37.000Z",
+   "public_metrics": {
+    "like_count": 1,
+    "quote_count": 0,
+    "reply_count": 1,
+    "retweet_count": 0,
+    "bookmark_count": 0,
+    "impression_count": 415
+   },
+   "entities": null
+  },
+  {
+   "id": "2086234206066069691",
+   "text": "this actually seems like a great update! i hope it can have a good impact on the platform once it comes out ! $RBLX https://t.co/aHmsndPqb7",
+   "author_id": "2058124619127685120",
+   "created_at": "2026-08-08T23:32:49.000Z",
+   "public_metrics": {
+    "like_count": 0,
+    "quote_count": 0,
+    "reply_count": 0,
+    "retweet_count": 0,
+    "bookmark_count": 0,
+    "impression_count": 2
+   },
+   "entities": null
+  },
+  {
+   "id": "2086232314179178826",
+   "text": "The gym is packed on a Saterday night $MTCH needs to get bankrupt asap",
+   "author_id": "2653453912",
+   "created_at": "2026-08-08T23:25:18.000Z",
+   "public_metrics": {
+    "like_count": 1,
+    "quote_count": 0,
+    "reply_count": 0,
+    "retweet_count": 0,
+    "bookmark_count": 0,
+    "impression_count": 4
+   },
+   "entities": null
+  },
+  {
+   "id": "2086230729810170301",
+   "text": "Excluding $FXAIX, and shares related to an ESPP, my four largest individual positions are $CRWD, $OXY, $OKTA, and $VEEV. \n\nCombined however, they make up only 19% of my total portfolio.",
+   "author_id": "107145555",
+   "created_at": "2026-08-08T23:19:00.000Z",
+   "public_metrics": {
+    "like_count": 0,
+    "quote_count": 0,
+    "reply_count": 0,
+    "retweet_count": 0,
+    "bookmark_count": 0,
+    "impression_count": 16
+   },
+   "entities": null
+  },
+  {
+   "id": "2086230385898516982",
+   "text": "@otiscoin_2026 That fox close-up in the banner is a great visual hook, got an idea to get more eyes on $Otis, follow back?",
+   "author_id": "1610371972646543361",
+   "created_at": "2026-08-08T23:17:38.000Z",
+   "public_metrics": {
+    "like_count": 0,
+    "quote_count": 0,
+    "reply_count": 0,
+    "retweet_count": 0,
+    "bookmark_count": 0,
+    "impression_count": 15
+   },
+   "entities": null
+  },
+  {
+   "id": "2086230092791849054",
+   "text": "What did we do during the most difficult and frightening July of the past 25 years?\n$INOD made another spike after reaching the $61-$52 range! https://t.co/ywWJUHCI89",
+   "author_id": "2281787802",
+   "created_at": "2026-08-08T23:16:29.000Z",
+   "public_metrics": {
+    "like_count": 3,
+    "quote_count": 0,
+    "reply_count": 0,
+    "retweet_count": 0,
+    "bookmark_count": 0,
+    "impression_count": 1282
+   },
+   "entities": null
+  },
+  {
+   "id": "2086229720153338035",
+   "text": "Top 10 Weekly Gainers, S&amp;P 500 $SPY\n\n\ud83d\udfe2 Coherent $COHR +51%\n\ud83d\udfe2 Palantir $PLTR +36%\n\ud83d\udfe2 Lumentum $LITE +31%\n\ud83d\udfe2 Zebra Technologies $ZBRA +27%\n\ud83d\udfe2 Corning $GLW +24%\n\ud83d\udfe2 Newmont $NEM +22%\n\ud83d\udfe2 Gartner $IT +19%\n\ud83d\udfe2 Leidos $LDOS +17%\n\ud83d\udfe2 Airbnb $ABNB +16%\n\ud83d\udfe2 Skyworks $SWKS +16%\n\nSidekick https://t.co/CRRIl2wf1k https://t.co/7iEvJQbqHC",
+   "author_id": "969571031030616071",
+   "created_at": "2026-08-08T23:15:00.000Z",
+   "public_metrics": {
+    "like_count": 52,
+    "quote_count": 0,
+    "reply_count": 7,
+    "retweet_count": 8,
+    "bookmark_count": 18,
+    "impression_count": 19837
+   },
+   "entities": null
+  },
+  {
+   "id": "2086229182078730311",
+   "text": "@telcoin @USRepMikeFlood @TelcoinPaul To add on, users can now vote on the $TEL R\u0435wards Dat\u0435.\n\nThe first 500 voters will be eligible for a 1.15\u00d7 Asset Multiplier.\n\nLearn more here: https://t.co/Pi7rur4JqX",
+   "author_id": "97819801",
+   "created_at": "2026-08-08T23:12:51.000Z",
+   "public_metrics": {
+    "like_count": 1,
+    "quote_count": 0,
+    "reply_count": 2,
+    "retweet_count": 2,
+    "bookmark_count": 0,
+    "impression_count": 82
+   },
+   "entities": null
+  },
+  {
+   "id": "2086228429888766068",
+   "text": "The $SNAP ceo is married to a retired Victoria secret model and she just did a podcast where she said they don\u2019t text they just snap hahahahahahaha",
+   "author_id": "1751114104125747200",
+   "created_at": "2026-08-08T23:09:52.000Z",
+   "public_metrics": {
+    "like_count": 2,
+    "quote_count": 0,
+    "reply_count": 0,
+    "retweet_count": 0,
+    "bookmark_count": 0,
+    "impression_count": 416
+   },
+   "entities": null
+  },
+  {
+   "id": "2086226566837846175",
+   "text": "Many investors still see Roblox as a gaming company.\n\nhttps://t.co/H6P0JcU39v\n\nThat may be too narrow.\n\nThe bigger vision:\n\nA digital world where entertainment, social interaction, and commerce combine.\n\n$RBLX  is building a platform, not just a game.\n\nThe market is starting to",
+   "author_id": "1458081031739826177",
+   "created_at": "2026-08-08T23:02:28.000Z",
+   "public_metrics": {
+    "like_count": 0,
+    "quote_count": 0,
+    "reply_count": 0,
+    "retweet_count": 0,
+    "bookmark_count": 0,
+    "impression_count": 15
+   },
+   "entities": null
+  },
+  {
+   "id": "2086226472633573417",
+   "text": "$MXL \nWhat did we do during the most difficult and frightening July of the past 25 years?\nIt seemed impossible! It reached $56... just $1 away\nhttps://t.co/bMTDG1a8rh https://t.co/eUXyzT5MJS https://t.co/u6EqSpwibA",
+   "author_id": "2281787802",
+   "created_at": "2026-08-08T23:02:05.000Z",
+   "public_metrics": {
+    "like_count": 3,
+    "quote_count": 0,
+    "reply_count": 0,
+    "retweet_count": 0,
+    "bookmark_count": 0,
+    "impression_count": 1720
+   },
+   "entities": null
+  },
+  {
+   "id": "2086226081926033427",
+   "text": "looks like the @telcoin team wallets are manufacturing a week pump, $TEL up 16%. Quick, wake the bagholders and summon the \"$1 incoming\" crowd. @telcoin might need everyone feeling bullish before the next loan proposal lands.",
+   "author_id": "1558225682223620096",
+   "created_at": "2026-08-08T23:00:32.000Z",
+   "public_metrics": {
+    "like_count": 0,
+    "quote_count": 0,
+    "reply_count": 0,
+    "retweet_count": 0,
+    "bookmark_count": 0,
+    "impression_count": 12
+   },
+   "entities": null
+  },
+  {
+   "id": "2086224838138445926",
+   "text": "@Barchart How is $SNAP going to continue to compete with its competitors? Ai? Snap glasses? Does the use of the app expand pass 18 year olds?",
+   "author_id": "2060223357056892934",
+   "created_at": "2026-08-08T22:55:36.000Z",
+   "public_metrics": {
+    "like_count": 0,
+    "quote_count": 0,
+    "reply_count": 0,
+    "retweet_count": 0,
+    "bookmark_count": 0,
+    "impression_count": 73
+   },
+   "entities": null
+  },
+  {
+   "id": "2086222063623135364",
+   "text": "jimothy community getting louder  \ud83d\udd25\n\nthere's a game. you play with a raccoon, catching trash.\nscore 1000+ and you can grab some $JIMOTHY.\n\nGot it here https://t.co/rVdhaaAgeW\n\n$Q https://t.co/MOjaIwNT98",
+   "author_id": "1139202679475986433",
+   "created_at": "2026-08-08T22:44:34.000Z",
+   "public_metrics": {
+    "like_count": 0,
+    "quote_count": 0,
+    "reply_count": 0,
+    "retweet_count": 0,
+    "bookmark_count": 0,
+    "impression_count": 14
+   },
+   "entities": null
+  },
+  {
+   "id": "2086221648596975819",
+   "text": "Qullamaggie Inspired Screener \ud83d\udcc8 \n45 Stocks \n\n$FBRX $CDNA $RNG $MAN $MGNI $LIFE $LIND $PGEN $CRSR $FIVN $NSIT $VAC $URGN $TXG $CORT $ELVN $TPC $BJRI $CBRL $IOVA $BLZE $MBX $RHI $ADPT $TWST $ORKA $PANW $PRCH $QURE $LQDA $CRWD $NTAP $HNGE $BFLY $GH $DNTH $SYRE $OKTA $RLAY $PSNL https://t.co/nUi4JixQ2F",
+   "author_id": "321384801",
+   "created_at": "2026-08-08T22:42:55.000Z",
+   "public_metrics": {
+    "like_count": 8,
+    "quote_count": 0,
+    "reply_count": 1,
+    "retweet_count": 0,
+    "bookmark_count": 9,
+    "impression_count": 1070
+   },
+   "entities": null
+  },
+  {
+   "id": "2086220051128975586",
+   "text": "$INOD -5%\n\nTake advantage of this crazy drop again. I\u2019m telling you.\n\nDon\u2019t sleep here x fam \ud83e\udd2b\n\nI gave you $INOD a week or two ago and I\u2019m bringing it back again because the underlying business has NOT slowed down. If anything, the numbers are showing the opposite. \n\nQ2 https://t.co/Va6EFnpfcn https://t.co/L95OOz0BAd",
+   "author_id": "83352693",
+   "created_at": "2026-08-08T22:36:34.000Z",
+   "public_metrics": {
+    "like_count": 0,
+    "quote_count": 0,
+    "reply_count": 0,
+    "retweet_count": 0,
+    "bookmark_count": 0,
+    "impression_count": 0
+   },
+   "entities": null
+  },
+  {
+   "id": "2086219588132319681",
+   "text": "@MindMathMoney @Barchart $SNAP is turning into a cash cow in other ways. AD placement is improving, big names are re acclimating. But it all together it\u2019sa severely undervalued company",
+   "author_id": "1467195935944028164",
+   "created_at": "2026-08-08T22:34:44.000Z",
+   "public_metrics": {
+    "like_count": 0,
+    "quote_count": 0,
+    "reply_count": 0,
+    "retweet_count": 0,
+    "bookmark_count": 0,
+    "impression_count": 20
+   },
+   "entities": null
+  },
+  {
+   "id": "2086219470456959172",
+   "text": "$TEL is the kind of chart people laugh at before the move.\n\nCurrent price: $0.0017.\n\nBasically buried at long-term support after years of being forgotten.\n\nBut zoom out and the upside structure gets ridiculous:\n\n$0.0129 \u2192 $0.0364 \u2192 $0.0651.\n\nTarget 1 alone is around a 7x. https://t.co/wWR1AG64IL",
+   "author_id": "1941038782255394816",
+   "created_at": "2026-08-08T22:34:16.000Z",
+   "public_metrics": {
+    "like_count": 5,
+    "quote_count": 0,
+    "reply_count": 1,
+    "retweet_count": 0,
+    "bookmark_count": 1,
+    "impression_count": 199
+   },
+   "entities": null
+  },
+  {
+   "id": "2086238168031154600",
+   "text": "@allodev Watching $BB closely here. \ud83d\udcca Current levels look interesting for a potential recovery move. \ud83d\udd25",
+   "author_id": "1852599761108688896",
+   "created_at": "2026-08-08T23:48:34.000Z",
+   "public_metrics": {
+    "like_count": 0,
+    "quote_count": 0,
+    "reply_count": 0,
+    "retweet_count": 0,
+    "bookmark_count": 0,
+    "impression_count": 1
+   },
+   "entities": null
+  },
+  {
+   "id": "2086238078889562522",
+   "text": "@GenuineDegen $BB holding the zone well \ud83d\udc40 A breakout above $0.014 could bring fresh momentum. \ud83d\ude80",
+   "author_id": "1852599761108688896",
+   "created_at": "2026-08-08T23:48:13.000Z",
+   "public_metrics": {
+    "like_count": 0,
+    "quote_count": 0,
+    "reply_count": 0,
+    "retweet_count": 0,
+    "bookmark_count": 0,
+    "impression_count": 1
+   },
+   "entities": null
+  },
+  {
+   "id": "2086237858017505706",
+   "text": "@bouncebit \n$BB is trading around $0.01358, still under pressure but showing signs of stabilization near the recent lows. \ud83d\udcca\n\nA reclaim of $0.0140+ could bring short-term momentum back, while holding the current zone remains key for the next move. \ud83d\udc40\n\n#BounceBit #BB #Crypto https://t.co/2O8ATJaO9s",
+   "author_id": "1852599761108688896",
+   "created_at": "2026-08-08T23:47:20.000Z",
+   "public_metrics": {
+    "like_count": 0,
+    "quote_count": 0,
+    "reply_count": 0,
+    "retweet_count": 0,
+    "bookmark_count": 0,
+    "impression_count": 1
+   },
+   "entities": null
+  },
+  {
+   "id": "2086237726257402317",
+   "text": "$IOT  is trading around $41.08 because Samsara Inc. is benefiting from accelerated enterprise adoption of its connected operations cloud platform, which integrates physical operations data with AI-driven analytics. As fleet management, industrial asset tracking, and workplace https://t.co/6ec6Xc8AXE",
+   "author_id": "1302959661352710144",
+   "created_at": "2026-08-08T23:46:49.000Z",
+   "public_metrics": {
+    "like_count": 0,
+    "quote_count": 0,
+    "reply_count": 0,
+    "retweet_count": 0,
+    "bookmark_count": 0,
+    "impression_count": 28
+   },
+   "entities": null
+  },
+  {
+   "id": "2086237203068490195",
+   "text": "@Ares_Olympusx @IThinkItsArt Strong fundamentals, growing ecosystem, and more innovation ahead.\n$BB is one to keep watching. \ud83d\udd25",
+   "author_id": "1532628318927077376",
+   "created_at": "2026-08-08T23:44:44.000Z",
+   "public_metrics": {
+    "like_count": 0,
+    "quote_count": 0,
+    "reply_count": 0,
+    "retweet_count": 0,
+    "bookmark_count": 0,
+    "impression_count": 1
+   },
+   "entities": null
+  },
+  {
+   "id": "2086237105072787669",
+   "text": "@DD____ $BB keeps building real utility across the onchain ecosystem. The next phase looks exciting. \ud83d\ude80",
+   "author_id": "1532628318927077376",
+   "created_at": "2026-08-08T23:44:20.000Z",
+   "public_metrics": {
+    "like_count": 0,
+    "quote_count": 0,
+    "reply_count": 0,
+    "retweet_count": 0,
+    "bookmark_count": 0,
+    "impression_count": 1
+   },
+   "entities": null
+  },
+  {
+   "id": "2086235531831124099",
+   "text": "Did someone check on Mr CryHarder Kratter?  Bro has had rough week.. with $STRC \u2018s \u201cdoom loop\u201d and now BIP-110 humiliation..",
+   "author_id": "1868451978864422912",
+   "created_at": "2026-08-08T23:38:05.000Z",
+   "public_metrics": {
+    "like_count": 1,
+    "quote_count": 0,
+    "reply_count": 0,
+    "retweet_count": 0,
+    "bookmark_count": 0,
+    "impression_count": 17
+   },
+   "entities": null
+  },
+  {
+   "id": "2086233964495163719",
+   "text": "There is currently no $NICE coin on Robinhood so incase Trump actually renames ICE to NICE we will have this one to blast https://t.co/tMa1sKPiuv",
+   "author_id": "1999619424790413315",
+   "created_at": "2026-08-08T23:31:52.000Z",
+   "public_metrics": {
+    "like_count": 0,
+    "quote_count": 0,
+    "reply_count": 0,
+    "retweet_count": 0,
+    "bookmark_count": 0,
+    "impression_count": 17
+   },
+   "entities": null
+  },
+  {
+   "id": "2086233820236271915",
+   "text": "long pitch for $GTLB + other devops tooling: https://t.co/AePKFKFoJx",
+   "author_id": "1913216436702515200",
+   "created_at": "2026-08-08T23:31:17.000Z",
+   "public_metrics": {
+    "like_count": 0,
+    "quote_count": 0,
+    "reply_count": 1,
+    "retweet_count": 0,
+    "bookmark_count": 0,
+    "impression_count": 7
+   },
+   "entities": null
+  },
+  {
+   "id": "2086233435224645932",
+   "text": "@saylor If bitcoin fails, Strategy fails. Today, bitcoin failed. I will be selling all my $MSTR, $STRC, and all of my BTC first thing Monday morning.",
+   "author_id": "21697856",
+   "created_at": "2026-08-08T23:29:45.000Z",
+   "public_metrics": {
+    "like_count": 0,
+    "quote_count": 0,
+    "reply_count": 1,
+    "retweet_count": 0,
+    "bookmark_count": 0,
+    "impression_count": 7
+   },
+   "entities": null
+  },
+  {
+   "id": "2086233291263529107",
+   "text": "@Marwa__Osman The US showed dur8ng covid that the Fed cld buy as much US debt as needed. The Fed holds ~4x mor US treasuries than japan. But, the fed buying japan's us treas holdings, or any more US debt, would drasticaly increase inflation from debasing (printing) the $s to buy the debt.",
+   "author_id": "1874643574798913536",
+   "created_at": "2026-08-08T23:29:11.000Z",
+   "public_metrics": {
+    "like_count": 0,
+    "quote_count": 0,
+    "reply_count": 0,
+    "retweet_count": 1,
+    "bookmark_count": 0,
+    "impression_count": 15
+   },
+   "entities": null
+  },
+  {
+   "id": "2086233051777171706",
+   "text": "@MicroStrategy If bitcoin fails, strategy fails. Today, bitcoin failed. I will be selling all my $MSTR, $STRC, and all of my BTC first thing Monday morning.",
+   "author_id": "21697856",
+   "created_at": "2026-08-08T23:28:14.000Z",
+   "public_metrics": {
+    "like_count": 0,
+    "quote_count": 0,
+    "reply_count": 0,
+    "retweet_count": 0,
+    "bookmark_count": 0,
+    "impression_count": 2
+   },
+   "entities": null
+  },
+  {
+   "id": "2086232815142916100",
+   "text": "@KybrdWrrr The actual # of people \u201cdelivering\u201d housing in that group is very small. The majority of that group deals with encroachments on city land, purchase, sales &amp; leasing of city land and admin functions. Probably good the admin stuff is hidden there otherwise a lot more tax $s wasted.",
+   "author_id": "1419102851763105794",
+   "created_at": "2026-08-08T23:27:18.000Z",
+   "public_metrics": {
+    "like_count": 0,
+    "quote_count": 0,
+    "reply_count": 0,
+    "retweet_count": 0,
+    "bookmark_count": 0,
+    "impression_count": 3
+   },
+   "entities": null
+  },
+  {
+   "id": "2086232653213167865",
+   "text": "Version 23 was a lie, nothing happened\n\n@Chengdiao @nkokkalis @PiCoreTeam \n$Pi #PiNetwork #picoin #Piarmy #picommunity #Pinode #pioneers #CryptoNews #CryptoTrading #CryptoPump #Scam #cryptocrash #DOGE #CBDC #PiNetwork #CryptoMarket https://t.co/dGPeFLBVLY",
+   "author_id": "290462578",
+   "created_at": "2026-08-08T23:26:39.000Z",
+   "public_metrics": {
+    "like_count": 1,
+    "quote_count": 0,
+    "reply_count": 0,
+    "retweet_count": 0,
+    "bookmark_count": 0,
+    "impression_count": 17
+   },
+   "entities": null
+  },
+  {
+   "id": "2086232534745047157",
+   "text": "Version 23 was a lie, nothing happened\n\n$Pi #PiNetwork #picoin #Piarmy #picommunity #Pinode #pioneers #CryptoNews #CryptoTrading #CryptoPump #Scam #cryptocrash #DOGE #CBDC #PiNetwork #CryptoMarket https://t.co/0qegDoWn8R",
+   "author_id": "290462578",
+   "created_at": "2026-08-08T23:26:11.000Z",
+   "public_metrics": {
+    "like_count": 0,
+    "quote_count": 0,
+    "reply_count": 0,
+    "retweet_count": 0,
+    "bookmark_count": 0,
+    "impression_count": 9
+   },
+   "entities": null
+  },
+  {
+   "id": "2086230226867048800",
+   "text": "The #picommunity is completely tired.\nThe founders of pi have exploited two things: people's #loyalty and #trust\u2757\n  Please answer okx's article published in 2025 July.\n\n  $Pi #PiNetwork #picoin #Piarmy #pioneers\n#picommunity #crypto #cryptocrash \n@nkokkalis @Chengdiao $nft https://t.co/zPyRipQWMB",
+   "author_id": "290462578",
+   "created_at": "2026-08-08T23:17:01.000Z",
+   "public_metrics": {
+    "like_count": 1,
+    "quote_count": 0,
+    "reply_count": 0,
+    "retweet_count": 0,
+    "bookmark_count": 0,
+    "impression_count": 31
+   },
+   "entities": null
+  },
+  {
+   "id": "2086229777489252510",
+   "text": "What did we do during the most difficult and frightening July of the past 25 years?\nAt the time, it was unclear whether $PL would enter a correction. I called $20 an opportunity, and $19 became the bottom! \ud83d\udcaf https://t.co/nHVUYcNLFV",
+   "author_id": "2281787802",
+   "created_at": "2026-08-08T23:15:13.000Z",
+   "public_metrics": {
+    "like_count": 4,
+    "quote_count": 0,
+    "reply_count": 1,
+    "retweet_count": 0,
+    "bookmark_count": 0,
+    "impression_count": 1268
+   },
+   "entities": null
+  },
+  {
+   "id": "2086228832215089609",
+   "text": "Sucess is not luck, it's efforts every day\ud83d\udcc8\ud83c\udfaf\ud83d\udcda\nI\u2019m watching these stocks closely:\n$RKLB $ASTS $LUNR $RDW $PL\n\n$SIDU $BKSY $GSAT $SATL $SPIR\n\n$IRDM $VSAT $AVAV $KTOS $ONDS\n\n$JOBY $ACHR $EVEX $LMT $NOC https://t.co/dAzLtOFXBB",
+   "author_id": "2058373235859968000",
+   "created_at": "2026-08-08T23:11:28.000Z",
+   "public_metrics": {
+    "like_count": 1,
+    "quote_count": 0,
+    "reply_count": 0,
+    "retweet_count": 0,
+    "bookmark_count": 0,
+    "impression_count": 138
+   },
+   "entities": null
+  },
+  {
+   "id": "2086228822928588925",
+   "text": "4/14\n\n$STRC (Strategy) and $SATA (Strive) are publicly traded, variable-rate perpetual preferred shares issued by Bitcoin treasury companies.\n\nRates can change. Prices can move. Dividends depend on issuer terms and board declarations.\n\n\u201cCredit\u201d still requires credit analysis.",
+   "author_id": "1010801684421980161",
+   "created_at": "2026-08-08T23:11:26.000Z",
+   "public_metrics": {
+    "like_count": 0,
+    "quote_count": 0,
+    "reply_count": 1,
+    "retweet_count": 0,
+    "bookmark_count": 0,
+    "impression_count": 13
+   },
+   "entities": null
+  },
+  {
+   "id": "2086227016895086711",
+   "text": "\ud83d\ude80 Stocks Most Likely to 10X Over the Next Decade\n\nSpace &amp; Defense\n$RKLB \u2022 $ASTS \u2022 $RCAT \u2022 $ONDS\nAI &amp; Data Infrastructure\n$NBIS \u2022 $CRDO \u2022 $IREN \u2022 $CIFR \u2022 $ZETA\nEnergy\n$EOSE \u2022 $HYLN\nHealthcare\n$HIMS \u2022 $OSCR\nFintech &amp; Software\n$SOFI \u2022 $NOW\nEmerging Small Caps\n$GRRR \u2022 https://t.co/WbS9dOADBt",
+   "author_id": "1729368456271671296",
+   "created_at": "2026-08-08T23:04:15.000Z",
+   "public_metrics": {
+    "like_count": 2,
+    "quote_count": 0,
+    "reply_count": 1,
+    "retweet_count": 0,
+    "bookmark_count": 1,
+    "impression_count": 241
+   },
+   "entities": null
+  },
+  {
+   "id": "2086226592167076192",
+   "text": "@Greenzy15 Can BlackBerry $BB  have a rebirth as a mobile company in the age of AI?\n\nhttps://t.co/SaPBVfPB1v",
+   "author_id": "4886650528",
+   "created_at": "2026-08-08T23:02:34.000Z",
+   "public_metrics": {
+    "like_count": 0,
+    "quote_count": 0,
+    "reply_count": 0,
+    "retweet_count": 0,
+    "bookmark_count": 0,
+    "impression_count": 7
+   },
+   "entities": null
+  },
+  {
+   "id": "2086226488609657164",
+   "text": "Meme coins in general are looking great right now. Bid your favourites... \n\n$WOOF $Jimothy $TOAD $JUGGERNAUT $CASHCAT $ANSEM $TROLL $WOLF $ANDY",
+   "author_id": "952939001517879296",
+   "created_at": "2026-08-08T23:02:09.000Z",
+   "public_metrics": {
+    "like_count": 0,
+    "quote_count": 0,
+    "reply_count": 0,
+    "retweet_count": 0,
+    "bookmark_count": 1,
+    "impression_count": 105
+   },
+   "entities": null
+  },
+  {
+   "id": "2086226378144338407",
+   "text": "What did we do during the most difficult and frightening July of the past 25 years?\n$10.35-$9 These are good prices for $NVTS!\nhttps://t.co/bMTDG1a8rh https://t.co/h8RJhriml9",
+   "author_id": "2281787802",
+   "created_at": "2026-08-08T23:01:43.000Z",
+   "public_metrics": {
+    "like_count": 2,
+    "quote_count": 0,
+    "reply_count": 0,
+    "retweet_count": 0,
+    "bookmark_count": 0,
+    "impression_count": 1342
+   },
+   "entities": null
+  },
+  {
+   "id": "2086226333676523945",
+   "text": "The energy transition is not only about producing electricity.\n\nhttps://t.co/H6P0JcU39v\n\nIt is about managing it.\n\nThat is where $ENPH  fits.\n\nAs solar adoption grows, smarter energy management becomes more important.\n\nThe market focuses on energy production.\n\nBut the next",
+   "author_id": "1458081031739826177",
+   "created_at": "2026-08-08T23:01:32.000Z",
+   "public_metrics": {
+    "like_count": 0,
+    "quote_count": 0,
+    "reply_count": 0,
+    "retweet_count": 0,
+    "bookmark_count": 0,
+    "impression_count": 10
+   },
+   "entities": null
+  },
+  {
+   "id": "2086226242999550194",
+   "text": "What did we do during the most difficult and frightening July of the past 25 years?\nAn entry call for $VICR! Right on target! \ud83c\udfaf $179 became the bottom\nhttps://t.co/bMTDG1a8rh https://t.co/B0vwfFlrTB",
+   "author_id": "2281787802",
+   "created_at": "2026-08-08T23:01:11.000Z",
+   "public_metrics": {
+    "like_count": 1,
+    "quote_count": 0,
+    "reply_count": 0,
+    "retweet_count": 0,
+    "bookmark_count": 0,
+    "impression_count": 1527
+   },
+   "entities": null
+  }
+ ]
+}

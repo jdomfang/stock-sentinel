@@ -9,23 +9,23 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 import requests
 import json
 import pandas as pd
-from collections import defaultdict
 import logging
 
 from utils.navigation import render_sidebar_navigation, render_top_nav
 from utils.ui import apply_theme, close_page, render_evidence_check
-from utils.sentiment import extract_tickers_detailed, analyze_sentiment_batch
-from utils import x_metrics
-from utils.finance import get_ticker_master_list, get_last_close_prices_best_effort
-from utils import corpus_cache
-from utils import sector_query
+from utils.finance import get_last_close_prices_best_effort
 from utils.deep_analysis import ANALYSIS_PROMPTS
+# NOT the scan. Pagination, ticker validation, sentiment attribution and the
+# effectiveness telemetry all moved to utils/scan.py; the seven imports that
+# used to sit here were what made this page the only thing able to run one.
+# What is left is a credit, a progress bar and a table.
 # This page contributes a table, a credit and a panel. The analysis
 # behind the panel is the same one pages/Deep_Analysis.py runs.
 # NOT the pipeline. Both routes into Deep Analyze -- this page's per-row
 # button and pages/Deep_Analysis.py -- now call core-api. The sector SCAN
 # above is still local and imports what it needs directly.
 from utils import analyze_client as _client
+from utils import scan as scan_mod
 
 
 # Verdicts we are willing to assert. Anything else is a statement about how
@@ -681,17 +681,12 @@ with st.container(key="discovery_scan_card"):
             unsafe_allow_html=True,
         )
 
-# Posts per basket request. Small on purpose: X's minimum is 10, requests are
-# free, and only returned posts are billed -- so fetching 25 four times costs
-# exactly what fetching 100 once costs, while letting the loop stop the moment
-# it has what it needs. This is the one number here worth tuning from real data.
-BASKET_PER_PAGE = 25
-
-# |mean margin| below this reads as Neutral. A PLACEHOLDER: nobody has labelled
-# a sample of these posts yet, so this is a starting point to be tuned from
-# ground truth, not a measured boundary. Deliberately not derived from the old
-# 0.55 confidence threshold, which applied to a different quantity.
-SENTIMENT_MARGIN = 0.15
+# IMPORTED, not redeclared. Both of these were duplicated here after the scan
+# moved to utils/scan.py, and SENTIMENT_MARGIN was live in both places at once:
+# the KPI headline below read the page's copy while the row pills read
+# scan.py's. Change one and the headline announces "Bullish" over a table of
+# Neutrals, with nothing to catch it.
+from utils.scan import BASKET_PER_PAGE, SENTIMENT_MARGIN  # noqa: F401,E402
 
 # Basket retrieval is the only path. The hand-written topic queries it
 # replaced were measured head-to-head on two sectors, same hour, equal spend:
@@ -803,7 +798,6 @@ if scan_triggered:
     # Set when X refuses to serve us. Drives the refund below: the user paid for
     # a scan, so if the upstream never delivered any posts they must not be
     # charged for it. Observed in production as a 402 credits-depleted.
-    _x_api_error: str | None = None
 
     # Set to True the moment this scan has produced an answer the user can see.
     # The `finally` below refunds whenever it is still False.
@@ -819,148 +813,51 @@ if scan_triggered:
     # Two credits, one scan. `finally` runs on BaseException; `except` does not.
     _delivered = False
 
+    _scan = None
     try:
-        # Load X Bearer Token from secrets
-        x_bearer_token = st.secrets["X_BEARER_TOKEN"]
-        # The query is generated from this sector's tickers further down; the
-        # hand-written topic-word blocks that used to live here are gone. They
-        # were measured at 4% precision in utilities and 23% in technology,
-        # against 86-88% for generated baskets in the same hours.
-
-        # Goal-driven scan:
-        # - Scan page 1
-        # - If page 1 yields 10 validated tickers, stop
-        # - Else keep scanning pages until 10 validated OR 300 tweets safety cap
-        from utils.deep_analysis import search_x_tweets_page
-
-        SAFETY_CAP_TWEETS = 300
-        PER_PAGE = 100
-        TARGET_VALIDATED = 10
-
-        # Load comprehensive ticker database once
-        ticker_master_list = get_ticker_master_list()
-        if not ticker_master_list:
-            st.error("❌ Could not load ticker database. Please check the data directory.")
-            _bail()
-
-        # Nasdaq sector strings (stored in Supabase) for strict matching.
-        #
-        # Imported rather than defined here. The query generator and this
-        # validation step must agree on what "utilities" means, and two
-        # hand-maintained copies of the same mapping would silently diverge --
-        # the generator would ask about one set of tickers while validation
-        # accepted another. tests/test_sector_query.py pins the contents to
-        # exactly what this block held before it moved.
-        ui_to_nasdaq_sectors = sector_query.UI_TO_NASDAQ
-        selected_nasdaq_sectors = ui_to_nasdaq_sectors.get((sector or "").lower(), set())
-
-        # Aggregate data by ticker (incremental across pages)
-        ticker_data = defaultdict(lambda: {
-            'mentions': 0,
-            # P(positive) - P(negative) per scoring post. Continuous and signed,
-            # so aggregating it cannot tie the way a vote over discrete labels
-            # does, and it keeps the difference between a 0.48/0.44 coin flip
-            # and a 0.90/0.05 conviction that a single label collapses.
-            'margins': [],
-            'sample_tweets': []
-        })
-
-        # Tweet ids already counted. Baskets overlap -- a post naming tickers
-        # from two baskets is returned by both requests -- so without this a
-        # single post inflates its tickers' mention counts, and mentions decide
-        # the displayed top 10.
-        _seen_post_ids: set = set()
-
-        # (text, tickers) for every ticker-bearing post, kept so sentiment can
-        # run ONCE after the ranking rather than per page during the fetch.
-        _scored_corpus: list = []
-
-        validated_set = set()
-        checked_set = set()
-        company_by_ticker = {}
-
-        next_token = None
-        total_posts = 0
-
-        def _try_validate_from_current_ranking():
-            """Validate tickers in mention-rank order until we have 10 validated or no more candidates."""
-
-            # Build ranking from current ticker_data
-            ranking = sorted(
-                ticker_data.items(),
-                key=lambda kv: kv[1].get('mentions', 0),
-                reverse=True,
-            )
-            for ticker, info in ranking:
-                if len(validated_set) >= TARGET_VALIDATED:
-                    break
-                if ticker in checked_set:
-                    continue
-                checked_set.add(ticker)
-
-                t_up = (ticker or '').upper()
-                if t_up not in ticker_master_list:
-                    continue
-
-                ticker_info = ticker_master_list[t_up]
-                ticker_sector = (ticker_info.get('sector') or '').strip()
-                if not selected_nasdaq_sectors:
-                    # If we can't map the UI sector to a Nasdaq sector string, be strict and reject.
-                    continue
-
-                # Strict match: only accept if the Nasdaq sector matches one of the mapped sectors.
-                if ticker_sector not in selected_nasdaq_sectors:
-                    continue
-
-                validated_set.add(ticker)
-                company_by_ticker[ticker] = ticker_info.get('name', ticker)
-
-        # A no-op placeholder so the try/finally below always has something
-        # callable. The real closure is defined after the corpus cache, which
-        # is AFTER the query-build failure path can st.stop() -- without this,
-        # the finally raises NameError into a bare except and the failure is
-        # invisible. Overwritten with the real recorder further down.
-        def _record_metrics(displayed: list[str]) -> None:
-            return None
-
         progress_bar = st.progress(0)
         status_text = st.empty()
-        status_text.markdown(f"**📡 Scanning X for {sector} momentum...**")
+        status_text.markdown(f"**\U0001F4E1 Scanning X for {sector} momentum...**")
 
-        # ── Build the query from this sector's own tickers ───────────────────
+        # The SAME four stages the inline loop drove, mapped from names the
+        # pipeline emits. utils/scan.py takes a plain callable and imports no
+        # streamlit, so the progress chrome stays here where the runtime is.
         #
-        # NO FALLBACK, DELIBERATELY. If the baskets cannot be built we refund
-        # and stop rather than quietly running the old topic query, which was
-        # measured at a quarter of this precision. Falling back would hand the
-        # user a scan we know is bad without telling them -- the exact silent
-        # degradation this codebase keeps paying for.
-        _baskets: list[str] = []
-        _basket_error: str | None = None
-        try:
-            _baskets = sector_query.build_baskets(sector, "cashtag")
-        except Exception as _e:
-            _basket_error = f"{type(_e).__name__}: {str(_e)[:160]}"
-            logger.exception("basket generation failed for %s", sector)
+        # Note these values bounce: the loop reports fetching -> filtering ->
+        # shortlist once per PAGE, so the bar runs 15/45/70 and starts over.
+        # That is what it has always done; it is preserved rather than fixed,
+        # because this step is an extraction and nothing else.
+        _STAGES = {
+            "fetching":  (15, f"**\U0001F4E1 Scanning X for {sector} momentum...**"),
+            "filtering": (45, "**\U0001F50D Filtering noise, validating tickers...**"),
+            "shortlist": (70, "**\u26A1 Building your shortlist...**"),
+            "scoring":   (85, "**\U0001F9E0 Reading the mood on your shortlist...**"),
+        }
 
-        if not _baskets:
-            # The credit is returned here. The try/finally below would also
-            # refund, but naming the reason makes the ledger row diagnosable
-            # instead of "aborted or errored".
-            reason = _basket_error or f"no live tickers for sector {sector!r}"
-            logger.error("cannot build a query for %s: %s", sector, reason)
+        def _stage(name: str) -> None:
+            pct, msg = _STAGES[name]
+            progress_bar.progress(pct)
+            status_text.markdown(msg)
 
-            # Clear the progress chrome, or a 0% bar and "Scanning X for
-            # finance momentum..." sit above the error panel forever.
-            progress_bar.empty()
-            status_text.empty()
+        with st.spinner(f"Searching {sector} stocks on X..."):
+            _scan = scan_mod.scan(sector, event_id=_credit.event_id, on_stage=_stage)
 
+        progress_bar.progress(100)
+        status_text.empty()
+        progress_bar.empty()
+
+        if _scan.no_query:
+            # NO FALLBACK, DELIBERATELY -- see utils/scan.py. The credit is
+            # returned here; the finally below would also refund, but naming
+            # the reason makes the ledger row diagnosable instead of "aborted
+            # or errored".
+            #
             # Only promise a refund that actually happened. refund_credit
             # returns False without raising when its RPC fails, and telling a
             # user in writing that they were not charged when they were is
-            # worse than the original failure. The try/finally below is the
-            # backstop either way.
+            # worse than the original failure.
             _refunded = refund_credit(
-                "scan", _credit.event_id, f"query build failed: {reason[:120]}")
+                "scan", _credit.event_id, f"query build failed: {(_scan.error or '')[:120]}")
             _credit_line = ("Your credit was not used."
                             if _refunded
                             else "We are returning your credit; it may take a moment to appear.")
@@ -968,340 +865,78 @@ if scan_triggered:
                 f"""
                 <div style="border:1px solid rgba(245,158,11,.28);border-radius:14px;padding:18px 20px;
                   background:rgba(245,158,11,.05);margin:0.5rem 0;text-align:center;">
-                  <div style="font-size:1.2rem;margin-bottom:6px;">🧺</div>
+                  <div style="font-size:1.2rem;margin-bottom:6px;">\U0001F9FA</div>
                   <div style="font-weight:700;color:rgba(251,191,36,.95);font-size:0.95rem;margin-bottom:4px;">Could not build the scan for this sector</div>
-                  <div style="color:rgba(148,163,184,.75);font-size:0.82rem;">{_credit_line} This is usually temporary — try again shortly.</div>
+                  <div style="color:rgba(148,163,184,.75);font-size:0.82rem;">{_credit_line} This is usually temporary \u2014 try again shortly.</div>
                 </div>
                 """,
                 unsafe_allow_html=True,
             )
             _bail()
 
-        # One identity for the whole basket set, so the corpus cache key and the
-        # telemetry's query_hash change whenever the generated query changes --
-        # which happens nightly as dollar-volume rankings shift.
-        query = "cashtag-baskets|" + "|".join(_baskets)
-        logger.info("🧺 %d basket(s), %d tickers, sector=%s",
-                    len(_baskets), sum(b.count("$") for b in _baskets), sector)
+        if _scan.error:
+            # ONE PANEL PER FAILURE KIND, as before. These used to be reached
+            # by `except KeyError` and `except requests.exceptions.
+            # RequestException`; both went unreachable when the pipeline moved
+            # behind a function that returns instead of raising, so every
+            # failure collapsed into the generic panel and a missing API key
+            # started reporting itself as an X outage. scan.error_kind carries
+            # the distinction across that boundary.
+            logger.error("scan failed for %s (%s): %s",
+                         sector, _scan.error_kind, _scan.error)
+            _REASONS = {"credentials": "missing API credentials",
+                        "network": "network failure reaching X",
+                        "ticker_db": "ticker database unavailable"}
+            refund_credit("scan", _credit.event_id,
+                          _REASONS.get(_scan.error_kind,
+                                       f"scan error: {(_scan.error or '')[:120]}"))
+            if _scan.error_kind == "credentials":
+                _tone, _icon, _title, _body = (
+                    "239,68,68", "\U0001F511", "Configuration error",
+                    "Missing API credentials. Contact support if this keeps happening.")
+            elif _scan.error_kind == "network":
+                _tone, _icon, _title, _body = (
+                    "245,158,11", "\U0001F4E1", "Connection issue",
+                    "Couldn't reach the data source. Check your connection and try again.")
+            elif _scan.error_kind == "ticker_db":
+                _tone, _icon, _title, _body = (
+                    "239,68,68", "\u274C", "Could not load ticker database",
+                    "Please check the data directory.")
+            else:
+                _tone, _icon, _title, _body = (
+                    "239,68,68", "\u26A0\uFE0F", "Something went wrong",
+                    "The scan hit an unexpected error. Try again in a moment "
+                    "\u2014 this is usually temporary.")
+            st.markdown(
+                f"""
+                <div style="border:1px solid rgba({_tone},.28);border-radius:16px;padding:24px;
+                  background:rgba({_tone},.05);margin:1rem 0;text-align:center;">
+                  <div style="font-size:1.5rem;margin-bottom:8px;">{_icon}</div>
+                  <div style="font-weight:700;color:rgba(248,113,113,.95);font-size:1.0rem;margin-bottom:4px;">{_title}</div>
+                  <div style="color:rgba(148,163,184,.80);font-size:0.88rem;">{_body}</div>
+                </div>
+                """,
+                unsafe_allow_html=True,
+            )
+            _bail()
 
-        # ── Shared corpus cache ──────────────────────────────────────────────
-        # X bills per POST RETURNED, so the cost of this scan is the number of
-        # tweets it pulls. The result is not user-specific -- it is a function
-        # of (sector, 24h window) -- and there are only ten sectors, so one
-        # fetch can serve every user who scans that sector for the next six
-        # hours. Cost stops scaling with users and becomes bounded by the
-        # catalogue.
-        #
-        # The RAW corpus is cached, not the finished table: the tweets are what
-        # cost money, and re-scoring them is free. A sentiment fix can then be
-        # replayed over posts already paid for.
-        _cached = corpus_cache.get("sector", sector, 24, query)
-        _cached_pages: list[list[dict]] | None = None
-        if _cached is not None:
-            # Replay at the SAME page size the corpus was bought at, or the
-            # early-stop gates fire at different points than they did live and
-            # a cache hit can produce a different top-10 than the scan that
-            # paid for it. Basket mode buys in BASKET_PER_PAGE chunks.
-            _replay_size = BASKET_PER_PAGE if _baskets else PER_PAGE
-            _cached_pages = corpus_cache.chunk_pages(_cached["tweets"], _replay_size)
-        _fetched_pages: list[list[dict]] = []
-
-        # Effectiveness telemetry. Every number it reports is derived from posts
-        # already paid for, so this adds no X spend and no API calls.
-        _tally = x_metrics.ScanTally()
-        # A mutable holder, not a bare flag: this block is module-level Streamlit
-        # script code, so a nested def cannot rebind an enclosing name.
-        _metrics_state = {"written": False}
-
-        def _is_valid_ticker(sym: str) -> bool:
-            """The SAME rule _try_validate_from_current_ranking applies.
-
-            Passed into the tally so an uncapped validatable count can be
-            computed. It must mirror the real predicate exactly, or the headline
-            measurement diverges from what the scan actually accepts.
-            """
-            info = ticker_master_list.get((sym or "").upper())
-            if not info or not selected_nasdaq_sectors:
-                return False
-            return (info.get("sector") or "").strip() in selected_nasdaq_sectors
-
-        def _record_metrics(displayed: list[str]) -> None:
-            """One row per scan, written whichever way the scan ends.
-
-            Called on the empty-result path too: a scan that bought 99 posts and
-            displayed nothing is 100% waste, and that is precisely the data
-            point worth having. Recording only successful scans would bias the
-            waste number downward exactly where it matters most.
-            """
-            if _metrics_state["written"]:
-                return          # one row per scan, whichever path got here first
-            _metrics_state["written"] = True
-            x_metrics.record_scan(
-                event_id=getattr(_credit, "event_id", None),
-                subject=sector,
-                query=query,
-                tally=_tally,
-                validated=validated_set,
-                displayed=displayed,
-                posts_billed=sum(len(p) for p in _fetched_pages),
-                pages_fetched=len(_fetched_pages),
-                from_cache=_cached is not None,
-                # Uncapped validation, so the 10-cap cannot hide the answer.
-                is_valid=_is_valid_ticker,
-                stop_reason=(
-                    "validated_target" if len(validated_set) >= TARGET_VALIDATED
-                    else "safety_cap" if total_posts >= SAFETY_CAP_TWEETS
-                    else "exhausted"
-                ),
-                corpus_key=corpus_cache.make_key("sector", sector, 24, query),
+        if _scan.x_error:
+            st.markdown(
+                f"""
+                <div style="border:1px solid rgba(245,158,11,.28);border-radius:14px;padding:18px 20px;
+                  background:rgba(245,158,11,.05);margin:0.5rem 0;text-align:center;">
+                  <div style="font-size:1.2rem;margin-bottom:6px;">\U0001F4E1</div>
+                  <div style="font-weight:700;color:rgba(251,191,36,.95);font-size:0.95rem;margin-bottom:4px;">X data feed unavailable</div>
+                  <div style="color:rgba(148,163,184,.75);font-size:0.82rem;">{_scan.x_error[:200]}</div>
+                </div>
+                """,
+                unsafe_allow_html=True,
             )
 
-        def _next_page(token: str | None) -> dict:
-            """Serve page N from the cached corpus, or buy it from X.
-
-            Replaying the corpus page by page rather than handing the loop one
-            flat list keeps the early-stop, the safety cap and the per-page
-            sentiment batching below completely untouched -- the same tweets
-            produce the same tickers, so a replayed scan stops exactly where
-            the original did.
-            """
-            idx = pages - 1  # `pages` is incremented before this is called
-            if _cached_pages is not None:
-                if idx < len(_cached_pages):
-                    return {
-                        "success": True,
-                        "tweets": _cached_pages[idx],
-                        # Synthetic: on a hit X is never called, so this token
-                        # only has to be truthy enough to drive the loop.
-                        "next_token": "cached" if idx + 1 < len(_cached_pages) else None,
-                    }
-                return {"success": True, "tweets": [], "next_token": None}
-
-            if _fetcher is not None:
-                res = _fetcher.next_page()
-                # The outer loop only asks "is there more work?", so hand it a
-                # sentinel rather than a token belonging to one specific basket.
-                return dict(res, next_token="more" if res.get("has_more") else None)
-
-            res = search_x_tweets_page(
-                query=query, max_results=PER_PAGE, timeframe="24h", next_token=token
-            )
-            if res.get("success"):
-                # Record what we bought so it can be stored once the scan ends.
-                _fetched_pages.append(res.get("tweets") or [])
-            return res
-
-        _fetcher = None
-        # NOT on a corpus-cache hit. _next_page returns cached pages and never
-        # consults the fetcher, but prefetch_first_pass() goes to the network
-        # the moment it is constructed -- so a replayed scan was buying an
-        # entire sector (up to 700 posts in finance) and throwing it away, with
-        # posts_billed still reporting 0 because nothing was delivered. The
-        # whole point of the corpus cache is that a repeat scan costs nothing.
-        if _baskets and _cached_pages is None:
-            _fetcher = sector_query.BasketFetcher(
-                _baskets,
-                fetch=lambda q, n, tok: search_x_tweets_page(
-                    query=q, max_results=n, timeframe="24h", next_token=tok),
-                per_page=BASKET_PER_PAGE,
-                # Enough for one full pass over every basket plus some depth.
-                # The default of 20 could not cover finance (27 baskets),
-                # consumer (22) or healthcare (20) even once, so their tail
-                # tickers were unreachable regardless of budget.
-                max_requests=len(_baskets) + 6,
-            )
-            # Baskets are independent queries, so a wide sector's first pass
-            # goes out concurrently. Finance has 27 baskets; serialising them
-            # is ~30s of a paid scan spent inside the window where a user
-            # re-click aborts the run. No-op at 3 baskets or fewer.
-            _fetcher.prefetch_first_pass(post_budget=SAFETY_CAP_TWEETS)
-            # The fetcher owns the pages it bought; _fetched_pages is what the
-            # corpus write and posts_billed read, so point them at the same list.
-            _fetched_pages = _fetcher.pages
-
-        with st.spinner(f"Searching {sector} stocks on X..."):
-            pages = 0
-            while total_posts < SAFETY_CAP_TWEETS:
-                pages += 1
-                # Page fetch (always 100 max)
-                progress_bar.progress(15); status_text.markdown(f"**📡 Scanning X for {sector} momentum...**")
-                res = _next_page(next_token)
-                if not res.get('success'):
-                    _api_err = res.get('error') or 'X API request failed'
-                    _x_api_error = _api_err
-                    st.markdown(
-                        f"""
-                        <div style="border:1px solid rgba(245,158,11,.28);border-radius:14px;padding:18px 20px;
-                          background:rgba(245,158,11,.05);margin:0.5rem 0;text-align:center;">
-                          <div style="font-size:1.2rem;margin-bottom:6px;">📡</div>
-                          <div style="font-weight:700;color:rgba(251,191,36,.95);font-size:0.95rem;margin-bottom:4px;">X data feed unavailable</div>
-                          <div style="color:rgba(148,163,184,.75);font-size:0.82rem;">{_api_err[:200]}</div>
-                        </div>
-                        """,
-                        unsafe_allow_html=True,
-                    )
-                    break
-
-                page_tweets = res.get('tweets') or []
-                next_token = res.get('next_token')
-                progress_bar.progress(45); status_text.markdown("**🔍 Filtering noise, validating tickers...**")
-
-                if not page_tweets:
-                    # In BASKET mode an empty page is normal, not the end.
-                    # sector_universe sorts by dollar volume, so baskets 2..N
-                    # hold only quiet names -- returning zero is the expected
-                    # case for them. Breaking here would abandon every basket
-                    # after the first quiet one, which silently defeats the whole
-                    # point of covering the sector. Keep going while the fetcher
-                    # still has work.
-                    #
-                    # An empty page does not increment total_posts, so `continue`
-                    # relies entirely on BasketFetcher's own max_requests bound
-                    # to terminate -- the `while total_posts < SAFETY_CAP_TWEETS`
-                    # guard above cannot stop this path on its own.
-                    if next_token:
-                        continue
-                    break
-
-                # The sector-relevance post-filter is gone with topic mode. It
-                # substring-matched tweets against a sector's TOPIC WORDS, and a
-                # post reading "$NEE up 3% on the open" contains none of them --
-                # it would have discarded exactly what we asked and paid for.
-                # Relevance is now guaranteed by the query itself: every post
-                # matched a cashtag we named.
-
-                # Enforce safety cap at processed-post level
-                # DROP POSTS ALREADY SEEN IN ANOTHER BASKET.
-                #
-                # A single topic query paginating with next_token could never
-                # return the same post twice. Baskets can: a post naming $NVDA
-                # (basket 1) and a quieter name (basket 3) matches both queries
-                # and comes back from both requests. Without this, that post
-                # increments ticker_data[t]['mentions'] twice and contributes
-                # its sentiment twice -- and mentions is the sort key that
-                # decides which ten tickers the user sees.
-                #
-                # The duplicate is still BILLED; X charged for both copies. This
-                # only stops it being counted twice.
-                _fresh = []
-                for tw in page_tweets:
-                    tid = tw.get("id")
-                    if tid is not None and tid in _seen_post_ids:
-                        continue
-                    if tid is not None:
-                        _seen_post_ids.add(tid)
-                    _fresh.append(tw)
-                if len(_fresh) != len(page_tweets):
-                    logger.info("deduped %d post(s) already seen in another basket",
-                                len(page_tweets) - len(_fresh))
-                page_tweets = _fresh
-                if not page_tweets:
-                    if next_token:
-                        continue
-                    break
-
-                remaining = SAFETY_CAP_TWEETS - total_posts
-                if remaining <= 0:
-                    break
-                if len(page_tweets) > remaining:
-                    page_tweets = page_tweets[:remaining]
-
-                total_posts += len(page_tweets)
-
-                # Ticker extraction first (regex, cheap), then ONE batched
-                # sentiment call for the whole page. This used to score tweets
-                # one at a time -- up to ~500 sequential forward passes per scan
-                # -- which is what killed the 2026-08-01 healthcare scan mid-loop
-                # and spent a credit for nothing. Batching per page rather than
-                # per scan keeps peak memory bounded and preserves the
-                # between-page progress updates below.
-                # EXTRACTION ONLY. No sentiment here.
-                #
-                # Ranking is by mention count and validation is a ticker_master
-                # lookup -- neither needs FinBERT. Scoring inside this loop meant
-                # scoring every ticker-bearing post to display ten tickers:
-                # measured at 119 of 138 posts in utilities, 86 of 98 in tech,
-                # about 17 and 12 seconds of inference respectively. Deferring it
-                # until the top ten is known cuts that by 42-45% and removes it
-                # from the fetch path entirely.
-                for tweet in page_tweets:
-                    text = tweet.get('text', '')
-                    # _detailed reports WHERE each symbol came from -- $CAT is
-                    # unambiguous, bare CAT is also an English word. `legacy` is
-                    # the exact list extract_tickers has always returned.
-                    _d = extract_tickers_detailed(text)
-                    _tally.record(_d["cashtag"], _d["bare"],
-                                  _d["cashtag_counts"], _d["bare_counts"])
-                    tickers = _d["legacy"]
-                    if not tickers:
-                        continue
-                    _scored_corpus.append((text, tickers, _d["cashtag"]))
-                    for ticker in tickers:
-                        ticker_data[ticker]['mentions'] += 1
-                        if len(ticker_data[ticker]['sample_tweets']) < 3:
-                            short_text = text[:150] + "..." if len(text) > 150 else text
-                            ticker_data[ticker]['sample_tweets'].append(short_text)
-
-                # After each page, try to validate enough tickers.
-                progress_bar.progress(70); status_text.markdown("**⚡ Building your shortlist...**")
-                _try_validate_from_current_ranking()
-
-                logger.info(
-                    "📄 Discovery pagination pages=%s posts=%s validated=%s first_pass=%s",
-                    pages,
-                    total_posts,
-                    len(validated_set),
-                    _fetcher.first_pass_done if _fetcher else True,
-                )
-
-                # STOP ONLY AFTER EVERY BASKET HAS BEEN SAMPLED.
-                #
-                # Baskets are ordered by dollar volume, and dollar volume does
-                # not predict chatter. Measured on utilities: four of the six
-                # most-discussed tickers sat outside basket 1 -- $AVA (14
-                # mentions, basket 2) and $AWX (12, basket 4) would never have
-                # been seen by a scan that stopped once basket 1 filled ten
-                # slots. Stopping on the ticker target alone returns exactly the
-                # names that are NOT unusual.
-                _first_pass = _fetcher.first_pass_done if _fetcher else True
-                if _first_pass and len(validated_set) >= TARGET_VALIDATED:
-                    break
-
-                if not next_token:
-                    break
-
-        progress_bar.progress(100); status_text.empty(); progress_bar.empty()
-
-        logger.info(f"🎯 Posts processed (capped): {total_posts}")
-
-        # Store what we bought, so the next scan of this sector is free.
-        #
-        # Only on a clean run: a corpus truncated by an X failure would be
-        # frozen in and served to everyone for the next six hours, turning one
-        # transient error into a sustained bad result. A genuinely EMPTY result
-        # is stored, though -- "this sector had no chatter" is a real answer
-        # that cost real money to learn, and without a negative entry the next
-        # user pays to learn it again.
-        if _cached is None and not _x_api_error:
-            corpus_cache.put(
-                "sector", sector, 24, query,
-                tweets=[t for pg in _fetched_pages for t in pg],
-                pages_fetched=len(_fetched_pages),
-                stop_reason=(
-                    "validated_target" if len(validated_set) >= TARGET_VALIDATED
-                    else "safety_cap" if total_posts >= SAFETY_CAP_TWEETS
-                    else "exhausted"
-                ),
-            )
-
-        # Age must survive the rerun that renders the table below.
-        st.session_state.scan_corpus_age_s = _cached["age_s"] if _cached else 0.0
-
-        if total_posts == 0:
-            _record_metrics([])
-            if _x_api_error:
+        if _scan.posts_seen == 0:
+            if _scan.x_error:
                 # Upstream failure, zero posts: the user paid and got nothing.
-                if refund_credit("scan", _credit.event_id, f"x api: {_x_api_error[:120]}"):
+                if refund_credit("scan", _credit.event_id, f"x api: {_scan.x_error[:120]}"):
                     st.info("Your scan credit was not used.")
             else:
                 # A genuinely empty result is an answer, not a failure -- the
@@ -1309,135 +944,23 @@ if scan_triggered:
                 st.warning("No posts returned from X for this query.")
             _bail()
 
-        # (status message removed - results table speaks for itself)
+        # AFTER the bails, as it was. Setting it earlier overwrote the
+        # previous scan's age with 0.0 on every failed run -- the old table
+        # kept rendering and simply lost its "Market chatter from 3h ago"
+        # caption, which is stale-and-silent, the failure this page keeps
+        # rediscovering.
+        st.session_state.scan_corpus_age_s = _scan.corpus_age_s
 
-        # ── Sentiment, once, on the shortlist only ───────────────────────────
-        #
-        # Ranking never used sentiment: it is mention count, and validation is a
-        # table lookup. So the ten tickers are already decided here, and only
-        # their posts need scoring. Measured: 119 of 138 posts scored before,
-        # 69 after (utilities); 86 of 98 before, 47 after (tech) -- 42-45% less
-        # inference for an identical result set.
-        _shortlist = [t for t, _ in sorted(
-            ((t, d['mentions']) for t, d in ticker_data.items() if t in validated_set),
-            key=lambda kv: -kv[1],
-        )[:TARGET_VALIDATED]]
-        _shortlist_set = set(_shortlist)
+        _display = scan_mod.rows_for_display(_scan)
+        if _scan.rows:
+            scan_mod.persist(_scan, event_id=_credit.event_id)
 
-        _relevant = [(text, tks, cash) for text, tks, cash in _scored_corpus
-                     if any(t in _shortlist_set for t in tks)]
-        if _relevant:
-            progress_bar.progress(85)
-            status_text.markdown("**🧠 Reading the mood on your shortlist...**")
-        logger.info("🧠 scoring %d of %d ticker-bearing posts (shortlist of %d)",
-                    len(_relevant), len(_scored_corpus), len(_shortlist))
-
-        try:
-            _sent = analyze_sentiment_batch([t for t, _, _ in _relevant]) if _relevant else []
-        finally:
-            # Re-armed at 85% above; clear it either way or the results table
-            # renders beneath a progress bar frozen mid-scan, which is exactly
-            # the "nothing is happening" signal that makes users re-click.
-            progress_bar.empty()
-            status_text.empty()
-
-        # SINGLE-TICKER POSTS ONLY DRIVE DIRECTION.
-        #
-        # FinBERT scores the whole post and is never told which ticker the
-        # question is about, so a post naming two tickers gives both the same
-        # verdict -- "Virginia Gov's skepticism threatens $NEE's $D" is one
-        # sentiment stamped on two companies whose fortunes the post treats as
-        # opposed. Measured at 13% of ticker-bearing posts. They still count as
-        # ATTENTION, which is what the scan is actually for; they just do not
-        # get a vote on direction.
-        for (text, tks, cash), res in zip(_relevant, _sent):
-            # Attribute only when the post has exactly ONE unambiguous subject.
-            #
-            # Gating on the full `legacy` list was far too aggressive: it
-            # carries up to 5 BARE uppercase words on top of the cashtags, so
-            # "one shortlist cashtag + any capitalised token" counted as
-            # multi-ticker. Measured on the cached corpora that excluded 63% of
-            # utilities and 47% of tech posts -- 4x the 13% this rule is meant
-            # to catch -- and left 7 of 10 rows unscored.
-            #
-            # A cashtag is an explicit claim about a security; a bare word is a
-            # guess. Exactly one distinct cashtag means exactly one subject.
-            uniq_cash = {c for c in cash}
-            if len(uniq_cash) != 1:
-                continue
-            ticker = next(iter(uniq_cash))
-            if ticker in _shortlist_set:
-                ticker_data[ticker]['margins'].append(float(res.get('margin') or 0.0))
-
-        # Convert to final DataFrame
-        if ticker_data:
-            rows = []
-            for ticker, info in ticker_data.items():
-                margins = info.get('margins') or []
-                n = len(margins)
-                mean_margin = (sum(margins) / n) if n else 0.0
-
-                # EVIDENCE FLOOR. The old pill was a plurality vote over
-                # discrete labels, which (a) tied on corpus order -- $ET came
-                # back {Neutral: 2, Bearish: 2} and the winner was whichever
-                # post arrived first -- and (b) rendered the same bold badge for
-                # one post as for fourteen, which was 52% of tickers. A mean
-                # margin cannot tie, and the floor stops a single post being
-                # presented as a verdict.
-                if n == 0:
-                    overall_sentiment = 'Unscored'
-                elif n == 1:
-                    overall_sentiment = 'Single mention'
-                elif n == 2:
-                    overall_sentiment = 'Limited signal'
-                elif mean_margin >= SENTIMENT_MARGIN:
-                    overall_sentiment = 'Bullish'
-                elif mean_margin <= -SENTIMENT_MARGIN:
-                    overall_sentiment = 'Bearish'
-                else:
-                    overall_sentiment = 'Neutral'
-
-                rows.append({
-                    'Ticker': ticker,
-                    'Mentions': info['mentions'],
-                    'Avg Sentiment Score': round(mean_margin, 3),
-                    'Evidence': n,
-                    'Overall Sentiment': overall_sentiment,
-                    'Sample Tweets': ' | '.join(info['sample_tweets']),
-                    'Company Name': company_by_ticker.get(ticker, 'N/A'),
-                    'Valid': ticker in validated_set,
-                })
-
-            df = pd.DataFrame(rows).sort_values('Mentions', ascending=False)
-
-            # Final output: Top 10 validated tickers only
-            df_valid = df[df['Valid'] == True].copy()
-            df_valid = df_valid.drop(columns=['Valid'])
-            df_valid = df_valid.head(TARGET_VALIDATED)
-
-            # Classification needs the FINAL top-10: whether a post
-            # "contributed" depends on which tickers actually got displayed,
-            # which is not known until here.
-            _record_metrics([str(t) for t in df_valid["Ticker"].tolist()])
-
-            # Every valid ticker, not just the displayed ten. These are the
-            # observations that will eventually answer whether this sentiment
-            # measurement predicts anything -- Deep Analyze has run four times
-            # in its history and cannot supply them, while one scan yields ~10
-            # for posts already bought. Paired with the price at scan time,
-            # because neither the posts nor the price can be recovered later.
-            try:
-                from utils import scan_log
-                from utils.sentiment import MODEL_NAME as _mn
-                scan_log.record(
-                    sector, rows,
-                    [str(t) for t in df_valid["Ticker"].tolist()],
-                    event_id=getattr(_credit, "event_id", None),
-                    corpus_key=corpus_cache.make_key("sector", sector, 24, query),
-                    model=_mn,
-                )
-            except Exception:
-                logger.warning("scan_log call failed", exc_info=True)
+            # The DataFrame is built HERE, from ordered rows. It is the one
+            # thing that cannot cross a service boundary, which is why the
+            # pipeline returns dicts and the page renders them.
+            df_valid = pd.DataFrame(_display) if _display else pd.DataFrame(
+                columns=["Ticker", "Mentions", "Avg Sentiment Score", "Evidence",
+                         "Overall Sentiment", "Sample Tweets", "Company Name"])
 
             st.session_state.df_valid = df_valid
             st.session_state.df_unvalidated = None  # not shown
@@ -1452,52 +975,19 @@ if scan_triggered:
             _delivered = True
 
             if len(df_valid) == 0:
-                st.warning("⚠️ No validated stock tickers found. Try a different sector/time window.")
-            else:
-                pass  # (status message removed)
+                st.warning("\u26A0\uFE0F No validated stock tickers found. Try a different sector/time window.")
         else:
             # Posts were fetched and scored, they just contained no tickers.
             # Work was done and an answer given, so this stays charged.
-            #
-            # Metrics MUST be recorded here. This is a 100%-waste scan -- every
-            # post bought, nothing usable out -- and it is the single most
-            # informative data point about query quality. Recording only scans
-            # that produced a table would bias the waste number downward exactly
-            # where it matters most.
-            _record_metrics([])
             _delivered = True
-            st.warning("⚠️ No stock tickers found in the posts. Try a different search query.")
+            st.warning("\u26A0\uFE0F No stock tickers found in the posts. Try a different search query.")
 
-        # Note: detailed pagination + stop reasons are logged by utils.deep_analysis.search_x_tweets
-
-    except KeyError:
-        refund_credit("scan", _credit.event_id, "missing API credentials")
-        st.markdown(
-            """
-            <div style="border:1px solid rgba(239,68,68,.30);border-radius:16px;padding:24px;
-              background:rgba(239,68,68,.05);margin:1rem 0;text-align:center;">
-              <div style="font-size:1.5rem;margin-bottom:8px;">🔑</div>
-              <div style="font-weight:700;color:rgba(248,113,113,.95);font-size:1.0rem;margin-bottom:4px;">Configuration error</div>
-              <div style="color:rgba(148,163,184,.80);font-size:0.88rem;">Missing API credentials. Contact support if this keeps happening.</div>
-            </div>
-            """,
-            unsafe_allow_html=True,
-        )
-
-    except requests.exceptions.RequestException:
-        refund_credit("scan", _credit.event_id, "network failure reaching X")
-        st.markdown(
-            """
-            <div style="border:1px solid rgba(245,158,11,.28);border-radius:16px;padding:24px;
-              background:rgba(245,158,11,.05);margin:1rem 0;text-align:center;">
-              <div style="font-size:1.5rem;margin-bottom:8px;">📡</div>
-              <div style="font-weight:700;color:rgba(251,191,36,.95);font-size:1.0rem;margin-bottom:4px;">Connection issue</div>
-              <div style="color:rgba(148,163,184,.80);font-size:0.88rem;">Couldn't reach the data source. Check your connection and try again.</div>
-            </div>
-            """,
-            unsafe_allow_html=True,
-        )
-
+    # `except KeyError` and `except requests.exceptions.RequestException`
+    # used to live here. They are gone rather than left as dead code: scan()
+    # returns instead of raising, so neither could ever fire again, and their
+    # panels are now selected by _scan.error_kind above. A dead handler for a
+    # message the user still sees is worse than no handler -- it reads as
+    # coverage.
     except Exception:
         logger.exception("Discovery scan failed")
         refund_credit("scan", _credit.event_id, "unhandled scan error")
@@ -1533,10 +1023,8 @@ if scan_triggered:
         # the posts were bought and 0% were used. Excluding exactly the worst
         # cases would bias the waste number downward in the flattering
         # direction. record_scan cannot raise, so this is safe in a finally.
-        try:
-            _record_metrics([])
-        except Exception:
-            pass
+        if _scan is not None:
+            _scan.record_metrics([])
 
         if _delivered:
             complete_work(_credit.event_id, "completed", f"sector={sector}")

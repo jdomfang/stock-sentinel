@@ -1,0 +1,366 @@
+{
+ "healthcare_validated_target": {
+  "displayed": [
+   "HLF",
+   "TRLV",
+   "CABA",
+   "ALT",
+   "STT",
+   "TIMB",
+   "RNG",
+   "MUX",
+   "METC",
+   "NEO"
+  ],
+  "n_rows": 39,
+  "pages": 1,
+  "posts_seen": 25,
+  "stop_reason": "validated_target",
+  "top": [
+   {
+    "Avg Sentiment Score": 0.0,
+    "Evidence": 0,
+    "Mentions": 4,
+    "Overall Sentiment": "Unscored",
+    "Ticker": "HLF"
+   },
+   {
+    "Avg Sentiment Score": 0.0,
+    "Evidence": 0,
+    "Mentions": 3,
+    "Overall Sentiment": "Unscored",
+    "Ticker": "TRLV"
+   },
+   {
+    "Avg Sentiment Score": 0.604,
+    "Evidence": 2,
+    "Mentions": 3,
+    "Overall Sentiment": "Limited signal",
+    "Ticker": "CABA"
+   },
+   {
+    "Avg Sentiment Score": -0.266,
+    "Evidence": 1,
+    "Mentions": 2,
+    "Overall Sentiment": "Single mention",
+    "Ticker": "ALT"
+   },
+   {
+    "Avg Sentiment Score": 0.0,
+    "Evidence": 0,
+    "Mentions": 2,
+    "Overall Sentiment": "Unscored",
+    "Ticker": "STT"
+   },
+   {
+    "Avg Sentiment Score": 0.0,
+    "Evidence": 0,
+    "Mentions": 2,
+    "Overall Sentiment": "Unscored",
+    "Ticker": "TIMB"
+   },
+   {
+    "Avg Sentiment Score": 0.0,
+    "Evidence": 0,
+    "Mentions": 2,
+    "Overall Sentiment": "Unscored",
+    "Ticker": "RNG"
+   },
+   {
+    "Avg Sentiment Score": 0.0,
+    "Evidence": 0,
+    "Mentions": 2,
+    "Overall Sentiment": "Unscored",
+    "Ticker": "MUX"
+   },
+   {
+    "Avg Sentiment Score": 0.0,
+    "Evidence": 0,
+    "Mentions": 2,
+    "Overall Sentiment": "Unscored",
+    "Ticker": "METC"
+   },
+   {
+    "Avg Sentiment Score": -0.156,
+    "Evidence": 2,
+    "Mentions": 2,
+    "Overall Sentiment": "Limited signal",
+    "Ticker": "NEO"
+   }
+  ],
+  "valid_rows": 10
+ },
+ "materials_validated_target": {
+  "displayed": [
+   "MP",
+   "NG",
+   "RIO",
+   "AEM",
+   "KGC",
+   "NEM",
+   "BHP",
+   "FRVO",
+   "ENPH",
+   "INOD"
+  ],
+  "n_rows": 39,
+  "pages": 1,
+  "posts_seen": 25,
+  "stop_reason": "validated_target",
+  "top": [
+   {
+    "Avg Sentiment Score": 0.011,
+    "Evidence": 3,
+    "Mentions": 6,
+    "Overall Sentiment": "Neutral",
+    "Ticker": "MP"
+   },
+   {
+    "Avg Sentiment Score": 0.002,
+    "Evidence": 5,
+    "Mentions": 5,
+    "Overall Sentiment": "Neutral",
+    "Ticker": "NG"
+   },
+   {
+    "Avg Sentiment Score": -0.459,
+    "Evidence": 2,
+    "Mentions": 4,
+    "Overall Sentiment": "Limited signal",
+    "Ticker": "RIO"
+   },
+   {
+    "Avg Sentiment Score": 0.812,
+    "Evidence": 1,
+    "Mentions": 3,
+    "Overall Sentiment": "Single mention",
+    "Ticker": "AEM"
+   },
+   {
+    "Avg Sentiment Score": -0.009,
+    "Evidence": 3,
+    "Mentions": 3,
+    "Overall Sentiment": "Neutral",
+    "Ticker": "KGC"
+   },
+   {
+    "Avg Sentiment Score": 0.0,
+    "Evidence": 0,
+    "Mentions": 2,
+    "Overall Sentiment": "Unscored",
+    "Ticker": "NEM"
+   },
+   {
+    "Avg Sentiment Score": 0.0,
+    "Evidence": 0,
+    "Mentions": 1,
+    "Overall Sentiment": "Unscored",
+    "Ticker": "BHP"
+   },
+   {
+    "Avg Sentiment Score": 0.0,
+    "Evidence": 0,
+    "Mentions": 1,
+    "Overall Sentiment": "Unscored",
+    "Ticker": "FRVO"
+   },
+   {
+    "Avg Sentiment Score": 0.0,
+    "Evidence": 0,
+    "Mentions": 1,
+    "Overall Sentiment": "Unscored",
+    "Ticker": "ENPH"
+   },
+   {
+    "Avg Sentiment Score": 0.0,
+    "Evidence": 0,
+    "Mentions": 1,
+    "Overall Sentiment": "Unscored",
+    "Ticker": "INOD"
+   }
+  ],
+  "valid_rows": 10
+ },
+ "tech_h2h_basket": {
+  "displayed": [
+   "SNDK",
+   "NVDA",
+   "SPCX",
+   "TSLA",
+   "MU",
+   "TTD",
+   "SOFI",
+   "PLTR",
+   "AVGO",
+   "MRVL"
+  ],
+  "n_rows": 16,
+  "pages": 1,
+  "posts_seen": 25,
+  "stop_reason": "validated_target",
+  "top": [
+   {
+    "Avg Sentiment Score": 0.061,
+    "Evidence": 8,
+    "Mentions": 8,
+    "Overall Sentiment": "Neutral",
+    "Ticker": "SNDK"
+   },
+   {
+    "Avg Sentiment Score": -0.032,
+    "Evidence": 4,
+    "Mentions": 6,
+    "Overall Sentiment": "Neutral",
+    "Ticker": "NVDA"
+   },
+   {
+    "Avg Sentiment Score": -0.752,
+    "Evidence": 1,
+    "Mentions": 3,
+    "Overall Sentiment": "Single mention",
+    "Ticker": "SPCX"
+   },
+   {
+    "Avg Sentiment Score": 0.0,
+    "Evidence": 0,
+    "Mentions": 2,
+    "Overall Sentiment": "Unscored",
+    "Ticker": "TSLA"
+   },
+   {
+    "Avg Sentiment Score": -0.449,
+    "Evidence": 1,
+    "Mentions": 2,
+    "Overall Sentiment": "Single mention",
+    "Ticker": "MU"
+   },
+   {
+    "Avg Sentiment Score": 0.144,
+    "Evidence": 1,
+    "Mentions": 1,
+    "Overall Sentiment": "Single mention",
+    "Ticker": "TTD"
+   },
+   {
+    "Avg Sentiment Score": 0.0,
+    "Evidence": 0,
+    "Mentions": 1,
+    "Overall Sentiment": "Unscored",
+    "Ticker": "SOFI"
+   },
+   {
+    "Avg Sentiment Score": 0.0,
+    "Evidence": 0,
+    "Mentions": 1,
+    "Overall Sentiment": "Unscored",
+    "Ticker": "PLTR"
+   },
+   {
+    "Avg Sentiment Score": 0.0,
+    "Evidence": 0,
+    "Mentions": 1,
+    "Overall Sentiment": "Unscored",
+    "Ticker": "AVGO"
+   },
+   {
+    "Avg Sentiment Score": 0.0,
+    "Evidence": 0,
+    "Mentions": 1,
+    "Overall Sentiment": "Unscored",
+    "Ticker": "MRVL"
+   }
+  ],
+  "valid_rows": 10
+ },
+ "tech_h2h_topic": {
+  "displayed": [
+   "NVDA",
+   "SKHY",
+   "MU",
+   "AMD",
+   "ASTS",
+   "TEAM",
+   "META",
+   "AVGO",
+   "SOUN",
+   "MSFT"
+  ],
+  "n_rows": 30,
+  "pages": 2,
+  "posts_seen": 50,
+  "stop_reason": "validated_target",
+  "top": [
+   {
+    "Avg Sentiment Score": 0.133,
+    "Evidence": 2,
+    "Mentions": 4,
+    "Overall Sentiment": "Limited signal",
+    "Ticker": "NVDA"
+   },
+   {
+    "Avg Sentiment Score": 0.0,
+    "Evidence": 0,
+    "Mentions": 3,
+    "Overall Sentiment": "Unscored",
+    "Ticker": "SKHY"
+   },
+   {
+    "Avg Sentiment Score": 0.0,
+    "Evidence": 0,
+    "Mentions": 3,
+    "Overall Sentiment": "Unscored",
+    "Ticker": "MU"
+   },
+   {
+    "Avg Sentiment Score": 0.219,
+    "Evidence": 1,
+    "Mentions": 2,
+    "Overall Sentiment": "Single mention",
+    "Ticker": "AMD"
+   },
+   {
+    "Avg Sentiment Score": -0.264,
+    "Evidence": 1,
+    "Mentions": 1,
+    "Overall Sentiment": "Single mention",
+    "Ticker": "ASTS"
+   },
+   {
+    "Avg Sentiment Score": 0.593,
+    "Evidence": 1,
+    "Mentions": 1,
+    "Overall Sentiment": "Single mention",
+    "Ticker": "TEAM"
+   },
+   {
+    "Avg Sentiment Score": 0.156,
+    "Evidence": 1,
+    "Mentions": 1,
+    "Overall Sentiment": "Single mention",
+    "Ticker": "META"
+   },
+   {
+    "Avg Sentiment Score": 0.276,
+    "Evidence": 1,
+    "Mentions": 1,
+    "Overall Sentiment": "Single mention",
+    "Ticker": "AVGO"
+   },
+   {
+    "Avg Sentiment Score": 0.361,
+    "Evidence": 1,
+    "Mentions": 1,
+    "Overall Sentiment": "Single mention",
+    "Ticker": "SOUN"
+   },
+   {
+    "Avg Sentiment Score": 0.0,
+    "Evidence": 0,
+    "Mentions": 1,
+    "Overall Sentiment": "Unscored",
+    "Ticker": "MSFT"
+   }
+  ],
+  "valid_rows": 10
+ }
+}
