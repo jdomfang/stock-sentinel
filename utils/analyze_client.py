@@ -194,13 +194,16 @@ def scan_remote(sector: str, *, event_id: str | None = None,
         import socket
         timed_out = isinstance(getattr(e, "reason", None), socket.timeout)
         logger.error("core-api unreachable for scan %s: %s", sector, e)
+        # "transport", not "network": this is portal -> core-api, and X was
+        # never involved. The page kept writing "network failure reaching X"
+        # into the ledger for core-api outages.
         return RemoteScan(error=f"core-api unreachable: {e.reason}",
-                          kind="network", retryable=not timed_out)
+                          kind="transport", retryable=not timed_out)
     except TimeoutError:
         # NOT retryable. A scan that timed out may well have finished and
         # bought its 300 posts; re-running buys them again.
         logger.error("core-api scan timed out for %s after %ss", sector, timeout)
-        return RemoteScan(error="core-api timed out", kind="network")
+        return RemoteScan(error="core-api timed out", kind="transport")
     except Exception as e:
         logger.exception("core-api scan failed for %s", sector)
         return RemoteScan(error=f"{type(e).__name__}: {e}", kind="pipeline")
@@ -214,7 +217,23 @@ def scan_remote(sector: str, *, event_id: str | None = None,
                           posts_seen=payload.get("posts_billed") or 0,
                           elapsed_s=payload.get("elapsed_s"))
 
-    return RemoteScan(ok=True, rows=payload.get("rows") or [],
+    # SHAPE-CHECKED. These rows go straight into a DataFrame and then into
+    # session_state, and the results table does
+    # df["Overall Sentiment"].str.lower(). A service build that omits a column
+    # would raise KeyError AFTER complete_work("completed") had already run --
+    # charged, marked delivered, red traceback -- and then again on every
+    # rerun, because the malformed frame is now in session state.
+    _REQUIRED = ("Ticker", "Mentions", "Avg Sentiment Score", "Evidence",
+                 "Overall Sentiment", "Sample Tweets", "Company Name")
+    _rows = [r for r in (payload.get("rows") or [])
+             if isinstance(r, dict) and all(k in r for k in _REQUIRED)]
+    _dropped = len(payload.get("rows") or []) - len(_rows)
+    if _dropped:
+        logger.error("core-api returned %d scan row(s) missing required "
+                     "columns for %s -- service may be a different build",
+                     _dropped, sector)
+
+    return RemoteScan(ok=True, rows=_rows,
                       sector=payload.get("sector") or sector,
                       posts_seen=payload.get("posts_seen") or 0,
                       from_cache=bool(payload.get("from_cache")),

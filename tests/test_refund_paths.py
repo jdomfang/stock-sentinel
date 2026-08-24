@@ -345,6 +345,100 @@ def test_no_page_bails_without_closing_itself() -> None:
               not bare, f"lines {bare} leave the div open and drop the footer")
 
 
+def test_the_scan_route_says_which_path_served_it() -> None:
+    """A silent fallback is what made "did this use the container?"
+    unanswerable for Deep Analyze. The scan keeps its in-process branch while
+    the remote one is verified, so the logging is what stops the same thing
+    happening twice -- and the fallback must be gated on a failure that
+    provably did not spend, or a retry buys the corpus a second time.
+    """
+    import ast
+    print("\nthe scan cutover must be attributable, and must not double-spend")
+    src = open(os.path.join(REPO, "pages", "Discovery.py")).read()
+    check("the scan calls core-api", "scan_remote(" in src)
+    check("...and says so when it does", "served by CORE-API" in src)
+    check("...and says so when it does not", "served IN-PROCESS" in src)
+    # NO FALLBACK from remote to local, at all. `retryable` answers "did THIS
+    # request spend?", which is the wrong question: core-api refuses a
+    # concurrent scan of one sector with 429 sector-busy precisely BECAUSE
+    # another request is buying that corpus right now. Substituting a local
+    # scan there defeats the duplicate-suppression the service exists for and
+    # buys the same 300 posts again -- unbounded, since the portal has no
+    # concurrency cap of its own.
+    # SCOPED to the scan handler. This page also hosts the per-row Deep
+    # Analyze button, which legitimately runs a worker and legitimately reads
+    # retryable to word its message; asserting over the whole file conflates
+    # the two routes.
+    _s0 = src.index('consume_credit("scan"')
+    _s1 = src.index("# \u2500\u2500 Results table") if "\u2500\u2500 Results table" in src \
+        else src.index("_render_deep_panel")
+    scan_src = src[_s0:_s1]
+    check("a remote scan never falls back to a local one",
+          "_r.retryable" not in scan_src,
+          "the fallback re-buys the corpus core-api is already buying")
+    # The local scan must stay on the SCRIPT thread. On a worker it survives
+    # the Streamlit abort, buys the whole corpus for a page that is gone, and
+    # takes the persist() that would have written the rows with it.
+    check("the scan handler starts exactly one worker",
+          scan_src.count("threading.Thread(") == 1,
+          f"{scan_src.count('threading.Thread(')} threads in the scan handler")
+
+    # ON THE AST. Substring checks pass against a mutated condition -- `if
+    # _client.configured() and False:` still contains the call, and `if _rows
+    # or _ok:` still contains _rows. Four mutations survived that way before
+    # these were rewritten.
+    # Parsed from the WHOLE file and filtered by line range: scan_src is an
+    # indented slice and does not parse on its own.
+    _lo = src[:_s0].count("\n") + 1
+    _hi = src[:_s1].count("\n") + 1
+    ftree = ast.parse(src)
+    def _in_scan(n):
+        return _lo <= getattr(n, "lineno", 0) <= _hi
+
+    remote_ifs = [n for n in ast.walk(ftree) if _in_scan(n) and isinstance(n, ast.If)
+                  and isinstance(n.test, ast.Call)
+                  and isinstance(n.test.func, ast.Attribute)
+                  and n.test.func.attr == "configured"]
+    check("the remote branch is taken on configured() ALONE",
+          len(remote_ifs) == 1,
+          "a compound condition can disable the service invisibly")
+
+    # The OUTER guard. persist also sits under a nested `if _scan is not
+    # None:` (local path only), so "an If whose body contains persist" matches
+    # two nodes; the one that matters is the one testing the rows.
+    persist_ifs = [n for n in ast.walk(ftree) if _in_scan(n) and isinstance(n, ast.If)
+                   and _call_name_in(n.body, "persist")]
+    outer = [n for n in persist_ifs
+             if isinstance(n.test, ast.Name) and n.test.id == "_rows"]
+    check("the results branch is guarded on the ROWS alone",
+          len(outer) == 1,
+          "guarding on _ok makes it unconditional and kills the else: "
+          f"tests are {[ast.unparse(n.test) for n in persist_ifs]}")
+
+    # A quiet sector is an ANSWER and stays charged. Without the flag the
+    # finally refunds every time, making it an unlimited supply of free scans
+    # paid for at X.
+    warn_ifs = [n for n in ast.walk(ftree) if _in_scan(n) and isinstance(n, ast.If)
+                and "No posts returned" in ast.unparse(n)]
+    marks = [n for w in warn_ifs for n in ast.walk(w)
+             if isinstance(n, ast.Name) and n.id == "_delivered"
+             and isinstance(n.ctx, ast.Store)]
+    check("an empty-but-valid scan is marked delivered, not refunded",
+          bool(marks), "the finally would refund a scan that really ran")
+
+    # The service persists before it answers; a second write here would
+    # duplicate every per-ticker row for one buy.
+    tree = ast.parse(src)
+    persists = [n for n in ast.walk(tree)
+                if _call_name(n) == "persist" or (
+                    isinstance(n, ast.Call) and isinstance(n.func, ast.Attribute)
+                    and n.func.attr == "persist")]
+    check("the page persists at most one scan, and only a local one",
+          len(persists) <= 1, f"{len(persists)} persist calls")
+    check("...guarded on the local Scan existing",
+          "if _scan is not None:" in src)
+
+
 def main() -> int:
     print("=" * 74)
     print("  Refund-path guards -- charged work must never be silently kept")
@@ -353,7 +447,8 @@ def main() -> int:
               test_every_charge_has_a_finally_refund,
               test_refunds_do_not_rely_only_on_except,
               test_an_empty_summary_is_refunded_not_rendered,
-              test_no_page_bails_without_closing_itself):
+              test_no_page_bails_without_closing_itself,
+              test_the_scan_route_says_which_path_served_it):
         try:
             t()
         except Exception as e:

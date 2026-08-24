@@ -255,7 +255,7 @@ def test_scan_is_given_longer_than_an_analysis():
 def test_a_scan_reports_what_it_cost():
     print("\nwhether money moved is what a refund decision turns on")
     install(response={"ok": True, "sector": "healthcare",
-                      "rows": [{"Ticker": "VOR", "Mentions": 3}],
+                      "rows": [{"Ticker": "VOR", "Mentions": 3, "Avg Sentiment Score": 0.2, "Evidence": 2, "Overall Sentiment": "Limited signal", "Sample Tweets": "t", "Company Name": "Vor Bio"}],
                       "posts_seen": 349, "from_cache": True,
                       "corpus_age_s": 1234.0, "stop_reason": "validated_target"})
     r = C.scan_remote("healthcare")
@@ -268,7 +268,8 @@ def test_a_scan_reports_what_it_cost():
 
 def test_a_partial_scan_is_still_a_scan():
     print("\nX failing mid-pagination keeps what was already bought")
-    install(response={"ok": True, "sector": "healthcare", "rows": [{"Ticker": "A"}],
+    install(response={"ok": True, "sector": "healthcare",
+                      "rows": [{"Ticker": "VOR", "Mentions": 3, "Avg Sentiment Score": 0.2, "Evidence": 2, "Overall Sentiment": "Limited signal", "Sample Tweets": "t", "Company Name": "Vor Bio"}],
                       "posts_seen": 75, "x_error": "X API request failed"})
     r = C.scan_remote("healthcare")
     check("ok, with rows", r.ok is True and bool(r.rows))
@@ -278,7 +279,8 @@ def test_a_partial_scan_is_still_a_scan():
 
 def test_a_failed_scan_keeps_its_kind():
     print("\nthe page keeps a distinct panel per failure; the kind must survive")
-    for kind in ("credentials", "network", "ticker_db", "no_query", "pipeline"):
+    for kind in ("credentials", "network", "ticker_db", "no_query",
+                 "transport", "pipeline"):
         install(response={"ok": False, "sector": "healthcare",
                           "error": "boom", "kind": kind, "posts_billed": 0})
         r = C.scan_remote("healthcare")
@@ -289,6 +291,16 @@ def test_a_failed_scan_keeps_its_kind():
 def test_a_scan_timeout_is_never_retryable():
     print("\na timed-out scan may have bought 300 posts; do not buy them twice")
     import socket
+    # A core-api outage is portal -> service; X is not involved. The page maps
+    # kind onto a ledger reason, and "network failure reaching X" for a
+    # core-api outage sends every refund audit at the wrong provider.
+    install(raises=urllib.error.URLError(ConnectionRefusedError(111)))
+    check("an unreachable core-api is 'transport', not 'network'",
+          C.scan_remote("healthcare").kind == "transport",
+          str(C.scan_remote("healthcare").kind))
+    install(raises=TimeoutError())
+    check("...and so is a timeout", C.scan_remote("healthcare").kind == "transport")
+
     for label, exc, retry in (
             ("read timeout", urllib.error.URLError(socket.timeout()), False),
             ("bare TimeoutError", TimeoutError(), False),
@@ -319,6 +331,33 @@ def test_scan_never_raises_into_the_page():
           C.scan_remote("healthcare").ok is False)
 
 
+def test_malformed_scan_rows_are_dropped_not_rendered():
+    """These rows go into a DataFrame and then into session_state.
+
+    The results table does df["Overall Sentiment"].str.lower(). A service
+    build that omits a column would raise KeyError AFTER the page had already
+    set _delivered and called complete_work("completed") -- charged, marked
+    delivered, red traceback -- and then again on every rerun, because the
+    malformed frame is now in session state.
+    """
+    print("\na version-skewed service must not poison the page")
+    good = {"Ticker": "VOR", "Mentions": 3, "Avg Sentiment Score": 0.2,
+            "Evidence": 2, "Overall Sentiment": "Limited signal",
+            "Sample Tweets": "t", "Company Name": "Vor Bio"}
+    install(response={"ok": True, "sector": "healthcare",
+                      "rows": [good, {"Ticker": "ZZZ", "Mentions": 1}, "not-a-dict"]})
+    r = C.scan_remote("healthcare")
+    # .get on a possibly-non-dict: without the shape check the list contains
+    # a bare string, and indexing it raises TypeError instead of failing the
+    # assertion -- which is how this mutation survived the first time.
+    check("the complete row survives",
+          [x.get("Ticker") if isinstance(x, dict) else x for x in r.rows] == ["VOR"],
+          str(r.rows))
+    check("the row missing columns is dropped", len(r.rows) == 1, str(len(r.rows)))
+    check("...and so is a non-dict", all(isinstance(x, dict) for x in r.rows))
+    check("the scan is still delivered", r.ok is True)
+
+
 def main() -> int:
     print("=" * 74)
     print("  analyze_client: when re-running is safe, and when it costs money")
@@ -336,7 +375,8 @@ def main() -> int:
               test_a_partial_scan_is_still_a_scan,
               test_a_failed_scan_keeps_its_kind,
               test_a_scan_timeout_is_never_retryable,
-              test_scan_never_raises_into_the_page):
+              test_scan_never_raises_into_the_page,
+              test_malformed_scan_rows_are_dropped_not_rendered):
         t()
     print("\n" + "=" * 74)
     print(f"  {len(PASSED)} passed, {len(FAILED)} failed")

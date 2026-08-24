@@ -26,6 +26,7 @@ from utils.deep_analysis import ANALYSIS_PROMPTS
 # above is still local and imports what it needs directly.
 from utils import analyze_client as _client
 from utils import scan as scan_mod
+from utils.config import get as _cfg_get
 
 
 # Verdicts we are willing to assert. Anything else is a statement about how
@@ -789,6 +790,18 @@ if scan_triggered:
     _rid = new_request_id()
     logger.info("scan requested sector=%s", sector)
 
+    # NOTHING TO RUN, SO NOTHING TO CHARGE -- checked before the debit.
+    # Unlike Deep Analyze this page can still scan locally while the in-process
+    # path exists, so an unconfigured core-api is a fallback rather than a
+    # refusal. But the local path needs the PORTAL to hold an X token, and the
+    # migration is moving that the other way: with neither, every click would
+    # take a credit and refund it, once per click, each refund another chance
+    # for the RPC to fail and lose it for real.
+    if not _client.configured() and not _cfg_get("X_BEARER_TOKEN"):
+        logger.error("scan unavailable: core-api not configured and no local X token")
+        st.error("Scanning is temporarily unavailable. No credit has been used.")
+        _bail()
+
     _credit = consume_credit("scan", {"sector": sector, "page": "discovery"})
     if not _credit.ok:
         logger.info("scan refused reason=%s", _credit.reason)
@@ -813,40 +826,151 @@ if scan_triggered:
     # Two credits, one scan. `finally` runs on BaseException; `except` does not.
     _delivered = False
 
-    _scan = None
+    _scan = None          # the LOCAL Scan, when the local path served
     try:
         progress_bar = st.progress(0)
         status_text = st.empty()
-        status_text.markdown(f"**\U0001F4E1 Scanning X for {sector} momentum...**")
+        status_text.markdown(
+            f'<div style="color:rgba(229,231,235,.85);font-size:0.92rem;font-weight:600;">'
+            f'\U0001F4E1 Scanning X for {sector} momentum...</div>',
+            unsafe_allow_html=True,
+        )
+        progress_bar.progress(8)
 
-        # The SAME four stages the inline loop drove, mapped from names the
-        # pipeline emits. utils/scan.py takes a plain callable and imports no
-        # streamlit, so the progress chrome stays here where the runtime is.
+        # TWO PATHS, AND ONLY ONE OF THEM USES A THREAD.
         #
-        # Note these values bounce: the loop reports fetching -> filtering ->
-        # shortlist once per PAGE, so the bar runs 15/45/70 and starts over.
-        # That is what it has always done; it is preserved rather than fixed,
-        # because this step is an extraction and nothing else.
-        _STAGES = {
-            "fetching":  (15, f"**\U0001F4E1 Scanning X for {sector} momentum...**"),
-            "filtering": (45, "**\U0001F50D Filtering noise, validating tickers...**"),
-            "shortlist": (70, "**\u26A1 Building your shortlist...**"),
-            "scoring":   (85, "**\U0001F9E0 Reading the mood on your shortlist...**"),
-        }
+        # The remote call runs on a worker so the progress bar can animate
+        # while it blocks -- the same shape pages/Deep_Analysis.py uses.
+        #
+        # The LOCAL scan deliberately does NOT. Putting it on a worker changed
+        # what a Streamlit abort means: the abort lands on the script thread,
+        # the worker never sees it and runs to completion, and it buys the
+        # whole 300-post corpus for a page that is already gone -- with the
+        # persist() that would have written the rows gone with it. Run inline,
+        # the abort truncates pagination exactly as it always did.
+        #
+        # There is NO FALLBACK from remote to local. `retryable` answers "did
+        # THIS request spend?", which is not the question: core-api refuses a
+        # concurrent scan of one sector with 429 sector-busy precisely BECAUSE
+        # another request is buying that corpus right now. Substituting a local
+        # scan there defeats the duplicate-suppression the service exists to
+        # provide and buys the same 300 posts a second time.
+        if _client.configured():
+            import threading
 
-        def _stage(name: str) -> None:
-            pct, msg = _STAGES[name]
-            progress_bar.progress(pct)
-            status_text.markdown(msg)
+            _holder: dict = {}
+            _done = threading.Event()
 
-        with st.spinner(f"Searching {sector} stocks on X..."):
-            _scan = scan_mod.scan(sector, event_id=_credit.event_id, on_stage=_stage)
+            def _run_scan():
+                # A new thread starts with a FRESH context, so the ContextVar
+                # holding the request id reverts to its default. Without this
+                # every log line the scan produces would be stamped "-".
+                _set_request_id(_rid)
+                try:
+                    _r = _client.scan_remote(
+                        sector, event_id=getattr(_credit, "event_id", None))
+                    _holder["remote"] = _r
+                    if _r.ok:
+                        logger.info(
+                            "scan served by CORE-API in %.1fs sector=%s "
+                            "rows=%d posts=%d cache=%s",
+                            _r.elapsed_s or -1, sector, len(_r.rows),
+                            _r.posts_seen, _r.from_cache)
+                    else:
+                        logger.error("core-api scan failed (%s): %s",
+                                     _r.kind, _r.error)
+                except BaseException as _e:      # noqa: BLE001
+                    # Anything escaping here would die silently in the thread
+                    # and leave the script waiting on a flag that never sets.
+                    logger.exception("scan failed sector=%s", sector)
+                    _holder["error"] = str(_e)
+                finally:
+                    _done.set()
+
+            threading.Thread(target=_run_scan, daemon=True).start()
+
+            # DELIBERATELY these steps, then silence. Streamlit notices an
+            # abort only at an st.* call, so ticking for the whole scan would
+            # make the entire run abortable -- and an abort after the service
+            # has paginated is up to 300 posts bought that nobody sees. Same
+            # trade as pages/Deep_Analysis.py, and the same reason.
+            _steps = [
+                (20, "\U0001F4E1 Scanning X for %s momentum..." % sector),
+                (40, "\U0001F50D Filtering noise, validating tickers..."),
+                (60, "\u26A1 Building your shortlist..."),
+                (80, "\U0001F9E0 Reading the mood on your shortlist..."),
+                (92, "\U0001F4CA Ranking what people are talking about..."),
+            ]
+            _i = 0
+            while not _done.wait(timeout=1.5):
+                if _i < len(_steps):
+                    _pct, _msg = _steps[_i]
+                    progress_bar.progress(_pct)
+                    status_text.markdown(
+                        f'<div style="color:rgba(229,231,235,.85);'
+                        f'font-size:0.92rem;font-weight:600;">{_msg}</div>',
+                        unsafe_allow_html=True)
+                    _i += 1
+        else:
+            # SCAFFOLDING, and it goes when the remote path is confirmed. Runs
+            # inline with the stage callback the pipeline emits, which is what
+            # the page did before the cutover.
+            logger.info("scan served IN-PROCESS sector=%s (core-api not configured)",
+                        sector)
+            _STAGES = {
+                "fetching":  (15, f"**\U0001F4E1 Scanning X for {sector} momentum...**"),
+                "filtering": (45, "**\U0001F50D Filtering noise, validating tickers...**"),
+                "shortlist": (70, "**\u26A1 Building your shortlist...**"),
+                "scoring":   (85, "**\U0001F9E0 Reading the mood on your shortlist...**"),
+            }
+
+            def _stage(name: str) -> None:
+                pct, msg = _STAGES[name]
+                progress_bar.progress(pct)
+                status_text.markdown(msg)
+
+            _holder = {}
+            with st.spinner(f"Searching {sector} stocks on X..."):
+                _holder["local"] = scan_mod.scan(
+                    sector, event_id=_credit.event_id, on_stage=_stage)
 
         progress_bar.progress(100)
         status_text.empty()
         progress_bar.empty()
 
-        if _scan.no_query:
+        if "error" in _holder:
+            _refunded = refund_credit("scan", _credit.event_id,
+                                      f"scan failed: {str(_holder['error'])[:120]}")
+            st.markdown(
+                '<div style="border:1px solid rgba(239,68,68,.25);border-radius:16px;padding:24px;'
+                'background:rgba(239,68,68,.04);margin:1rem 0;text-align:center;">'
+                '<div style="font-size:1.5rem;margin-bottom:8px;">\u26A0\uFE0F</div>'
+                '<div style="font-weight:700;color:rgba(248,113,113,.95);font-size:1.0rem;margin-bottom:4px;">Something went wrong</div>'
+                '<div style="color:rgba(148,163,184,.80);font-size:0.88rem;">'
+                + ("Your scan credit was not used." if _refunded
+                   else "The scan hit an unexpected error.")
+                + '</div></div>', unsafe_allow_html=True)
+            _bail()
+
+        # ONE SHAPE, whichever path served it.
+        _remote = _holder.get("remote")
+        _scan = _holder.get("local")
+        if _remote is not None:
+            _rows = _remote.rows
+            _ok, _err, _kind = _remote.ok, _remote.error, _remote.kind
+            _x_err, _age = _remote.x_error, _remote.corpus_age_s
+            _posts, _no_query = _remote.posts_seen, (_remote.kind == "no_query")
+        else:
+            _rows = scan_mod.rows_for_display(_scan) if _scan else []
+            _ok = bool(_scan) and _scan.ok
+            _err = _scan.error if _scan else "scan produced nothing"
+            _kind = _scan.error_kind if _scan else "pipeline"
+            _x_err = _scan.x_error if _scan else None
+            _age = _scan.corpus_age_s if _scan else 0.0
+            _posts = _scan.posts_seen if _scan else 0
+            _no_query = bool(_scan and _scan.no_query)
+
+        if _no_query:
             # NO FALLBACK, DELIBERATELY -- see utils/scan.py. The credit is
             # returned here; the finally below would also refund, but naming
             # the reason makes the ledger row diagnosable instead of "aborted
@@ -857,7 +981,7 @@ if scan_triggered:
             # user in writing that they were not charged when they were is
             # worse than the original failure.
             _refunded = refund_credit(
-                "scan", _credit.event_id, f"query build failed: {(_scan.error or '')[:120]}")
+                "scan", _credit.event_id, f"query build failed: {(_err or '')[:120]}")
             _credit_line = ("Your credit was not used."
                             if _refunded
                             else "We are returning your credit; it may take a moment to appear.")
@@ -874,7 +998,7 @@ if scan_triggered:
             )
             _bail()
 
-        if _scan.error:
+        if _err:
             # ONE PANEL PER FAILURE KIND, as before. These used to be reached
             # by `except KeyError` and `except requests.exceptions.
             # RequestException`; both went unreachable when the pipeline moved
@@ -882,23 +1006,26 @@ if scan_triggered:
             # failure collapsed into the generic panel and a missing API key
             # started reporting itself as an X outage. scan.error_kind carries
             # the distinction across that boundary.
-            logger.error("scan failed for %s (%s): %s",
-                         sector, _scan.error_kind, _scan.error)
+            logger.error("scan failed for %s (%s): %s", sector, _kind, _err)
             _REASONS = {"credentials": "missing API credentials",
                         "network": "network failure reaching X",
+                        # The portal could not reach CORE-API. Labelling that
+                        # as an X failure sends every audit of refund reasons
+                        # looking at the wrong provider.
+                        "transport": "core-api unreachable",
                         "ticker_db": "ticker database unavailable"}
             refund_credit("scan", _credit.event_id,
-                          _REASONS.get(_scan.error_kind,
-                                       f"scan error: {(_scan.error or '')[:120]}"))
-            if _scan.error_kind == "credentials":
+                          _REASONS.get(_kind,
+                                       f"scan error: {(_err or '')[:120]}"))
+            if _kind == "credentials":
                 _tone, _icon, _title, _body = (
                     "239,68,68", "\U0001F511", "Configuration error",
                     "Missing API credentials. Contact support if this keeps happening.")
-            elif _scan.error_kind == "network":
+            elif _kind in ("network", "transport"):
                 _tone, _icon, _title, _body = (
                     "245,158,11", "\U0001F4E1", "Connection issue",
                     "Couldn't reach the data source. Check your connection and try again.")
-            elif _scan.error_kind == "ticker_db":
+            elif _kind == "ticker_db":
                 _tone, _icon, _title, _body = (
                     "239,68,68", "\u274C", "Could not load ticker database",
                     "Please check the data directory.")
@@ -920,27 +1047,32 @@ if scan_triggered:
             )
             _bail()
 
-        if _scan.x_error:
+        if _x_err:
             st.markdown(
                 f"""
                 <div style="border:1px solid rgba(245,158,11,.28);border-radius:14px;padding:18px 20px;
                   background:rgba(245,158,11,.05);margin:0.5rem 0;text-align:center;">
                   <div style="font-size:1.2rem;margin-bottom:6px;">\U0001F4E1</div>
                   <div style="font-weight:700;color:rgba(251,191,36,.95);font-size:0.95rem;margin-bottom:4px;">X data feed unavailable</div>
-                  <div style="color:rgba(148,163,184,.75);font-size:0.82rem;">{_scan.x_error[:200]}</div>
+                  <div style="color:rgba(148,163,184,.75);font-size:0.82rem;">{_x_err[:200]}</div>
                 </div>
                 """,
                 unsafe_allow_html=True,
             )
 
-        if _scan.posts_seen == 0:
-            if _scan.x_error:
+        if _posts == 0:
+            if _x_err:
                 # Upstream failure, zero posts: the user paid and got nothing.
-                if refund_credit("scan", _credit.event_id, f"x api: {_scan.x_error[:120]}"):
+                if refund_credit("scan", _credit.event_id, f"x api: {_x_err[:120]}"):
                     st.info("Your scan credit was not used.")
             else:
                 # A genuinely empty result is an answer, not a failure -- the
-                # scan ran and the sector simply had no chatter. Still charged.
+                # scan ran and the sector simply had no chatter. Still charged,
+                # and _delivered says so: without it the finally refunded every
+                # single time while this comment claimed the opposite, which
+                # made a quiet sector an unlimited supply of free scans paid
+                # for at X.
+                _delivered = True
                 st.warning("No posts returned from X for this query.")
             _bail()
 
@@ -949,11 +1081,20 @@ if scan_triggered:
         # kept rendering and simply lost its "Market chatter from 3h ago"
         # caption, which is stale-and-silent, the failure this page keeps
         # rediscovering.
-        st.session_state.scan_corpus_age_s = _scan.corpus_age_s
+        st.session_state.scan_corpus_age_s = _age
 
-        _display = scan_mod.rows_for_display(_scan)
-        if _scan.rows:
-            scan_mod.persist(_scan, event_id=_credit.event_id)
+        _display = _rows
+        # ON THE ROWS, not on _ok. Reaching here means no_query and error are
+        # both clear, so _ok is unconditionally True and `_rows or _ok` was
+        # always taken -- which made the else dead, silently retired the
+        # "No stock tickers found in the posts" message, and started wiping
+        # the previous table on a zero-row scan where it used to be left alone.
+        if _rows:
+            # The SERVICE already wrote the rows when it served the scan --
+            # it was handed this credit's event_id for exactly that reason.
+            # Writing again here would duplicate every per-ticker row.
+            if _scan is not None:
+                scan_mod.persist(_scan, event_id=_credit.event_id)
 
             # The DataFrame is built HERE, from ordered rows. It is the one
             # thing that cannot cross a service boundary, which is why the
@@ -985,7 +1126,7 @@ if scan_triggered:
     # `except KeyError` and `except requests.exceptions.RequestException`
     # used to live here. They are gone rather than left as dead code: scan()
     # returns instead of raising, so neither could ever fire again, and their
-    # panels are now selected by _scan.error_kind above. A dead handler for a
+    # panels are now selected by the normalised _kind above. A dead handler for a
     # message the user still sees is worse than no handler -- it reads as
     # coverage.
     except Exception:
@@ -1023,6 +1164,9 @@ if scan_triggered:
         # the posts were bought and 0% were used. Excluding exactly the worst
         # cases would bias the waste number downward in the flattering
         # direction. record_scan cannot raise, so this is safe in a finally.
+        # LOCAL ONLY. When core-api served the scan it recorded its own
+        # metrics row before answering -- it catches BaseException for exactly
+        # this reason -- so calling here would be a second row for one buy.
         if _scan is not None:
             _scan.record_metrics([])
 
