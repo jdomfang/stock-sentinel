@@ -60,7 +60,7 @@ SHARED_SECRET = os.getenv("CORE_API_SHARED_SECRET", "")
 # the X-Core-Refused header, and a client that depends on either needs a
 # way to know which build answered. Bump it whenever the contract or the
 # behaviour moves -- it went stale within one commit of being added.
-SERVICE_VERSION = "2026.08.24-step9"
+SERVICE_VERSION = "2026.08.24-step9b"
 
 # THE BUDGET THE PORTAL HAS AND THIS SERVICE DOES NOT.
 #
@@ -171,6 +171,26 @@ class AnalyzeRequest(BaseModel):
     persist: bool = True
 
 
+def _ticker_master_size() -> int | None:
+    """How many tickers this service can actually see. None if it cannot look.
+
+    /health reported ok:true and /ready returned 200 while the ticker master
+    was unreadable -- the service had SUPABASE_SERVICE_ROLE_KEY but the loader
+    demanded SUPABASE_ANON_KEY -- so the first sign of trouble was a paid scan
+    coming back "ticker database unavailable". Config checks answer "were the
+    variables set"; this answers "can the thing they are for actually be
+    done", which is the question that was being missed.
+
+    Cheap after the first call: the loader is TTL-cached per process.
+    """
+    try:
+        from utils.finance import get_ticker_master_list
+        return len(get_ticker_master_list() or {})
+    except Exception:
+        logger.exception("health: ticker master unreadable")
+        return None
+
+
 def _scoring_config() -> dict:
     """The model and the gate its confidences are judged against.
 
@@ -208,10 +228,14 @@ async def health() -> dict:
         # analysis raises and returns "no usable evidence", which reads exactly
         # like a quiet market. Reporting it here makes a misconfigured deploy
         # visible instead of merely unproductive.
-        "ok": bool(SHARED_SECRET) and not blockers,
+        # A scan validates every candidate against the ticker master, so a
+        # service that cannot read it cannot scan -- and used to say ok:true
+        # right up until a user paid to find out.
+        "ok": bool(SHARED_SECRET) and not blockers and bool(_ticker_master_size()),
         "service": "core-api", "version": SERVICE_VERSION,
         "secret_configured": bool(SHARED_SECRET),
         "missing_config": blockers,
+        "ticker_master": _ticker_master_size(),
         # Reported because it is the pair that silently changes every verdict:
         # the model, and the gate its confidences are judged against.
         **_scoring_config(),
@@ -226,13 +250,14 @@ async def ready() -> dict:
     work that has already bought posts. The probes must not compete for the
     slots the analyses hold."""
     blockers = _config_blockers()
-    if not SHARED_SECRET or blockers:
+    if not SHARED_SECRET or blockers or not _ticker_master_size():
         # 503, NOT 200-with-a-sad-body. Railway keys its healthcheck on the
         # status code alone, so returning 200 here meant a deploy with no
         # secret and no inference went GREEN and started spending. The comment
         # claimed this made a bad deploy visible; it made it invisible.
         raise HTTPException(status_code=503, detail={
-            "secret_configured": bool(SHARED_SECRET), "missing": blockers})
+            "secret_configured": bool(SHARED_SECRET), "missing": blockers,
+            "ticker_master": _ticker_master_size()})
     return {"ok": True}
 
 

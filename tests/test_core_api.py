@@ -280,6 +280,50 @@ def test_a_legacy_delivery_is_served_and_recorded():
         UA.analyze, UA.persist = real, real_write
 
 
+def test_readiness_answers_whether_it_can_actually_scan():
+    """Config checks ask "were the variables set". This asks "can the work be
+    done" -- and that gap cost a paid scan.
+
+    /health said ok:true and /ready returned 200 while the ticker master was
+    unreadable: the service had SUPABASE_SERVICE_ROLE_KEY, the loader demanded
+    SUPABASE_ANON_KEY, and the first sign of it was a user's credit coming
+    back "ticker database unavailable". Every candidate ticker in a scan is
+    validated against that table, so a service that cannot read it cannot
+    scan, whatever its variables say.
+    """
+    print("\nreadiness must mean 'can scan', not 'has variables'")
+    import utils.finance as FIN
+    real = FIN.get_ticker_master_list
+    try:
+        FIN.get_ticker_master_list = lambda: {"AAA": {"sector": "Health Care"}}
+        c, M = client()
+        h = c.get("/health").json()
+        check("health reports how many tickers it can see",
+              h.get("ticker_master") == 1, str(h.get("ticker_master")))
+        check("...and is ok when it can see them", h["ok"] is True)
+        check("ready is 200", c.get("/ready").status_code == 200)
+
+        FIN.get_ticker_master_list = lambda: {}
+        c2, _ = client()
+        h2 = c2.get("/health").json()
+        check("an unreadable ticker master makes health NOT ok",
+              h2["ok"] is False, str(h2))
+        check("...and is reported, not merely implied",
+              h2.get("ticker_master") == 0, str(h2.get("ticker_master")))
+        check("...and ready is 503, so the deploy does not go green",
+              c2.get("/ready").status_code == 503)
+
+        FIN.get_ticker_master_list = lambda: (_ for _ in ()).throw(
+            RuntimeError("SUPABASE_ANON_KEY is not set"))
+        c3, _ = client()
+        check("a RAISING loader is also not ready -- this is the real case",
+              c3.get("/ready").status_code == 503)
+        check("...and health says so rather than crashing",
+              c3.get("/health").json()["ok"] is False)
+    finally:
+        FIN.get_ticker_master_list = real
+
+
 def test_scan_is_authorised_validated_and_single_flighted():
     """The most expensive endpoint: up to 300 billed posts per call.
 
@@ -606,6 +650,7 @@ def main() -> int:
     test_concurrency_is_bounded()
     test_health_reports_what_would_change_an_answer()
     test_the_card_is_built_from_state_not_from_the_verdict_word()
+    test_readiness_answers_whether_it_can_actually_scan()
     test_scan_is_authorised_validated_and_single_flighted()
     test_scan_returns_rows_and_says_what_it_cost()
     test_a_failed_scan_keeps_its_failure_kind()

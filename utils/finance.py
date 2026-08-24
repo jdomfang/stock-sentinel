@@ -226,7 +226,23 @@ def _load_ticker_master_from_supabase_table() -> Dict[str, Dict]:
     Expected row fields: symbol, name, sector, industry, country, exchange.
     Returns a dict keyed by symbol.
     """
-    sb = get_client()
+    # THE ANON CLIENT WHERE THERE IS ONE, the service-role client otherwise.
+    #
+    # ticker_master is public reference data -- no user, no RLS scoping -- so
+    # either key reads the same 7,590 rows. But get_client() REQUIRES
+    # SUPABASE_ANON_KEY, and core-api is provisioned with the service-role key
+    # alone. The result was a service that passed /health and /ready, accepted
+    # a paid scan, and only then reported "ticker database unavailable".
+    #
+    # Falling back rather than adding SUPABASE_ANON_KEY to the service: a
+    # backend has no use for an anon key beyond satisfying this one call, and
+    # a secret that exists only to be present is a secret nobody maintains.
+    from utils import config as _cfg
+    if _cfg.get("SUPABASE_ANON_KEY"):
+        sb = get_client()
+    else:
+        from utils.supabase_client import get_admin_client
+        sb = get_admin_client()
 
     out: Dict[str, Dict] = {}
     page = 0
