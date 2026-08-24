@@ -218,13 +218,23 @@ def _require_shared_secret(x_payments_shared_secret: str | None) -> None:
 
 app = FastAPI(title="Stock Sentinel Payments API")
 
+# WHICH BUILD ANSWERED. core-api has carried this since the migration for one
+# reason: without it a deploy is unfalsifiable, and a test against the old image
+# passes and proves nothing. Bump it whenever behaviour or the response contract
+# changes.
+SERVICE_VERSION = "2026.08.24-paid-gate"
+
 
 @app.get("/health")
 def health():
     return {
         "ok": True,
         "service": "payments_api",
+        "version": SERVICE_VERSION,
         "env": os.getenv("RAILWAY_ENVIRONMENT_NAME") or os.getenv("ENV") or "unknown",
+        # The pack table the webhook grants from, so a mismatch between what is
+        # charged and what is granted is visible without reading logs.
+        "packs": {f"{c}:{a}": list(v) for (c, a), v in PACKS.items()},
     }
 
 
