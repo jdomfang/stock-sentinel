@@ -402,6 +402,45 @@ def test_the_write_sites_are_guarded_against_reruns():
           'a.sector != "unknown"' in ana or "a.sector != 'unknown'" in ana)
 
 
+def test_every_log_table_dedupes_one_paid_event():
+    """One paid analysis is one row, enforced by the database.
+
+    signal_log has had `unique (event_id, ticker, feature)` since 2026-08-17.
+    verdict_log and scan_sentiment_log never got the equivalent, and three
+    separate reviews during the core-api migration named the same consequence:
+    a duplicate write lands silently and is indistinguishable afterwards from a
+    genuine second analysis. These tables ARE the observation set the forward-
+    return question rests on.
+
+    The code paths that could produce one are closed. This asserts the schema
+    closes them too, because the schema keeps holding after the code is
+    rewritten again.
+    """
+    print("\nevery log table must reject a second row for one paid event")
+    sql = "\n".join(p.read_text() for p in
+                    sorted((REPO / "supabase" / "migrations").glob("*.sql")))
+
+    check("signal_log dedupes on (event_id, ticker, feature)",
+          "unique (event_id, ticker, feature)" in sql)
+    for table in ("verdict_log", "scan_sentiment_log"):
+        check(f"{table} dedupes on (event_id, ticker)",
+              f"{table}_once_per_event" in sql, "a duplicate would land silently")
+    # PARTIAL on purpose: Postgres treats NULLs as distinct, so rows predating
+    # event_id cannot be constrained -- saying so beats leaving a silent hole.
+    check("...and says out loud that NULL event_ids are exempt",
+          sql.count("where event_id is not null") >= 2,
+          "an unqualified index would imply a guarantee it cannot give")
+    # A unique INDEX, not a constraint: a constraint cannot be partial.
+    check("...using an index, since a constraint cannot be partial",
+          "create unique index if not exists verdict_log_once_per_event" in sql)
+    # Both writers already log-and-continue, so a rejected duplicate must not
+    # reach a page the user has paid for.
+    for mod in ("verdict_log", "scan_log"):
+        src = (REPO / "utils" / f"{mod}.py").read_text()
+        check(f"utils/{mod}.py survives a rejected insert",
+              "except Exception" in src, "a 409 would surface to the user")
+
+
 def main() -> int:
     print("=" * 74)
     print("  signal_log: the table whose failures are silent")
@@ -418,6 +457,7 @@ def main() -> int:
     _resilience_cases()
     test_the_migration_matches_what_is_written()
     test_the_write_sites_are_guarded_against_reruns()
+    test_every_log_table_dedupes_one_paid_event()
     print("\n" + "=" * 74)
     print(f"  {len(PASSED)} passed, {len(FAILED)} failed")
     for n, d in FAILED:
