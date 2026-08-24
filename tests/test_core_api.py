@@ -133,7 +133,14 @@ def test_concurrency_is_bounded():
           str(M.MAX_CONCURRENT))
     src = (REPO / "core_api" / "main.py").read_text()
     check("over capacity returns 429 rather than queueing", "429" in src)
-    check("there is a per-ticker single-flight lock", "_ticker_lock" in src)
+    # Renamed from _ticker_lock when /scan arrived: sectors need one too, and
+    # the two namespaces must stay separate or a scan of "healthcare" and an
+    # analysis of a ticker spelled the same would serialise against each other.
+    check("there is a single-flight lock", "_subject_lock" in src)
+    check("...and analyses and scans use separate keyspaces",
+          '"analyze:"' in src and '"scan:"' in src)
+    check("...bounded, so a queue cannot outlast the client's timeout",
+          "acquire(timeout=TICKER_WAIT_S)" in src)
     check("the secret is compared in constant time", "compare_digest" in src)
 
 
@@ -271,6 +278,134 @@ def test_a_legacy_delivery_is_served_and_recorded():
               wrote.get("event_id") == "ev-legacy", str(wrote))
     finally:
         UA.analyze, UA.persist = real, real_write
+
+
+def test_scan_is_authorised_validated_and_single_flighted():
+    """The most expensive endpoint: up to 300 billed posts per call.
+
+    One corpus per sector, shared for six hours -- so two concurrent scans of
+    the same sector buy the same 300 posts twice and the second gains nothing
+    the first did not already cache. Refusing the duplicate before it spends
+    is worth more here than on /analyze.
+    """
+    print("\n/scan: the endpoint that spends the most")
+    import threading
+    import time as _t
+    c, M = client()
+
+    check("no secret is 401",
+          c.post("/scan", json={"sector": "healthcare"}).status_code == 401)
+    check("a wrong secret is 401",
+          c.post("/scan", json={"sector": "healthcare"},
+                 headers={"X-Core-Secret": "nope"}).status_code == 401)
+    for bad in ("../etc", "HEALTHCARE", "x", "", "a" * 40):
+        code = c.post("/scan", json={"sector": bad},
+                      headers={"X-Core-Secret": "wrong"}).status_code
+        check(f"sector {bad[:12]!r} is rejected", code == 422, str(code))
+    check("an unknown field is rejected",
+          c.post("/scan", json={"sector": "healthcare", "feature": "x"},
+                 headers={"X-Core-Secret": "wrong"}).status_code == 422)
+
+    import utils.scan as US
+    from utils.scan import Scan
+    real = US.scan
+    started = threading.Event()
+
+    def _slow(sector, **k):
+        started.set()
+        _t.sleep(1.5)
+        return Scan(sector=sector, rows=[], displayed=[], posts_seen=0)
+
+    US.scan = _slow
+    M.TICKER_WAIT_S = 0.3
+    try:
+        out = {}
+        first = threading.Thread(target=lambda: out.__setitem__(
+            "a", c.post("/scan", json={"sector": "healthcare"},
+                        headers={"X-Core-Secret": "s3cret"})))
+        first.start()
+        started.wait(timeout=5)
+        second = c.post("/scan", json={"sector": "healthcare"},
+                        headers={"X-Core-Secret": "s3cret"})
+        first.join(timeout=10)
+        check("a second scan of the SAME sector is refused", second.status_code == 429,
+              str(second.status_code))
+        check("...before it spends, and stamped as such",
+              second.headers.get("X-Core-Refused") == "sector-busy",
+              str(dict(second.headers)))
+        check("a DIFFERENT sector is not blocked",
+              c.post("/scan", json={"sector": "materials"},
+                     headers={"X-Core-Secret": "s3cret"}).status_code == 200)
+        # A scan and an analysis must not collide on one lock just because the
+        # strings match -- the namespaces are separate.
+        check("a scan does not block an analysis of the same string",
+              "scan:" in open(REPO / "core_api" / "main.py").read()
+              and "analyze:" in open(REPO / "core_api" / "main.py").read())
+    finally:
+        US.scan = real
+
+
+def test_scan_returns_rows_and_says_what_it_cost():
+    print("\n/scan: what the caller gets back")
+    c, M = client()
+    import utils.scan as US
+    from utils.scan import Scan
+    real, real_persist = US.scan, US.persist
+    wrote = {}
+    US.persist = lambda s, **k: wrote.update(k, sector=s.sector)
+    US.scan = lambda sector, **k: Scan(
+        sector=sector, posts_seen=349, from_cache=True, corpus_age_s=1234.0,
+        stop_reason="validated_target",
+        rows=[{"Ticker": "VOR", "Mentions": 3, "Evidence": 2,
+               "Avg Sentiment Score": 0.2, "Overall Sentiment": "Limited signal",
+               "Sample Tweets": "t", "Company Name": "Vor", "Valid": True},
+              {"Ticker": "ZZZ", "Mentions": 9, "Evidence": 0,
+               "Avg Sentiment Score": 0.0, "Overall Sentiment": "Unscored",
+               "Sample Tweets": "t", "Company Name": "Z", "Valid": False}])
+    try:
+        r = c.post("/scan", json={"sector": "healthcare", "event_id": "ev-s"},
+                   headers={"X-Core-Secret": "s3cret"})
+        check("200", r.status_code == 200, str(r.status_code))
+        b = r.json()
+        check("ok", b["ok"] is True, str(b)[:100])
+        # Only VALID rows, top-N, and the Valid flag stripped -- the caller
+        # renders these directly and must not have to filter.
+        check("only validated rows are returned",
+              [x["Ticker"] for x in b["rows"]] == ["VOR"], str(b["rows"]))
+        check("...with the internal flag stripped", "Valid" not in b["rows"][0])
+        check("it reports what it cost", b["posts_seen"] == 349, str(b.get("posts_seen")))
+        check("...and whether that was real spend", b["from_cache"] is True)
+        check("...and how stale the answer is", b["corpus_age_s"] == 1234.0)
+        check("...and why it stopped", b["stop_reason"] == "validated_target")
+        check("the row is written under the caller's event",
+              wrote.get("event_id") == "ev-s", str(wrote))
+    finally:
+        US.scan, US.persist = real, real_persist
+
+
+def test_a_failed_scan_keeps_its_failure_kind():
+    """The portal renders a different panel for a missing key, a network
+    failure and a dead ticker database. Collapsing them into one 500 would
+    undo the distinction utils/scan.py exists to carry."""
+    print("\n/scan: failures arrive classified, not as a 5xx")
+    c, M = client()
+    import utils.scan as US
+    from utils.scan import Scan
+    real = US.scan
+    try:
+        for kind, no_query in (("credentials", False), ("ticker_db", False),
+                               ("network", False), (None, True)):
+            US.scan = lambda sector, _k=kind, _nq=no_query, **kw: Scan(
+                sector=sector, error="boom", error_kind=_k, no_query=_nq)
+            r = c.post("/scan", json={"sector": "healthcare"},
+                       headers={"X-Core-Secret": "s3cret"})
+            b = r.json()
+            want = "no_query" if no_query else kind
+            check(f"{want}: 200, not 5xx", r.status_code == 200, str(r.status_code))
+            check(f"{want}: ok is False", b["ok"] is False)
+            check(f"{want}: the kind survives", b.get("kind") == want, str(b.get("kind")))
+    finally:
+        US.scan = real
 
 
 def test_the_secret_can_be_checked_without_spending():
@@ -471,6 +606,9 @@ def main() -> int:
     test_concurrency_is_bounded()
     test_health_reports_what_would_change_an_answer()
     test_the_card_is_built_from_state_not_from_the_verdict_word()
+    test_scan_is_authorised_validated_and_single_flighted()
+    test_scan_returns_rows_and_says_what_it_cost()
+    test_a_failed_scan_keeps_its_failure_kind()
     test_the_secret_can_be_checked_without_spending()
     test_health_and_auth_check_cannot_disagree()
     test_a_second_caller_for_one_ticker_is_refused_not_queued()

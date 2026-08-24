@@ -54,9 +54,37 @@ logger = logging.getLogger(__name__)
 # can add a whole analysis on top when two callers ask for one ticker at once.
 DEFAULT_TIMEOUT_S = 180
 
+# A cold scan paginates up to fourteen times for up to 300 billed posts, and
+# the sector's corpus is one shared 6-hour entry -- so there is no per-ticker
+# cache to soften a retry. Cutting it short at the client end does not cancel
+# the server; it just guarantees nobody sees what was bought.
+SCAN_TIMEOUT_S = 300
+
 # Written into the `model` column of two tables, so it is not free text.
 _ROUTES = {"discovery"}
 _FEATURES = {"deep_analyze", "discovery", "core_api"}
+
+
+@dataclass
+class RemoteScan:
+    """One sector scan, over HTTPS. Never raises; every failure is a field."""
+
+    ok: bool = False
+    rows: list = field(default_factory=list)
+    sector: str = ""
+    posts_seen: int = 0
+    from_cache: bool = False
+    corpus_age_s: float = 0.0
+    stop_reason: str = ""
+    # X failed mid-pagination and the scan kept what it had already bought.
+    # Partial, not fatal -- the caller renders a warning over real rows.
+    x_error: str | None = None
+    error: str | None = None
+    # credentials | network | ticker_db | no_query | pipeline -- the page keeps
+    # a distinct panel and a distinct ledger reason for each.
+    kind: str | None = None
+    retryable: bool = False
+    elapsed_s: float | None = None
 
 
 @dataclass
@@ -114,6 +142,86 @@ def _base() -> str:
     if not lowered.startswith("https://"):
         raise ValueError("CORE_API_URL must be an absolute https:// URL")
     return url
+
+
+def scan_remote(sector: str, *, event_id: str | None = None,
+                persist: bool = True,
+                timeout: int = SCAN_TIMEOUT_S) -> RemoteScan:
+    """One sector scan, over HTTPS. Never raises.
+
+    A LONGER TIMEOUT THAN /analyze, and for a reason worth stating: a cold scan
+    paginates up to fourteen times for up to 300 billed posts, where an
+    analysis paginates three times. A client timeout does not cancel the
+    server, so cutting a scan short at the client end leaves it running to
+    completion, spending the full amount, for a user who was refunded and told
+    it failed.
+    """
+    from utils import config as _c
+
+    try:
+        base = _base()
+    except ValueError as e:
+        logger.error("core-api URL rejected: %s", e)
+        return RemoteScan(error=str(e), kind="pipeline")
+
+    body = json.dumps({"sector": sector, "event_id": event_id,
+                       "persist": persist}).encode()
+    req = urllib.request.Request(
+        f"{base}/scan", data=body, method="POST",
+        headers={"content-type": "application/json",
+                 "X-Core-Secret": _c.get("CORE_API_SHARED_SECRET") or ""})
+
+    try:
+        with urllib.request.urlopen(req, timeout=timeout) as r:
+            payload = json.loads(r.read() or b"{}")
+    except urllib.error.HTTPError as e:
+        detail = ""
+        try:
+            detail = (e.read() or b"")[:300].decode("utf-8", "replace")
+        except Exception:
+            pass
+        refused = ""
+        try:
+            refused = (e.headers or {}).get("X-Core-Refused") or ""
+        except Exception:
+            pass
+        pre_spend = e.code in (401, 403, 422, 429) or bool(refused)
+        logger.error("core-api scan %s for %s (refused=%s): %s",
+                     e.code, sector, refused or "-", detail[:200])
+        return RemoteScan(error=f"core-api {e.code}", kind="pipeline",
+                          retryable=pre_spend)
+    except urllib.error.URLError as e:
+        import socket
+        timed_out = isinstance(getattr(e, "reason", None), socket.timeout)
+        logger.error("core-api unreachable for scan %s: %s", sector, e)
+        return RemoteScan(error=f"core-api unreachable: {e.reason}",
+                          kind="network", retryable=not timed_out)
+    except TimeoutError:
+        # NOT retryable. A scan that timed out may well have finished and
+        # bought its 300 posts; re-running buys them again.
+        logger.error("core-api scan timed out for %s after %ss", sector, timeout)
+        return RemoteScan(error="core-api timed out", kind="network")
+    except Exception as e:
+        logger.exception("core-api scan failed for %s", sector)
+        return RemoteScan(error=f"{type(e).__name__}: {e}", kind="pipeline")
+
+    if not payload.get("ok"):
+        # The scan ran and could not produce a table. The money, if any, is
+        # already spent -- `kind` decides which panel the caller renders.
+        return RemoteScan(sector=payload.get("sector") or sector,
+                          error=payload.get("error") or "scan failed",
+                          kind=payload.get("kind") or "pipeline",
+                          posts_seen=payload.get("posts_billed") or 0,
+                          elapsed_s=payload.get("elapsed_s"))
+
+    return RemoteScan(ok=True, rows=payload.get("rows") or [],
+                      sector=payload.get("sector") or sector,
+                      posts_seen=payload.get("posts_seen") or 0,
+                      from_cache=bool(payload.get("from_cache")),
+                      corpus_age_s=float(payload.get("corpus_age_s") or 0.0),
+                      stop_reason=payload.get("stop_reason") or "",
+                      x_error=payload.get("x_error"),
+                      elapsed_s=payload.get("elapsed_s"))
 
 
 def analyze_remote(ticker: str, sector: str = "unknown", *,

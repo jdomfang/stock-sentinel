@@ -60,7 +60,7 @@ SHARED_SECRET = os.getenv("CORE_API_SHARED_SECRET", "")
 # the X-Core-Refused header, and a client that depends on either needs a
 # way to know which build answered. Bump it whenever the contract or the
 # behaviour moves -- it went stale within one commit of being added.
-SERVICE_VERSION = "2026.08.23-step7"
+SERVICE_VERSION = "2026.08.24-step9"
 
 # THE BUDGET THE PORTAL HAS AND THIS SERVICE DOES NOT.
 #
@@ -82,17 +82,17 @@ _INFLIGHT_GUARD = threading.Lock()
 app = FastAPI(title="Stock Sentinel Core API")
 
 
-# How long a second caller for the SAME ticker will wait for the first to
-# finish. One analysis is 40-60s, so this admits the common case -- caller two
-# waits and then reads caller one's corpus from cache for free -- and refuses
-# the pathological one. Unbounded, a queue four deep outlasts the client's
+# How long a second caller for the SAME subject will wait for the first to
+# finish. One analysis is 40-60s and one cold scan can be longer, so this
+# admits the common case -- caller two waits and then reads caller one's
+# corpus from cache for free -- and refuses the pathological one. Unbounded, a queue four deep outlasts the client's
 # read timeout, and a client timeout does NOT cancel a sync handler: the
 # service finishes, buys the posts and writes both rows for a user who was
 # already refunded and told it failed. Better to refuse before spending.
 TICKER_WAIT_S = 75
 
 
-def _ticker_lock(t: str) -> threading.Lock:
+def _subject_lock(t: str) -> threading.Lock:
     with _INFLIGHT_GUARD:
         lock = _INFLIGHT.get(t)
         if lock is None:
@@ -258,6 +258,102 @@ def auth_check(x_core_secret: str | None = Header(default=None,
             **_scoring_config()}
 
 
+class ScanRequest(BaseModel):
+    """A sector scan. Costs up to 300 X posts, so the sector is constrained.
+
+    The valid set lives in utils.sector_query.UI_TO_NASDAQ; the pattern here is
+    only a cheap shape check so a malformed value is a 422 rather than a
+    request that reaches the query builder.
+    """
+    model_config = {"extra": "forbid"}
+
+    sector: str = Field(pattern=r"^[a-z][a-z_ ]{2,30}$")
+    event_id: str | None = None
+    persist: bool = True
+
+
+@app.post("/scan")
+def scan(req: ScanRequest,
+         x_core_secret: str | None = Header(default=None,
+                                            alias="X-Core-Secret")) -> dict:
+    """One sector scan. Returns the ranked rows the client should render.
+
+    THE MOST EXPENSIVE ENDPOINT HERE. A cold scan paginates up to 14 times for
+    up to 300 billed posts, against one shared 6-hour corpus per sector -- so a
+    second caller for the same sector is worth waiting for, and a duplicate is
+    worth refusing outright.
+    """
+    _authorise(x_core_secret)
+
+    blockers = _config_blockers()
+    if blockers:
+        raise HTTPException(status_code=503,
+                            detail=f"refusing to spend: missing {blockers}",
+                            headers={"X-Core-Refused": "config"})
+
+    from utils.scan import persist as write_scan
+    from utils.scan import rows_for_display
+    from utils.scan import scan as run_scan
+
+    t0 = time.time()
+    # Single-flight per SECTOR, and it matters more here than on /analyze:
+    # there is one corpus per sector, so two concurrent scans of the same one
+    # buy the same 300 posts twice and the second gains nothing the first did
+    # not already cache.
+    _lock = _subject_lock("scan:" + req.sector.lower())
+    if not _lock.acquire(timeout=TICKER_WAIT_S):
+        raise HTTPException(
+            status_code=429,
+            detail=f"another scan of {req.sector} is still running",
+            headers={"X-Core-Refused": "sector-busy"})
+    try:
+        if not _SLOTS.acquire(blocking=False):
+            raise HTTPException(status_code=429,
+                                detail=f"at capacity ({MAX_CONCURRENT} concurrent)",
+                                headers={"X-Core-Refused": "capacity"})
+        try:
+            s = run_scan(req.sector, event_id=req.event_id)
+        finally:
+            _SLOTS.release()
+    finally:
+        _lock.release()
+    elapsed = round(time.time() - t0, 2)
+
+    if s.error:
+        # 200 with an error field, not a 5xx: a sector with no live tickers or
+        # a dead ticker table is an ANSWER, and a 5xx would send the caller
+        # into a retry loop that spends more money to learn the same thing.
+        # `kind` is what lets the portal keep the distinct panel it always had
+        # for a missing key, a network failure and a dead ticker database.
+        logger.info("scan %s event=%s -> %s (%s) in %.2fs",
+                    req.sector, req.event_id, s.error, s.error_kind, elapsed)
+        return {"ok": False, "sector": s.sector, "error": s.error,
+                "kind": ("no_query" if s.no_query else s.error_kind),
+                "posts_billed": s.posts_seen, "elapsed_s": elapsed}
+
+    if req.persist:
+        write_scan(s, event_id=req.event_id)
+
+    logger.info("scan %s event=%s -> %d rows, %d posts (cache=%s) in %.2fs",
+                req.sector, req.event_id, len(s.displayed), s.posts_seen,
+                s.from_cache, elapsed)
+    return {
+        "ok": True, "sector": s.sector, "elapsed_s": elapsed,
+        # The DISPLAY rows, already ordered and already cut to ten. A DataFrame
+        # cannot cross this boundary, and making the service depend on pandas
+        # to return ten dicts would be the wrong trade.
+        "rows": rows_for_display(s),
+        # Whether money moved, and how stale the answer is. The portal renders
+        # the age; the caller's refund decision turns on the spend.
+        "posts_seen": s.posts_seen,
+        "from_cache": s.from_cache,
+        "corpus_age_s": s.corpus_age_s,
+        "stop_reason": s.stop_reason,
+        # Partial: X failed mid-pagination and the scan kept what it had.
+        "x_error": s.x_error,
+    }
+
+
 @app.post("/analyze")
 def analyze(req: AnalyzeRequest,
             x_core_secret: str | None = Header(default=None,
@@ -288,7 +384,7 @@ def analyze(req: AnalyzeRequest,
     # plus ~60s of work, which is exactly the client's timeout -- and a client
     # timeout does not cancel the server, so the analysis completes, spends,
     # and writes a row for a user who was refunded and told it failed.
-    _lock = _ticker_lock(req.ticker.upper())
+    _lock = _subject_lock("analyze:" + req.ticker.upper())
     if not _lock.acquire(timeout=TICKER_WAIT_S):
         # Refused BEFORE spending, so the caller may safely try again -- and
         # the header says so. The alternative is waiting past the client's read
