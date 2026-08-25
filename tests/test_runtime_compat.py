@@ -246,6 +246,34 @@ def test_every_symbol_a_page_imports_actually_exists():
     check("every page import resolves", True)
 
 
+def test_every_entrypoint_guards_the_utils_import():
+    """`utils` must resolve to this repo, not to site-packages.
+
+    Streamlit Cloud can shadow it, and the symptom is not a clean ImportError --
+    it is `KeyError: 'utils'` from inside _find_and_load_unlocked, because the
+    parent package vanishes from sys.modules midway through loading a submodule.
+    Home died this way on 2026-08-24 while Discovery, which had carried the
+    sys.path guard for exactly this reason, kept working.
+
+    Every entrypoint Streamlit can execute directly needs the guard, and it has
+    to come BEFORE the first utils import -- afterwards it is decoration.
+    """
+    print("\nevery page pins `utils` to this repo before importing it")
+    for f in [REPO / "app.py"] + sorted((REPO / "pages").glob("*.py")):
+        lines = f.read_text().split("\n")
+        guard = next((i for i, l in enumerate(lines) if "sys.path.insert" in l), None)
+        first_utils = next((i for i, l in enumerate(lines)
+                            if l.startswith("from utils") or l.startswith("import utils")), None)
+        rel = f.relative_to(REPO)
+        if first_utils is None:
+            continue                      # imports nothing from utils; nothing to guard
+        check(f"{rel} guards sys.path", guard is not None,
+              "an unguarded entrypoint fails with KeyError: 'utils' on Streamlit Cloud")
+        if guard is not None:
+            check(f"{rel} guards BEFORE its first utils import", guard < first_utils,
+                  f"guard at line {guard + 1}, utils imported at line {first_utils + 1}")
+
+
 def main() -> int:
     major, minor = pinned_version()
     print("=" * 74)
@@ -322,6 +350,7 @@ def main() -> int:
     test_selectively_copied_services_can_import()
     test_core_api_can_run_without_the_portal()
     test_every_symbol_a_page_imports_actually_exists()
+    test_every_entrypoint_guards_the_utils_import()
     print(f"\n  {len(PASSED)} passed, {len(FAILED)} failed")
     for n, d in FAILED:
         print(f"    - {n}: {d}")
