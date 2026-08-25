@@ -675,6 +675,8 @@ def test_a_daily_spend_ceiling_refuses_before_it_buys():
     _ua.analyze = lambda *a, **k: called.__setitem__("analyze", called["analyze"] + 1)
 
     H = {"X-Core-Secret": "s3cret"}
+    # No event_id on these -- unpaid work, which is what the ceiling is for.
+    M._is_paid_work = lambda ev: False
     spend["n"] = 1500                       # over budget
     r1 = c.post("/scan", json={"sector": "tech", "event_id": None}, headers=H)
     r2 = c.post("/analyze", json={"ticker": "AAPL", "event_id": None}, headers=H)
@@ -694,7 +696,7 @@ def test_a_daily_spend_ceiling_refuses_before_it_buys():
         body = src[src.index(fn):]
         body = body[:body.index("_lock.release()")]
         check(f"{fn.strip('def (')}: budget is enforced before the lock",
-              body.index("_enforce_budget()") < body.index("_subject_lock("),
+              body.index("_enforce_budget(") < body.index("_subject_lock("),
               "a doomed request should not queue behind a subject lock")
     _us.scan, _ua.analyze = _orig
 
@@ -772,6 +774,85 @@ def test_the_budget_is_visible_without_making_health_do_a_query():
     check("...behind the shared secret",
           c.get("/auth-check").status_code == 401,
           "spend must not be readable without the secret")
+
+
+def test_a_paying_customer_is_never_refused_by_the_spend_cap():
+    """The customer bought the credit. Serve them.
+
+    The ceiling initially applied to every request, so once the shared daily
+    pool ran out it refused PAYING customers -- everyone, until the rolling
+    window moved. That is taking money for a service and then declining to
+    provide it. The owner caught it.
+
+    The economics agree: a credit sells for $2.50 and costs at most $2.00 of X
+    posts to serve, usually far less because a sector corpus is cached six hours
+    across all users. Paid work is profitable by construction, so a ceiling on
+    it protects against nothing and costs revenue. The ceiling is for spend with
+    no revenue behind it -- a leaked secret, a retry loop, a call that never
+    debited.
+    """
+    print("\nspend: a paid credit is served even with the pool exhausted")
+    c, M = client(budget=1000)
+    import types
+    import utils.scan as _us
+    _orig = (_us.scan, _us.rows_for_display, _us.persist)
+    ran = {"n": 0}
+
+    def _fake_scan(*a, **k):
+        # A Scan-shaped result, because the handler reads it. A stub returning
+        # None makes the handler raise, which is a 500 -- indistinguishable from
+        # the refusal this test exists to disprove.
+        ran["n"] += 1
+        return types.SimpleNamespace(
+            error=None, error_kind=None, displayed=[], posts_seen=0,
+            from_cache=True, corpus_age_s=None, stop_reason="test",
+            x_error=None, sector=(a[0] if a else "tech"))
+    _us.scan = _fake_scan
+    _us.rows_for_display = lambda s: []
+    _us.persist = lambda *a, **k: None
+
+    # Wildly over budget, and it must not matter.
+    M._budget_exceeded = lambda: (True, 999_999)
+    M._is_paid_work = lambda ev: ev == "paid-event"
+
+    H = {"X-Core-Secret": "s3cret"}
+    r = c.post("/scan", json={"sector": "tech", "event_id": "paid-event"}, headers=H)
+    check("a paid scan is NOT refused", r.status_code != 429, str(r.status_code))
+    check("...and the work actually ran", ran["n"] == 1, str(ran))
+
+    ran["n"] = 0
+    r2 = c.post("/scan", json={"sector": "tech", "event_id": None}, headers=H)
+    check("unpaid work IS refused", r2.status_code == 429, str(r2.status_code))
+    check("...and nothing ran", ran["n"] == 0, str(ran))
+    check("...with a reason naming the cause",
+          "credit" in r2.json().get("detail", "").lower(), str(r2.json()))
+    _us.scan, _us.rows_for_display, _us.persist = _orig
+
+
+def test_an_unverifiable_credit_is_served_not_refused():
+    """If we cannot tell whether they paid, serve them.
+
+    Every other unknown in this file fails closed. This one does not, and the
+    asymmetry is deliberate: the downside of serving a non-paying caller once is
+    at most $2 of posts; the downside of refusing a paying customer because our
+    own check is broken is a customer who paid and got nothing.
+    """
+    print("\nspend: an unverifiable credit gets the benefit of the doubt")
+    c, M = client(budget=1000)
+
+    class _Boom:
+        def rpc(self, *a, **k): raise RuntimeError("supabase down")
+    import utils.supabase_client as _sc
+    _orig = _sc.get_admin_client
+    _sc.get_admin_client = lambda: _Boom()
+    try:
+        check("an event_id we cannot verify is treated as paid",
+              M._is_paid_work("some-event") is True)
+        check("...but a MISSING event_id is not",
+              M._is_paid_work(None) is False,
+              "no id means nothing was debited; that is not an unknown")
+    finally:
+        _sc.get_admin_client = _orig
 
 
 def test_a_missing_budget_rpc_does_not_take_the_product_down():

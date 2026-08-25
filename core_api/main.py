@@ -60,7 +60,7 @@ SHARED_SECRET = os.getenv("CORE_API_SHARED_SECRET", "")
 # the X-Core-Refused header, and a client that depends on either needs a
 # way to know which build answered. Bump it whenever the contract or the
 # behaviour moves -- it went stale within one commit of being added.
-SERVICE_VERSION = "2026.08.25-spend-budget"
+SERVICE_VERSION = "2026.08.25-paid-work-exempt"
 
 # THE BUDGET THE PORTAL HAS AND THIS SERVICE DOES NOT.
 #
@@ -139,7 +139,49 @@ def _budget_exceeded() -> tuple[bool, int]:
     return spent >= DAILY_POST_BUDGET, spent
 
 
-def _enforce_budget() -> None:
+def _is_paid_work(event_id: str | None) -> bool:
+    """Is this request backed by a credit somebody actually bought?
+
+    consume_credit debits the balance and opens a work_runs row in one
+    transaction, then hands the caller that usage_events id. A request carrying
+    an id that is still 'running' is a job a paying customer is waiting on.
+
+    Fails to TRUE on error, deliberately and unlike everything else here. If we
+    cannot tell whether the customer paid, serve them: they probably did, the
+    credit is already debited, and the downside is at most $2 of posts against a
+    $2.50 credit. Refusing a paying customer because our own check is broken is
+    the worse outcome by a wide margin.
+    """
+    if not event_id:
+        return False
+    try:
+        from utils.supabase_client import get_admin_client
+        res = get_admin_client().rpc(
+            "is_open_paid_work", {"p_event_id": str(event_id)}).execute()
+        return bool(getattr(res, "data", False))
+    except Exception:
+        logger.warning("could not verify paid work for %s -- serving anyway",
+                       event_id, exc_info=True)
+        return True
+
+
+def _enforce_budget(event_id: str | None = None) -> None:
+    """The ceiling applies to UNPAID work only.
+
+    A customer who bought a credit must never be refused by a spend cap. They
+    paid for the work; declining to do it is taking money for a service and then
+    not providing it. And the economics make the ceiling pointless there anyway:
+    a credit sells for $2.50 and costs at most $2.00 of X posts to serve -- and
+    usually far less, because a sector corpus is cached six hours across all
+    users. More paid work cannot bankrupt anyone.
+    #
+    # What the ceiling is actually for is spend with no revenue behind it: a
+    # leaked X-Core-Secret, a retry loop, a bug that calls this without debiting
+    # first. That has no natural limit, and before this it had no imposed one.
+    """
+    if _is_paid_work(event_id):
+        return
+
     over, spent = _budget_exceeded()
     if not over:
         return
@@ -152,7 +194,8 @@ def _enforce_budget() -> None:
                  spent, DAILY_POST_BUDGET)
     raise HTTPException(
         status_code=429,
-        detail=f"daily data budget reached ({spent}/{DAILY_POST_BUDGET} posts in 24h)",
+        detail=(f"daily data budget reached ({spent}/{DAILY_POST_BUDGET} posts "
+                f"in 24h) for work with no credit behind it"),
         headers={"X-Core-Refused": "budget"})
 
 
@@ -427,7 +470,8 @@ def scan(req: ScanRequest,
     # not already cache.
     # BEFORE the lock and before the slot: a request that will be refused on
     # budget must not first make another caller wait 75s for a subject lock.
-    _enforce_budget()
+    # Paid work -- an event_id with an open work_run behind it -- is exempt.
+    _enforce_budget(req.event_id)
 
     _lock = _subject_lock("scan:" + req.sector.lower())
     if not _lock.acquire(timeout=TICKER_WAIT_S):
@@ -514,7 +558,7 @@ def analyze(req: AnalyzeRequest,
     # timeout does not cancel the server, so the analysis completes, spends,
     # and writes a row for a user who was refunded and told it failed.
     # BEFORE the lock and before the slot -- see /scan.
-    _enforce_budget()
+    _enforce_budget(req.event_id)
 
     _lock = _subject_lock("analyze:" + req.ticker.upper())
     if not _lock.acquire(timeout=TICKER_WAIT_S):
