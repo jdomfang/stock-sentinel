@@ -119,7 +119,7 @@ def test_the_ticker_cannot_rewrite_a_billed_query():
     import utils.analyze as UA
     from utils.analyze import Analysis
     real = UA.analyze
-    UA.analyze = lambda t, s="unknown": Analysis(ticker=t, error="stub")
+    UA.analyze = lambda t, s="unknown", **k: Analysis(ticker=t, error="stub")
     try:
         for good in ("TSLA", "BRK.B", "A"):
             r = c.post("/analyze", json={"ticker": good},
@@ -252,7 +252,7 @@ def test_a_legacy_delivery_is_served_and_recorded():
     # to replace.
     real, real_write = UA.analyze, UA.persist
     wrote = {}
-    UA.analyze = lambda t, s="unknown": Analysis(
+    UA.analyze = lambda t, s="unknown", **k: Analysis(
         ticker=t, error="no usable evidence",
         legacy_summary={"recommendation": "Watch", "confidence": "Low",
                         "avg_sentiment": 0.03, "rationale": ["thin"]},
@@ -544,7 +544,7 @@ def test_a_second_caller_for_one_ticker_is_refused_not_queued():
     real = UA.analyze
     started = threading.Event()
 
-    def _slow(t, s="unknown"):
+    def _slow(t, s="unknown", **k):
         started.set()
         _t.sleep(1.5)
         return Analysis(ticker=t, error="no usable evidence")
@@ -586,7 +586,7 @@ def test_analyze_returns_an_answer_not_a_5xx():
 
     import utils.analyze as UA
     real = UA.analyze
-    UA.analyze = lambda t, s="unknown": Analysis(ticker=t, error="no usable evidence")
+    UA.analyze = lambda t, s="unknown", **k: Analysis(ticker=t, error="no usable evidence")
     try:
         r = c.post("/analyze", json={"ticker": "ZZZZ"},
                    headers={"X-Core-Secret": "s3cret"})
@@ -851,8 +851,37 @@ def test_an_unverifiable_credit_is_served_not_refused():
         check("...but a MISSING event_id is not",
               M._is_paid_work(None) is False,
               "no id means nothing was debited; that is not an unknown")
+
+        # AND THE ALLOWANCE IS BOUNDED. Unlimited fail-open would mean the
+        # budget and the paid-work check fail together -- so the one outage
+        # where the ceiling cannot be read is also the one where anything
+        # bypasses it.
+        M._EMERGENCY_REMAINING = 3
+        served = [M._is_paid_work(f"e{i}") for i in range(6)]
+        check("the allowance runs out", served == [True, True, True, False, False, False],
+              str(served))
+        check("...and stays out while the database is still down",
+              M._is_paid_work("e9") is False)
     finally:
         _sc.get_admin_client = _orig
+
+    # A successful check refills it, so the next outage starts from full.
+    c2, M2 = client(budget=1000)
+    M2._EMERGENCY_REMAINING = 0
+
+    class _Ok:
+        def rpc(self, *a, **k):
+            import types
+            return types.SimpleNamespace(execute=lambda: types.SimpleNamespace(data=True))
+    _orig2 = _sc.get_admin_client
+    _sc.get_admin_client = lambda: _Ok()
+    try:
+        check("a verified call still answers correctly", M2._is_paid_work("ok") is True)
+        check("...and refills the emergency allowance",
+              M2._EMERGENCY_REMAINING == M2.EMERGENCY_ALLOWANCE,
+              str(M2._EMERGENCY_REMAINING))
+    finally:
+        _sc.get_admin_client = _orig2
 
 
 def test_a_missing_budget_rpc_does_not_take_the_product_down():
@@ -918,7 +947,13 @@ def test_a_deep_analysis_records_its_spend():
     _orig = (_ua.analyze, _xm.record_deep)
     _xm.record_deep = lambda **kw: recorded.append(kw) or True
 
-    def _boom(*a, **k):
+    # THE CASE THAT MATTERS: the crash happens AFTER X returned billed posts.
+    # Recording 0 there is not a fix -- it is a false record that also loses the
+    # spend. utils.analyze fills the caller's corpus_sink page by page, so the
+    # tally survives an exception a return value cannot.
+    def _boom(t, s="unknown", *, corpus_sink=None, **k):
+        if corpus_sink is not None:
+            corpus_sink["posts_billed"] = 260      # already bought and billed
         raise RuntimeError("X died after the posts were bought")
     _ua.analyze = _boom
     try:
@@ -926,6 +961,10 @@ def test_a_deep_analysis_records_its_spend():
                     headers={"X-Core-Secret": "s3cret"})
         check("a crashed analysis still answers", r.status_code == 200, str(r.status_code))
         check("...and STILL records its spend", len(recorded) == 1, str(recorded))
+        check("...the REAL number, not zero",
+              recorded and recorded[0].get("posts_billed") == 260, str(recorded))
+        check("...not mislabelled as a cache hit",
+              recorded and recorded[0].get("from_cache") is False, str(recorded))
         check("...against the right ticker",
               recorded and recorded[0].get("ticker") == "AAPL", str(recorded))
     finally:

@@ -924,6 +924,15 @@ def run_deep_analysis(ticker: str, sector: str,
             # dedup below. X bills per post RETURNED, so a post we fetch and
             # then discard was still paid for.
             _ticker_billed += len(page_tweets)
+            # PUBLISHED IMMEDIATELY, page by page. The totals written at the end
+            # of this function never happen if anything below raises -- and a
+            # crash after the posts were bought is exactly when the spend most
+            # needs recording, because the caller has to charge the budget for
+            # money that already left. A running tally in the caller's own dict
+            # survives the exception; a return value does not.
+            if sink is not None:
+                sink["posts_billed"] = _ticker_billed + _wire_billed
+                sink["ticker_billed"] = _ticker_billed
             next_token = res.get("next_token")
 
             if not page_tweets:
@@ -984,6 +993,9 @@ def run_deep_analysis(ticker: str, sector: str,
             "wire_billed": 0}
         _wire_state = infl_res.get("wire_state") or "unknown"
         _wire_billed = infl_res.get("wire_billed") or 0
+        if sink is not None:                      # same reason as above
+            sink["posts_billed"] = _ticker_billed + _wire_billed
+            sink["wire_billed"] = _wire_billed
         if infl_res.get("success"):
             corpuses["influencers"] = infl_res.get("tweets", []) or []
         else:

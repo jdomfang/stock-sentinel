@@ -91,6 +91,19 @@ _INFLIGHT_GUARD = threading.Lock()
 # somebody should have to make explicitly rather than inherit.
 DAILY_POST_BUDGET = int(os.getenv("CORE_API_DAILY_POST_BUDGET", "4000"))
 
+# How many requests may be served on trust while paid-work verification is DOWN.
+#
+# Neither extreme is right. Unlimited fail-open means the budget and the paid-
+# work check fail together, so the one outage where the ceiling cannot be read
+# is also the one where anything bypasses it. Unlimited fail-closed means a
+# Supabase blip refuses customers whose credit is already debited.
+#
+# Twenty is roughly ten customers' full packs -- enough to ride out a blip, and
+# capped at about $40 of X posts if it is ever abused. Per process and reset by
+# the first successful check, so it is a burst allowance, not a quota.
+EMERGENCY_ALLOWANCE = int(os.getenv("CORE_API_EMERGENCY_ALLOWANCE", "20"))
+_EMERGENCY_REMAINING = EMERGENCY_ALLOWANCE
+
 app = FastAPI(title="Stock Sentinel Core API")
 
 
@@ -146,26 +159,50 @@ def _is_paid_work(event_id: str | None) -> bool:
     transaction, then hands the caller that usage_events id. A request carrying
     an id that is still 'running' is a job a paying customer is waiting on.
 
-    Fails to TRUE on error, deliberately and unlike everything else here. If we
-    cannot tell whether the customer paid, serve them: they probably did, the
-    credit is already debited, and the downside is at most $2 of posts against a
-    $2.50 credit. Refusing a paying customer because our own check is broken is
-    the worse outcome by a wide margin.
+    When verification is UNAVAILABLE this serves the customer -- but only a
+    bounded number of times, and that bound is the whole design.
+
+    Unlimited fail-open was wrong: during exactly the outage where the shared
+    budget cannot be read, ANY event id would bypass it, so the two protections
+    fail together and a leaked secret has free rein for the duration. Unlimited
+    fail-CLOSED is also wrong: the customer's credit is already debited, and
+    refusing work they paid for because our own check is broken is the worse
+    everyday outcome.
+
+    So: an emergency allowance, held in this process, spent only while
+    verification is down, and never refilled without a successful check. Big
+    enough to carry real customers through a Supabase blip; small enough that an
+    outage is not an open door.
     """
+    global _EMERGENCY_REMAINING
     if not event_id:
         return False
     try:
         from utils.supabase_client import get_admin_client
         res = get_admin_client().rpc(
             "is_open_paid_work", {"p_event_id": str(event_id)}).execute()
-        return bool(getattr(res, "data", False))
+        verified = bool(getattr(res, "data", False))
+        # A successful check restores the allowance: the database is answering
+        # again, so the next outage starts from full rather than from whatever
+        # the last one left behind.
+        _EMERGENCY_REMAINING = EMERGENCY_ALLOWANCE
+        return verified
     except Exception:
-        logger.warning("could not verify paid work for %s -- serving anyway",
-                       event_id, exc_info=True)
-        return True
+        if _EMERGENCY_REMAINING > 0:
+            _EMERGENCY_REMAINING -= 1
+            logger.warning(
+                "could not verify paid work for %s -- serving on the emergency "
+                "allowance (%s of %s left before paid work is refused too)",
+                event_id, _EMERGENCY_REMAINING, EMERGENCY_ALLOWANCE, exc_info=True)
+            return True
+        logger.error(
+            "could not verify paid work for %s and the emergency allowance is "
+            "spent -- refusing. Paid work is now blocked until the database "
+            "answers again.", event_id)
+        return False
 
 
-def _record_deep_spend(req, a) -> None:
+def _record_deep_spend(req, corpus: dict | None) -> None:
     """Write what this analysis cost to x_call_metrics. Never raises.
 
     x_call_metrics allows kind in ('scan','deep') and only ever held 'scan', so
@@ -179,16 +216,19 @@ def _record_deep_spend(req, a) -> None:
     """
     try:
         from utils.x_metrics import record_deep
-        corpus = getattr(a, "corpus", None) or {}
+        corpus = corpus or {}
+        # The tally utils.analyze writes page by page, NOT a field read off a
+        # return value that a crash prevented from existing.
         billed = int(corpus.get("posts_billed") or 0)
         record_deep(event_id=req.event_id, ticker=req.ticker.upper(),
                     query=str(corpus.get("corpus_key") or req.ticker),
                     posts_billed=billed,
-                    # A crash with no corpus attached reads as 0 billed, which
-                    # is not the same as a cache hit -- but from_cache is a
-                    # reporting flag, and claiming a purchase we cannot evidence
-                    # would be worse than under-flagging one we can.
-                    from_cache=billed == 0)
+                    # Only a run that reached the end and bought nothing is a
+                    # cache hit. A crash before any page is 0 billed too, and
+                    # calling that "cached" would put a comfortable label on an
+                    # unknown -- so it is flagged only when the analysis
+                    # actually finished.
+                    from_cache=billed == 0 and bool(corpus.get("wire_state")))
     except Exception:
         # record_deep already swallows its own failures; this catches anything
         # in building the call. Never let metrics fail a paid analysis.
@@ -617,9 +657,18 @@ def analyze(req: AnalyzeRequest,
         # advancing the budget meant to bound it. A test asserted the placement
         # was safe by comparing source positions -- true, and irrelevant, since
         # an early return does not care what comes later in the file.
+        # THE SINK IS OURS, and that is what makes the crash path work.
+        #
+        # Reading spend off the returned Analysis was still broken: when run()
+        # raises there IS no Analysis, so the helper saw an empty corpus,
+        # recorded 0 billed and flagged it as a cache hit -- a false record, and
+        # the real spend still invisible to the budget. utils.analyze accepts a
+        # corpus_sink it fills as it goes, and a dict we hold survives an
+        # exception that a return value does not.
+        spend_sink: dict = {}
         a = None
         try:
-            a = run(req.ticker, req.sector)
+            a = run(req.ticker, req.sector, corpus_sink=spend_sink)
         except Exception as e:
             # A raise here happens AFTER the money is spent, and a bare 500
             # invites the retry loop this endpoint is written to avoid.
@@ -628,7 +677,7 @@ def analyze(req: AnalyzeRequest,
                     "error": f"{type(e).__name__}",
                     "elapsed_s": round(time.time()-t0, 2)}
         finally:
-            _record_deep_spend(req, a)
+            _record_deep_spend(req, spend_sink)
             _SLOTS.release()
     finally:
         _lock.release()
