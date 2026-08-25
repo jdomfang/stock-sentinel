@@ -1,16 +1,47 @@
-# Test-only dependencies. The application's own requirements are per-service
-# (core_api/requirements.txt, inference/requirements.txt, payments_api/...).
+# Test dependencies. Install with:  pip install -r requirements-dev.txt
+#
+# THIS FILE MUST BE ABLE TO RUN THE WHOLE SUITE ON A CLEAN MACHINE. It could
+# not: it listed psycopg2, numpy, pandas and pyflakes, while tests/test_core_api.py
+# imports fastapi and tests/test_payments.py needs the app's own imports to
+# resolve. It passed locally only because the developer venv already had them,
+# and the CI workflow it was written for would have gone red on its first run --
+# a test-infrastructure change that was never tested on the infrastructure.
 #
 # There is no pytest here on purpose. Each suite is a standalone script with a
-# check() helper that prints a line per assertion and exits non-zero on failure
-# -- runnable as `python3 tests/test_x.py` with no runner, no plugins and no
+# check() helper, runnable as `python3 tests/test_x.py` with no runner and no
 # collection rules. An external review tried `pytest`, got nothing, and reported
-# that the project had no tests; it has ~1,700 assertions. Hence tests/run_all.py
-# and the CI workflow, so the answer is one command either way.
+# the project had no tests; it has ~1,800 assertions.
 
-psycopg2-binary>=2.9        # the five suites that run the real migration chain
-numpy>=1.26                 # tests/test_relative.py
-pandas>=2.0                 # fixtures shared with the app
+# ---- test tooling
+psycopg2-binary>=2.9        # the SQL suites that apply the real migration chain
 pyflakes>=3.0               # tests/test_runtime_compat.py: undefined-name check.
                             # A NameError on the remember-me path shipped past a
                             # green suite because nothing imports utils/auth.py.
+
+# ---- what the application code imports at module scope
+#
+# The suites import the real modules rather than mocking them, which is what
+# makes them catch import-time breakage -- so the suite needs whatever those
+# modules need. Kept in step with the per-service requirements files.
+fastapi==0.115.6            # core_api/main.py, payments_api/main.py
+pydantic==2.10.4            # request models in both services
+supabase==2.5.0             # utils/supabase_client.py
+requests==2.32.3            # utils/billing.py, inference client
+numpy==1.26.4               # tests/test_relative.py -- PINNED: the projection
+                            # is a Monte Carlo and streams shift across majors
+pandas>=2.0                 # fixtures shared with the app
+httpx>=0.27                 # fastapi.testclient
+streamlit==1.40.0           # tests/test_refund_paths.py imports the real
+                            # StopException; test_runtime_compat imports pages
+polygon-api-client==1.13.7  # utils/finance.py, reached by test_core_api's
+                            # readiness check
+stripe==10.12.0             # payments_api/main.py at module scope
+sentry-sdk==2.66.1          # payments_api/main.py, portal obs
+
+# PINNED where the services pin them. A test suite resolving a different
+# version of the thing it is testing is a suite testing something else -- and
+# numpy in particular decides the projection, which is a 2000-path Monte Carlo
+# whose Generator streams are not stable across majors.
+
+# NOT torch/transformers. inference/ carries its own requirements and its model
+# stack is ~2GB; the suites stub the scorer rather than load it.

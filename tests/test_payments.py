@@ -496,6 +496,58 @@ def test_a_dispute_is_not_a_charge():
           r3.status_code == 200, str(r3.status_code))
 
 
+def test_an_unresolvable_revocation_is_recorded_not_forgotten():
+    """Terminal states must leave a trace; transient ones must retry.
+
+    A refund or dispute that reached the end of the handler without revoking
+    anything returned {"ok": True}. Stripe marks it delivered, stops retrying,
+    and the refunded purchase keeps its credits -- silently, with only a log
+    line in a service nobody tails.
+
+    5xx is wrong for these: Stripe answered every question and the answer was
+    "nothing to link this to". Retrying for three days cannot change that. So
+    they are recorded as unresolved and acknowledged.
+    """
+    print("\nan unrevokable refund must not vanish into a 200")
+    client, M, db = load()
+    r = post(client, charge_event(pi=None))
+    check("acknowledged, not retried forever", r.status_code == 200, str(r.status_code))
+    check("nothing was revoked", db.grants == [], str(db.grants))
+    check("...and it is flagged in the response",
+          r.json().get("unresolved") is True, str(r.json()))
+    marks = [k for k in db.guard if k.startswith("unresolved:")]
+    check("an unresolved marker is persisted", len(marks) == 1, str(db.guard))
+    check("...keyed so it cannot collide with a real guard",
+          marks and not marks[0].startswith(("grant:", "revoke:")), str(marks))
+
+
+def test_a_transient_stripe_failure_during_a_dispute_retries():
+    """The opposite case, and the distinction the whole classification rests on.
+
+    A Stripe lookup that fails is a bad minute, not a terminal answer. It must
+    propagate to a 500 so Stripe retries -- catching it would carry on with
+    payment_intent=None and return 200, converting a recoverable blip into a
+    permanently unrevoked dispute.
+    """
+    print("\na Stripe blip mid-dispute must retry, not resolve to nothing")
+    client, M, db = load()
+    post(client, session_event())
+    db.grants.clear()
+
+    import stripe as _stripe
+    def _boom(_id):
+        raise RuntimeError("Stripe rate limited")
+    _stripe.Charge = type("C", (), {"retrieve": staticmethod(_boom)})
+
+    r = post(client, {"id": "evt_t", "type": "charge.dispute.created",
+                      "data": {"object": {"id": "dp_t", "amount": 500,
+                                          "currency": "usd", "charge": "ch_t"}}})
+    check("a transient lookup failure returns 500", r.status_code == 500, str(r.status_code))
+    check("...and revokes nothing yet", db.grants == [], str(db.grants))
+    check("...and leaves no 'unresolved' marker to suppress the retry",
+          not any(k.startswith("unresolved:") for k in db.guard), str(db.guard))
+
+
 def test_a_refund_without_a_payment_intent_does_not_crash():
     """`event_id` was assigned only in the checkout branch; this branch read it."""
     print("\nthe UnboundLocalError path")

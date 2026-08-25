@@ -165,6 +165,37 @@ def _is_paid_work(event_id: str | None) -> bool:
         return True
 
 
+def _record_deep_spend(req, a) -> None:
+    """Write what this analysis cost to x_call_metrics. Never raises.
+
+    x_call_metrics allows kind in ('scan','deep') and only ever held 'scan', so
+    a deep analysis -- up to ~400 billed posts against a scan's 300 -- left no
+    trace anywhere. Harmless as a reporting gap; not harmless once the daily
+    budget started summing that table, because the guard on /analyze was reading
+    a counter /analyze could never increment.
+
+    Called from a `finally`, so it runs on the crash path too. A failed analysis
+    still bought the posts.
+    """
+    try:
+        from utils.x_metrics import record_deep
+        corpus = getattr(a, "corpus", None) or {}
+        billed = int(corpus.get("posts_billed") or 0)
+        record_deep(event_id=req.event_id, ticker=req.ticker.upper(),
+                    query=str(corpus.get("corpus_key") or req.ticker),
+                    posts_billed=billed,
+                    # A crash with no corpus attached reads as 0 billed, which
+                    # is not the same as a cache hit -- but from_cache is a
+                    # reporting flag, and claiming a purchase we cannot evidence
+                    # would be worse than under-flagging one we can.
+                    from_cache=billed == 0)
+    except Exception:
+        # record_deep already swallows its own failures; this catches anything
+        # in building the call. Never let metrics fail a paid analysis.
+        logger.warning("could not record deep spend for %s",
+                       getattr(req, "ticker", "?"), exc_info=True)
+
+
 def _enforce_budget(event_id: str | None = None) -> None:
     """The ceiling applies to UNPAID work only.
 
@@ -578,6 +609,15 @@ def analyze(req: AnalyzeRequest,
             raise HTTPException(status_code=429,
                                 detail=f"at capacity ({MAX_CONCURRENT} concurrent)",
                                 headers={"X-Core-Refused": "capacity"})
+        # THE SPEND IS RECORDED IN A finally, and the placement is the point.
+        #
+        # It used to sit after the locks were released, which reads as "outside
+        # the try" and is not: the `except` below RETURNS, so a crashed analysis
+        # skipped it entirely and could buy X posts indefinitely without ever
+        # advancing the budget meant to bound it. A test asserted the placement
+        # was safe by comparing source positions -- true, and irrelevant, since
+        # an early return does not care what comes later in the file.
+        a = None
         try:
             a = run(req.ticker, req.sector)
         except Exception as e:
@@ -588,33 +628,11 @@ def analyze(req: AnalyzeRequest,
                     "error": f"{type(e).__name__}",
                     "elapsed_s": round(time.time()-t0, 2)}
         finally:
+            _record_deep_spend(req, a)
             _SLOTS.release()
     finally:
         _lock.release()
     elapsed = round(time.time() - t0, 2)
-
-    # RECORD THE SPEND, before anything below can return early.
-    #
-    # x_call_metrics allows kind in ('scan','deep') and only ever held 'scan',
-    # so a deep analysis -- the more expensive of the two, up to ~400 billed
-    # posts against a scan's 300 -- left no trace anywhere. Harmless as a
-    # reporting gap; not harmless once the daily budget started summing that
-    # table, because the guard on THIS endpoint was reading a counter this
-    # endpoint could never increment.
-    #
-    # Outside any try that could skip it and outside every early return: a
-    # failed analysis still bought the posts, so it still consumes the budget.
-    try:
-        from utils.x_metrics import record_deep
-        _billed = int(a.corpus.get("posts_billed") or 0)
-        record_deep(event_id=req.event_id, ticker=req.ticker.upper(),
-                    query=str(a.corpus.get("corpus_key") or req.ticker),
-                    posts_billed=_billed,
-                    from_cache=_billed == 0)
-    except Exception:
-        # record_deep already swallows its own failures; this catches anything
-        # in building the call. Never let metrics fail a paid analysis.
-        logger.warning("could not record deep spend for %s", req.ticker, exc_info=True)
 
     # A LEGACY DELIVERY IS A DELIVERY. analyze() now produces a fallback
     # summary, a projection and a card when the ledger yields no verdict, and

@@ -18,57 +18,111 @@
 --   Every row should read PASS. Anything else is a live hole; the detail says
 --   what it allows.
 
-select 'no self-service credits (profiles_update_own)' as check_name,
-       case when exists (select 1 from pg_policies
-                          where schemaname='public' and tablename='profiles'
-                            and policyname='profiles_update_own')
-            then 'FAIL - a user can set their own credits and role'
-            else 'PASS' end as result
-union all
-select 'no forged ledger rows (usage_insert_own)',
-       case when exists (select 1 from pg_policies
-                          where schemaname='public' and tablename='usage_events'
-                            and policyname='usage_insert_own')
-            then 'FAIL - a user can forge their own audit trail'
-            else 'PASS' end
-union all
-select 'no admin ledger inserts (usage_insert_admin)',
-       case when exists (select 1 from pg_policies
-                          where schemaname='public' and tablename='usage_events'
-                            and policyname='usage_insert_admin')
-            then 'FAIL - ledger rows can be written outside the credit functions'
-            else 'PASS' end
-union all
-select 'admin CAN still adjust other accounts (profiles_update_admin)',
-       case when exists (select 1 from pg_policies
-                          where schemaname='public' and tablename='profiles'
-                            and policyname='profiles_update_admin')
-            then 'PASS'
-            else 'FAIL - this one is deliberate and must exist' end
-union all
-select 'signup trigger pins search_path (handle_new_user)',
-       case when exists (select 1 from pg_proc
-                          where proname='handle_new_user'
-                            and proconfig::text like '%search_path%')
-            then 'PASS'
-            else 'FAIL - hijackable SECURITY DEFINER on every signup' end
-union all
-select 'paid work bypasses the spend cap (is_open_paid_work)',
-       case when exists (select 1 from pg_proc where proname='is_open_paid_work')
-            then 'PASS'
-            else 'FAIL - migration 20260825040000 not applied' end
-union all
-select 'remember-me token store is locked down',
-       case when (select relrowsecurity from pg_class where relname='remember_tokens')
-             and not exists (select 1 from pg_policies where tablename='remember_tokens')
-            then 'PASS'
-            else 'FAIL - refresh tokens are reachable by a user JWT' end
-union all
-select 'credit functions are service_role only',
-       case when has_function_privilege('authenticated',
-              'public.consume_credit(uuid,text,jsonb,text)','EXECUTE')
-             or has_function_privilege('authenticated',
-              'public.grant_credits(uuid,integer,integer,text,text)','EXECUTE')
-            then 'FAIL - a signed-in user can grant themselves credits'
-            else 'PASS' end
-order by 1;
+with checks(sort_key, check_name, ok, detail) as (
+
+  -- RLS policies. Schema-qualified, so a same-named policy on another schema
+  -- cannot answer for this one.
+  select 1, 'no self-service credits (profiles_update_own)',
+         not exists (select 1 from pg_policies
+                      where schemaname='public' and tablename='profiles'
+                        and policyname='profiles_update_own'),
+         'a user can set their own credits and role'
+  union all
+  select 2, 'no forged ledger rows (usage_insert_own)',
+         not exists (select 1 from pg_policies
+                      where schemaname='public' and tablename='usage_events'
+                        and policyname='usage_insert_own'),
+         'a user can forge the audit trail that explains their balance'
+  union all
+  select 3, 'no admin ledger inserts (usage_insert_admin)',
+         not exists (select 1 from pg_policies
+                      where schemaname='public' and tablename='usage_events'
+                        and policyname='usage_insert_admin'),
+         'ledger rows can be written outside the credit functions'
+  union all
+  select 4, 'admin CAN still adjust other accounts (profiles_update_admin)',
+         exists (select 1 from pg_policies
+                  where schemaname='public' and tablename='profiles'
+                    and policyname='profiles_update_admin'),
+         'deliberate: the owner created it so an admin can adjust other accounts'
+
+  -- SECURITY DEFINER hygiene. EVERY such function, not a list somebody keeps.
+  union all
+  select 5, 'every SECURITY DEFINER function pins search_path',
+         not exists (
+           select 1 from pg_proc p join pg_namespace n on n.oid = p.pronamespace
+            where n.nspname = 'public' and p.prosecdef
+              and coalesce(array_to_string(p.proconfig, ','), '') not like '%search_path%'),
+         'a mutable search_path lets an attacker shadow a table it writes'
+
+  -- EXECUTE on every function that moves money or issues a credential.
+  -- to_regprocedure returns NULL for a missing function, so a renamed or
+  -- absent one reads as FAIL rather than silently passing.
+  union all
+  select 6, 'no money/credential RPC is callable by a user JWT',
+         not exists (
+           select 1 from unnest(array[
+             'public.consume_credit(uuid,text,jsonb,text)',
+             'public.refund_credit(uuid,text,uuid,text)',
+             'public.grant_credits(uuid,integer,integer,text,text)',
+             'public.admin_adjust_credits(uuid,uuid,integer,integer,boolean,text,text)',
+             'public.reap_orphaned_work(interval)',
+             'public.remember_issue(text,uuid,text,interval,text)',
+             'public.remember_consume(text)',
+             'public.remember_revoke_all(uuid)',
+             'public.x_posts_billed_since(interval)',
+             'public.is_open_paid_work(uuid)'
+           ]) sig
+            join unnest(array['anon','authenticated']) role_name on true
+           where to_regprocedure(sig) is null
+              or has_function_privilege(role_name, sig::regprocedure, 'EXECUTE')),
+         'a signed-in user can call it, or it does not exist under that signature'
+  union all
+  select 7, 'service_role CAN call all of them',
+         not exists (
+           select 1 from unnest(array[
+             'public.consume_credit(uuid,text,jsonb,text)',
+             'public.refund_credit(uuid,text,uuid,text)',
+             'public.grant_credits(uuid,integer,integer,text,text)',
+             'public.admin_adjust_credits(uuid,uuid,integer,integer,boolean,text,text)',
+             'public.remember_consume(text)',
+             'public.x_posts_billed_since(interval)',
+             'public.is_open_paid_work(uuid)'
+           ]) sig
+           where to_regprocedure(sig) is null
+              or not has_function_privilege('service_role', sig::regprocedure, 'EXECUTE')),
+         'the app cannot work without these'
+
+  -- The credential store. to_regclass so a MISSING table is FAIL, not NULL.
+  union all
+  select 8, 'remember-me token store exists and is locked down',
+         to_regclass('public.remember_tokens') is not null
+         and coalesce((select relrowsecurity from pg_class
+                        where oid = to_regclass('public.remember_tokens')), false)
+         and not exists (select 1 from pg_policies
+                          where schemaname='public' and tablename='remember_tokens')
+         and not has_table_privilege('authenticated', 'public.remember_tokens', 'SELECT'),
+         'refresh tokens are reachable by a user JWT'
+  union all
+  select 9, 'balance and ledger tables have RLS on',
+         coalesce((select bool_and(relrowsecurity) from pg_class c
+                    join pg_namespace n on n.oid = c.relnamespace
+                   where n.nspname='public'
+                     and c.relname in ('profiles','usage_events','work_runs','purchases')),
+                  false),
+         'a table with RLS off is readable by anyone with the anon key'
+  union all
+  select 10, 'the merged credits column exists with a floor',
+         to_regclass('public.profiles') is not null
+         and exists (select 1 from information_schema.columns
+                      where table_schema='public' and table_name='profiles'
+                        and column_name='credits')
+         and exists (select 1 from pg_constraint
+                      where conrelid = to_regclass('public.profiles')
+                        and contype='c' and pg_get_constraintdef(oid) like '%credits%>=%0%'),
+         'the live balance can go negative'
+)
+select check_name,
+       case when ok then 'PASS' else 'FAIL - ' || detail end as result
+  from checks
+ order by sort_key;

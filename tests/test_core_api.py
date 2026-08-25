@@ -904,13 +904,32 @@ def test_a_deep_analysis_records_its_spend():
     MORE expensive endpoint effectively uncapped.
     """
     print("\nspend: a deep analysis must appear in the number the budget reads")
-    src = (REPO / "core_api" / "main.py").read_text()
-    body = src[src.index("def analyze("):]
-    check("analyze records deep spend", "record_deep" in body,
-          "the budget cannot see /analyze at all")
-    check("...outside the try that could skip it",
-          body.index("record_deep") > body.index("_lock.release()"),
-          "a failed analysis still bought the posts and still costs budget")
+    # BEHAVIOURAL, not a source-position comparison.
+    #
+    # The previous version asserted `record_deep` appeared LATER in the file
+    # than `_lock.release()` and called that "outside the try that could skip
+    # it". It is later, and it was skipped anyway: the except handler RETURNS,
+    # and an early return does not care what comes further down the file. The
+    # crash path -- the one that matters, because a failed analysis has already
+    # bought the posts -- recorded nothing.
+    import utils.analyze as _ua, utils.x_metrics as _xm
+    c2, M2 = client(budget=0)
+    recorded = []
+    _orig = (_ua.analyze, _xm.record_deep)
+    _xm.record_deep = lambda **kw: recorded.append(kw) or True
+
+    def _boom(*a, **k):
+        raise RuntimeError("X died after the posts were bought")
+    _ua.analyze = _boom
+    try:
+        r = c2.post("/analyze", json={"ticker": "AAPL", "event_id": None},
+                    headers={"X-Core-Secret": "s3cret"})
+        check("a crashed analysis still answers", r.status_code == 200, str(r.status_code))
+        check("...and STILL records its spend", len(recorded) == 1, str(recorded))
+        check("...against the right ticker",
+              recorded and recorded[0].get("ticker") == "AAPL", str(recorded))
+    finally:
+        _ua.analyze, _xm.record_deep = _orig
 
     xm = (REPO / "utils" / "x_metrics.py").read_text()
     check("record_deep writes kind='deep'", '"kind": "deep"' in xm, "wrong kind")

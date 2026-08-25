@@ -275,6 +275,41 @@ def _purchase_by_payment_intent(payment_intent_id: str) -> dict[str, Any] | None
         return None
 
 
+def _record_unresolved(etype: str, event_id: str | None, obj: dict, why: str) -> None:
+    """A money event we cannot act on, written where somebody will find it.
+
+    THE STATE THIS EXISTS FOR. A refund or dispute that reaches the end of the
+    handler without revoking anything used to return {"ok": True}. Stripe marks
+    it delivered, stops retrying, and the refunded purchase keeps its credits --
+    silently, forever, with only a log line in a service nobody tails.
+
+    Returning 5xx instead would be wrong for these cases: they are TERMINAL, not
+    transient. Stripe answered every question we asked and the answer was "there
+    is nothing to link this to". Retrying for three days cannot change that; it
+    just buries the event under failed deliveries.
+
+    So the event is recorded as unresolved and acknowledged. The row is the
+    handoff to a human, and scripts/reconcile_stripe.py is where it surfaces.
+    Written to stripe_events_processed with an `unresolved:` key so it can never
+    collide with a real guard key and can never suppress a later, correct
+    attempt at the same business object.
+    """
+    key = f"unresolved:{etype}:{event_id or obj.get('id') or 'unknown'}"
+    logger.critical("UNRESOLVED MONEY EVENT %s -- %s. obj=%s. Reconcile by hand.",
+                    key, why, obj.get("id"))
+    try:
+        _supabase_admin_client().table("stripe_events_processed").insert({
+            "event_id": key,
+            "user_id": None,
+            "checkout_session_id": None,
+        }).execute()
+    except Exception:
+        # Already recorded, or the table is unreachable. The CRITICAL log above
+        # is the durable half either way -- this must never mask the original
+        # problem behind a second one.
+        logger.warning("could not persist unresolved marker %s", key, exc_info=True)
+
+
 def _require_shared_secret(x_payments_shared_secret: str | None) -> None:
     # Simple shared-secret auth for the Streamlit -> API call.
     if not PAYMENTS_API_SHARED_SECRET:
@@ -546,17 +581,24 @@ async def stripe_webhook(request: Request):
                 if isinstance(_ch, dict):
                     payment_intent = _ch.get("payment_intent")
                 elif isinstance(_ch, str) and STRIPE_SECRET_KEY:
-                    try:
-                        _full = stripe.Charge.retrieve(_ch)
-                        _full = _full if isinstance(_full, dict) else {}
-                        payment_intent = _full.get("payment_intent")
-                    except Exception:
-                        logger.exception("dispute: could not resolve charge %s", _ch)
+                    # DELIBERATELY UNCAUGHT. A Stripe lookup that fails is
+                    # TRANSIENT -- rate limit, timeout, a bad minute -- and
+                    # letting it propagate means the outer handler returns 500
+                    # and Stripe retries, which is the whole point of the retry
+                    # classification. Catching it here would turn a recoverable
+                    # blip into a permanently unrevoked dispute, because the
+                    # handler would carry on with payment_intent=None and
+                    # return 200.
+                    _full = stripe.Charge.retrieve(_ch)
+                    _full = _full if isinstance(_full, dict) else {}
+                    payment_intent = _full.get("payment_intent")
                 if not payment_intent:
-                    logger.critical(
-                        "DISPUTE WITH NO PAYMENT INTENT -- nothing revoked. "
-                        "dispute=%s charge=%s. Reconcile by hand.",
-                        obj.get("id"), obj.get("charge"))
+                    # TERMINAL, not transient: Stripe answered and there is no
+                    # charge to link to. Retrying cannot change that, so a 500
+                    # would only buy three days of failing retries. Record it
+                    # where a human will find it and acknowledge the event.
+                    _record_unresolved(etype, event_id, obj,
+                                       "dispute has no resolvable payment_intent")
             charge = obj
             user_id = None
             # 0, not -1. These are overwritten by every path that learns the
@@ -630,6 +672,18 @@ async def stripe_webhook(request: Request):
                 except Exception:
                     logger.exception("PaymentIntent lookup failed for %s", payment_intent)
                     user_id = None
+
+            if not user_id:
+                # Nothing to revoke against. Reached when the purchases row is
+                # missing AND Stripe's metadata carries no user_id, or the
+                # amount is unpriceable. Stripe answered every question we
+                # asked, so this is terminal rather than retryable -- but a
+                # disputed purchase keeping its credits is exactly the outcome
+                # the retry classification exists to prevent, so it must not
+                # simply fall through to {"ok": True} unremarked.
+                _record_unresolved(etype, event_id, charge,
+                                   "no user could be identified for this revocation")
+                return {"ok": True, "unresolved": True}
 
             if user_id and scan_delta == 0 and deep_delta == 0:
                 logger.info("Refund revokes nothing (zero-credit purchase) payment_intent=%s",
