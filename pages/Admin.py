@@ -151,7 +151,7 @@ st.subheader("👥 Users")
 def _load_profiles():
     return (
         sb.table("profiles")
-        .select("user_id,email,role,disabled,scan_credits,deep_credits,created_at")
+        .select("user_id,email,role,disabled,credits,created_at")
         .order("created_at", desc=True)
         .execute()
     )
@@ -244,15 +244,19 @@ if not selected:
 
 uid = selected.get("user_id")
 
-c1, c2, c3, c4 = st.columns([1.0, 1.0, 1.0, 1.4])
+c1, c2, c3 = st.columns([1.0, 1.0, 1.4])
 with c1:
     disabled = st.checkbox("Disabled", value=bool(selected.get("disabled")))
 with c2:
     role = st.selectbox("Role", options=["user", "admin"], index=0 if selected.get("role") == "user" else 1)
 with c3:
-    scan_credits = st.number_input("Scan credits", min_value=0, value=int(selected.get("scan_credits") or 0), step=1)
-with c4:
-    deep_credits = st.number_input("Deep credits", min_value=0, value=int(selected.get("deep_credits") or 0), step=1)
+    # ONE input. Two inputs against one wallet is a balance doubler: both would
+    # default from the same merged number, so an admin opening a user with 10
+    # credits sees 10 and 10, changes only a role, saves, and writes 20. The
+    # ledger records that as a deliberate adjustment with an actor and a reason,
+    # so reconciliation AGREES with it and nothing anywhere notices. Twice: 40.
+    credits = st.number_input("Credits", min_value=0,
+                              value=int(selected.get("credits") or 0), step=1)
 
 adjust_reason = st.text_input(
     "Reason (recorded in the ledger)",
@@ -266,6 +270,8 @@ _ADJUST_MESSAGES = {
     "cannot_demote_self": "You cannot remove your own admin role — that would lock you out.",
     "cannot_disable_self": "You cannot disable your own account — that would lock you out.",
     "invalid_credits": "Credits must be zero or greater.",
+    "deep_credits_retired": ("This page is out of date — scan and analysis "
+                             "credits are now one balance. Reload the page."),
     "invalid_role": "Role must be 'user' or 'admin'.",
     "profile_not_found": "That profile no longer exists.",
 }
@@ -290,8 +296,14 @@ if st.button("💾 Save changes", type="primary"):
             {
                 "p_actor_id": actor_id,
                 "p_user_id": uid,
-                "p_scan_credits": int(scan_credits),
-                "p_deep_credits": int(deep_credits),
+                # p_scan_credits carries the merged total; the signature is
+                # unchanged because replacing it would create a second overload
+                # rather than a new function. p_deep_credits MUST be 0 -- the
+                # function rejects anything else as deep_credits_retired, so a
+                # page still sending a real value fails loudly on the first save
+                # instead of silently doubling somebody's balance.
+                "p_scan_credits": int(credits),
+                "p_deep_credits": 0,
                 "p_disabled": bool(disabled),
                 "p_role": role,
                 "p_reason": (adjust_reason or "admin adjustment").strip()[:200],
@@ -307,10 +319,9 @@ if st.button("💾 Save changes", type="primary"):
             reason = result.get("reason") or "unknown"
             ui_error(_ADJUST_MESSAGES.get(reason, f"Could not save changes ({reason})."))
         else:
-            d_scan = result.get("delta_scan") or 0
-            d_deep = result.get("delta_deep") or 0
-            if d_scan or d_deep:
-                st.success(f"✅ Saved. Credits {d_scan:+d} scan / {d_deep:+d} deep — recorded in the ledger.")
+            delta = result.get("delta") or 0
+            if delta:
+                st.success(f"✅ Saved. Credits {delta:+d} — recorded in the ledger.")
             else:
                 st.success("✅ Saved. No credit change, so no ledger entry.")
             st.rerun()

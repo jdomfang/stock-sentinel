@@ -677,7 +677,7 @@ with st.container(key="discovery_scan_card"):
         # The pad this column has always been. Balance and buy sit beside the
         # button that spends the credit, so buying never requires running out
         # first -- and nothing about the layout moves to make room.
-        billing.render_credit_meter(kind="scan", profile=_profile, key="discovery")
+        billing.render_credit_meter(profile=_profile, key="discovery")
 
     # Last scan context line
     _last_sector = st.session_state.get("selected_sector")
@@ -755,8 +755,8 @@ if scan_triggered:
     _credit = consume_credit("scan", {"sector": sector, "page": "discovery"})
     if not _credit.ok:
         logger.info("scan refused reason=%s", _credit.reason)
-        billing.render_upgrade_modal("You've used all your scan credits.",
-                                    event_type="scan", key="scan")
+        billing.render_credit_refusal(
+            _credit, "A sector scan costs 1 credit.", key="scan")
         _bail()
 
     # Set when X refuses to serve us. Drives the refund below: the user paid for
@@ -870,7 +870,7 @@ if scan_triggered:
                 '<div style="font-size:1.5rem;margin-bottom:8px;">\u26A0\uFE0F</div>'
                 '<div style="font-weight:700;color:rgba(248,113,113,.95);font-size:1.0rem;margin-bottom:4px;">Something went wrong</div>'
                 '<div style="color:rgba(148,163,184,.80);font-size:0.88rem;">'
-                + ("Your scan credit was not used." if _refunded
+                + ("Your credit was not used." if _refunded
                    else "The scan hit an unexpected error.")
                 + '</div></div>', unsafe_allow_html=True)
             _bail()
@@ -976,7 +976,7 @@ if scan_triggered:
             if _x_err:
                 # Upstream failure, zero posts: the user paid and got nothing.
                 if refund_credit("scan", _credit.event_id, f"x api: {_x_err[:120]}"):
-                    st.info("Your scan credit was not used.")
+                    st.info("Your credit was not used.")
             else:
                 # A genuinely empty result is an answer, not a failure -- the
                 # scan ran and the sector simply had no chatter. Still charged,
@@ -1586,9 +1586,10 @@ if st.session_state.df_valid is not None:
                         {"ticker": ticker_symbol, "sector": sector, "page": "discovery"},
                     )
                     if not _dcredit.ok:
-                        billing.render_upgrade_modal(
-                        f"Unlock the full analysis for {ticker_symbol}.",
-                        event_type="deep_analyze", key="row")
+                        billing.render_credit_refusal(
+                            _dcredit,
+                            f"The full analysis for {ticker_symbol} costs "
+                            f"1 credit.", key="row")
                         _bail()
 
                     # Charged work: try/finally, not try/except. Streamlit's

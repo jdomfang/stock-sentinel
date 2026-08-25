@@ -461,26 +461,11 @@ def render_top_nav() -> None:
         # Important: if we reserve empty columns (credits/admin) while logged out,
         # Services will NOT sit next to the auth button. So we render two layouts.
 
-        @st.cache_data(ttl=2, show_spinner=False)
-        def _load_credit_counts(user_id: str) -> tuple[int, int] | None:
-            """Return (scan_credits, deep_credits) for the given user_id.
-
-            Cached briefly to avoid hammering Supabase on reruns.
-            """
-            if not user_id:
-                return None
-            sb = get_client()
-            resp = (
-                sb.table("profiles")
-                .select("scan_credits,deep_credits")
-                .eq("user_id", user_id)
-                .maybe_single()
-                .execute()
-            )
-            data = getattr(resp, "data", None) or None
-            if not data:
-                return None
-            return int(data.get("scan_credits") or 0), int(data.get("deep_credits") or 0)
+        # _load_credit_counts lived here and was never called -- credits were
+        # pulled out of the nav (see below) without removing the fetcher. It
+        # selected scan_credits/deep_credits, which are now frozen pre-merge
+        # snapshots, so leaving it would have left a plausible-looking helper
+        # that silently returns the wrong balance to whoever revives it.
 
         # Phase 1 fix: unified column layout for both logged-in and logged-out states.
         # Credits are removed from the nav entirely — they render in the page body (Home.py).

@@ -43,21 +43,17 @@ except ImportError:
 DSN = "host=127.0.0.1 port=5433 dbname=sentinel_test user=supabase_admin password=postgres"
 
 REPO = Path(__file__).resolve().parent.parent
-MIGRATIONS = [
-    REPO / "tests/sql/00_supabase_stub.sql",
-    # The FULL production chain, in production order. Applying a subset used to
-    # be fine, but 20260802010000 extracts consume_credit from 20260801060000 --
-    # so it references public.work_runs, and a suite that skipped that migration
-    # installed a function pointing at a table it had never created. An audit had
-    # already flagged fixture-vs-production divergence as the thing that makes a
-    # green suite meaningless; this keeps them identical by construction.
-    REPO / "supabase/migrations/20260801010000_purchases.sql",
-    REPO / "supabase/migrations/20260801020000_credit_integrity.sql",
-    REPO / "supabase/migrations/20260801030000_admin_adjust_credits.sql",
-    REPO / "supabase/migrations/20260801050000_grant_credits.sql",
-    REPO / "supabase/migrations/20260801060000_work_runs.sql",
-    REPO / "supabase/migrations/20260802010000_caller_identity.sql",
-]
+# Import by repo root rather than by whatever happens to be on sys.path
+# when this file is invoked -- running it as a script puts tests/ first,
+# running it under a runner from the repo root does not.
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+from tests.migrations import chain as _chain  # noqa: E402
+
+# Discovered, not listed. Four suites each kept their own hand-typed
+# chain and they had already drifted -- see tests/migrations.py for the
+# failure that produces (an old function definition, asserted against,
+# passing green and proving nothing).
+MIGRATIONS = _chain()
 
 PASSED: list[str] = []
 FAILED: list[tuple[str, str]] = []
@@ -82,16 +78,21 @@ def rpc(cur, fn: str, *args):
 def seed_user(cur, scan=1, deep=1, disabled=False, admin=False) -> str:
     uid = str(uuid.uuid4())
     cur.execute("insert into auth.users (id, email) values (%s, %s)", (uid, f"{uid[:8]}@t.test"))
+    # credits is the sum, and it is set EXPLICITLY -- the column carries a
+    # DEFAULT of 2 (the signup grant, which is a default rather than a ledger
+    # row), so omitting it would hand every seeded profile two credits nothing
+    # asked for and make every absolute-set assertion below off by two.
     cur.execute(
-        "insert into public.profiles (user_id, email, role, disabled, scan_credits, deep_credits)"
-        " values (%s, %s, %s, %s, %s, %s)",
-        (uid, f"{uid[:8]}@t.test", "admin" if admin else "user", disabled, scan, deep),
+        "insert into public.profiles (user_id, email, role, disabled, credits,"
+        " scan_credits, deep_credits) values (%s, %s, %s, %s, %s, %s, %s)",
+        (uid, f"{uid[:8]}@t.test", "admin" if admin else "user", disabled,
+         (scan or 0) + (deep or 0), scan, deep),
     )
     return uid
 
 
 def balance(cur, uid):
-    cur.execute("select scan_credits, deep_credits, role, disabled from public.profiles where user_id=%s", (uid,))
+    cur.execute("select credits, role, disabled from public.profiles where user_id=%s", (uid,))
     return cur.fetchone()
 
 
@@ -117,19 +118,22 @@ def test_grant_writes_negative_cost(cur):
     admin = seed_user(cur, admin=True)
     u = seed_user(cur, scan=2, deep=1)
 
-    out = rpc(cur, "admin_adjust_credits", admin, u, 12, 6, False, "user", "topped up")
+    out = rpc(cur, "admin_adjust_credits", admin, u, 18, 0, False, "user", "topped up")
     check("grant ok", out.get("ok") is True, str(out))
-    check("balance updated", balance(cur, u)[:2] == (12, 6), str(balance(cur, u)))
+    check("balance updated", balance(cur, u)[0] == 18, str(balance(cur, u)))
 
     rows = adjust_rows(cur, u)
     check("exactly one ledger row", len(rows) == 1, f"{len(rows)} rows")
     if rows:
         cs, cd, meta = rows[0]
-        # cost = old - new, so granting is negative -- same direction as a purchase.
-        check("cost_scan = 2-12 = -10", cs == -10, f"got {cs}")
-        check("cost_deep = 1-6  = -5", cd == -5, f"got {cd}")
+        # cost = old - new, so granting is negative -- same direction as a
+        # purchase. The whole movement lands in cost_scan_credits: an admin
+        # adjustment is not "scan work" or "deep work", and splitting it across
+        # both columns would invent a composition the change never had.
+        check("cost_scan = 3-18 = -15", cs == -15, f"got {cs}")
+        check("cost_deep untouched", cd == 0, f"got {cd}")
         check("records the actor", meta.get("actor_id") == admin, str(meta))
-        check("records previous balance", (meta.get("previous_scan"), meta.get("previous_deep")) == (2, 1), str(meta))
+        check("records previous balance", meta.get("previous_credits") == 3, str(meta))
         check("records the reason", meta.get("reason") == "topped up", str(meta))
 
 
@@ -137,11 +141,11 @@ def test_revocation_writes_positive_cost(cur):
     print("\nledger: a revocation is recorded as positive cost")
     admin = seed_user(cur, admin=True)
     u = seed_user(cur, scan=10, deep=10)
-    rpc(cur, "admin_adjust_credits", admin, u, 4, 10, False, "user", "clawback")
+    rpc(cur, "admin_adjust_credits", admin, u, 14, 0, False, "user", "clawback")
     rows = adjust_rows(cur, u)
     check("one row", len(rows) == 1, f"{len(rows)} rows")
     if rows:
-        check("cost_scan = 10-4 = +6 (same sign as a debit)", rows[0][0] == 6, f"got {rows[0][0]}")
+        check("cost_scan = 20-14 = +6 (same sign as a debit)", rows[0][0] == 6, f"got {rows[0][0]}")
         check("deep unchanged -> cost 0", rows[0][1] == 0, f"got {rows[0][1]}")
 
 
@@ -150,11 +154,11 @@ def test_no_credit_change_writes_no_row(cur):
     admin = seed_user(cur, admin=True)
     u = seed_user(cur, scan=5, deep=5)
 
-    out = rpc(cur, "admin_adjust_credits", admin, u, 5, 5, True, "admin", "promote only")
+    out = rpc(cur, "admin_adjust_credits", admin, u, 10, 0, True, "admin", "promote only")
     check("ok", out.get("ok") is True, str(out))
     check("no event_id returned", out.get("event_id") is None, str(out))
     check("no ledger row", len(adjust_rows(cur, u)) == 0, "row written for a zero-credit change")
-    check("role/disabled still applied", balance(cur, u)[2:] == ("admin", True), str(balance(cur, u)))
+    check("role/disabled still applied", balance(cur, u)[1:] == ("admin", True), str(balance(cur, u)))
     check("reports role_changed", out.get("role_changed") is True, str(out))
 
 
@@ -162,10 +166,10 @@ def test_double_click_is_idempotent(cur):
     print("\nledger: saving the same values twice writes one row, not two")
     admin = seed_user(cur, admin=True)
     u = seed_user(cur, scan=1, deep=1)
-    rpc(cur, "admin_adjust_credits", admin, u, 9, 9, False, "user", "first")
-    rpc(cur, "admin_adjust_credits", admin, u, 9, 9, False, "user", "second")
+    rpc(cur, "admin_adjust_credits", admin, u, 18, 0, False, "user", "first")
+    rpc(cur, "admin_adjust_credits", admin, u, 18, 0, False, "user", "second")
     check("second save is a zero delta", len(adjust_rows(cur, u)) == 1, f"{len(adjust_rows(cur,u))} rows")
-    check("balance settled", balance(cur, u)[:2] == (9, 9), str(balance(cur, u)))
+    check("balance settled", balance(cur, u)[0] == 18, str(balance(cur, u)))
 
 
 def test_ledger_reconciles(cur):
@@ -173,21 +177,24 @@ def test_ledger_reconciles(cur):
     admin = seed_user(cur, admin=True)
     u = seed_user(cur, scan=0, deep=0)   # opening balance 0/0
 
-    rpc(cur, "admin_adjust_credits", admin, u, 10, 10, False, "user", "grant")
+    rpc(cur, "admin_adjust_credits", admin, u, 20, 0, False, "user", "grant")
     rpc(cur, "consume_credit", u, "scan", "{}", str(uuid.uuid4()))
     rpc(cur, "consume_credit", u, "deep_analyze", "{}", str(uuid.uuid4()))
-    rpc(cur, "admin_adjust_credits", admin, u, 4, 9, False, "user", "clawback")
+    rpc(cur, "admin_adjust_credits", admin, u, 13, 0, False, "user", "clawback")
 
+    # BOTH cost columns, summed. The merge left usage_events alone -- a scan
+    # still writes cost_scan_credits and a deep analysis still writes
+    # cost_deep_credits -- so reading one column would compare a whole balance
+    # against half a ledger and the invariant would stop meaning anything.
     cur.execute(
-        "select coalesce(sum(cost_scan_credits),0), coalesce(sum(cost_deep_credits),0)"
+        "select coalesce(sum(cost_scan_credits),0) + coalesce(sum(cost_deep_credits),0)"
         " from public.usage_events where user_id=%s", (u,))
-    sum_scan, sum_deep = cur.fetchone()
-    scan, deep = balance(cur, u)[:2]
+    ledger = cur.fetchone()[0]
+    credits = balance(cur, u)[0]
 
-    # opening was 0, so: balance == -sum(cost). This is the invariant that did
-    # not exist before this migration.
-    check(f"scan: {scan} == -({sum_scan})", scan == -sum_scan, f"balance {scan}, ledger {-sum_scan}")
-    check(f"deep: {deep} == -({sum_deep})", deep == -sum_deep, f"balance {deep}, ledger {-sum_deep}")
+    # opening was 0, so: balance == -sum(cost).
+    check(f"credits: {credits} == -({ledger})", credits == -ledger,
+          f"balance {credits}, ledger {-ledger}")
 
 
 # ── lockout ──────────────────────────────────────────────────────────────────
@@ -196,18 +203,18 @@ def test_cannot_demote_self(cur):
     print("\nlockout: an admin cannot demote or disable themselves")
     admin = seed_user(cur, admin=True, scan=5, deep=5)
 
-    out = rpc(cur, "admin_adjust_credits", admin, admin, 5, 5, False, "user", "oops")
+    out = rpc(cur, "admin_adjust_credits", admin, admin, 10, 0, False, "user", "oops")
     check("demote self refused", out.get("reason") == "cannot_demote_self", str(out))
-    check("still admin", balance(cur, admin)[2] == "admin", str(balance(cur, admin)))
+    check("still admin", balance(cur, admin)[1] == "admin", str(balance(cur, admin)))
 
-    out = rpc(cur, "admin_adjust_credits", admin, admin, 5, 5, True, "admin", "oops")
+    out = rpc(cur, "admin_adjust_credits", admin, admin, 10, 0, True, "admin", "oops")
     check("disable self refused", out.get("reason") == "cannot_disable_self", str(out))
-    check("still enabled", balance(cur, admin)[3] is False, str(balance(cur, admin)))
+    check("still enabled", balance(cur, admin)[2] is False, str(balance(cur, admin)))
 
     # The guard must not block the legitimate case it sits next to.
-    out = rpc(cur, "admin_adjust_credits", admin, admin, 50, 50, False, "admin", "self top-up")
+    out = rpc(cur, "admin_adjust_credits", admin, admin, 100, 0, False, "admin", "self top-up")
     check("admin CAN still adjust own credits", out.get("ok") is True, str(out))
-    check("own credits applied", balance(cur, admin)[:2] == (50, 50), str(balance(cur, admin)))
+    check("own credits applied", balance(cur, admin)[0] == 100, str(balance(cur, admin)))
 
 
 def test_can_still_manage_others(cur):
@@ -215,9 +222,9 @@ def test_can_still_manage_others(cur):
     admin = seed_user(cur, admin=True)
     other = seed_user(cur, scan=3, deep=3, admin=True)
 
-    out = rpc(cur, "admin_adjust_credits", admin, other, 3, 3, True, "user", "demote+disable other")
+    out = rpc(cur, "admin_adjust_credits", admin, other, 6, 0, True, "user", "demote+disable other")
     check("can demote another admin", out.get("ok") is True, str(out))
-    check("other demoted and disabled", balance(cur, other)[2:] == ("user", True), str(balance(cur, other)))
+    check("other demoted and disabled", balance(cur, other)[1:] == ("user", True), str(balance(cur, other)))
 
 
 def test_actor_must_be_enabled_admin(cur):
@@ -225,12 +232,12 @@ def test_actor_must_be_enabled_admin(cur):
     plain = seed_user(cur)
     victim = seed_user(cur, scan=1, deep=1)
     check("non-admin actor refused",
-          rpc(cur, "admin_adjust_credits", plain, victim, 999, 999, False, "user", "x").get("reason") == "not_admin")
-    check("victim balance untouched", balance(cur, victim)[:2] == (1, 1), str(balance(cur, victim)))
+          rpc(cur, "admin_adjust_credits", plain, victim, 1998, 0, False, "user", "x").get("reason") == "not_admin")
+    check("victim balance untouched", balance(cur, victim)[0] == 2, str(balance(cur, victim)))
 
     dis_admin = seed_user(cur, admin=True, disabled=True)
     check("disabled admin refused",
-          rpc(cur, "admin_adjust_credits", dis_admin, victim, 999, 999, False, "user", "x").get("reason") == "not_admin")
+          rpc(cur, "admin_adjust_credits", dis_admin, victim, 1998, 0, False, "user", "x").get("reason") == "not_admin")
 
     # The whole point of the actor check: holding the service-role key is not
     # enough, because the actor id is just an argument the caller supplies.
@@ -243,17 +250,17 @@ def test_input_validation(cur):
     u = seed_user(cur, scan=5, deep=5)
 
     check("negative scan refused",
-          rpc(cur, "admin_adjust_credits", admin, u, -1, 5, False, "user", "x").get("reason") == "invalid_credits")
+          rpc(cur, "admin_adjust_credits", admin, u, -1, 0, False, "user", "x").get("reason") == "invalid_credits")
     check("negative deep refused",
-          rpc(cur, "admin_adjust_credits", admin, u, 5, -3, False, "user", "x").get("reason") == "invalid_credits")
+          rpc(cur, "admin_adjust_credits", admin, u, 5, -3, False, "user", "x").get("reason") == "deep_credits_retired")
     check("null credits refused",
-          rpc(cur, "admin_adjust_credits", admin, u, None, 5, False, "user", "x").get("reason") == "invalid_credits")
+          rpc(cur, "admin_adjust_credits", admin, u, None, 0, False, "user", "x").get("reason") == "invalid_credits")
     check("bogus role refused",
-          rpc(cur, "admin_adjust_credits", admin, u, 5, 5, False, "superuser", "x").get("reason") == "invalid_role")
+          rpc(cur, "admin_adjust_credits", admin, u, 10, 0, False, "superuser", "x").get("reason") == "invalid_role")
     check("missing profile refused",
-          rpc(cur, "admin_adjust_credits", admin, str(uuid.uuid4()), 5, 5, False, "user", "x").get("reason")
+          rpc(cur, "admin_adjust_credits", admin, str(uuid.uuid4()), 10, 0, False, "user", "x").get("reason")
           == "profile_not_found")
-    check("balance untouched by every refusal", balance(cur, u)[:2] == (5, 5), str(balance(cur, u)))
+    check("balance untouched by every refusal", balance(cur, u)[0] == 10, str(balance(cur, u)))
 
 
 def test_execute_is_service_role_only(cur):
@@ -275,7 +282,7 @@ def test_concurrent_adjust_vs_debit(cur):
         c = conn()
         try:
             with c.cursor() as k:
-                return rpc(k, "admin_adjust_credits", admin, u, 100, 100, False, "user", "concurrent")
+                return rpc(k, "admin_adjust_credits", admin, u, 200, 0, False, "user", "concurrent")
         finally:
             c.close()
 
@@ -291,16 +298,19 @@ def test_concurrent_adjust_vs_debit(cur):
         f1, f2 = ex.submit(do_adjust), ex.submit(do_debit)
         f1.result(); f2.result()
 
-    scan = balance(cur, u)[0]
+    credits = balance(cur, u)[0]
     # Either order is legal, but the debit must be visible in the result:
-    #   debit first  -> admin reads 4, sets 100          -> 100
-    #   admin first  -> sets 100, debit applies on top   ->  99
-    # 105 would mean the admin's absolute write was computed from a stale read.
-    check(f"no lost update (got {scan}, expected 99 or 100)", scan in (99, 100), f"got {scan}")
+    #   debit first  -> admin reads 9, sets 200          -> 200
+    #   admin first  -> sets 200, debit applies on top   -> 199
+    # 210 would mean the admin's absolute write was computed from a stale read.
+    check(f"no lost update (got {credits}, expected 199 or 200)",
+          credits in (199, 200), f"got {credits}")
 
-    cur.execute("select coalesce(sum(cost_scan_credits),0) from public.usage_events where user_id=%s", (u,))
+    cur.execute("select coalesce(sum(cost_scan_credits),0) + coalesce(sum(cost_deep_credits),0)"
+                " from public.usage_events where user_id=%s", (u,))
     total = cur.fetchone()[0]
-    check(f"ledger explains it: 5 - ({total}) == {scan}", 5 - total == scan, f"5-{total} != {scan}")
+    check(f"ledger explains it: 10 - ({total}) == {credits}", 10 - total == credits,
+          f"10-{total} != {credits}")
 
 
 def main() -> int:

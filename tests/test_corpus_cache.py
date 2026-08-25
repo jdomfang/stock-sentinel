@@ -43,19 +43,14 @@ sys.path.insert(0, str(REPO))
 from utils import corpus_cache  # noqa: E402
 
 DSN = "host=127.0.0.1 port=5433 dbname=sentinel_test user=supabase_admin password=postgres"
-MIGRATIONS = [
-    REPO / "tests/sql/00_supabase_stub.sql",
-    # The full production chain, in production order -- same rule as the other
-    # suites. This migration is standalone, but applying a hand-picked subset is
-    # exactly what produced a false failure once before.
-    REPO / "supabase/migrations/20260801010000_purchases.sql",
-    REPO / "supabase/migrations/20260801020000_credit_integrity.sql",
-    REPO / "supabase/migrations/20260801030000_admin_adjust_credits.sql",
-    REPO / "supabase/migrations/20260801050000_grant_credits.sql",
-    REPO / "supabase/migrations/20260801060000_work_runs.sql",
-    REPO / "supabase/migrations/20260802010000_caller_identity.sql",
-    REPO / "supabase/migrations/20260805010000_x_corpus_cache.sql",
-]
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+from tests.migrations import chain as _chain  # noqa: E402
+
+# Discovered, not listed. The list this replaces claimed to be "the full
+# production chain, in production order" and had not been so for some time --
+# it stopped at 20260805010000 and therefore installed the OLD credit
+# functions, passing 31/31 while proving nothing about them.
+MIGRATIONS = _chain()
 
 PASSED: list[str] = []
 FAILED: list[tuple[str, str]] = []

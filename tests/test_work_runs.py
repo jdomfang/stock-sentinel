@@ -44,25 +44,17 @@ except ImportError:
 
 DSN = "host=127.0.0.1 port=5433 dbname=sentinel_test user=supabase_admin password=postgres"
 REPO = Path(__file__).resolve().parent.parent
-MIGRATIONS = [
-    REPO / "tests/sql/00_supabase_stub.sql",
-    # The FULL production chain, in production order. Applying a subset used to
-    # be fine, but 20260802010000 extracts consume_credit from 20260801060000 --
-    # so it references public.work_runs, and a suite that skipped that migration
-    # installed a function pointing at a table it had never created. An audit had
-    # already flagged fixture-vs-production divergence as the thing that makes a
-    # green suite meaningless; this keeps them identical by construction.
-    REPO / "supabase/migrations/20260801010000_purchases.sql",
-    REPO / "supabase/migrations/20260801020000_credit_integrity.sql",
-    REPO / "supabase/migrations/20260801030000_admin_adjust_credits.sql",
-    REPO / "supabase/migrations/20260801050000_grant_credits.sql",
-    REPO / "supabase/migrations/20260801060000_work_runs.sql",
-    REPO / "supabase/migrations/20260802010000_caller_identity.sql",
-    # Redefines reap_orphaned_work. Omitting it meant this suite exercised the
-    # PREVIOUS function and passed while the fix went untested -- a hand-picked
-    # list is only equal to production if somebody keeps picking.
-    REPO / "supabase/migrations/20260824020000_reaper_already_refunded.sql",
-]
+# Import by repo root rather than by whatever happens to be on sys.path
+# when this file is invoked -- running it as a script puts tests/ first,
+# running it under a runner from the repo root does not.
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+from tests.migrations import chain as _chain  # noqa: E402
+
+# Discovered, not listed. Four suites each kept their own hand-typed
+# chain and they had already drifted -- see tests/migrations.py for the
+# failure that produces (an old function definition, asserted against,
+# passing green and proving nothing).
+MIGRATIONS = _chain()
 
 PASSED: list[str] = []
 FAILED: list[tuple[str, str]] = []
@@ -88,24 +80,44 @@ def seed(cur, scan=5, deep=5) -> str:
     """Create a user whose balance is fully explained by the ledger."""
     uid = str(uuid.uuid4())
     cur.execute("insert into auth.users (id,email) values (%s,%s)", (uid, f"{uid[:8]}@t.test"))
+    # credits EXPLICITLY 0, exactly as the two frozen columns already were.
+    # profiles.credits carries a DEFAULT of 2 -- the signup grant, which is a
+    # column default rather than a ledger row. Letting it apply here would open
+    # every seeded account with two credits nothing in usage_events explains,
+    # and this suite's whole premise (see the docstring) is a balance the ledger
+    # fully accounts for. The grant below is the only balance this user gets.
     cur.execute(
-        "insert into public.profiles (user_id,email,role,disabled,scan_credits,deep_credits)"
-        " values (%s,%s,'user',false,0,0)", (uid, f"{uid[:8]}@t.test"))
+        "insert into public.profiles (user_id,email,role,disabled,credits,"
+        "scan_credits,deep_credits) values (%s,%s,'user',false,0,0,0)",
+        (uid, f"{uid[:8]}@t.test"))
     if scan or deep:
         rpc(cur, "grant_credits", uid, scan, deep, "test opening balance", f"seed_{uid[:8]}")
     return uid
 
 
-def balance(cur, uid):
-    cur.execute("select scan_credits,deep_credits from public.profiles where user_id=%s", (uid,))
-    return cur.fetchone()
+def balance(cur, uid) -> int:
+    cur.execute("select credits from public.profiles where user_id=%s", (uid,))
+    return cur.fetchone()[0]
 
 
 def reconciles(cur, uid) -> bool:
-    cur.execute("select coalesce(sum(cost_scan_credits),0), coalesce(sum(cost_deep_credits),0)"
+    """credits == -(sum of BOTH cost columns).
+
+    Summing both is what keeps this assertion meaningful. The merge left
+    usage_events alone -- a scan still writes cost_scan_credits=1 and a deep
+    analysis still writes cost_deep_credits=1 -- so reading only one column
+    would compare a real balance against half a ledger.
+
+    The failure mode worth naming: had the merge introduced a cost_credits
+    column and stopped writing these two, every sum here would be 0 and every
+    balance would be 0 for a fresh user, so `0 == -0` would pass for every case
+    while the invariant was measuring nothing at all. Thirty-odd assertions
+    across four suites would have gone quietly vacuous.
+    """
+    cur.execute("select coalesce(sum(cost_scan_credits),0) + coalesce(sum(cost_deep_credits),0)"
                 " from public.usage_events where user_id=%s", (uid,))
-    ls, ld = cur.fetchone()
-    return balance(cur, uid) == (-ls, -ld)
+    total = cur.fetchone()[0]
+    return balance(cur, uid) == -total
 
 
 def run_status(cur, event_id):
@@ -189,7 +201,7 @@ def test_reaper_refunds_abandoned_work(cur):
     uid = seed(cur, 5, 5)
     before = balance(cur, uid)
     ev = rpc(cur, "consume_credit", uid, "deep_analyze", "{}", "rq_orphan")["event_id"]
-    check("credit was taken", balance(cur, uid)[1] == before[1] - 1)
+    check("credit was taken", balance(cur, uid) == before - 1)
 
     age(cur, ev)  # simulate a process killed an hour ago
     res = rpc(cur, "reap_orphaned_work", "15 minutes")

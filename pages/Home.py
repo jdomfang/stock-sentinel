@@ -719,11 +719,11 @@ if is_logged_in():
     def _get_credits(uid: str):
         try:
             sb = get_client()
-            resp = sb.table("profiles").select("scan_credits,deep_credits").eq("user_id", uid).maybe_single().execute()
+            resp = sb.table("profiles").select("credits").eq("user_id", uid).maybe_single().execute()
             data = getattr(resp, "data", None) or {}
-            return int(data.get("scan_credits") or 0), int(data.get("deep_credits") or 0)
+            return int(data.get("credits") or 0)
         except Exception:
-            return None, None
+            return None
 
     user = get_user() or {}
     uid = (user.get("id") if isinstance(user, dict) else getattr(user, "id", None)) or ""
@@ -738,12 +738,16 @@ if is_logged_in():
         _get_credits.clear()
     billing.render_payment_return()
 
-    scan_c, deep_c = _get_credits(uid)
+    credits_c = _get_credits(uid)
 
 
-
-    # Credits row
-    if scan_c is not None:
+    # Credits row. ONE pill, because there is one wallet.
+    #
+    # The legend lives here and nowhere else. Home is the dashboard, and the pad
+    # beside each spend button already states the price on the button itself --
+    # repeating "1 credit = 1 scan or 1 analysis" next to every control would be
+    # noise in the one place that earns its quiet.
+    if credits_c is not None:
         st.markdown(
             f"""
             <div class="clawd-credits-row" style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin:0.5rem 0 0.9rem 0;">
@@ -751,16 +755,12 @@ if is_logged_in():
                 background:linear-gradient(135deg,rgba(15,23,42,.92),rgba(2,6,23,.80));
                 border:1px solid rgba(56,189,248,.22);border-radius:12px;
                 padding:8px 14px;">
-                <span style="color:rgba(148,163,184,.80);font-size:0.76rem;font-weight:600;text-transform:uppercase;letter-spacing:0.04em;">Scan Credits</span>
-                <span style="color:rgba(56,189,248,.98);font-size:1.20rem;font-weight:800;line-height:1;">{scan_c}</span>
+                <span style="color:rgba(148,163,184,.80);font-size:0.76rem;font-weight:600;text-transform:uppercase;letter-spacing:0.04em;">Credits</span>
+                <span style="color:rgba(56,189,248,.98);font-size:1.20rem;font-weight:800;line-height:1;">{credits_c}</span>
               </div>
-              <div style="display:inline-flex;align-items:center;gap:8px;
-                background:linear-gradient(135deg,rgba(15,23,42,.92),rgba(2,6,23,.80));
-                border:1px solid rgba(56,189,248,.22);border-radius:12px;
-                padding:8px 14px;">
-                <span style="color:rgba(148,163,184,.80);font-size:0.76rem;font-weight:600;text-transform:uppercase;letter-spacing:0.04em;">Analyze Credits</span>
-                <span style="color:rgba(56,189,248,.98);font-size:1.20rem;font-weight:800;line-height:1;">{deep_c}</span>
-              </div>
+              <span style="color:rgba(148,163,184,.70);font-size:0.80rem;">
+                1 credit = 1 sector scan <em>or</em> 1 deep analysis
+              </span>
             </div>
             """,
             unsafe_allow_html=True,
@@ -837,6 +837,10 @@ else:
     # CTA
     if st.button("Run your scan", type="primary", use_container_width=False):
         st.switch_page("pages/Auth.py")
-    st.caption("Includes $5.00 in free credits to get started.")
+    # True again, and only by arithmetic: a new account starts with 2 credits
+    # and a pack is 2 credits for $5. It was FALSE for the length of time the
+    # pack was going to be 10-for-$5 -- the same two free credits would have
+    # been $1 of value. Restate it in credits if the pack size ever moves.
+    st.caption("Includes 2 free credits ($5.00 value) to get started.")
 
 close_page()

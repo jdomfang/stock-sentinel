@@ -30,8 +30,12 @@ class CreditResult(NamedTuple):
 
 # SQL reason codes -> text a user should see.
 _MESSAGES = {
-    "no_scan_credits": "No scan credits remaining",
-    "no_deep_credits": "No Deep Analyze credits remaining",
+    "no_credits": "No credits remaining",
+    # Kept because the OLD function may still be installed. A migration and an
+    # app deploy are never simultaneous, and a message map that has forgotten
+    # the reason code it is handed renders the raw code to a paying user.
+    "no_scan_credits": "No credits remaining",
+    "no_deep_credits": "No credits remaining",
     "account_disabled": "Account disabled",
     "profile_not_found": "Profile not found",
     "invalid_event_type": "Invalid event type",

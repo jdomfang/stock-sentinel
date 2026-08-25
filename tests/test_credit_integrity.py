@@ -35,21 +35,17 @@ REPO = Path(__file__).resolve().parents[1]
 DSN = "host=127.0.0.1 port=5433 dbname=sentinel_test user=supabase_admin password=postgres"
 
 STUB = REPO / "tests" / "sql" / "00_supabase_stub.sql"
-MIGRATIONS = [
-    REPO / "tests/sql/00_supabase_stub.sql",
-    # The FULL production chain, in production order. Applying a subset used to
-    # be fine, but 20260802010000 extracts consume_credit from 20260801060000 --
-    # so it references public.work_runs, and a suite that skipped that migration
-    # installed a function pointing at a table it had never created. An audit had
-    # already flagged fixture-vs-production divergence as the thing that makes a
-    # green suite meaningless; this keeps them identical by construction.
-    REPO / "supabase/migrations/20260801010000_purchases.sql",
-    REPO / "supabase/migrations/20260801020000_credit_integrity.sql",
-    REPO / "supabase/migrations/20260801030000_admin_adjust_credits.sql",
-    REPO / "supabase/migrations/20260801050000_grant_credits.sql",
-    REPO / "supabase/migrations/20260801060000_work_runs.sql",
-    REPO / "supabase/migrations/20260802010000_caller_identity.sql",
-]
+# Import by repo root rather than by whatever happens to be on sys.path
+# when this file is invoked -- running it as a script puts tests/ first,
+# running it under a runner from the repo root does not.
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+from tests.migrations import chain as _chain  # noqa: E402
+
+# Discovered, not listed. Four suites each kept their own hand-typed
+# chain and they had already drifted -- see tests/migrations.py for the
+# failure that produces (an old function definition, asserted against,
+# passing green and proving nothing).
+MIGRATIONS = _chain()
 
 PASSED: list[str] = []
 FAILED: list[tuple[str, str]] = []
@@ -76,18 +72,32 @@ def rpc(cur, fn: str, *args):
     return cur.fetchone()[0]
 
 
-def seed_user(cur, scan=1, deep=1, disabled=False, admin=False) -> str:
+def seed_user(cur, scan=1, deep=0, disabled=False, admin=False) -> str:
+    """Seed a profile. `scan` + `deep` is the SPENDABLE balance.
+
+    deep now defaults to 0, not 1. With one wallet the two arguments are summed,
+    so the old default silently doubled every seed that named only `scan`:
+    seed_user(cur, scan=1) meant one credit and produced two, and
+    seed_user(cur, scan=0) -- written to mean "empty" -- produced one. Both
+    turned real assertions into vacuous ones.
+    """
     uid = str(uuid.uuid4())
     cur.execute("insert into auth.users (id, email) values (%s, %s)", (uid, f"{uid[:8]}@t.test"))
+    # ONE wallet. `scan` and `deep` are summed because that is exactly what the
+    # merge migration does to a live profile -- seeding them separately would
+    # test a shape the database no longer has, and (worse) `credits` would keep
+    # its column DEFAULT while the frozen columns held the seeded values, so a
+    # test expecting one spendable credit would silently get two.
     cur.execute(
-        "insert into public.profiles (user_id, email, role, disabled, scan_credits, deep_credits)"
-        " values (%s,%s,%s,%s,%s,%s)",
-        (uid, f"{uid[:8]}@t.test", "admin" if admin else "user", disabled, scan, deep),
+        "insert into public.profiles (user_id, email, role, disabled, credits,"
+        " scan_credits, deep_credits) values (%s,%s,%s,%s,%s,%s,%s)",
+        (uid, f"{uid[:8]}@t.test", "admin" if admin else "user", disabled,
+         (scan or 0) + (deep or 0), scan, deep),
     )
     return uid
 
 
-def balance(cur, uid, col="scan_credits") -> int:
+def balance(cur, uid, col="credits") -> int:
     cur.execute(f"select {col} from public.profiles where user_id=%s", (uid,))
     return cur.fetchone()[0]
 
@@ -171,8 +181,8 @@ def test_double_spend() -> None:
     check("exactly one of 8 concurrent debits succeeds", len(ok) == 1, f"{len(ok)} succeeded")
     check("balance lands at 0", bal == 0, f"balance={bal}")
     check("exactly one ledger row written", len(rows) == 1, f"{len(rows)} rows")
-    check("losers report no_scan_credits",
-          all(r["reason"] == "no_scan_credits" for r in results if not r["ok"]),
+    check("losers report no_credits",
+          all(r["reason"] == "no_credits" for r in results if not r["ok"]),
           str({r["reason"] for r in results if not r["ok"]}))
 
 
@@ -334,8 +344,8 @@ def test_failure_branches() -> None:
     with conn() as c, c.cursor() as cur:
         empty = seed_user(cur, scan=0)
         r = rpc(cur, "consume_credit", empty, "scan", "{}", None)
-        check("zero balance -> no_scan_credits",
-              (not r["ok"]) and r["reason"] == "no_scan_credits", str(r))
+        check("zero balance -> no_credits",
+              (not r["ok"]) and r["reason"] == "no_credits", str(r))
         check("  and reports remaining=0", r.get("remaining") == 0, str(r))
 
         off = seed_user(cur, scan=5, disabled=True)

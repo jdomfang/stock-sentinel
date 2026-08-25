@@ -11,6 +11,10 @@ option at all: running out there was a bare st.error() and a dead end.
 Home had a "+ Buy Credits" control the whole time. It was an inert <span> with
 cursor:not-allowed and title="Coming soon".
 
+ONE WALLET. scan_credits and deep_credits were merged into profiles.credits on
+2026-08-24; a scan and a deep analysis each cost 1. render_credit_meter lost its
+`kind` argument with that change -- see its docstring for the bug that removed.
+
 WHERE THE AFFORDANCE GOES, and why it costs no layout
 
 Both spend cards already reserve an empty column beside the button that spends
@@ -20,7 +24,7 @@ grows, nothing moves, and the top nav is untouched: utils/navigation.py records
 that putting credits in the nav made it taller on login and broke the hero.
 
 THE BALANCE IS ALREADY IN MEMORY. Both pages call require_active_account(),
-which returns a profile carrying scan_credits and deep_credits. Rendering it
+which returns a profile carrying `credits`. Rendering it
 costs zero queries; it was being fetched and discarded.
 
 TWO CLICKS, DELIBERATELY
@@ -39,6 +43,16 @@ import logging
 import streamlit as st
 
 logger = logging.getLogger(__name__)
+
+# WHAT A PACK CONTAINS, for display only. payments_api owns the real number --
+# it derives the grant from the amount Stripe reports, so this constant cannot
+# change what anyone actually receives. It can only make the page LIE about it.
+#
+# If the two drift, the portal advertises the wrong size and the balance simply
+# moves by a different amount. payments_api publishes its live pack table at
+# /health, so the check is one request rather than a code read.
+PACK_CREDITS = 2
+PACK_PRICE = "$5"
 
 # How long a fetched Checkout URL stays usable in this session. Stripe Sessions
 # remain payable for ~24h, so a stale one in session_state is a second charge
@@ -121,21 +135,24 @@ def clear_pending_url() -> None:
     st.session_state.pop("billing.url", None)
 
 
-def render_buy_credits(*, key: str, label: str = "+ Buy credits",
-                       primary: bool = False) -> None:
+def render_buy_credits(*, key: str, label: str = "", primary: bool = False) -> None:
     """The buy control. Two clicks: fetch, then follow the link.
 
     `key` is mandatory -- it disambiguates the widget (Streamlit raises on
     duplicate ids) and names the container for CSS.
     """
     import time
+    # The default label states the whole offer, so nothing needs a legend:
+    # "+ 2 credits · $5". A bare "Buy credits" leaves the user to guess how many.
+    label = label or f"+ {PACK_CREDITS} credits · {PACK_PRICE}"
     uid = _uid()
     url = _pending_url(uid)
 
     if url:
         st.link_button("Continue to checkout →", url,
                        type="primary", use_container_width=True)
-        st.caption("Opens Stripe. Credits never expire.")
+        st.caption(f"Opens Stripe. {PACK_CREDITS} credits for {PACK_PRICE}. "
+                   f"They never expire.")
         return
 
     if st.button(label, key=f"buy_{key}",
@@ -151,36 +168,45 @@ def render_buy_credits(*, key: str, label: str = "+ Buy credits",
             st.error(err or "Checkout is unavailable right now.")
 
 
-def render_credit_meter(*, kind: str, profile: dict | None, key: str) -> None:
+def render_credit_meter(*, profile: dict | None, key: str) -> None:
     """Balance + buy, for the empty pad beside a spend button.
 
-    `kind` is "scan" or "deep" -- a page shows only the credit it can spend,
-    because a number you cannot spend here is noise.
+    ONE NUMBER, and no `kind` argument. The old signature took kind="scan" or
+    kind="deep" and showed only the matching bucket, which produced a real bug
+    on Discovery: the meter read the SCAN balance while the per-row button in
+    the table below it charged a DEEP credit, so a user could read "3 scans
+    left" and be refused by a button two inches away. With one wallet the
+    number on screen is the number every button on the page charges.
 
     The profile comes from require_active_account(), which both spend pages
     already call, so this adds no query.
     """
-    field = "scan_credits" if kind == "scan" else "deep_credits"
-    noun = "scan" if kind == "scan" else "analysis"
-    plural = "scans" if kind == "scan" else "analyses"
-    n = int((profile or {}).get(field) or 0)
+    n = int((profile or {}).get("credits") or 0)
 
     with st.container(key=f"credit_meter_{key}"):
         if n <= 0:
             # The ONLY loud state, and it is loud because the user is blocked,
             # not to persuade them.
             st.markdown(
-                f'<div style="color:rgba(248,113,113,.95);font-size:0.82rem;'
-                f'font-weight:700;margin-bottom:4px;">No {plural} left</div>',
+                '<div style="color:rgba(248,113,113,.95);font-size:0.82rem;'
+                'font-weight:700;margin-bottom:4px;">Out of credits</div>',
                 unsafe_allow_html=True)
             render_buy_credits(key=key, label="Buy credits →", primary=True)
             return
 
-        # 1 left turns the NUMBER amber and changes nothing else -- same size,
-        # same position. A number that changes colour is information; a banner
-        # that appears is pressure.
-        colour = "rgba(245,158,11,.95)" if n == 1 else "rgba(148,163,184,.75)"
-        word = noun if n == 1 else plural
+        # LOW IS 1, and it has to be, because a pack is PACK_CREDITS = 2.
+        #
+        # This was <= 3 while the pack was going to be ten-for-$5. Against a
+        # pack of two it means a user who has just paid opens the app already in
+        # the warning state -- the buy flow's own success condition rendering as
+        # a problem. A threshold that is true immediately after buying is not a
+        # warning, it is decoration.
+        #
+        # Expressed against the pack so the two cannot drift: warn once a
+        # balance can no longer cover a full pack's worth of work.
+        low_at = max(1, PACK_CREDITS - 1)
+        colour = "rgba(245,158,11,.95)" if n <= low_at else "rgba(148,163,184,.75)"
+        word = "credit" if n == 1 else "credits"
         st.markdown(
             f'<div style="font-size:0.82rem;color:rgba(148,163,184,.60);'
             f'margin-bottom:2px;">'
@@ -189,27 +215,36 @@ def render_credit_meter(*, kind: str, profile: dict | None, key: str) -> None:
         render_buy_credits(key=key)
 
 
-def render_upgrade_modal(reason: str, event_type: str = "scan", *,
-                         key: str = "modal") -> None:
-    """The at-zero interruption. A backstop now, not the only door.
+# The refusal reasons that actually mean "buy something". Every OTHER reason
+# consume_credit can return -- account_disabled, profile_not_found, rpc_error,
+# bad_response, not_logged_in -- means the purchase would not help, and two of
+# those are transient. See render_upgrade_modal.
+_BUYABLE_REASONS = frozenset({"no_credits", "no_scan_credits", "no_deep_credits"})
 
-    Lifted verbatim from pages/Discovery.py, where being page-private meant
-    pages/Deep_Analysis.py could not use it and simply dead-ended instead.
+
+def render_upgrade_modal(reason: str, event_type: str = "", *,
+                         key: str = "modal") -> None:
+    """The at-zero interruption. A backstop, not the only door.
+
+    ONE PANEL. It used to branch on event_type into scan-flavoured and
+    deep-flavoured copy, which was the right call when those were different
+    currencies you could be out of independently. There is one wallet now, so
+    the only thing that varies is `reason` -- and every call site already passes
+    a situational string, so the panel stays contextual without branching.
+
+    `event_type` is accepted and ignored so the three call sites can be updated
+    without a flag day.
+
+    Prefer render_credit_refusal() at a spend site -- it decides whether buying
+    would even help. Call this directly only where the answer is already known.
     """
-    if event_type == "scan":
-        icon, title, what_you_get = "📡", "Unlock more scans", [
-            "Scan any sector for momentum signals",
-            "Processed from real X data in seconds",
-            "Shortlist of validated US tickers",
-        ]
-    else:
-        icon, what_you_get = "🔍", [
-            "Full sentiment breakdown",
-            "Confidence score + trend context",
-            "Catalysts, red flags & projections",
-            "Clear Buy / Watch / Avoid signal",
-        ]
-        title = "Unlock Deep Analysis"
+    del event_type  # retired; see docstring
+
+    what_you_get = [
+        f"{PACK_CREDITS} credits for $5 — one per scan or analysis",
+        "Spend them whichever way you want",
+        "Credits never expire, and a failed run returns its credit",
+    ]
 
     st.markdown(
         f"""
@@ -221,7 +256,7 @@ def render_upgrade_modal(reason: str, event_type: str = "scan", *,
           margin:1rem 0;
           box-shadow:0 0 0 1px rgba(56,189,248,.15),0 12px 32px rgba(56,189,248,.08);
         ">
-          <div style="font-size:1.4rem;font-weight:800;color:rgba(248,250,252,.98);margin-bottom:6px;">{icon} {title}</div>
+          <div style="font-size:1.4rem;font-weight:800;color:rgba(248,250,252,.98);margin-bottom:6px;">💳 You're out of credits</div>
           <div style="color:rgba(148,163,184,.85);font-size:0.93rem;margin-bottom:14px;">{reason}</div>
           <ul style="list-style:none;padding:0;margin:0 0 18px 0;">
             {"".join(f'<li style="color:rgba(229,231,235,.90);font-size:0.93rem;margin-bottom:6px;">✓ {item}</li>' for item in what_you_get)}
@@ -235,6 +270,41 @@ def render_upgrade_modal(reason: str, event_type: str = "scan", *,
         render_buy_credits(key=f"modal_{key}", label="Buy credits →", primary=True)
     with col_b:
         st.caption("Secure checkout via Stripe. Credits never expire.")
+
+
+def render_credit_refusal(result, offer: str, *, key: str = "modal") -> None:
+    """Render a refused debit. Offers a purchase only when one would help.
+
+    THE BUG THIS EXISTS TO PREVENT. consume_credit refuses for six reasons and
+    only one of them is "you have no credits". The others are account_disabled,
+    profile_not_found, not_logged_in, and two transient failures -- rpc_error
+    and bad_response. Handing all six to the upgrade panel puts "You're out of
+    credits" and a primary Buy button in front of:
+
+      * a suspended account, which can then pay $5 and STILL be refused, because
+        grant_credits deliberately has no `disabled` guard while consume_credit
+        does. Money taken, nothing delivered.
+      * every user at once during a Supabase blip, i.e. the product asking the
+        whole userbase to pay for an outage.
+
+    Both are worse than the dead end this modal replaced, because a dead end
+    does not take money.
+
+    `result` is a CreditResult; `offer` is the situational line shown above the
+    benefits when a purchase genuinely is the answer.
+    """
+    reason = getattr(result, "reason", "") or ""
+    if reason in _BUYABLE_REASONS:
+        render_upgrade_modal(offer, key=key)
+        return
+
+    # Not a balance problem. Say what actually happened -- result.message is the
+    # only carrier of that, and it is why utils/credits keeps a reason->text map.
+    msg = getattr(result, "message", "") or "Could not use a credit."
+    st.error(msg)
+    if reason in ("rpc_error", "bad_response"):
+        st.caption("This is usually temporary. Try again in a moment — "
+                   "you have not been charged a credit.")
 
 
 def consume_payment_return() -> str | None:

@@ -267,25 +267,224 @@ def test_success_never_claims_credits_arrived():
 # ---------------------------------------------------------------- the meter
 
 def test_the_meter_escalates_only_when_blocked():
-    print("\\nloud when blocked, quiet otherwise -- never to persuade")
+    print("\nloud when blocked, quiet otherwise -- never to persuade")
     B, st, calls = fresh()
     calls["_click"] = False
-    B.render_credit_meter(kind="scan", profile={"scan_credits": 4}, key="k")
+    B.render_credit_meter(profile={"credits": 8}, key="k")
     check("a healthy balance draws no primary button",
-          calls["button"] == ["+ Buy credits"], str(calls["button"]))
+          calls["button"] == [f"+ {B.PACK_CREDITS} credits · {B.PACK_PRICE}"],
+          str(calls["button"]))
 
     B, st, calls = fresh(); calls["_click"] = False
-    B.render_credit_meter(kind="scan", profile={"scan_credits": 0}, key="k")
+    B.render_credit_meter(profile={"credits": 0}, key="k")
     check("at zero the control becomes the buy action",
           calls["button"] == ["Buy credits →"], str(calls["button"]))
 
     B, st, calls = fresh(); calls["_click"] = False
-    B.render_credit_meter(kind="deep", profile={"deep_credits": 2}, key="k")
-    check("a page shows the credit IT spends", calls["markdown"] >= 1)
-    B, st, calls = fresh(); calls["_click"] = False
-    B.render_credit_meter(kind="deep", profile=None, key="k")
+    B.render_credit_meter(profile=None, key="k")
     check("a missing profile reads as zero, not a crash",
           calls["button"] == ["Buy credits →"], str(calls["button"]))
+
+
+def test_the_meter_shows_the_same_number_everywhere():
+    """The inverse of what this suite used to assert.
+
+    The old test checked that "a page shows the credit IT spends" -- which was
+    the two-bucket contract, and also a live bug: Discovery rendered the SCAN
+    balance while the Deep Analyze button in its own results table charged a
+    DEEP credit, so a user could read "3 scans left" and be refused by a button
+    two inches away. One wallet means the number on screen is the number every
+    button on the page charges, so the meter must NOT vary by page.
+    """
+    print("\nthe number on screen is the number every button charges")
+    out = []
+    for key in ("discovery", "deep", "home"):
+        B, st, calls = fresh(); calls["_click"] = False
+        B.render_credit_meter(profile={"credits": 7}, key=key)
+        out.append(calls["button"])
+    check("every page renders the identical control",
+          len(set(map(tuple, out))) == 1, str(out))
+
+    # A stale reader is the failure this catches. scan_credits/deep_credits are
+    # frozen pre-merge snapshots; a meter still reading them would show a
+    # confident, wrong, and usually LARGER number than the user can spend.
+    B, st, calls = fresh(); calls["_click"] = False
+    B.render_credit_meter(profile={"scan_credits": 9, "deep_credits": 9}, key="k")
+    check("the frozen columns are not a balance",
+          calls["button"] == ["Buy credits →"],
+          "the meter read a pre-merge snapshot instead of `credits`")
+
+
+def test_the_low_warning_is_scaled_to_the_pack():
+    """The threshold has to be a function of the pack, not a taste.
+
+    It was <= 3 while the pack was going to be ten-for-$5. Against a pack of
+    two that means a user who has JUST PAID opens the app already in the
+    warning state -- the buy flow's own success condition rendering as a
+    problem. Derived from PACK_CREDITS now, so the two cannot drift.
+    """
+    print("\nthe warning must not fire on a freshly bought balance")
+    import re as _re
+    seen = {}
+    for n in (0, 1, 2, 3, 4):
+        B, st, calls = fresh(); calls["_click"] = False
+        blobs = []
+        st.markdown = lambda *a, **k: blobs.append(a[0] if a else "")
+        B.render_credit_meter(profile={"credits": n}, key="k")
+        seen[n] = "".join(blobs)
+    B, st, calls = fresh()   # for B.PACK_CREDITS below
+    amber = "245,158,11"
+    check("a full pack is quiet", amber not in seen[B.PACK_CREDITS],
+          seen[B.PACK_CREDITS][:120])
+    check("3 credits is quiet", amber not in seen[3], seen[3][:120])
+    check("1 credit warns", amber in seen[1], seen[1][:120])
+    # Tags stripped first: the count sits inside a <b>, so "1 credit left" is
+    # never a contiguous substring of the markup even when it renders correctly.
+    text = {n: _re.sub(r"<[^>]+>", "", v) for n, v in seen.items()}
+    check("1 credit is singular", "1 credit left" in text[1], text[1][:160])
+    check("3 credits is plural", "3 credits left" in text[3], text[3][:160])
+    check("0 is not amber but red", amber not in seen[0] and "248,113,113" in seen[0],
+          seen[0][:160])
+
+
+def test_the_advertised_pack_matches_what_stripe_grants():
+    """LITERALS on both sides, and a cross-service equality check.
+
+    Found by the review, not by me: setting utils.billing.PACK_CREDITS to 10
+    and PACK_PRICE to "$19" left all 1530 assertions green. Every meter test
+    read B.PACK_CREDITS on both sides of its assertion, so they moved with the
+    code instead of pinning it -- the same self-referential trap that hid a
+    pack-size drift in test_payments until it was pinned to a literal there.
+
+    What that permits is the worst kind of billing bug: the button says
+    "+ 10 credits · $19", Stripe charges $5, and the balance moves by 2. The
+    portal advertises a price and a quantity it does not control -- payments_api
+    derives the grant from the amount Stripe reports -- so the portal can only
+    ever be right or lying.
+    """
+    print("\nthe price on the button is the price Stripe charges")
+    B, st, calls = fresh()
+    check("PACK_CREDITS is 2", B.PACK_CREDITS == 2, str(B.PACK_CREDITS))
+    check("PACK_PRICE is $5", B.PACK_PRICE == "$5", str(B.PACK_PRICE))
+
+    # The two services cannot import each other, so nothing but a test can hold
+    # them together. Read payments_api's constants from source rather than
+    # importing it -- importing pulls in stripe/fastapi and this suite is a
+    # no-dependency stub.
+    import re
+    src = (REPO / "payments_api" / "main.py").read_text()
+    m = re.search(r"^PACK_CREDITS = (\d+)", src, re.M)
+    check("payments_api declares a pack size", bool(m), "PACK_CREDITS not found")
+    if m:
+        check(f"portal advertises what payments_api grants ({m.group(1)})",
+              int(m.group(1)) == B.PACK_CREDITS,
+              f"portal says {B.PACK_CREDITS}, payments_api grants {m.group(1)}")
+    amt = re.search(r'pack_currency, pack_amount = "usd", (\d+)', src)
+    check("payments_api charges an amount", bool(amt), "pack_amount not found")
+    if amt:
+        check(f"portal advertises what Stripe charges (${int(amt.group(1))/100:.0f})",
+              B.PACK_PRICE == f"${int(amt.group(1)) // 100}",
+              f"portal says {B.PACK_PRICE}, Stripe charges {amt.group(1)} cents")
+
+    # And the copy actually renders those, rather than a hardcoded duplicate.
+    calls["_click"] = False
+    B.render_buy_credits(key="k")
+    check("the button states the real offer",
+          calls["button"] == [f"+ {B.PACK_CREDITS} credits · {B.PACK_PRICE}"],
+          str(calls["button"]))
+
+
+def test_no_page_reads_the_frozen_columns_for_a_balance():
+    """The engine is well covered; the surfaces that show a user a number were not.
+
+    Also found by the review: reverting utils/profile.py, pages/Home.py and
+    pages/Admin.py to select scan_credits/deep_credits left the whole suite
+    green. Those three are the only places a balance reaches a human, and Home
+    and Admin do not use render_credit_meter -- they carry their own queries, so
+    the existing "every page uses one implementation" grep cannot see them.
+
+    The Admin case is the expensive one: admin_adjust_credits is an ABSOLUTE set
+    of the merged balance taken from whatever the page rendered. A page reading
+    the frozen snapshot and saving any unrelated field writes the pre-merge
+    number over the live balance -- with an actor, a reason, and a ledger row,
+    so reconciliation agrees with it.
+    """
+    print("\na balance shown to a user must come from `credits`")
+    import io, re as _re, tokenize
+
+    def code_only(path):
+        toks = [t for t in tokenize.generate_tokens(
+            io.StringIO(path.read_text()).readline) if t.type != tokenize.COMMENT]
+        return tokenize.untokenize(toks)
+
+    for rel in ("utils/profile.py", "pages/Home.py", "pages/Admin.py"):
+        src = code_only(REPO / rel)
+        # The tell is a SELECT list naming the frozen columns -- not any mention
+        # of them. Admin.py legitimately carries the string
+        # "deep_credits_retired" (the reason code for a stale caller), and a
+        # substring match reports that as a violation. Pull the argument of each
+        # .select(...) and look only in there.
+        selects = _re.findall(r'\.select\(\s*((?:"[^"]*"\s*)+)', src)
+        check(f"{rel} reads a balance at all", bool(selects), "no .select found")
+        if not selects:
+            continue
+
+        # THE FIRST select is the one that must be right. utils/profile.py
+        # deliberately carries a SECOND, guarded select of the frozen columns --
+        # the deploy-order fallback for the window before the merge migration is
+        # applied by hand. Forbidding every mention would fail that on purpose;
+        # forbidding only the primary read is the actual rule.
+        first = selects[0]
+        for col in ("scan_credits", "deep_credits"):
+            check(f"{rel} does not lead with profiles.{col}", col not in first,
+                  f"a frozen pre-merge snapshot is not a spendable balance: {first[:120]}")
+        check(f"{rel} leads with credits", "credits" in first,
+              f"no merged balance read: {first[:120]}")
+
+        # And any frozen read that does exist must be behind an except.
+        for extra in selects[1:]:
+            if "scan_credits" in extra or "deep_credits" in extra:
+                check(f"{rel}'s frozen-column read is a guarded fallback",
+                      "except" in src,
+                      "an unguarded second read of the pre-merge snapshot")
+
+
+def test_a_refusal_only_offers_a_purchase_when_buying_would_help():
+    """consume_credit refuses for six reasons; one of them is about money.
+
+    Handing all six to the upgrade panel shows "You're out of credits" and a
+    primary Buy button to a suspended account -- which can then pay, because
+    grant_credits has no `disabled` guard while consume_credit does -- and to
+    everyone at once during a Supabase blip.
+    """
+    print("\nonly a balance problem gets a Buy button")
+
+    class R:
+        def __init__(self, reason, message):
+            self.ok, self.reason, self.message = False, reason, message
+
+    B, st, calls = fresh(); calls["_click"] = False
+    B.render_credit_refusal(R("no_credits", "No credits remaining"), "offer", key="k")
+    check("out of credits offers the pack",
+          calls["button"] == ["Buy credits →"], str(calls["button"]))
+    check("...and does not show a bare error", calls["error"] == [], str(calls["error"]))
+
+    for reason, msg in (("account_disabled", "Account disabled"),
+                        ("rpc_error", "Could not verify your credits."),
+                        ("bad_response", "Unexpected response."),
+                        ("not_logged_in", "Please sign in."),
+                        ("profile_not_found", "Profile not found")):
+        B, st, calls = fresh(); calls["_click"] = False
+        B.render_credit_refusal(R(reason, msg), "offer", key="k")
+        check(f"{reason}: no Buy button", calls["button"] == [], str(calls["button"]))
+        check(f"{reason}: says what actually happened", msg in calls["error"],
+              str(calls["error"]))
+
+    # The two transient ones must not read as a permanent state.
+    B, st, calls = fresh(); calls["_click"] = False
+    B.render_credit_refusal(R("rpc_error", "Could not verify your credits."), "o", key="k")
+    check("a transient failure says so", calls["caption"] >= 1,
+          "no reassurance that the credit was not taken")
 
 
 def test_every_page_uses_one_implementation():
@@ -316,8 +515,14 @@ def test_every_page_uses_one_implementation():
           "the copy that blocked Deep_Analysis came back")
     for name, src in (("Discovery", disc), ("Deep_Analysis", deep), ("Home", home)):
         check(f"{name} uses utils.billing", "billing." in src, name)
+    # Either entry point counts: render_credit_refusal is the one a spend page
+    # should use (it decides whether buying would help), and it calls the modal.
     check("Deep_Analysis offers a way to buy when refused",
-          "render_upgrade_modal" in deep, "it dead-ends on st.error again")
+          "render_credit_refusal" in deep or "render_upgrade_modal" in deep,
+          "it dead-ends on st.error again")
+    check("both spend pages route refusals through the dispatcher",
+          "render_credit_refusal" in deep and "render_credit_refusal" in disc,
+          "a raw upgrade modal shows 'out of credits' for a Supabase outage")
     check("Home's inert placeholder is gone",
           "Coming soon" not in home and "cursor:not-allowed" not in home,
           "the disabled span is back")
@@ -334,16 +539,18 @@ def main() -> int:
     print("=" * 74)
     print("  billing: buying credits without having to run out first")
     print("=" * 74)
-    for t in (test_a_broken_payments_service_is_visible,
-              test_unconfigured_payments_does_not_pretend,
-              test_a_session_is_created_on_click_not_on_render,
-              test_a_fetched_url_is_reused_then_forgotten,
-              test_the_url_is_scoped_to_the_user_who_fetched_it,
-              test_the_payment_return_is_read_where_it_can_be_read,
-              test_success_never_claims_credits_arrived,
-              test_the_meter_escalates_only_when_blocked,
-              test_every_page_uses_one_implementation):
-        t()
+    # DISCOVERED, not listed. This runner carried a hand-typed tuple, and two
+    # tests added in the same commit were simply left out of it -- they never
+    # ran, and the suite reported green. Found by mutation testing: breaking the
+    # low-balance threshold changed nothing, because the test for it was never
+    # called. A list of tests is one more thing that has to be kept in step.
+    for name, t in [(k, v) for k, v in sorted(globals().items())
+                    if k.startswith("test_") and callable(v)]:
+        try:
+            t()
+        except Exception as e:
+            # A test that RAISES is a failure, not the end of the run.
+            check(f"{name} raised", False, f"{type(e).__name__}: {e}")
     print("\n" + "=" * 74)
     print(f"  {len(PASSED)} passed, {len(FAILED)} failed")
     for n, d in FAILED:

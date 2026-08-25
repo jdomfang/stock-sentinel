@@ -98,11 +98,13 @@ No. Stock Sentinel is **educational/informational** and is **not financial advic
 
 st.subheader("Scan")
 show(
-    "What is a Scan credit?",
+    "What is a credit?",
     """
-A Scan credit is consumed when you run a new scan (e.g., selecting a sector and generating a shortlist).
+One credit runs **one sector scan or one deep analysis** — they come from the same
+balance, so you choose how to spend them. $5 buys 2 credits. Credits never expire,
+and a run that fails returns its credit automatically.
     """.strip(),
-    tags=["credits", "scan"],
+    tags=["credits", "scan", "billing"],
 )
 show(
     "Why do some rows show N/A for price?",
@@ -135,11 +137,13 @@ Confidence is an internal summary of how consistent the available signals are wi
 
 st.subheader("Account & billing")
 show(
-    "Can I cancel anytime?",
+    "Is there a subscription?",
     """
-Yes—if you’re on a subscription plan, you can cancel anytime from **Billing**. Your access typically remains until the end of the billing period.
+No. There is nothing to cancel — credits are bought one pack at a time, and you
+are only charged when you choose to buy. Credits never expire, so an unused
+balance keeps until you use it.
     """.strip(),
-    tags=["billing", "cancel"],
+    tags=["billing", "cancel", "subscription"],
 )
 show(
     "Do you offer refunds?",

@@ -171,3 +171,20 @@ alter schema public                       owner to postgres;
 -- nothing about the policies.
 grant all on all tables    in schema public to anon, authenticated, service_role;
 grant all on all sequences in schema public to anon, authenticated, service_role;
+
+-- stock_prices. Like profiles and usage_events, this table predates the
+-- migrations folder -- it was created by hand and has no migration of its own.
+-- The columns below are transcribed from the schema documented in
+-- 20260808010000_stock_prices_volume.sql, which adds `volume` to it.
+--
+-- It exists here so the FULL production chain applies to the test database.
+-- Without it that one migration raises UndefinedTable, which is what forced the
+-- SQL suites onto hand-picked migration lists -- and a hand-picked list is how
+-- a credit migration gets omitted and a suite passes against the function it
+-- was supposed to replace.
+create table if not exists public.stock_prices (
+  ticker       text primary key,
+  close_price  numeric,
+  last_updated timestamptz,
+  currency     text
+);

@@ -61,6 +61,7 @@ class FakeDB:
         self.grants: list[dict] = []      # grant_credits calls
         self.grant_raises: Exception | None = None
         self.guard_release_raises = False
+        self.no_credits_granted_column = False
 
     # -- table(...) chain
     def table(self, name):
@@ -110,6 +111,12 @@ class _Tbl:
             self.db.guard.add(key)
             return _Res([self._row])
         if self._op == "insert" and self.name == "purchases":
+            # Simulate the deploy window in which the merge migration has not
+            # been applied yet and purchases.credits_granted does not exist.
+            if self.db.no_credits_granted_column and "credits_granted" in self._row:
+                raise RuntimeError(
+                    "PGRST204 Could not find the 'credits_granted' column of "
+                    "'purchases' in the schema cache")
             self.db.purchases.append(self._row)
             return _Res([self._row])
         if self._op == "delete" and self.name == "stripe_events_processed":
@@ -211,8 +218,8 @@ def test_the_settlement_event_is_what_grants():
                                    eid="evt_2", status="paid"))
     check("settling grants once", len(db.grants) == 1, str(db.grants))
     check("...the right amount",
-          db.grants and (db.grants[0]["p_scan_delta"], db.grants[0]["p_deep_delta"]) == (1, 1),
-          str(db.grants))
+          db.grants and (db.grants[0]["p_scan_delta"], db.grants[0]["p_deep_delta"])
+          == (M.PACK_CREDITS, 0), str(db.grants))
     check("...and returns 200", r.status_code == 200, str(r.status_code))
 
 
@@ -236,8 +243,8 @@ def test_metadata_cannot_decide_how_many_credits():
     client, M, db = load()
     post(client, session_event(meta={"user_id": "u1", "scan_credits": "999",
                                      "deep_credits": "999"}, amount=500))
-    check("a $5 payment grants 1+1 however metadata is labelled",
-          db.grants and (db.grants[0]["p_scan_delta"], db.grants[0]["p_deep_delta"]) == (1, 1),
+    check("a $5 payment grants one pack however metadata is labelled",
+          db.grants and db.grants[0]["p_scan_delta"] == M.PACK_CREDITS,
           str(db.grants))
 
 
@@ -281,7 +288,10 @@ def test_the_purchase_row_records_what_was_granted():
     check("one purchase row", len(db.purchases) == 1, str(db.purchases))
     p = db.purchases[0] if db.purchases else {}
     check("...with the granted credits, not the metadata",
-          (p.get("scan_credits_granted"), p.get("deep_credits_granted")) == (1, 1), str(p))
+          p.get("credits_granted") == M.PACK_CREDITS, str(p))
+    check("...and nothing in the retired columns",
+          (p.get("scan_credits_granted"), p.get("deep_credits_granted")) == (0, 0),
+          "a new purchase has nothing to say in the old denomination")
     check("...and the payment_intent a refund arrives on",
           p.get("payment_intent_id") == "pi_1", str(p))
 
@@ -302,9 +312,62 @@ def test_a_refund_revokes_exactly_what_was_granted():
     r = post(client, charge_event())
     check("revoked", len(db.grants) == 1, str(db.grants))
     check("...the exact quantity from the purchases row",
-          db.grants and (db.grants[0]["p_scan_delta"], db.grants[0]["p_deep_delta"]) == (-1, -1),
-          str(db.grants))
+          db.grants and (db.grants[0]["p_scan_delta"], db.grants[0]["p_deep_delta"])
+          == (-M.PACK_CREDITS, 0), str(db.grants))
     check("200", r.status_code == 200, str(r.status_code))
+
+
+def test_a_purchase_survives_the_deploy_window():
+    """The merge migration is applied BY HAND while this service deploys on a
+    git push, so there is a window where purchases.credits_granted does not
+    exist yet.
+
+    Losing the audit row in that window is not cosmetic. It is the row a
+    chargeback reads to size a revocation; without it the revocation derives
+    from the amount instead, which is correct only by coincidence and stops
+    being correct the moment the pack size changes.
+    """
+    print("\na purchase must still be recorded before the migration lands")
+    client, M, db = load()
+    db.no_credits_granted_column = True
+    r = post(client, session_event())
+
+    check("the grant still happens", len(db.grants) == 1, str(db.grants))
+    check("...and returns 200", r.status_code == 200, str(r.status_code))
+    check("the purchase row is NOT lost", len(db.purchases) == 1, str(db.purchases))
+    p = db.purchases[0] if db.purchases else {}
+    check("...recorded in the columns that DO exist",
+          p.get("scan_credits_granted") == M.PACK_CREDITS, str(p))
+    check("...so the migration's backfill sums it to the right number",
+          (int(p.get("scan_credits_granted") or 0)
+           + int(p.get("deep_credits_granted") or 0)) == M.PACK_CREDITS, str(p))
+    check("...and it carries the payment_intent a chargeback arrives on",
+          p.get("payment_intent_id") == "pi_1", str(p))
+
+
+def test_a_pre_merge_purchase_revokes_what_it_actually_granted():
+    """The row shapes on either side of the merge are different, and a
+    revocation must read both.
+
+    A purchase made before the merge recorded scan_credits_granted=1,
+    deep_credits_granted=1 and has no credits_granted. Revoking today's pack
+    size against it would take back more than it ever gave -- and that is
+    invisible afterwards, because grant_credits clamps at zero and records only
+    what it applied, so the over-revocation quietly empties a DIFFERENT,
+    unrefunded purchase and the ledger still reconciles.
+    """
+    print("\na chargeback on a purchase older than the merge")
+    client, M, db = load()
+    db.purchases.append({                       # the old shape, verbatim
+        "user_id": "u_old", "payment_intent_id": "pi_old",
+        "credits_granted": 0,
+        "scan_credits_granted": 1, "deep_credits_granted": 1,
+        "amount_total": 500, "currency": "usd"})
+    post(client, charge_event(pi="pi_old"))
+    check("revokes 2 -- what that purchase granted",
+          db.grants and db.grants[0]["p_scan_delta"] == -2, str(db.grants))
+    check("...for the right user",
+          db.grants and db.grants[0]["p_user_id"] == "u_old", str(db.grants))
 
 
 def test_a_dispute_after_a_refund_does_not_revoke_twice():
@@ -338,7 +401,7 @@ def test_a_refund_falls_back_to_stripe_when_we_have_no_record():
     check("revoked for the right user",
           db.grants and db.grants[0]["p_user_id"] == "u9", str(db.grants))
     check("...deriving quantity from the amount, ignoring metadata's 999",
-          db.grants and db.grants[0]["p_scan_delta"] == -1, str(db.grants))
+          db.grants and db.grants[0]["p_scan_delta"] == -M.PACK_CREDITS, str(db.grants))
 
     client, M, db = load()
     stripe.PaymentIntent.registry["pi_8"] = {
@@ -379,11 +442,39 @@ def test_the_guard_reports_a_duplicate():
           M._mark_stripe_event_processed(event_id="e1", user_id="u1", session_id="s") is False)
 
 
+def test_the_pack_size_is_what_we_think_it_is():
+    """A LITERAL 2, deliberately.
+
+    Every other assertion in this file reads M.PACK_CREDITS on both sides, so
+    they all keep passing if the constant changes -- which is the assertion
+    moving with the code rather than pinning it. Found by mutation testing:
+    changing the pack to 10 broke nothing here.
+
+    The number matters beyond bookkeeping. X bills $0.005 per post read, a scan
+    buys up to 300 posts and a deep analysis up to ~400, so a $5 pack of 2
+    costs at most ~$4.00 to serve. At 10 the same $5 pack costs up to $20 --
+    a loss on essentially every sale. If this test fails, someone changed the
+    price; make sure that was on purpose.
+    """
+    print("\n$5 buys 2 credits, and that is a business decision not a detail")
+    client, M, db = load()
+    check("PACK_CREDITS is 2", M.PACK_CREDITS == 2, str(M.PACK_CREDITS))
+    check("the $5 pack grants 2", M._credits_for("usd", 500) == 2,
+          str(M._credits_for("usd", 500)))
+    post(client, session_event())
+    check("a real $5 payment moves the balance by exactly 2",
+          db.grants and db.grants[0]["p_scan_delta"] == 2, str(db.grants))
+    check("...and the purchase row says 2",
+          db.purchases and db.purchases[0].get("credits_granted") == 2,
+          str(db.purchases))
+
+
 def test_credits_for_refuses_what_it_does_not_know():
     print("\nthe pack table refuses rather than defaults")
     client, M, db = load()
-    check("the one pack", M._credits_for("usd", 500) == (1, 1), str(M._credits_for("usd", 500)))
-    check("case-insensitive currency", M._credits_for("USD", 500) == (1, 1))
+    check("the one pack", M._credits_for("usd", 500) == M.PACK_CREDITS,
+          str(M._credits_for("usd", 500)))
+    check("case-insensitive currency", M._credits_for("USD", 500) == M.PACK_CREDITS)
     check("unknown amount -> None", M._credits_for("usd", 501) is None)
     check("unknown currency -> None", M._credits_for("gbp", 500) is None)
     check("no amount -> None", M._credits_for("usd", None) is None)

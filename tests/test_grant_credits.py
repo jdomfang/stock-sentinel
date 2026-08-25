@@ -46,21 +46,17 @@ except ImportError:
 
 DSN = "host=127.0.0.1 port=5433 dbname=sentinel_test user=supabase_admin password=postgres"
 REPO = Path(__file__).resolve().parent.parent
-MIGRATIONS = [
-    REPO / "tests/sql/00_supabase_stub.sql",
-    # The FULL production chain, in production order. Applying a subset used to
-    # be fine, but 20260802010000 extracts consume_credit from 20260801060000 --
-    # so it references public.work_runs, and a suite that skipped that migration
-    # installed a function pointing at a table it had never created. An audit had
-    # already flagged fixture-vs-production divergence as the thing that makes a
-    # green suite meaningless; this keeps them identical by construction.
-    REPO / "supabase/migrations/20260801010000_purchases.sql",
-    REPO / "supabase/migrations/20260801020000_credit_integrity.sql",
-    REPO / "supabase/migrations/20260801030000_admin_adjust_credits.sql",
-    REPO / "supabase/migrations/20260801050000_grant_credits.sql",
-    REPO / "supabase/migrations/20260801060000_work_runs.sql",
-    REPO / "supabase/migrations/20260802010000_caller_identity.sql",
-]
+# Import by repo root rather than by whatever happens to be on sys.path
+# when this file is invoked -- running it as a script puts tests/ first,
+# running it under a runner from the repo root does not.
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+from tests.migrations import chain as _chain  # noqa: E402
+
+# Discovered, not listed. Four suites each kept their own hand-typed
+# chain and they had already drifted -- see tests/migrations.py for the
+# failure that produces (an old function definition, asserted against,
+# passing green and proving nothing).
+MIGRATIONS = _chain()
 
 SIGS = {
     "consume_credit": "public.consume_credit(uuid,text,jsonb,text)",
@@ -92,20 +88,34 @@ def rpc(cur, fn: str, *args):
 def seed(cur, scan=0, deep=0) -> str:
     uid = str(uuid.uuid4())
     cur.execute("insert into auth.users (id,email) values (%s,%s)", (uid, f"{uid[:8]}@t.test"))
+    # credits set EXPLICITLY -- the column DEFAULTs to 2 (the signup grant, a
+    # column default rather than a ledger row). Every test here seeds 0 and then
+    # establishes the opening balance THROUGH grant_credits precisely so
+    # balance == -sum(cost) can hold; an unledgered default of 2 would break
+    # that by exactly 2 in every assertion.
     cur.execute(
-        "insert into public.profiles (user_id,email,role,disabled,scan_credits,deep_credits)"
-        " values (%s,%s,'user',false,%s,%s)", (uid, f"{uid[:8]}@t.test", scan, deep))
+        "insert into public.profiles (user_id,email,role,disabled,credits,"
+        "scan_credits,deep_credits) values (%s,%s,'user',false,%s,%s,%s)",
+        (uid, f"{uid[:8]}@t.test", (scan or 0) + (deep or 0), scan, deep))
     return uid
 
 
-def balance(cur, uid):
-    cur.execute("select scan_credits,deep_credits from public.profiles where user_id=%s", (uid,))
-    return cur.fetchone()
+def balance(cur, uid) -> int:
+    cur.execute("select credits from public.profiles where user_id=%s", (uid,))
+    return cur.fetchone()[0]
 
 
 def ledger(cur, uid):
+    """(sum of BOTH cost columns, row count).
+
+    Both, summed. usage_events was deliberately left alone by the merge, so a
+    scan debit still lands in cost_scan_credits and a deep debit in
+    cost_deep_credits. Reading one column would measure half the ledger against
+    a whole balance -- and for a user with no debits it would compare 0 to 0 and
+    pass while asserting nothing.
+    """
     cur.execute(
-        "select coalesce(sum(cost_scan_credits),0), coalesce(sum(cost_deep_credits),0),"
+        "select coalesce(sum(cost_scan_credits),0) + coalesce(sum(cost_deep_credits),0),"
         " count(*) from public.usage_events where user_id=%s", (uid,))
     return cur.fetchone()
 
@@ -134,16 +144,18 @@ def test_concurrent_grants_do_not_lose_one(cur):
     with ThreadPoolExecutor(max_workers=8) as ex:
         results = list(ex.map(grant, range(8)))
 
-    applied = sum(r.get("applied_scan", 0) for r in results)
-    s, d = balance(cur, uid)
-    ls, ld, n = ledger(cur, uid)
+    # Each grant asks for (1, 1), and grant_credits SUMS its two deltas -- so a
+    # single call is worth 2 merged credits, and eight of them are worth 16.
+    applied = sum(r.get("applied", 0) for r in results)
+    bal = balance(cur, uid)
+    total, n = ledger(cur, uid)
 
     check("all 8 grants reported ok", all(r.get("ok") for r in results))
-    check(f"balance is 8/8, not fewer (got {s}/{d})", (s, d) == (8, 8),
+    check(f"balance is 16, not fewer (got {bal})", bal == 16,
           "a paid grant was lost to the read-modify-write race")
-    check(f"applied deltas sum to 8 (got {applied})", applied == 8)
+    check(f"applied deltas sum to 16 (got {applied})", applied == 16)
     check(f"ledger has exactly 8 rows (got {n})", n == 8)
-    check(f"balance == -sum(cost): {s}/{d} vs {-ls}/{-ld}", (s, d) == (-ls, -ld),
+    check(f"balance == -sum(cost): {bal} vs {-total}", bal == -total,
           "ledger and balance disagree -- the invariant is broken")
 
 
@@ -177,12 +189,13 @@ def test_grant_racing_a_debit(cur):
         f1, f2 = ex.submit(do_grant), ex.submit(do_spend)
         f1.result(); f2.result()
 
-    s, d = balance(cur, uid)
-    ls, ld, _ = ledger(cur, uid)
-    # 1 + 5 - 1 = 5 either ordering. The old code could return 6 (debit lost).
-    check(f"scan balance is 5, not 6 (got {s})", s == 5,
+    bal = balance(cur, uid)
+    total, _ = ledger(cur, uid)
+    # (1+1) + (5+5) - 1 = 11 in either ordering. The old code could return 12,
+    # with the debit lost under the grant's absolute write.
+    check(f"balance is 11, not 12 (got {bal})", bal == 11,
           "the spent credit reappeared -- the grant overwrote the debit")
-    check(f"balance == -sum(cost): {s}/{d} vs {-ls}/{-ld}", (s, d) == (-ls, -ld))
+    check(f"balance == -sum(cost): {bal} vs {-total}", bal == -total)
 
 
 # ── idempotency ──────────────────────────────────────────────────────────────
@@ -192,13 +205,13 @@ def test_replayed_webhook_grants_once(cur):
     uid = seed(cur, 0, 0)
     a = rpc(cur, "grant_credits", uid, 1, 1, "checkout.session.completed", "evt_x")
     b = rpc(cur, "grant_credits", uid, 1, 1, "checkout.session.completed", "evt_x")
-    check("first grant applies", a.get("applied_scan") == 1)
+    check("first grant applies", a.get("applied") == 2)
     check("replay reports duplicate_request", b.get("reason") == "duplicate_request")
-    check("replay applies nothing", b.get("applied_scan") == 0)
+    check("replay applies nothing", b.get("applied") == 0)
     check("replay returns the ORIGINAL event id", a.get("event_id") == b.get("event_id"),
           "a null or new id here would break refund tracing")
-    check("balance moved once", balance(cur, uid) == (1, 1))
-    check("one ledger row", ledger(cur, uid)[2] == 1)
+    check("balance moved once", balance(cur, uid) == 2)
+    check("one ledger row", ledger(cur, uid)[1] == 1)
 
 
 def test_dispute_after_refund_revokes_once(cur):
@@ -208,9 +221,9 @@ def test_dispute_after_refund_revokes_once(cur):
     # payments_api keys both on revoke:<payment_intent>, not the event id.
     r1 = rpc(cur, "grant_credits", uid, -1, -1, "charge.refunded", "revoke:pi_9")
     r2 = rpc(cur, "grant_credits", uid, -1, -1, "charge.dispute.created", "revoke:pi_9")
-    check("first revocation applies", r1.get("applied_scan") == -1)
+    check("first revocation applies", r1.get("applied") == -2)
     check("second is a duplicate", r2.get("reason") == "duplicate_request")
-    check("balance revoked once, not twice", balance(cur, uid) == (4, 4),
+    check("balance revoked once, not twice", balance(cur, uid) == 8,
           "double revocation eats credits from an unrelated purchase")
 
 
@@ -222,11 +235,11 @@ def test_clamp_records_what_was_applied(cur):
     rpc(cur, "grant_credits", uid, 1, 1, "opening", "seed_clamp")  # ledgered, see above
     r = rpc(cur, "grant_credits", uid, -5, -5, "charge.refunded", "revoke:pi_big")
     check("clamped flag is set", r.get("clamped") is True)
-    check("applied is -1, not the requested -5", r.get("applied_scan") == -1,
+    check("applied is -2, not the requested -10", r.get("applied") == -2,
           "recording the REQUESTED delta would put a number in the ledger the balance never moved by")
-    check("balance floors at 0", balance(cur, uid) == (0, 0))
-    ls, ld, _ = ledger(cur, uid)
-    check(f"balance == -sum(cost) after clamping: 0/0 vs {-ls}/{-ld}", (0, 0) == (-ls, -ld))
+    check("balance floors at 0", balance(cur, uid) == 0)
+    total, _ = ledger(cur, uid)
+    check(f"balance == -sum(cost) after clamping: 0 vs {-total}", 0 == -total)
 
 
 def test_validation(cur):
@@ -243,7 +256,7 @@ def test_validation(cur):
     check("unknown profile refused",
           rpc(cur, "grant_credits", str(uuid.uuid4()), 1, 1, "x", "k2").get("reason")
           == "profile_not_found")
-    check("balance untouched by every refusal", balance(cur, uid) == (1, 1))
+    check("balance untouched by every refusal", balance(cur, uid) == 2)
 
 
 def test_grant_is_distinguishable_from_a_debit(cur):

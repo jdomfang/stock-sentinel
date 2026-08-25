@@ -160,7 +160,7 @@ with st.container(key="da_scan_card"):
         # analysis without ever seeing a number, and running out here was a
         # bare st.error() with no way to buy. The count comes from the profile
         # require_active_account() already fetched above, so it costs nothing.
-        billing.render_credit_meter(kind="deep", profile=_profile, key="deep")
+        billing.render_credit_meter(profile=_profile, key="deep")
 
 # Auto-sector: Deep analysis can run without sector input. Default to unknown.
 sector = "unknown"
@@ -196,8 +196,8 @@ if _run_clicked or (_autorun and _prefill):
             # nothing to click, on the page whose whole purpose is the thing
             # the user just ran out of.
             _da_logger.info("deep_analyze refused reason=%s", _credit.reason)
-            billing.render_upgrade_modal(_credit.message,
-                                         event_type="deep_analyze", key="page")
+            billing.render_credit_refusal(
+                _credit, "A deep analysis costs 1 credit.", key="page")
             _bail()
         # Everything from here is charged work. It must be inside try/finally,
         # not try/except: Streamlit aborts a running script with StopException /

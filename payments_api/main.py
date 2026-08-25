@@ -121,8 +121,7 @@ def _record_purchase(
     amount_total: int | None,
     currency: str | None,
     status: str | None,
-    scan_credits_granted: int = 0,
-    deep_credits_granted: int = 0,
+    credits_granted: int = 0,
 ) -> None:
     """Purchase audit record.
 
@@ -130,22 +129,52 @@ def _record_purchase(
     needed: reconciliation is denominated in credits, and the credit counts live
     only in Stripe session metadata otherwise.
     """
+    row = {
+        "user_id": user_id,
+        "event_id": event_id,
+        "checkout_session_id": checkout_session_id,
+        "payment_intent_id": payment_intent_id,
+        "amount_total": amount_total,
+        "currency": currency,
+        "status": status,
+    }
     try:
         sb = _supabase_admin_client()
         sb.table("purchases").insert(
             {
-                "user_id": user_id,
-                "event_id": event_id,
-                "checkout_session_id": checkout_session_id,
-                "payment_intent_id": payment_intent_id,
-                "amount_total": amount_total,
-                "currency": currency,
-                "status": status,
-                "scan_credits_granted": int(scan_credits_granted),
-                "deep_credits_granted": int(deep_credits_granted),
+                **row,
+                "credits_granted": int(credits_granted),
+                # The legacy columns are still written, both zero. They are kept
+                # so a chargeback on a PRE-merge purchase can still read what
+                # that purchase actually granted; a new row has nothing to say
+                # in the old denomination and must not pretend otherwise.
+                "scan_credits_granted": 0,
+                "deep_credits_granted": 0,
             }
         ).execute()
-    except Exception:
+    except Exception as e:
+        # DEPLOY-ORDER TOLERANCE. `credits_granted` is added by the merge
+        # migration, which is applied by hand while this service deploys from a
+        # git push -- so there is a window where the column does not exist yet.
+        # Losing the row is not cosmetic: it is the row a chargeback reads to
+        # decide how much to revoke, and without it the revocation falls back to
+        # deriving from the amount, which is right only by coincidence.
+        #
+        # Retry once in the old shape, recording the grant in the columns that
+        # DO exist. The migration's backfill later sums them into
+        # credits_granted, so the row ends up correct either way.
+        if "credits_granted" in str(e) or "PGRST204" in str(e):
+            logger.error("purchases.credits_granted missing -- merge migration not "
+                         "applied yet; recording this purchase in the legacy columns")
+            try:
+                _supabase_admin_client().table("purchases").insert(
+                    {**row, "scan_credits_granted": int(credits_granted),
+                     "deep_credits_granted": 0}
+                ).execute()
+                return
+            except Exception:
+                logger.exception("purchases fallback insert ALSO failed user_id=%s", user_id)
+
         # Log the actual error. This was previously a bare log line, which is how
         # the missing `purchases` table went unnoticed from launch until the
         # Phase 0 review: every insert failed with PGRST205 and said nothing.
@@ -166,14 +195,27 @@ def _record_purchase(
 # those into a silent 1+1 grant against an unknown amount of money. Money paid
 # is the one fact Stripe guarantees and nobody can typo, so credits are derived
 # from it and an unrecognised amount is refused rather than guessed.
-PACKS: dict[tuple[str, int], tuple[int, int]] = {
-    # (currency, amount in minor units): (scan_credits, deep_credits)
-    ("usd", 500): (1, 1),
+# HOW BIG A PACK IS. One number, because the pack size is a pricing decision
+# and nothing structural depends on it.
+#
+# Two, not ten, and the reason is arithmetic rather than taste. X bills $0.005
+# per post READ. A scan buys up to 300 posts ($1.50) and a deep analysis up to
+# ~400 ($2.00), so two credits spent on the two most expensive actions cost
+# about $4.00 to serve against $5.00 of revenue. At ten credits for $5 the same
+# pack costs up to $20 to serve -- a loss on essentially every sale.
+#
+# This also makes the merge value-neutral: a user holding 1 scan + 1 deep paid
+# $5 for two actions and now holds 2 credits worth two actions.
+PACK_CREDITS = 2
+
+PACKS: dict[tuple[str, int], int] = {
+    # (currency, amount in minor units): credits granted
+    ("usd", 500): PACK_CREDITS,
 }
 
 
-def _credits_for(currency: str | None, amount_total: int | None) -> tuple[int, int] | None:
-    """What this payment buys, or None if we do not recognise the amount.
+def _credits_for(currency: str | None, amount_total: int | None) -> int | None:
+    """How many credits this payment buys, or None if we do not recognise it.
 
     None is a refusal, never a default. The caller makes Stripe retry so the
     payment is visible and recoverable once the pack is added here, rather than
@@ -196,7 +238,8 @@ def _purchase_by_payment_intent(payment_intent_id: str) -> dict[str, Any] | None
     try:
         sb = _supabase_admin_client()
         res = (sb.table("purchases")
-                 .select("user_id,scan_credits_granted,deep_credits_granted,amount_total,currency")
+                 .select("user_id,credits_granted,scan_credits_granted,"
+                         "deep_credits_granted,amount_total,currency")
                  .eq("payment_intent_id", payment_intent_id)
                  .limit(1).execute())
         rows = getattr(res, "data", None) or []
@@ -222,7 +265,7 @@ app = FastAPI(title="Stock Sentinel Payments API")
 # reason: without it a deploy is unfalsifiable, and a test against the old image
 # passes and proves nothing. Bump it whenever behaviour or the response contract
 # changes.
-SERVICE_VERSION = "2026.08.24-paid-gate"
+SERVICE_VERSION = "2026.08.24-merged-credits"
 
 
 @app.get("/health")
@@ -234,7 +277,11 @@ def health():
         "env": os.getenv("RAILWAY_ENVIRONMENT_NAME") or os.getenv("ENV") or "unknown",
         # The pack table the webhook grants from, so a mismatch between what is
         # charged and what is granted is visible without reading logs.
-        "packs": {f"{c}:{a}": list(v) for (c, a), v in PACKS.items()},
+        # `v` is a scalar credit count. It was list(v) while packs were tuples;
+        # left unchanged that is TypeError: 'int' object is not iterable, and
+        # /health -- the endpoint that exists to prove which build is live --
+        # would 500 on the deploy that needed proving.
+        "packs": {f"{c}:{a}": v for (c, a), v in PACKS.items()},
     }
 
 
@@ -265,16 +312,15 @@ async def create_checkout_session(
     # One pack for now: $5 -> +1 scan, +1 deep. Priced FROM the table the
     # webhook grants from, so the two can never drift apart.
     pack_currency, pack_amount = "usd", 500
-    pack_scan, pack_deep = PACKS[(pack_currency, pack_amount)]
+    pack_credits = PACKS[(pack_currency, pack_amount)]
 
     # Metadata still carries user_id -- it is the only way to know WHO paid, and
     # nothing else supplies it. It no longer decides HOW MUCH: the credit counts
     # below are advisory, recorded for debugging, and the webhook ignores them.
     pack_meta = {
         "user_id": str(user_id),
-        "pack": f"{pack_amount}_{pack_currency}_{pack_scan}_scan_{pack_deep}_deep",
-        "scan_credits": str(pack_scan),
-        "deep_credits": str(pack_deep),
+        "pack": f"{pack_amount}_{pack_currency}_{pack_credits}_credits",
+        "credits": str(pack_credits),
     }
 
     try:
@@ -405,7 +451,7 @@ async def stripe_webhook(request: Request):
                 # Same reasoning as missing user_id: no guard row written, so a
                 # retry after adding the pack grants correctly.
                 return JSONResponse(status_code=500, content={"ok": False, "error": "unknown amount"})
-            scan_delta, deep_delta = grant
+            credits = grant
 
             # KEYED ON THE SESSION, not the event. One purchase can now reach us
             # as two different event ids -- `completed` (unpaid) followed by
@@ -420,8 +466,12 @@ async def stripe_webhook(request: Request):
                 return {"ok": True}
 
             try:
-                _apply_credit_delta(user_id=user_id, scan_delta=scan_delta,
-                                    deep_delta=deep_delta, reason=etype,
+                # The whole grant goes in the scan slot and 0 in the deep slot.
+                # grant_credits SUMS its two deltas now, so the split is
+                # meaningless to it -- but the signature is unchanged on purpose
+                # (a new one would be an overload, not a replacement).
+                _apply_credit_delta(user_id=user_id, scan_delta=credits,
+                                    deep_delta=0, reason=etype,
                                     request_id=grant_key)
             except Exception:
                 # The guard row committed in its own transaction BEFORE this
@@ -446,8 +496,7 @@ async def stripe_webhook(request: Request):
                 amount_total=amount_total,
                 currency=currency,
                 status=pay_status or session.get("status"),
-                scan_credits_granted=scan_delta,
-                deep_credits_granted=deep_delta,
+                credits_granted=credits,
             )
 
         elif etype in {"charge.refunded", "charge.dispute.created"}:
@@ -476,8 +525,22 @@ async def stripe_webhook(request: Request):
             row = _purchase_by_payment_intent(payment_intent) if payment_intent else None
             if row:
                 user_id = row.get("user_id")
-                scan_delta = -int(row.get("scan_credits_granted") or 0)
-                deep_delta = -int(row.get("deep_credits_granted") or 0)
+                # BOTH ERAS, from one row. A post-merge purchase carries
+                # credits_granted; a pre-merge one carries (1,1) in the legacy
+                # columns and a zero here. Falling back to their sum revokes
+                # exactly what that purchase granted -- 2 for an old pack, 10
+                # for a new one -- without the caller knowing which era it is.
+                #
+                # Getting this wrong is not visible afterwards: grant_credits
+                # clamps a revocation at zero and records only what it applied,
+                # so an over-revocation empties a DIFFERENT, unrefunded pack and
+                # the ledger still reconciles perfectly.
+                granted = int(row.get("credits_granted") or 0)
+                if granted <= 0:
+                    granted = (int(row.get("scan_credits_granted") or 0)
+                               + int(row.get("deep_credits_granted") or 0))
+                scan_delta = -granted
+                deep_delta = 0
 
             # 2. No purchase row -- the grant predates this table, or its insert
             #    failed. Fall back to Stripe: metadata for WHO (nothing else
@@ -498,7 +561,7 @@ async def stripe_webhook(request: Request):
                         )
                         user_id = None
                     else:
-                        scan_delta, deep_delta = -derived[0], -derived[1]
+                        scan_delta, deep_delta = -derived, 0
                 except Exception:
                     logger.exception("PaymentIntent lookup failed for %s", payment_intent)
                     user_id = None
@@ -603,13 +666,12 @@ def _apply_credit_delta(
     # user had already spent the credits. Say so, loudly, rather than losing it.
     if data.get("clamped"):
         logger.warning(
-            "Credit revocation clamped at zero user_id=%s reason=%s requested %s/%s applied %s/%s",
-            user_id, reason, scan_delta, deep_delta,
-            data.get("applied_scan"), data.get("applied_deep"),
+            "Credit revocation clamped at zero user_id=%s reason=%s requested %s applied %s",
+            user_id, reason, scan_delta + deep_delta, data.get("applied"),
         )
 
     logger.info(
-        "Credits updated user_id=%s applied %s/%s -> balance %s/%s event=%s",
-        user_id, data.get("applied_scan"), data.get("applied_deep"),
-        data.get("scan_credits"), data.get("deep_credits"), data.get("event_id"),
+        "Credits updated user_id=%s applied %s -> balance %s event=%s",
+        user_id, data.get("applied"),
+        data.get("credits"), data.get("event_id"),
     )
