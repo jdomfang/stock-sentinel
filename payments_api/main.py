@@ -526,8 +526,38 @@ async def stripe_webhook(request: Request):
 
         elif etype in REVOKE_EVENTS:
             # Revoke credits on refund/dispute.
-            charge = event["data"]["object"]
-            payment_intent = charge.get("payment_intent")
+            #
+            # TWO DIFFERENT OBJECTS arrive here. charge.refunded carries a
+            # Charge; charge.dispute.created carries a DISPUTE, which is a
+            # different shape wearing the same variable name. A Dispute has no
+            # `amount_refunded` at all -- so the partial-refund warning below
+            # was silently dead for every dispute -- and its `amount` is the
+            # amount being disputed, not the amount charged.
+            #
+            # It also may not carry `payment_intent` on older API versions,
+            # where the link is only on the nested `charge`. Missing it means
+            # user_id stays None, nothing is revoked, and the handler returns
+            # 200 -- a disputed purchase silently keeping its credits.
+            obj = event["data"]["object"]
+            payment_intent = obj.get("payment_intent")
+            if not payment_intent and etype == "charge.dispute.created":
+                # Fall back to the nested charge, then to retrieving it.
+                _ch = obj.get("charge")
+                if isinstance(_ch, dict):
+                    payment_intent = _ch.get("payment_intent")
+                elif isinstance(_ch, str) and STRIPE_SECRET_KEY:
+                    try:
+                        _full = stripe.Charge.retrieve(_ch)
+                        _full = _full if isinstance(_full, dict) else {}
+                        payment_intent = _full.get("payment_intent")
+                    except Exception:
+                        logger.exception("dispute: could not resolve charge %s", _ch)
+                if not payment_intent:
+                    logger.critical(
+                        "DISPUTE WITH NO PAYMENT INTENT -- nothing revoked. "
+                        "dispute=%s charge=%s. Reconcile by hand.",
+                        obj.get("id"), obj.get("charge"))
+            charge = obj
             user_id = None
             # 0, not -1. These are overwritten by every path that learns the
             # real quantity below; as a DEFAULT, -1 was a guess about somebody
@@ -535,16 +565,26 @@ async def stripe_webhook(request: Request):
             scan_delta = 0
             deep_delta = 0
 
-            # A partial refund still revokes the whole pack. That is the
-            # existing behaviour and it is deliberate: a credit is indivisible,
-            # so there is no honest way to give back 40% of one. Logged below so
-            # it is visible rather than assumed.
-            if charge.get("amount_refunded") and charge.get("amount") and \
-                    int(charge["amount_refunded"]) < int(charge["amount"]):
+            # A partial refund still revokes the whole pack. That is deliberate:
+            # a credit is indivisible, so there is no honest way to give back
+            # 40% of one. Logged so it is visible rather than assumed.
+            #
+            # Guarded on the event type, because only a Charge has
+            # amount_refunded. Reading it off a Dispute always yielded None, so
+            # this warning never fired for a partial dispute -- and a partial
+            # dispute revoking a whole pack is exactly as surprising.
+            if etype == "charge.refunded":
+                _refunded, _amount = charge.get("amount_refunded"), charge.get("amount")
+                if _refunded and _amount and int(_refunded) < int(_amount):
+                    logger.warning(
+                        "Partial refund (%s of %s) revokes the full pack payment_intent=%s",
+                        _refunded, _amount, payment_intent)
+            elif etype == "charge.dispute.created":
                 logger.warning(
-                    "Partial refund (%s of %s) revokes the full pack payment_intent=%s",
-                    charge.get("amount_refunded"), charge.get("amount"), payment_intent,
-                )
+                    "Dispute opened (%s of %s %s) -- revoking the full pack "
+                    "payment_intent=%s dispute=%s",
+                    charge.get("amount"), charge.get("currency"),
+                    charge.get("status"), payment_intent, charge.get("id"))
 
             # 1. What we actually granted. Authoritative when present.
             row = _purchase_by_payment_intent(payment_intent) if payment_intent else None

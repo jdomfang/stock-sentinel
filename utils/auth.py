@@ -313,9 +313,21 @@ def consume_remember_code(code: str) -> str | None:
         logger.exception("remember: could not exchange a code")
         return None
     if not data.get("ok"):
-        # unknown_or_used vs expired -- logged, never shown. Telling a caller
+        # unknown_or_used vs expired -- logged, never SHOWN. Telling the caller
         # which would say whether a guessed code was ever real.
-        logger.info("remember: code refused (%s)", data.get("reason"))
+        #
+        # WARNING, not info, for unknown_or_used specifically: presenting a code
+        # that was already spent is the strongest signal available that one has
+        # been captured -- from a proxy log, a shared machine, a screenshot. It
+        # is also what an ordinary double-load produces, so it is a signal to
+        # look at rather than an alarm to act on. Nothing here can revoke the
+        # user's other codes, because a spent code no longer identifies anyone.
+        if data.get("reason") == "unknown_or_used":
+            logger.warning("remember: a spent or unknown code was presented -- "
+                           "expected after a double-load, worth investigating "
+                           "if it recurs")
+        else:
+            logger.info("remember: code refused (%s)", data.get("reason"))
         return None
     return data.get("refresh_token")
 

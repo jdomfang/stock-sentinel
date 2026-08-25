@@ -450,6 +450,52 @@ def test_a_dispute_after_a_refund_does_not_revoke_twice():
     check("revoked once for one payment", len(db.grants) == 1, str(db.grants))
 
 
+def test_a_dispute_is_not_a_charge():
+    """charge.dispute.created carries a DISPUTE, a different object shape.
+
+    It has no `amount_refunded`, so the partial-refund warning was dead for
+    every dispute. And on older API versions it may not carry `payment_intent`
+    at the top level -- only on the nested charge -- in which case user_id
+    stayed None, nothing was revoked, and the handler returned 200. A disputed
+    purchase silently kept its credits.
+    """
+    print("\na dispute must still revoke, whatever shape Stripe sends")
+
+    # Modern shape: payment_intent present at the top level.
+    client, M, db = load()
+    post(client, session_event())
+    db.grants.clear()
+    r = post(client, {"id": "evt_d1", "type": "charge.dispute.created",
+                      "data": {"object": {"id": "dp_1", "payment_intent": "pi_1",
+                                          "amount": 500, "currency": "usd",
+                                          "status": "warning_needs_response"}}})
+    check("modern dispute revokes", len(db.grants) == 1, str(db.grants))
+    check("...the right amount",
+          db.grants and db.grants[0]["p_scan_delta"] == -M.PACK_CREDITS, str(db.grants))
+    check("...and returns 200", r.status_code == 200, str(r.status_code))
+
+    # Legacy shape: the link lives only on the nested charge object.
+    client, M, db = load()
+    post(client, session_event())
+    db.grants.clear()
+    post(client, {"id": "evt_d2", "type": "charge.dispute.created",
+                  "data": {"object": {"id": "dp_2", "amount": 500, "currency": "usd",
+                                      "charge": {"id": "ch_1", "payment_intent": "pi_1"}}}})
+    check("a dispute whose link is on the nested charge still revokes",
+          len(db.grants) == 1, str(db.grants))
+
+    # No link anywhere: must not silently succeed.
+    client, M, db = load()
+    post(client, session_event())
+    db.grants.clear()
+    r3 = post(client, {"id": "evt_d3", "type": "charge.dispute.created",
+                       "data": {"object": {"id": "dp_3", "amount": 500,
+                                           "currency": "usd", "charge": None}}})
+    check("an unlinkable dispute revokes nothing", db.grants == [], str(db.grants))
+    check("...and is acknowledged rather than retried forever",
+          r3.status_code == 200, str(r3.status_code))
+
+
 def test_a_refund_without_a_payment_intent_does_not_crash():
     """`event_id` was assigned only in the checkout branch; this branch read it."""
     print("\nthe UnboundLocalError path")

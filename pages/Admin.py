@@ -336,6 +336,24 @@ if st.button("💾 Save changes", type="primary"):
             reason = result.get("reason") or "unknown"
             ui_error(_ADJUST_MESSAGES.get(reason, f"Could not save changes ({reason})."))
         else:
+            # DISABLING AN ACCOUNT MUST KILL ITS SESSIONS.
+            #
+            # `disabled` stops consume_credit and gates every page, but a
+            # "remember me" code stays valid for thirty days -- so a disabled
+            # user keeps minting working Supabase sessions and keeps browsing.
+            # Suspending someone who has to be suspended and leaving them
+            # logged in is not a suspension.
+            if bool(disabled) and result.get("disabled_changed"):
+                try:
+                    from utils.auth import revoke_remember_codes
+                    revoke_remember_codes(uid)
+                except Exception:
+                    # Never fail the save over this: the account IS disabled,
+                    # which is the thing that was asked for. Say so instead of
+                    # implying it silently worked.
+                    ui_error("Account disabled, but its saved sign-ins could not "
+                             "be revoked. Re-save to retry.")
+
             delta = result.get("delta") or 0
             if delta:
                 st.success(f"✅ Saved. Credits {delta:+d} — recorded in the ledger.")
