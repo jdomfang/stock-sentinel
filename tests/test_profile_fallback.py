@@ -33,17 +33,26 @@ st.secrets = {}
 sys.modules["streamlit"] = st
 
 calls = {"selects": []}
+class _APIError(Exception):
+    """Shaped like postgrest.exceptions.APIError: the code is an attribute."""
+    def __init__(self, code, message):
+        self.code, self.message = code, message
+        super().__init__(str({"code": code, "message": message}))
+
+
 class _Q:
     def __init__(self, db, cols): self.db, self.cols = db, cols
     def eq(self, *a): return self
+    def limit(self, n): return self
     def maybe_single(self): return self
     def execute(self):
         calls["selects"].append(self.cols)
         if "credits" in self.cols.split(",") and self.db["missing"]:
-            raise RuntimeError('column profiles.credits does not exist (42703)')
+            raise _APIError("42703", "column profiles.credits does not exist")
         if "credits" in self.cols.split(","):
-            return types.SimpleNamespace(data={"user_id": "u1", "credits": 8})
-        return types.SimpleNamespace(data={"user_id": "u1", "scan_credits": 5, "deep_credits": 3})
+            return types.SimpleNamespace(data=[{"user_id": "u1", "credits": 8}])
+        return types.SimpleNamespace(
+            data=[{"user_id": "u1", "scan_credits": 5, "deep_credits": 3}])
 class _T:
     def __init__(self, db): self.db = db
     def select(self, cols): return _Q(self.db, cols)
@@ -97,7 +106,7 @@ class _OnlyFirstFails(_Q):
         if "credits" in self.cols.split(","):
             raise RuntimeError("connection refused: could not reach the database")
         return types.SimpleNamespace(
-            data={"user_id": "u1", "scan_credits": 99, "deep_credits": 99})
+            data=[{"user_id": "u1", "scan_credits": 99, "deep_credits": 99}])
 
 _T.select = lambda self, cols: _OnlyFirstFails(self.db, cols)
 calls["selects"].clear()
@@ -134,7 +143,7 @@ check("fetch_credits falls back to scan+deep", P.fetch_credits("u1") == 8,
 class _NoFallback(_Q):
     def execute(self):
         if "credits" in self.cols.split(","):
-            raise RuntimeError("column profiles.credits does not exist (42703)")
+            raise _APIError("42703", "column profiles.credits does not exist")
         raise AssertionError("fallback query should have run but did not")
 
 _T.select = lambda self, cols: _NoFallback(self.db, cols)
@@ -149,6 +158,59 @@ check("the fallback actually executes, not merely exists", fell_back,
       "the frozen-column query was unreachable")
 
 check("an empty user id reads as unknown", P.fetch_credits("") is None)
+# ── the query SHAPE, which is what actually broke ──────────────────────────
+#
+# The detection above was correct from the start. What defeated it was
+# .maybe_single(): asked for a column that does not exist, PostgREST answers
+#
+#     {"code": "42703", "message": "column profiles.credits does not exist"}
+#
+# and maybe_single() catches that and re-raises
+#
+#     {"code": "204",   "message": "Missing response"}
+#
+# with no code and no column name. Nothing downstream can tell that apart from
+# a network failure, so the fallback declined to run, Home rendered no balance,
+# and the owner asked where the credit balance had gone.
+src = (REPO / "utils" / "profile.py").read_text()
+import ast as _ast
+_tree = _ast.parse(src)
+for _fn in ("get_my_profile", "fetch_credits", "_one"):
+    _node = next((n for n in _ast.walk(_tree)
+                  if isinstance(n, _ast.FunctionDef) and n.name == _fn), None)
+    check(f"{_fn} exists", _node is not None)
+    if _node is None:
+        continue
+    _uses = any(isinstance(n, _ast.Attribute) and n.attr == "maybe_single"
+                for n in _ast.walk(_node))
+    check(f"{_fn} does not use maybe_single",
+          not _uses,
+          "maybe_single() masks the real PostgREST error as a generic 204, "
+          "which is what hid the balance on Home")
+
+# And the predicate must key on the structured code, not only the message.
+# The code attribute must be read on its own. A fake whose __str__ embeds the
+# code proves nothing -- the message fallback catches it either way, which is
+# how this assertion first passed against a predicate that had stopped looking
+# at .code entirely.
+class _CodeOnly(Exception):
+    code = "42703"
+    def __str__(self): return "request failed"
+
+check("a 42703 error is recognised by .code alone, with nothing in the message",
+      P._is_missing_credits_column(_CodeOnly()),
+      "the structured code is the only reliable signal; library message text "
+      "changes between versions")
+check("...and by the message when no code attribute is present",
+      P._is_missing_credits_column(
+          RuntimeError("column profiles.credits does not exist")))
+check("a generic 204 'Missing response' is NOT recognised",
+      not P._is_missing_credits_column(_APIError("204", "Missing response")),
+      "treating maybe_single's masked error as 'not migrated' would serve a "
+      "frozen balance through any outage")
+check("a plain connection error is NOT recognised",
+      not P._is_missing_credits_column(RuntimeError("connection refused")))
+
 print("\n" + "=" * 70)
 print(f"  {len(PASSED)} passed, {len(FAILED)} failed")
 for n, d in FAILED:
