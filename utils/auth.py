@@ -83,9 +83,19 @@ def refresh_session_if_needed() -> bool:
                 _u = st.session_state.get(USER_KEY) or {}
                 _uid = _u.get("id") if isinstance(_u, dict) else getattr(_u, "id", None)
             if _rt and _uid:
-                _code = issue_remember_code(str(_uid), _rt)
-                if _code:
-                    _save_token_to_browser(_code)
+                # IN PLACE FIRST. The browser's code is still valid and still
+                # in localStorage; only the token behind it went stale. Minting
+                # a replacement on every refresh left the previous code live for
+                # its full thirty days, and this runs on each spend page and
+                # each per-row Deep Analyze -- so credentials accumulated at
+                # roughly the rate the user clicked.
+                if not rotate_remember_token(_rt):
+                    # No live row to update: expired, revoked, or this session
+                    # restored from a code that the exchange consumed. A new one
+                    # is genuinely needed.
+                    _code = issue_remember_code(str(_uid), _rt)
+                    if _code:
+                        _save_token_to_browser(_code)
 
         return True
     except Exception:
@@ -294,10 +304,38 @@ def issue_remember_code(user_id: str, refresh_token: str) -> str | None:
             "p_ttl": f"{_REMEMBER_TTL_DAYS} days",
             "p_user_agent": None,
         }).execute()
+        # REMEMBER WHICH ROW THIS IS. Only the hash is stored server-side, so
+        # without keeping it here the rotation path cannot find the row it just
+        # created and has to mint another code -- which is how a busy session
+        # accumulated a dozen live thirty-day credentials.
+        st.session_state["_remember_hash"] = _hash_code(code)
         return code
     except Exception:
         logger.exception("remember: could not issue a code")
         return None
+
+
+def rotate_remember_token(refresh_token: str) -> bool:
+    """Point this session's EXISTING code at a freshly rotated token.
+
+    Returns False when there is no live row to update -- expired, revoked, or
+    never issued in this session -- and the caller should issue a new code
+    instead. Never raises: remember-me is a convenience.
+    """
+    code_hash = st.session_state.get("_remember_hash")
+    if not code_hash or not refresh_token:
+        return False
+    try:
+        from utils.supabase_client import get_admin_client
+        res = get_admin_client().rpc("remember_rotate", {
+            "p_code_hash": code_hash,
+            "p_refresh_token": refresh_token,
+            "p_ttl": f"{_REMEMBER_TTL_DAYS} days",
+        }).execute()
+        return bool(getattr(res, "data", False))
+    except Exception:
+        logger.warning("remember: in-place rotation failed", exc_info=True)
+        return False
 
 
 def consume_remember_code(code: str) -> str | None:
@@ -312,6 +350,10 @@ def consume_remember_code(code: str) -> str | None:
     except Exception:
         logger.exception("remember: could not exchange a code")
         return None
+    # The row is gone either way now -- consume deletes it. Drop any stale hash
+    # so the rotation path does not keep trying to update a row that no longer
+    # exists and silently stop refreshing.
+    st.session_state.pop("_remember_hash", None)
     if not data.get("ok"):
         # unknown_or_used vs expired -- logged, never SHOWN. Telling the caller
         # which would say whether a guessed code was ever real.

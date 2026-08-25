@@ -111,6 +111,50 @@ def test_an_expired_code_is_refused_and_consumed(cur):
     check("...and the row is gone, not left to retry", cur.fetchone()[0] == 0)
 
 
+def test_rotation_does_not_mint_a_new_credential(cur):
+    """One code per device, not one per page load.
+
+    GoTrue rotates the refresh token on every refresh, so the stored row goes
+    stale and must be updated. Doing that by ISSUING A NEW CODE leaves the
+    previous one valid for its full thirty days -- and rotation runs at the top
+    of each spend page and again on every per-row Deep Analyze, so a busy
+    session left a dozen live credentials behind, of which the browser held one.
+    Every earlier one is a working sign-in for whoever captured it.
+    """
+    print("\nrotation updates the row; it does not mint another credential")
+    uid = user(cur)
+    rpc(cur, "remember_issue", h("dev-1"), uid, "rt_v1", "30 days", None)
+
+    for i, tok in enumerate(("rt_v2", "rt_v3", "rt_v4"), start=2):
+        ok = rpc(cur, "remember_rotate", h("dev-1"), tok, "30 days")
+        check(f"rotation {i} updates in place", ok is True, str(ok))
+
+    cur.execute("select count(*) from public.remember_tokens where user_id=%s", (uid,))
+    check("three rotations leave ONE row", cur.fetchone()[0] == 1,
+          "each rotation minted a new thirty-day credential")
+
+    out = rpc(cur, "remember_consume", h("dev-1"))
+    check("the browser's original code still works", out.get("ok") is True, str(out))
+    check("...and yields the LATEST token", out.get("refresh_token") == "rt_v4", str(out))
+
+    check("rotating a consumed code fails, so the caller mints a fresh one",
+          rpc(cur, "remember_rotate", h("dev-1"), "rt_v5", "30 days") is False)
+
+    # A second device gets its own row and is untouched by the first's rotation.
+    rpc(cur, "remember_issue", h("dev-A"), uid, "rt_a", "30 days", None)
+    rpc(cur, "remember_issue", h("dev-B"), uid, "rt_b", "30 days", None)
+    rpc(cur, "remember_rotate", h("dev-A"), "rt_a2", "30 days")
+    check("rotating one device does not disturb another",
+          rpc(cur, "remember_consume", h("dev-B")).get("refresh_token") == "rt_b")
+
+    # An expired row is not silently revived by a rotation.
+    rpc(cur, "remember_issue", h("dev-old"), uid, "rt_o", "30 days", None)
+    cur.execute("update public.remember_tokens set expires_at = now() - interval '1 day'"
+                " where code_hash = %s", (h("dev-old"),))
+    check("an expired code cannot be rotated back to life",
+          rpc(cur, "remember_rotate", h("dev-old"), "rt_o2", "30 days") is False)
+
+
 def test_sign_out_revokes_every_code(cur):
     print("\nsigning out must invalidate codes, not just forget them locally")
     uid = user(cur)
@@ -207,6 +251,11 @@ def test_no_refresh_token_reaches_the_url_or_localstorage():
     check("sign_out revokes server-side",
           "revoke_remember_codes" in auth_py.split("def sign_out")[1].split("def ")[0],
           "clearing localStorage leaves the row valid for 30 days")
+    check("a session refresh rotates IN PLACE before minting",
+          auth_py.index("rotate_remember_token") <
+          auth_py.split("def refresh_session_if_needed")[1].find("issue_remember_code")
+          + auth_py.index("def refresh_session_if_needed"),
+          "minting on every refresh accumulates live thirty-day credentials")
     check("a restored session rotates its code",
           "issue_remember_code" in auth_py.split("def restore_session_from_refresh_token")[1].split("\ndef ")[0],
           "without rotation 'remember me' works exactly once")
@@ -221,6 +270,7 @@ def main() -> int:
     with c.cursor() as cur:
         rebuild(cur)
         for t in (test_a_code_works_exactly_once,
+                  test_rotation_does_not_mint_a_new_credential,
                   test_an_expired_code_is_refused_and_consumed,
                   test_sign_out_revokes_every_code,
                   test_the_table_is_unreadable_by_a_user_jwt):
