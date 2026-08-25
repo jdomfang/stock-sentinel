@@ -425,8 +425,14 @@ def test_no_page_reads_the_frozen_columns_for_a_balance():
         # substring match reports that as a violation. Pull the argument of each
         # .select(...) and look only in there.
         selects = _re.findall(r'\.select\(\s*((?:"[^"]*"\s*)+)', src)
-        check(f"{rel} reads a balance at all", bool(selects), "no .select found")
         if not selects:
+            # No query of its own. That is the BETTER shape -- Home was moved to
+            # utils.profile.fetch_credits precisely because a second copy of the
+            # query meant a second copy of the fallback to forget. Nothing to
+            # check here beyond it not reading the frozen columns some other way.
+            check(f"{rel} does not touch the frozen columns at all",
+                  "scan_credits" not in src and "deep_credits" not in src,
+                  "reads a pre-merge snapshot without going through a .select")
             continue
 
         # THE FIRST select is the one that must be right. utils/profile.py
@@ -485,6 +491,73 @@ def test_a_refusal_only_offers_a_purchase_when_buying_would_help():
     B.render_credit_refusal(R("rpc_error", "Could not verify your credits."), "o", key="k")
     check("a transient failure says so", calls["caption"] >= 1,
           "no reassurance that the credit was not taken")
+
+
+def test_the_buy_button_does_not_depend_on_reading_the_balance():
+    """Not knowing the number is a reason to SHOW the button, not to hide it.
+
+    Home carries its own credits query, separate from utils.profile, and both
+    the balance pill and the Buy control lived inside `if credits_c is not
+    None`. So when the read failed -- which it does for every user until the
+    merge migration is applied by hand -- the page rendered no balance AND no
+    way to buy. The control had been an inert <span> reading "Coming soon" for
+    months; gating it on a failed read reproduced that dead end by another
+    route, and the owner saw exactly that on the live site.
+
+    AST, not a grep: the question is whether the call is NESTED inside that
+    conditional, and a substring search cannot see nesting.
+    """
+    print("\nthe Buy control survives a balance we cannot read")
+    import ast
+    tree = ast.parse((REPO / "pages" / "Home.py").read_text())
+
+    def calls_buy(node):
+        return any(isinstance(n, ast.Attribute) and n.attr == "render_buy_credits"
+                   for n in ast.walk(node))
+
+    gated = []
+    for node in ast.walk(tree):
+        if not isinstance(node, ast.If):
+            continue
+        test_src = ast.dump(node.test)
+        if "credits_c" not in test_src:
+            continue
+        for stmt in node.body:
+            if calls_buy(stmt):
+                gated.append(node.lineno)
+    check("Buy is not nested inside the balance-read conditional", not gated,
+          f"render_buy_credits is inside `if credits_c ...` at line(s) {gated}")
+    check("...and Home still renders it at all", calls_buy(tree),
+          "the buy control disappeared from Home entirely")
+
+
+def test_home_reads_survive_the_deploy_window():
+    """Home must not carry its OWN copy of the balance query.
+
+    It did, which is precisely why making utils/profile.py tolerant of the
+    pre-migration window did nothing for the landing page: Home queried
+    `profiles` directly, got 42703, returned None, and rendered neither the
+    balance nor the Buy button. Duplicating a fallback is how one copy silently
+    goes stale.
+
+    The behaviour of the shared helper is asserted in tests/test_profile_fallback.py,
+    by running it. This only checks that Home routes through it.
+    """
+    print("\nHome delegates the balance read instead of duplicating it")
+    import ast
+    src = (REPO / "pages" / "Home.py").read_text()
+    tree = ast.parse(src)
+    fn = next((n for n in ast.walk(tree)
+               if isinstance(n, ast.FunctionDef) and n.name == "_get_credits"), None)
+    check("Home has a _get_credits", fn is not None)
+    if fn is None:
+        return
+    body = ast.dump(fn)
+    check("it calls the shared fetch_credits", "fetch_credits" in body,
+          "Home is querying profiles itself again")
+    check("...and does not query the table directly",
+          '"profiles"' not in ast.get_source_segment(src, fn),
+          "a second copy of the query is a second copy of the fallback to forget")
 
 
 def test_every_page_uses_one_implementation():

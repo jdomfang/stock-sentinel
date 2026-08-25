@@ -111,6 +111,44 @@ check("a transient failure propagates instead of falling back", raised,
       f"'migration not applied'")
 check("...and no frozen-column balance was served",
       got is None, f"served {got}")
+
+
+# ── fetch_credits: the SHARED helper Home now delegates to ──────────────────
+#
+# Behavioural, not a source grep. The previous version of this checked Home's
+# source for the strings "scan_credits" and "42703" -- and passed against a
+# fallback disabled with `if False:`, because the docstring above it mentioned
+# both. It also passed when the fallback was made dead code by an early return,
+# because dead code is still text. Only running it can tell the difference.
+_T.select = lambda self, cols: _Q(self.db, cols)
+
+DB["missing"] = False
+check("fetch_credits reads the merged balance", P.fetch_credits("u1") == 8,
+      str(P.fetch_credits("u1")))
+
+DB["missing"] = True
+check("fetch_credits falls back to scan+deep", P.fetch_credits("u1") == 8,
+      str(P.fetch_credits("u1")))
+
+# The dead-code case the source check could not catch.
+class _NoFallback(_Q):
+    def execute(self):
+        if "credits" in self.cols.split(","):
+            raise RuntimeError("column profiles.credits does not exist (42703)")
+        raise AssertionError("fallback query should have run but did not")
+
+_T.select = lambda self, cols: _NoFallback(self.db, cols)
+fell_back = True
+try:
+    P.fetch_credits("u1")
+except AssertionError:
+    pass                      # the fallback DID run -- correct
+except RuntimeError:
+    fell_back = False         # it never attempted the fallback
+check("the fallback actually executes, not merely exists", fell_back,
+      "the frozen-column query was unreachable")
+
+check("an empty user id reads as unknown", P.fetch_credits("") is None)
 print("\n" + "=" * 70)
 print(f"  {len(PASSED)} passed, {len(FAILED)} failed")
 for n, d in FAILED:

@@ -734,12 +734,20 @@ if is_logged_in():
 
     @st.cache_data(ttl=10, show_spinner=False)
     def _get_credits(uid: str):
+        """The merged balance, or None if it genuinely cannot be read.
+
+        Delegates. Home used to carry its own copy of this query, which is
+        exactly why the deploy-order fallback in utils/profile.py did nothing
+        for the landing page -- and why this page showed no balance and no Buy
+        button before the migration was applied.
+        """
+        from utils.profile import fetch_credits
         try:
-            sb = get_client()
-            resp = sb.table("profiles").select("credits").eq("user_id", uid).maybe_single().execute()
-            data = getattr(resp, "data", None) or {}
-            return int(data.get("credits") or 0)
+            return fetch_credits(uid)
         except Exception:
+            # A genuine failure. Return None so the pill is hidden -- but the
+            # Buy control below renders regardless, because not knowing the
+            # number is a reason to offer a purchase, not to withhold one.
             return None
 
     user = get_user() or {}
@@ -783,15 +791,21 @@ if is_logged_in():
             unsafe_allow_html=True,
         )
 
-        # WAS AN INERT <span>: cursor:not-allowed, title="Coming soon", greyed
-        # to 35%. The control the owner wanted has been on this page the whole
-        # time, disabled. A real widget cannot live inside that markdown blob,
-        # so it renders beneath it rather than inline -- the pills keep their
-        # exact layout and nothing above them moves.
-        from utils import billing
-        _bc, _bpad = st.columns([1.1, 3.9])
-        with _bc:
-            billing.render_buy_credits(key="home")
+    # OUTSIDE the `if credits_c is not None` above, deliberately.
+    #
+    # It used to be inside it, so a balance we could not READ removed the
+    # ability to BUY -- the one control that is still correct and still useful
+    # when the read fails. That is backwards: not knowing the number is a reason
+    # to show the button, not to hide it. The control was previously an inert
+    # <span> (cursor:not-allowed, title="Coming soon"); hiding it on a failed
+    # read reproduced that dead end by another route.
+    #
+    # A real widget cannot live inside the markdown blob above, so it renders
+    # beneath it. Nothing above moves.
+    _bc, _bpad = st.columns([1.1, 3.9])
+    with _bc:
+        billing.render_buy_credits(key="home")
+
 
 else:
     # ── LOGGED-OUT: Marketing view ─────────────────────────────────────────────
