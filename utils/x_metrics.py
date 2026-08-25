@@ -219,6 +219,69 @@ class ScanTally:
         }
 
 
+def record_deep(
+    event_id: str | None,
+    ticker: str,
+    query: str,
+    posts_billed: int,
+    from_cache: bool,
+) -> bool:
+    """Record what one deep analysis cost. Never raises.
+
+    WHY THIS EXISTS. x_call_metrics was created with `kind in ('scan','deep')`
+    and only ever written with 'scan' -- record_scan hardcodes it. So a deep
+    analysis, which buys up to ~400 billed posts against a scan's 300, left no
+    trace of its spend anywhere.
+
+    That was merely a reporting gap until core-api's daily budget started
+    summing this table: the guard on /analyze was reading a counter that
+    /analyze could never increment, so the MORE expensive of the two paid
+    endpoints was uncapped. A ceiling that cannot see half the spending is not
+    a ceiling.
+
+    Deliberately thinner than record_scan. The tally columns are about ticker
+    EXTRACTION from a sector sweep, which a deep analysis does not do -- it is
+    told its ticker. This writes the cost and the identity, and nothing it would
+    have to invent.
+    """
+    try:
+        base = _config("SUPABASE_URL").rstrip("/")
+        key = _config("SUPABASE_SERVICE_ROLE_KEY")
+        if not base or not key:
+            logger.warning("x_metrics: Supabase not configured; deep spend not recorded")
+            return False
+
+        row = {
+            "event_id": event_id,
+            "kind": "deep",
+            "subject": (ticker or "").strip().upper(),
+            "query_hash": query_hash(query or ""),
+            "posts_billed": int(posts_billed or 0),
+            "pages_fetched": 0,
+            "from_cache": bool(from_cache),
+        }
+        req = urllib.request.Request(
+            f"{base}/rest/v1/{TABLE}",
+            data=json.dumps(row).encode(),
+            headers={
+                "apikey": key,
+                "Authorization": f"Bearer {key}",
+                "Content-Type": "application/json",
+                "Prefer": "return=minimal",
+            },
+            method="POST",
+        )
+        with urllib.request.urlopen(req, timeout=10):
+            return True
+    except Exception as e:
+        # Never raises: a metrics failure must not fail an analysis the user has
+        # already paid for. The cost is that unrecorded spend does not consume
+        # the budget -- the read fails closed, the write fails open -- so this
+        # is logged at WARNING rather than swallowed silently.
+        logger.warning("x_metrics: record_deep failed: %s: %s", type(e).__name__, e)
+        return False
+
+
 def record_scan(
     event_id: str | None,
     subject: str,

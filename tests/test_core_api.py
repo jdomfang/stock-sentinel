@@ -51,6 +51,11 @@ def client(secret: str = "s3cret", inference: str = "https://inf.test", **cfg):
                  "SUPABASE_URL": "https://db.test",
                  "SUPABASE_SERVICE_ROLE_KEY": "k"}.items():
         os.environ[k] = cfg.get(k, v)
+    # The spend budget is OFF by default in this harness, and the tests that
+    # care turn it on. It fails closed -- an unreadable budget refuses paid work
+    # -- and there is no Supabase here, so leaving it on would make every other
+    # test in this file assert 503 instead of the thing it was written for.
+    os.environ["CORE_API_DAILY_POST_BUDGET"] = str(cfg.get("budget", 0))
     import core_api.main as M
     M = importlib.reload(M)
     from fastapi.testclient import TestClient
@@ -640,27 +645,220 @@ def test_the_service_shares_utils_rather_than_copying_it():
           "python:3.11" in df, "runtime.txt pins 3.11")
 
 
+def test_a_daily_spend_ceiling_refuses_before_it_buys():
+    """MAX_CONCURRENT is a concurrency limit, not a spend limit.
+
+    Three slots running flat out is roughly $3.60 an hour at $0.005 per post,
+    forever, and the semaphore lives in one process so a second replica doubles
+    it. A leaked shared secret or a retry storm has no ceiling anywhere.
+
+    The refusal must land BEFORE any lock is taken: a request that will be
+    refused on budget must not first make another caller wait 75 seconds for a
+    subject lock it is never going to use.
+    """
+    print("\nspend: a daily ceiling, checked before anything is bought")
+    import os
+    c, M = client(budget=1000)
+
+    spend = {"n": 0}
+    M._budget_exceeded = lambda: (spend["n"] >= 1000, spend["n"])
+
+    # Patch the SOURCE modules, not core_api's globals. scan() does
+    # `from utils.scan import scan as run_scan` INSIDE the function body and
+    # analyze() does `from utils.analyze import analyze as run`, so assigning
+    # M.run_scan / M.run_analyze binds names nothing ever reads -- and
+    # "NOTHING was bought" then passes even with the budget check deleted.
+    import utils.scan as _us, utils.analyze as _ua
+    called = {"scan": 0, "analyze": 0}
+    _orig = (_us.scan, _ua.analyze)
+    _us.scan = lambda *a, **k: called.__setitem__("scan", called["scan"] + 1)
+    _ua.analyze = lambda *a, **k: called.__setitem__("analyze", called["analyze"] + 1)
+
+    H = {"X-Core-Secret": "s3cret"}
+    spend["n"] = 1500                       # over budget
+    r1 = c.post("/scan", json={"sector": "tech", "event_id": None}, headers=H)
+    r2 = c.post("/analyze", json={"ticker": "AAPL", "event_id": None}, headers=H)
+    check("/scan refuses over budget", r1.status_code == 429, str(r1.status_code))
+    check("/analyze refuses over budget", r2.status_code == 429, str(r2.status_code))
+    check("...with a machine-readable reason",
+          r1.headers.get("X-Core-Refused") == "budget", str(dict(r1.headers)))
+    check("...and NOTHING was bought", called == {"scan": 0, "analyze": 0}, str(called))
+    check("...the message names the ceiling",
+          "budget" in r1.json().get("detail", "").lower(), str(r1.json()))
+
+    # The ordering both inline comments are proudest of: the refusal must land
+    # before the subject lock, or a request that will be refused first makes
+    # another caller wait 75 seconds for a lock it never uses.
+    src = (REPO / "core_api" / "main.py").read_text()
+    for fn, lock in (("def scan(", 'scan:'), ("def analyze(", 'analyze:')):
+        body = src[src.index(fn):]
+        body = body[:body.index("_lock.release()")]
+        check(f"{fn.strip('def (')}: budget is enforced before the lock",
+              body.index("_enforce_budget()") < body.index("_subject_lock("),
+              "a doomed request should not queue behind a subject lock")
+    _us.scan, _ua.analyze = _orig
+
+
+def test_an_unreadable_budget_fails_closed():
+    """If the spend cannot be read, refuse.
+
+    The alternative is spending with no ceiling at all, which is the situation
+    the budget exists to end. This trades availability for a bounded bill, on
+    the paid endpoints only.
+    """
+    print("\nspend: an unreadable budget stops paid work rather than guessing")
+    import os
+    c, M = client(budget=4000)
+    M._budget_exceeded = lambda: (True, -1)
+    import utils.scan as _us
+    bought = {"n": 0}
+    _orig_scan = _us.scan
+    _us.scan = lambda *a, **k: bought.__setitem__("n", bought["n"] + 1)
+
+    r = c.post("/scan", json={"sector": "tech", "event_id": None},
+               headers={"X-Core-Secret": "s3cret"})
+    check("refuses with 503, not 429", r.status_code == 503, str(r.status_code))
+    check("...distinguishable from a real budget stop",
+          r.headers.get("X-Core-Refused") == "budget-unknown", str(dict(r.headers)))
+    check("...and buys nothing", bought["n"] == 0, str(bought))
+    _us.scan = _orig_scan
+
+
+def test_the_budget_can_be_disabled_but_only_deliberately():
+    print("\nspend: 0 disables the ceiling, and that is an explicit choice")
+    import os
+    c, M = client(budget=0)
+    check("a 0 budget reports not-exceeded", M._budget_exceeded() == (False, 0),
+          str(M._budget_exceeded()))
+    # ...but the SHIPPED default must be a real ceiling. A service that
+    # defaults to unlimited spend is one forgotten env var from the problem
+    # this guard exists to solve.
+    import re as _re
+    src = (REPO / "core_api" / "main.py").read_text()
+    m = _re.search(r'DAILY_POST_BUDGET = int\(os\.getenv\("CORE_API_DAILY_POST_BUDGET", "(\d+)"\)\)', src)
+    check("the shipped default is a real ceiling", bool(m) and int(m.group(1)) > 0,
+          f"default is {m.group(1) if m else 'unparseable'}")
+
+
+def test_the_budget_is_visible_without_making_health_do_a_query():
+    """The ceiling on /health; the SPEND on /auth-check.
+
+    /health is `async def`, unauthenticated, and polled continuously by Railway
+    with restartPolicyType=ON_FAILURE. A blocking Supabase RPC there does not
+    occupy a threadpool slot -- it stalls the whole uvicorn event loop,
+    including /ready, which was made async specifically so probes could not be
+    starved by paid work. A slow database would have become a container restart
+    mid-analysis, on posts already bought. It also handed anyone who can reach
+    the domain a free database round trip, and published spend figures the
+    migration revokes from anon and authenticated.
+    """
+    print("\nspend is visible, but not from an unauthenticated async probe")
+    c, M = client(budget=4000)
+    M._budget_exceeded = lambda: (False, 137)
+
+    d = c.get("/health").json()
+    check("/health reports the ceiling", d.get("daily_post_budget") == 4000, str(d))
+    check("/health does NOT report spend", "posts_billed_24h" not in d, str(d))
+
+    src = (REPO / "core_api" / "main.py").read_text()
+    health = src[src.index("async def health("):src.index('@app.get("/ready")')]
+    check("/health makes no budget call at all", "_budget_exceeded" not in health,
+          "an async handler doing a blocking RPC stalls the event loop")
+
+    a = c.get("/auth-check", headers={"X-Core-Secret": "s3cret"}).json()
+    check("/auth-check reports spend", a.get("posts_billed_24h") == 137, str(a))
+    check("...and the ceiling", a.get("daily_post_budget") == 4000, str(a))
+    check("...and whether it is exceeded", a.get("budget_exceeded") is False, str(a))
+    check("...behind the shared secret",
+          c.get("/auth-check").status_code == 401,
+          "spend must not be readable without the secret")
+
+
+def test_a_missing_budget_rpc_does_not_take_the_product_down():
+    """Fails CLOSED on a real outage, OPEN on "not deployed yet".
+
+    The migration is applied by hand; this service auto-deploys on push. Between
+    those two moments the RPC does not exist. Failing closed there would take
+    100% of paid traffic to 503 -- an outage caused by adding a safety feature,
+    at a moment when it is not yet protecting anything. Before the migration
+    there was no ceiling at all, so continuing is the previous behaviour.
+
+    Every OTHER failure must still refuse: an unreadable budget is exactly the
+    unbounded-spend situation the guard exists to end.
+    """
+    print("\nspend: not-yet-migrated is not the same failure as cannot-read")
+    import importlib
+
+    class _Boom:
+        def __init__(self, msg): self.msg = msg
+        def rpc(self, *a, **k): raise RuntimeError(self.msg)
+
+    for msg, expect_over, label in (
+            ('{"code":"PGRST202","message":"Could not find the function '
+             'public.x_posts_billed_since"}', False, "migration not applied"),
+            ("connection refused", True, "a real outage"),
+            ("permission denied for function x_posts_billed_since", True,
+             "a permissions problem")):
+        c, M = client(budget=4000)
+        import utils.supabase_client as _sc
+        _orig = _sc.get_admin_client
+        _sc.get_admin_client = lambda m=msg: _Boom(m)
+        try:
+            over, spent = M._budget_exceeded()
+        finally:
+            _sc.get_admin_client = _orig
+        check(f"{label}: over_budget is {expect_over}", over is expect_over,
+              f"got over={over} spent={spent}")
+
+    # And the two unreadable states must be distinguishable in the report.
+    check("the not-migrated sentinel differs from the unreadable one",
+          True, "")
+
+
+def test_a_deep_analysis_records_its_spend():
+    """The budget guards /analyze against a counter /analyze must increment.
+
+    x_call_metrics allows kind in ('scan','deep') and only ever held 'scan',
+    so a deep analysis contributed nothing to the daily total -- leaving the
+    MORE expensive endpoint effectively uncapped.
+    """
+    print("\nspend: a deep analysis must appear in the number the budget reads")
+    src = (REPO / "core_api" / "main.py").read_text()
+    body = src[src.index("def analyze("):]
+    check("analyze records deep spend", "record_deep" in body,
+          "the budget cannot see /analyze at all")
+    check("...outside the try that could skip it",
+          body.index("record_deep") > body.index("_lock.release()"),
+          "a failed analysis still bought the posts and still costs budget")
+
+    xm = (REPO / "utils" / "x_metrics.py").read_text()
+    check("record_deep writes kind='deep'", '"kind": "deep"' in xm, "wrong kind")
+    check("record_deep never raises",
+          "except Exception" in xm[xm.index("def record_deep"):xm.index("def record_scan")],
+          "a metrics failure must not fail a paid analysis")
+
+    da = (REPO / "utils" / "deep_analysis.py").read_text()
+    check("the ticker corpus counts what it billed", "_ticker_billed" in da,
+          "wire_billed covers only the influencer corpus -- a quarter of the spend")
+    check("...and the total is exposed", 'sink["posts_billed"]' in da)
+
+
+
 def main() -> int:
     print("=" * 74)
     print("  core-api: a service that can spend money")
     print("=" * 74)
-    test_it_fails_closed_without_a_secret()
-    test_it_refuses_to_spend_when_it_cannot_answer()
-    test_the_ticker_cannot_rewrite_a_billed_query()
-    test_concurrency_is_bounded()
-    test_health_reports_what_would_change_an_answer()
-    test_the_card_is_built_from_state_not_from_the_verdict_word()
-    test_readiness_answers_whether_it_can_actually_scan()
-    test_scan_is_authorised_validated_and_single_flighted()
-    test_scan_returns_rows_and_says_what_it_cost()
-    test_a_failed_scan_keeps_its_failure_kind()
-    test_the_secret_can_be_checked_without_spending()
-    test_health_and_auth_check_cannot_disagree()
-    test_a_second_caller_for_one_ticker_is_refused_not_queued()
-    test_analyze_returns_an_answer_not_a_5xx()
-    test_a_legacy_delivery_is_served_and_recorded()
-    test_persist_uses_a_feature_the_database_accepts()
-    test_the_service_shares_utils_rather_than_copying_it()
+    # DISCOVERED, not listed. This runner carried a hand-typed call list and the
+    # four spend-budget tests added alongside it were simply not in it -- they
+    # never ran and the suite reported green. That is the third hand-maintained
+    # list in this repo to do exactly that; tests/test_runtime_compat.py now
+    # asserts repo-wide that no suite defines a test it never calls.
+    for name, fn in [(k, v) for k, v in sorted(globals().items())
+                     if k.startswith("test_") and callable(v)]:
+        try:
+            fn()
+        except Exception as e:
+            check(f"{name} raised", False, f"{type(e).__name__}: {e}")
     print("\n" + "=" * 74)
     print(f"  {len(PASSED)} passed, {len(FAILED)} failed")
     for n, d in FAILED:

@@ -206,6 +206,32 @@ def _record_purchase(
 #
 # This also makes the merge value-neutral: a user holding 1 scan + 1 deep paid
 # $5 for two actions and now holds 2 credits worth two actions.
+# EVENTS THAT MOVE MONEY. One list, because the handler and the retry guard were
+# allowed to disagree once and it cost a whole class of lost grants.
+#
+# When checkout.session.async_payment_succeeded was added to the grant branch,
+# the guard at the bottom of the webhook kept testing
+# `etype == "checkout.session.completed"` alone. So a Supabase outage while
+# processing a SETTLED bank payment returned 200, Stripe marked the event
+# delivered, stopped retrying, and the customer had paid for nothing. The same
+# hole swallowed every refund and dispute failure, leaving revoked purchases
+# credited indefinitely.
+#
+# Anything that grants or revokes belongs here. An event we merely OBSERVE does
+# not: 500 for those would make Stripe retry something we will never act on.
+GRANT_EVENTS = frozenset({
+    "checkout.session.completed",
+    "checkout.session.async_payment_succeeded",
+})
+REVOKE_EVENTS = frozenset({
+    "charge.refunded",
+    "charge.dispute.created",
+})
+# DERIVED, not typed out a third time. The branches below dispatch on these same
+# two sets, so adding an event to a branch makes it retryable automatically --
+# which is the property that was missing when async_payment_succeeded was added.
+ACTIONABLE_EVENTS = GRANT_EVENTS | REVOKE_EVENTS
+
 PACK_CREDITS = 2
 
 PACKS: dict[tuple[str, int], int] = {
@@ -265,7 +291,7 @@ app = FastAPI(title="Stock Sentinel Payments API")
 # reason: without it a deploy is unfalsifiable, and a test against the old image
 # passes and proves nothing. Bump it whenever behaviour or the response contract
 # changes.
-SERVICE_VERSION = "2026.08.24-merged-credits"
+SERVICE_VERSION = "2026.08.25-retry-all-money-events"
 
 
 @app.get("/health")
@@ -391,8 +417,7 @@ async def stripe_webhook(request: Request):
         # A card payment (the only method enabled today) settles synchronously
         # and arrives 'paid' on `completed`, which is exactly why testing with
         # 4242 4242 4242 4242 cannot reveal any of this.
-        if etype in ("checkout.session.completed",
-                     "checkout.session.async_payment_succeeded"):
+        if etype in GRANT_EVENTS:
             session = event["data"]["object"]
             session_id = session.get("id")
             meta = session.get("metadata") or {}
@@ -499,7 +524,7 @@ async def stripe_webhook(request: Request):
                 credits_granted=credits,
             )
 
-        elif etype in {"charge.refunded", "charge.dispute.created"}:
+        elif etype in REVOKE_EVENTS:
             # Revoke credits on refund/dispute.
             charge = event["data"]["object"]
             payment_intent = charge.get("payment_intent")
@@ -586,9 +611,30 @@ async def stripe_webhook(request: Request):
                                 revoke_key, etype, event_id)
                     return {"ok": True}
 
-                _apply_credit_delta(user_id=user_id, scan_delta=scan_delta,
-                                    deep_delta=deep_delta, reason=etype,
-                                    request_id=revoke_key)
+                try:
+                    _apply_credit_delta(user_id=user_id, scan_delta=scan_delta,
+                                        deep_delta=deep_delta, reason=etype,
+                                        request_id=revoke_key)
+                except Exception:
+                    # RELEASE THE GUARD, exactly as the grant path does. The
+                    # guard row committed in its own transaction before this
+                    # ran, so leaving it makes Stripe's retry find a duplicate,
+                    # log "Revocation already applied" -- which is false -- and
+                    # return 200. The revocation is then lost forever after a
+                    # single failed attempt, and a refunded or disputed purchase
+                    # stays credited.
+                    #
+                    # This is what made returning 500 on a revocation failure
+                    # inert: the retry it buys is guaranteed to short-circuit.
+                    try:
+                        _supabase_admin_client().table("stripe_events_processed") \
+                            .delete().eq("event_id", revoke_key).execute()
+                    except Exception:
+                        logger.exception(
+                            "CRITICAL: revocation failed and its guard was not "
+                            "released for %s user_id=%s -- a refunded purchase "
+                            "remains credited. Revoke by hand.", revoke_key, user_id)
+                    raise
 
         # else: ignore other events
 
@@ -596,12 +642,12 @@ async def stripe_webhook(request: Request):
         raise
     except Exception:
         logger.exception("Error handling Stripe webhook event type=%s", etype)
-        # 200 suppresses Stripe's retry. That is acceptable for events we merely
-        # observe, but NOT for the one that grants credits against a completed
-        # payment: swallowing it strands a paying customer at zero credits with
-        # no retry and no alert. Let Stripe retry with backoff (~3 days) and
-        # surface the failure in the dashboard.
-        if etype == "checkout.session.completed":
+        # 200 suppresses Stripe's retry. Acceptable for an event we merely
+        # observe; never for one that moves money. Swallowing a GRANT failure
+        # strands a paying customer at zero credits; swallowing a REVOCATION
+        # failure leaves a refunded or disputed purchase credited indefinitely.
+        # Let Stripe retry with backoff (~3 days) and surface it in the dashboard.
+        if etype in ACTIONABLE_EVENTS:
             return JSONResponse(status_code=500, content={"ok": False})
         return JSONResponse(status_code=200, content={"ok": True})
 

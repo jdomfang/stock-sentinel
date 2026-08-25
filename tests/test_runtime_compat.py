@@ -274,6 +274,152 @@ def test_every_entrypoint_guards_the_utils_import():
                   f"guard at line {guard + 1}, utils imported at line {first_utils + 1}")
 
 
+def test_no_suite_defines_a_test_it_never_runs():
+    """A test that is never called is worse than no test.
+
+    Three runners in this repo carried hand-typed call lists, and each one
+    silently omitted tests added in the same commit: the low-balance threshold
+    test in test_billing, and four spend-budget tests in test_core_api. Both
+    suites reported green while asserting nothing about the thing they were
+    written for -- and a mutation that broke the feature changed nothing.
+
+    A `def test_*` at module scope must be reachable from main(), either by name
+    or through discovery over globals().
+    """
+    print("\nevery test a suite defines is a test the suite runs")
+    import ast
+    for f in sorted((REPO / "tests").glob("test_*.py")):
+        src = f.read_text()
+        tree = ast.parse(src)
+        defined = [n.name for n in tree.body
+                   if isinstance(n, ast.FunctionDef) and n.name.startswith("test_")]
+        if not defined:
+            continue                      # module-level script style; nothing to wire
+
+        main_fn = next((n for n in tree.body
+                        if isinstance(n, ast.FunctionDef) and n.name == "main"), None)
+        if main_fn is None:
+            continue                      # runs at import; every def executes
+
+        body = ast.dump(main_fn)
+        # Discovery counts: iterating globals() picks up everything by name.
+        discovers = "globals" in body
+        if discovers:
+            check(f"{f.name} discovers its tests", True)
+            continue
+        missing = [n for n in defined if f"'{n}'" not in body and n not in body]
+        check(f"{f.name} runs every test it defines", not missing,
+              f"defined but never called: {missing}")
+
+
+# The modules that may reach Supabase with the SERVICE-ROLE key today.
+#
+# service_role bypasses RLS entirely. Any module holding it can read or write
+# every row in every table regardless of policy, so this list IS the blast
+# radius of a Streamlit compromise: a dependency takeover or one authorization
+# slip on the admin page becomes a full-database incident rather than a
+# user-scoped one.
+#
+# The list is frozen, not endorsed. Several entries are here because the whole
+# analysis pipeline was built inside Streamlit and moved out in pieces; a
+# privileged read behind a narrow FastAPI endpoint or a SECURITY DEFINER RPC
+# would be correct for most of them. That migration is real work and is not
+# done. What this test does is stop the radius GROWING while it is planned --
+# adding a new one is now a deliberate act with a failing test attached.
+SERVICE_ROLE_ALLOWED = {
+    # services -- isolated, no user-supplied code path, correct place for it
+    "core_api/main.py", "payments_api/main.py", "worker/reap.py",
+    # the credit engine and its logs, all called through service-role RPCs
+    "utils/credits.py", "utils/supabase_client.py", "utils/obs.py",
+    "utils/signal_log.py", "utils/verdict_log.py", "utils/scan_log.py",
+    "utils/x_metrics.py", "utils/sentiment_cache.py", "utils/corpus_cache.py",
+    # pipeline reads and caches
+    "utils/prices.py", "utils/finance.py", "utils/sector_query.py",
+    "utils/deep_analysis.py", "utils/seed.py",
+    # auth + contact: remember_tokens and contact_messages are service-role only
+    "utils/auth.py", "utils/contact.py",
+    # the admin page. The single riskiest entry, and the first one that should
+    # move behind an authorized endpoint.
+    "pages/Admin.py",
+}
+
+
+def test_the_service_role_blast_radius_does_not_grow():
+    """A frozen inventory of who can bypass RLS.
+
+    Not an assertion that the current shape is right -- it is an assertion that
+    it does not get worse by accident. An external review rated this High and
+    recommended an incremental migration; incremental only works if the
+    starting point stops moving.
+    """
+    print("\nservice-role usage is frozen while the boundary is planned")
+    import re
+    found = set()
+    for d in ("utils", "pages", "core_api", "worker", "sync", "payments_api"):
+        for f in sorted((REPO / d).glob("*.py")):
+            src = f.read_text(encoding="utf-8")
+            code = "\n".join(l for l in src.split("\n")
+                              if not l.lstrip().startswith("#"))
+            if re.search(r"get_admin_client|SUPABASE_SERVICE_ROLE_KEY", code):
+                found.add(str(f.relative_to(REPO)))
+
+    added = sorted(found - SERVICE_ROLE_ALLOWED)
+    check("no NEW module reaches for the service-role key", not added,
+          f"{added} -- service_role bypasses RLS; prefer a narrow endpoint or a "
+          f"SECURITY DEFINER RPC, and only widen this list deliberately")
+
+    # And shrinking it is the goal, so a stale entry should be removed rather
+    # than left to imply a dependency that no longer exists.
+    gone = sorted(SERVICE_ROLE_ALLOWED - found)
+    check("the allow-list has no stale entries", not gone,
+          f"{gone} no longer uses it -- delete from SERVICE_ROLE_ALLOWED so the "
+          f"list keeps meaning something")
+
+    # The portal is the exposed surface. Anything here is reachable from a
+    # browser session, so its count is the number that matters most.
+    in_pages = sorted(f for f in found if f.startswith("pages/"))
+    check("only the admin page holds it in the portal's page layer",
+          in_pages == ["pages/Admin.py"], str(in_pages))
+
+
+def test_no_module_references_an_undefined_name():
+    """The check that would have caught a NameError before a user did.
+
+    utils/auth.py referenced `logger` four times and never defined it. One of
+    those was on the ORDINARY path -- every expired or already-spent remember
+    code -- so it raised past the caller into a Streamlit exception page,
+    skipping the branch that clears the dead code from localStorage, and the
+    next load did it again. An unrecoverable loop for a normal user.
+
+    Every suite was green. Nothing imports utils/auth.py, and the suite that
+    covers it reads it as TEXT and greps substrings, so a name that does not
+    exist is indistinguishable from one that does.
+
+    Only "undefined name" is fatal here. Unused imports and shadowed builtins
+    are style; a name that is not there is a crash.
+    """
+    print("\nno module references a name that does not exist")
+    import subprocess
+    targets = [str(REPO / d) for d in
+               ("utils", "pages", "core_api", "payments_api", "worker", "sync")
+               if (REPO / d).exists()] + [str(REPO / "app.py")]
+    try:
+        r = subprocess.run([sys.executable, "-m", "pyflakes", *targets],
+                           capture_output=True, text=True, timeout=180)
+    except FileNotFoundError:
+        check("pyflakes is installed", False,
+              "pip install -r requirements-dev.txt -- this check is why it exists")
+        return
+    if "No module named" in r.stderr:
+        check("pyflakes is installed", False,
+              "pip install -r requirements-dev.txt -- this check is why it exists")
+        return
+
+    undefined = [l for l in r.stdout.split("\n") if "undefined name" in l]
+    check("no undefined names in shipped code", not undefined,
+          " | ".join(undefined[:6]))
+
+
 def main() -> int:
     major, minor = pinned_version()
     print("=" * 74)
@@ -351,6 +497,9 @@ def main() -> int:
     test_core_api_can_run_without_the_portal()
     test_every_symbol_a_page_imports_actually_exists()
     test_every_entrypoint_guards_the_utils_import()
+    test_no_suite_defines_a_test_it_never_runs()
+    test_the_service_role_blast_radius_does_not_grow()
+    test_no_module_references_an_undefined_name()
     print(f"\n  {len(PASSED)} passed, {len(FAILED)} failed")
     for n, d in FAILED:
         print(f"    - {n}: {d}")

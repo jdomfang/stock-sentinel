@@ -723,6 +723,11 @@ def run_deep_analysis(ticker: str, sector: str,
     # Bound here so the sink write below cannot depend on which branches ran.
     _wire_state: str = "unknown"
     _wire_billed: int = 0
+    # What the TICKER corpus cost. wire_billed covers only the influencer
+    # corpus, so without this the analysis reports at most a quarter of what it
+    # actually bought -- and core-api's spend budget, which sums recorded spend,
+    # cannot see a deep analysis at all.
+    _ticker_billed: int = 0
     # 0 = bought fresh on this run. Set from the cache entry on a hit.
     _corpus_age_s: float | None = 0.0
 
@@ -915,6 +920,10 @@ def run_deep_analysis(ticker: str, sector: str,
                 break
 
             page_tweets = res.get("tweets") or []
+            # BILLED IS THE RAW PAGE LENGTH, counted before any filtering or
+            # dedup below. X bills per post RETURNED, so a post we fetch and
+            # then discard was still paid for.
+            _ticker_billed += len(page_tweets)
             next_token = res.get("next_token")
 
             if not page_tweets:
@@ -1004,6 +1013,11 @@ def run_deep_analysis(ticker: str, sector: str,
         # keep paying for the channel at all.
         sink["wire_state"] = _wire_state
         sink["wire_billed"] = _wire_billed
+        sink["ticker_billed"] = _ticker_billed
+        # THE TOTAL, which is the number that matters for a spend budget and for
+        # deciding whether a failed run is owed a refund. A cached ticker corpus
+        # contributes 0, which is the point.
+        sink["posts_billed"] = _ticker_billed + _wire_billed
         # How old the evidence was. created_at is the WRITE time; a corpus can
         # be hours old, and a forward return anchored to the wrong moment is the
         # thing signal_log exists to make impossible.

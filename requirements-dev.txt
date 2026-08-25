@@ -1,0 +1,16 @@
+# Test-only dependencies. The application's own requirements are per-service
+# (core_api/requirements.txt, inference/requirements.txt, payments_api/...).
+#
+# There is no pytest here on purpose. Each suite is a standalone script with a
+# check() helper that prints a line per assertion and exits non-zero on failure
+# -- runnable as `python3 tests/test_x.py` with no runner, no plugins and no
+# collection rules. An external review tried `pytest`, got nothing, and reported
+# that the project had no tests; it has ~1,700 assertions. Hence tests/run_all.py
+# and the CI workflow, so the answer is one command either way.
+
+psycopg2-binary>=2.9        # the five suites that run the real migration chain
+numpy>=1.26                 # tests/test_relative.py
+pandas>=2.0                 # fixtures shared with the app
+pyflakes>=3.0               # tests/test_runtime_compat.py: undefined-name check.
+                            # A NameError on the remember-me path shipped past a
+                            # green suite because nothing imports utils/auth.py.

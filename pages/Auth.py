@@ -308,28 +308,36 @@ st.markdown('<div class="auth-wrapper">', unsafe_allow_html=True)
 
 if not try_restore_cached_session():
     # Check if we already have a refresh token in query params (second rerun)
-    _rt_param = st.query_params.get("rt", "")
-    if _rt_param:
+    # ?rc= -- an opaque, SINGLE-USE code, not a Supabase refresh token. The
+    # parameter is still a query string because Streamlit gives browser JS no
+    # other channel to Python; what changed is that a leaked URL now carries a
+    # credential that was spent the moment it was used. See utils/auth.py.
+    _rc_param = st.query_params.get("rc", "")
+    if _rc_param:
         # Clear the param immediately so it doesn't linger in the URL
         st.query_params.clear()
-        if restore_session_from_refresh_token(_rt_param):
+        from utils.auth import consume_remember_code
+        _rt_param = consume_remember_code(_rc_param)
+        if _rt_param and restore_session_from_refresh_token(_rt_param):
             pass  # session restored; is_logged_in() check below handles redirect
         else:
             # Token expired/invalid — clear it from localStorage so we don't loop
             from utils.auth import _clear_browser_cache
             _clear_browser_cache()
     else:
-        # First visit (or hard refresh) — ask JS to read localStorage and redirect
-        # with the token as a query param so Python can see it.
+        # First visit (or hard refresh) -- ask JS to read localStorage and
+        # redirect with the opaque CODE as a query param so Python can see it.
+        # location.replace, not assign, so the URL carrying the code does not
+        # become a history entry the back button can return to.
         import streamlit.components.v1 as _cmp_rt
         _cmp_rt.html(
             """<script>
             (function() {
               try {
-                var rt = localStorage.getItem('ss_refresh_token');
-                if (rt) {
+                var rc = localStorage.getItem('ss_remember_code');
+                if (rc) {
                   var url = new URL(window.parent.location.href);
-                  url.searchParams.set('rt', rt);
+                  url.searchParams.set('rc', rc);
                   window.parent.location.replace(url.toString());
                 }
               } catch(e) {}

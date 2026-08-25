@@ -281,6 +281,76 @@ def test_a_failed_grant_releases_the_guard():
           db.purchases == [], str(db.purchases))
 
 
+def test_a_failed_revocation_releases_the_guard():
+    """The mirror of test_a_failed_grant_releases_the_guard, and it was missing.
+
+    The revoke path wrote its idempotency guard and then applied the delta with
+    no try/except. So a failed revocation left the guard behind: Stripe's retry
+    found a duplicate, logged "Revocation already applied" -- false -- and
+    returned 200. One failed attempt and the revocation is lost forever, with a
+    refunded or disputed purchase still credited.
+
+    That made returning 500 on revocation failures pointless: the retry it buys
+    is guaranteed to short-circuit.
+    """
+    print("\na revocation that fails must still be retryable")
+    client, M, db = load()
+    post(client, session_event())                 # a purchase to revoke
+    db.grants.clear()
+    db.grant_raises = RuntimeError("supabase down")
+
+    r = post(client, charge_event())
+    check("the failure is reported, not swallowed", r.status_code == 500, str(r.status_code))
+    # The REVOKE key specifically. The grant guard from the setup purchase is
+    # legitimately still there and must stay -- releasing it would let the
+    # original purchase be granted twice.
+    check("the revoke guard was released",
+          not any(k.startswith("revoke:") for k in db.guard), str(db.guard))
+    check("...and the grant guard was NOT",
+          any(k.startswith("grant:") for k in db.guard), str(db.guard))
+
+    # ...and the retry now actually revokes.
+    db.grant_raises = None
+    r2 = post(client, charge_event())
+    check("the retry succeeds", r2.status_code == 200, str(r2.status_code))
+    check("...and revokes exactly once",
+          len(db.grants) == 1 and db.grants[0]["p_scan_delta"] == -M.PACK_CREDITS,
+          str(db.grants))
+
+
+def test_every_money_event_is_retryable_on_failure():
+    """Not just checkout.session.completed.
+
+    async_payment_succeeded was added to the grant branch without updating the
+    retry guard, so a failure while processing a SETTLED bank payment returned
+    200, Stripe stopped retrying, and the customer paid for nothing. Refunds and
+    disputes had the same hole.
+    """
+    print("\nevery event that moves money must survive a failure")
+    for etype, ev in (("checkout.session.completed", lambda: session_event()),
+                      ("checkout.session.async_payment_succeeded",
+                       lambda: session_event(etype="checkout.session.async_payment_succeeded")),
+                      ("charge.refunded", lambda: charge_event()),
+                      ("charge.dispute.created",
+                       lambda: charge_event(etype="charge.dispute.created"))):
+        client, M, db = load()
+        if etype.startswith("charge."):
+            post(client, session_event())          # something to revoke
+        db.grant_raises = RuntimeError("supabase down")
+        r = post(client, ev())
+        check(f"{etype}: failure returns 500 so Stripe retries",
+              r.status_code == 500, str(r.status_code))
+        check(f"{etype}: is in ACTIONABLE_EVENTS", etype in M.ACTIONABLE_EVENTS)
+
+    # ...and an event we merely observe must NOT be retried forever.
+    client, M, db = load()
+    r = post(client, {"id": "evt_o", "type": "payment_intent.created",
+                      "data": {"object": {}}})
+    check("an observed-only event is acknowledged", r.status_code == 200, str(r.status_code))
+    check("...and is not in ACTIONABLE_EVENTS",
+          "payment_intent.created" not in M.ACTIONABLE_EVENTS)
+
+
 def test_the_purchase_row_records_what_was_granted():
     print("\nthe audit row is what a revocation later reads")
     client, M, db = load()

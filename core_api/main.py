@@ -60,7 +60,7 @@ SHARED_SECRET = os.getenv("CORE_API_SHARED_SECRET", "")
 # the X-Core-Refused header, and a client that depends on either needs a
 # way to know which build answered. Bump it whenever the contract or the
 # behaviour moves -- it went stale within one commit of being added.
-SERVICE_VERSION = "2026.08.24-step9b"
+SERVICE_VERSION = "2026.08.25-spend-budget"
 
 # THE BUDGET THE PORTAL HAS AND THIS SERVICE DOES NOT.
 #
@@ -79,7 +79,81 @@ _SLOTS = threading.BoundedSemaphore(MAX_CONCURRENT)
 _INFLIGHT: dict[str, threading.Lock] = {}
 _INFLIGHT_GUARD = threading.Lock()
 
+# THE SPEND CEILING, in posts billed over a rolling 24 hours.
+#
+# MAX_CONCURRENT above is a concurrency limit, not a spend limit. Three requests
+# at a time sustained is unbounded cost -- X bills $0.005 per post read, so
+# three slots running flat out is roughly $3.60 an hour, forever. It is also
+# per-process: add a replica and the ceiling doubles.
+#
+# 4,000 posts is about $20/day at today's rate. Set CORE_API_DAILY_POST_BUDGET
+# to change it; set it to 0 to disable the guard entirely, which is a decision
+# somebody should have to make explicitly rather than inherit.
+DAILY_POST_BUDGET = int(os.getenv("CORE_API_DAILY_POST_BUDGET", "4000"))
+
 app = FastAPI(title="Stock Sentinel Core API")
+
+
+def _budget_exceeded() -> tuple[bool, int]:
+    """(over_budget, posts_billed_in_the_last_24h).
+
+    FAILS CLOSED. If the spend cannot be read, this refuses -- because the
+    alternative is spending money with no ceiling at all, which is the exact
+    situation the budget exists to end. A Supabase outage therefore stops paid
+    work; that is the intended trade, and it is loud rather than expensive.
+    Every unpaid path (/health, /ready, cached reads) is unaffected.
+    """
+    if DAILY_POST_BUDGET <= 0:
+        return False, 0
+    try:
+        from utils.supabase_client import get_admin_client
+        res = get_admin_client().rpc(
+            "x_posts_billed_since", {"p_since": "24 hours"}).execute()
+        spent = int(getattr(res, "data", 0) or 0)
+    except Exception as e:
+        # DEPLOY-ORDER TOLERANCE, and only for this one error.
+        #
+        # x_posts_billed_since is created by a migration applied BY HAND while
+        # this service auto-deploys on push. Between those two moments the RPC
+        # does not exist, PostgREST answers PGRST202, and failing closed would
+        # take 100% of paid traffic to 503 -- an outage caused by adding a
+        # safety feature, at a moment when the safety feature is not yet
+        # protecting anything. Before the migration there was no ceiling at
+        # all, so allowing here is the previous behaviour, not a new risk.
+        # NARROW. Matching the function NAME was wrong: "permission denied for
+        # function x_posts_billed_since" contains it, so a permissions problem
+        # -- which is a real, dangerous failure -- silently uncapped spending.
+        # PGRST202 is PostgREST's specific "no such function" code, and its
+        # message is the only other thing that means the same.
+        msg = str(e)
+        if "PGRST202" in msg or "Could not find the function" in msg:
+            logger.error("spend budget RPC missing -- APPLY "
+                         "20260825020000_x_spend_budget.sql. Paid work continues "
+                         "UNCAPPED until it is applied.")
+            return False, -2
+        # Anything else -- a real outage, a permissions problem -- fails closed.
+        # Spending money with no ceiling is the situation the budget exists to
+        # end, and an unreadable budget is exactly that situation.
+        logger.exception("spend budget unreadable -- refusing paid work")
+        return True, -1
+    return spent >= DAILY_POST_BUDGET, spent
+
+
+def _enforce_budget() -> None:
+    over, spent = _budget_exceeded()
+    if not over:
+        return
+    if spent < 0:
+        raise HTTPException(
+            status_code=503,
+            detail="cannot verify the spend budget; paid work is paused",
+            headers={"X-Core-Refused": "budget-unknown"})
+    logger.error("DAILY X POST BUDGET REACHED: %s of %s in 24h -- refusing paid work",
+                 spent, DAILY_POST_BUDGET)
+    raise HTTPException(
+        status_code=429,
+        detail=f"daily data budget reached ({spent}/{DAILY_POST_BUDGET} posts in 24h)",
+        headers={"X-Core-Refused": "budget"})
 
 
 # How long a second caller for the SAME subject will wait for the first to
@@ -236,6 +310,21 @@ async def health() -> dict:
         "secret_configured": bool(SHARED_SECRET),
         "missing_config": blockers,
         "ticker_master": _ticker_master_size(),
+        # THE CEILING ONLY -- no spend figure, and no database call.
+        #
+        # This handler is `async def`, so a blocking Supabase RPC here does not
+        # occupy a threadpool slot, it stalls the whole uvicorn event loop --
+        # including /ready, which was deliberately made async so probes could
+        # not be starved by paid work. Railway polls /health with
+        # restartPolicyType=ON_FAILURE, so a slow Supabase would have become a
+        # container restart in the middle of an analysis whose posts are
+        # already bought.
+        #
+        # It is also unauthenticated, so the RPC was a free database round trip
+        # for anyone who can reach the domain, and it published spend figures
+        # the migration explicitly revokes from anon and authenticated. The
+        # spend now lives on /auth-check, behind the shared secret.
+        "daily_post_budget": DAILY_POST_BUDGET,
         # Reported because it is the pair that silently changes every verdict:
         # the model, and the gate its confidences are judged against.
         **_scoring_config(),
@@ -276,7 +365,18 @@ def auth_check(x_core_secret: str | None = Header(default=None,
     would be on /analyze, so a green answer means the cutover will authenticate.
     """
     _authorise(x_core_secret)
+    # THE SPEND LIVES HERE, not on /health. This handler is `def`, so FastAPI
+    # runs it on the threadpool and a slow database cannot stall the event loop;
+    # it is behind the shared secret, so the figure is not published to anyone
+    # who can reach the domain; and it is not what Railway polls, so a Supabase
+    # blip cannot turn into a container restart.
+    over, spent = _budget_exceeded()
     return {"ok": True, "service": "core-api", "version": SERVICE_VERSION,
+            "daily_post_budget": DAILY_POST_BUDGET,
+            # -1 means the spend could not be read, which is also why paid work
+            # would currently be refused. Distinguishable from 0.
+            "posts_billed_24h": spent,
+            "budget_exceeded": over,
             # The pair that silently changes every verdict. A caller comparing
             # these against its own config catches the misconfiguration that
             # produces different answers from identical evidence.
@@ -325,6 +425,10 @@ def scan(req: ScanRequest,
     # there is one corpus per sector, so two concurrent scans of the same one
     # buy the same 300 posts twice and the second gains nothing the first did
     # not already cache.
+    # BEFORE the lock and before the slot: a request that will be refused on
+    # budget must not first make another caller wait 75s for a subject lock.
+    _enforce_budget()
+
     _lock = _subject_lock("scan:" + req.sector.lower())
     if not _lock.acquire(timeout=TICKER_WAIT_S):
         raise HTTPException(
@@ -409,6 +513,9 @@ def analyze(req: AnalyzeRequest,
     # plus ~60s of work, which is exactly the client's timeout -- and a client
     # timeout does not cancel the server, so the analysis completes, spends,
     # and writes a row for a user who was refunded and told it failed.
+    # BEFORE the lock and before the slot -- see /scan.
+    _enforce_budget()
+
     _lock = _subject_lock("analyze:" + req.ticker.upper())
     if not _lock.acquire(timeout=TICKER_WAIT_S):
         # Refused BEFORE spending, so the caller may safely try again -- and
@@ -442,6 +549,29 @@ def analyze(req: AnalyzeRequest,
         _lock.release()
     elapsed = round(time.time() - t0, 2)
 
+    # RECORD THE SPEND, before anything below can return early.
+    #
+    # x_call_metrics allows kind in ('scan','deep') and only ever held 'scan',
+    # so a deep analysis -- the more expensive of the two, up to ~400 billed
+    # posts against a scan's 300 -- left no trace anywhere. Harmless as a
+    # reporting gap; not harmless once the daily budget started summing that
+    # table, because the guard on THIS endpoint was reading a counter this
+    # endpoint could never increment.
+    #
+    # Outside any try that could skip it and outside every early return: a
+    # failed analysis still bought the posts, so it still consumes the budget.
+    try:
+        from utils.x_metrics import record_deep
+        _billed = int(a.corpus.get("posts_billed") or 0)
+        record_deep(event_id=req.event_id, ticker=req.ticker.upper(),
+                    query=str(a.corpus.get("corpus_key") or req.ticker),
+                    posts_billed=_billed,
+                    from_cache=_billed == 0)
+    except Exception:
+        # record_deep already swallows its own failures; this catches anything
+        # in building the call. Never let metrics fail a paid analysis.
+        logger.warning("could not record deep spend for %s", req.ticker, exc_info=True)
+
     # A LEGACY DELIVERY IS A DELIVERY. analyze() now produces a fallback
     # summary, a projection and a card when the ledger yields no verdict, and
     # the portal renders and records it. This service was still returning
@@ -470,7 +600,12 @@ def analyze(req: AnalyzeRequest,
         return {"ok": False, "ticker": a.ticker, "error": a.error,
                 # Whether money was spent is the one fact a refund decision
                 # turns on, and the caller could not previously tell.
-                "posts_billed": a.corpus.get("wire_billed"),
+                # THE TOTAL, not just the influencer half. wire_billed counts
+                # only the influencer corpus, so this used to report at most a
+                # quarter of what the analysis actually bought -- and the
+                # caller's refund decision was made on that number.
+                "posts_billed": a.corpus.get("posts_billed",
+                                             a.corpus.get("wire_billed")),
                 "retrieved": len(a.corpus.get("ticker_corpus") or []),
                 "elapsed_s": elapsed}
 
