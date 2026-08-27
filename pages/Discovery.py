@@ -1,5 +1,4 @@
 import streamlit as st
-import streamlit.components.v1 as components
 
 # Ensure project root is on sys.path (avoids collisions with any installed `utils` package on Streamlit Cloud)
 from pathlib import Path
@@ -7,6 +6,7 @@ import sys
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 import json
+import html
 import pandas as pd
 import logging
 
@@ -59,35 +59,17 @@ logger = logging.getLogger(__name__)
 
 # Sidebar navigation
 render_sidebar_navigation()
-render_top_nav()
+render_top_nav(active="market_scan")
 apply_theme()
 
 
-# ── Hero rendered BEFORE guard so logged-out users see the full header ──
+# Compact task header. The public Home page carries the marketing narrative;
+# authenticated users arrive here to scan.
 st.markdown(
     """
-    <style>
-    .discovery-pre-hero .hero-title {
-      font-size: clamp(42px, 5.1vw, 3.55rem); font-weight: 850;
-      letter-spacing: -0.035em; line-height: 1.08; margin: 0 0 8px 0;
-    }
-    .discovery-pre-hero .hero-subtitle {
-      color: var(--muted); font-size: clamp(15px, 1.35vw, 1.05rem);
-      line-height: 1.45; margin: 0; max-width: 760px;
-    }
-    .discovery-pre-hero {
-      margin: -8.10rem 0 2px 0; padding: 0 2px 2px 2px;
-      max-width: 1100px;
-    }
-    </style>
-    <div class="discovery-pre-hero">
-      <div style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:14px;">
-        <span style="display:inline-flex;align-items:center;gap:6px;background:rgba(56,189,248,.06);border:1px solid rgba(56,189,248,.18);border-radius:999px;padding:5px 12px;font-size:0.80rem;font-weight:600;color:rgba(229,231,235,.80);">📡 Real-time social sentiment</span>
-        <span style="display:inline-flex;align-items:center;gap:6px;background:rgba(56,189,248,.06);border:1px solid rgba(56,189,248,.18);border-radius:999px;padding:5px 12px;font-size:0.80rem;font-weight:600;color:rgba(229,231,235,.80);">🏦 4,000+ US stocks</span>
-        <span style="display:inline-flex;align-items:center;gap:6px;background:rgba(56,189,248,.06);border:1px solid rgba(56,189,248,.18);border-radius:999px;padding:5px 12px;font-size:0.80rem;font-weight:600;color:rgba(229,231,235,.80);">⚡ Signal in under 60 seconds</span>
-      </div>
-      <div class="hero-title">Finding short-term opportunities shouldn't feel like a full-time job.</div>
-      <div class="hero-subtitle">Pick a sector and we identify US stocks gaining unusual attention in your selected sector-fast.</div>
+    <div class="discovery-page-header">
+      <h1>Market Scan</h1>
+      <p>Find stocks gaining unusual social attention, then analyze any candidate for a Buy, Watch, or Avoid recommendation.</p>
     </div>
     """,
     unsafe_allow_html=True,
@@ -149,85 +131,6 @@ st.markdown(
       max-width: 1100px;
       margin: 0 auto;
       padding: 0;
-    }
-
-    /* Titles */
-    .discovery-title {
-      font-size: 2.0rem;
-      font-weight: 750;
-      letter-spacing: -0.02em;
-      margin: 0;
-      line-height: 1.15;
-    }
-    .discovery-subtitle {
-      color: var(--muted);
-      margin-top: 0.25rem;
-      margin-bottom: 1.0rem;
-      font-size: 0.98rem;
-    }
-
-    /* Hero (match Home) */
-    /* Hero - exact match to Home */
-    .hero {
-      margin: -11.0rem 0 2px 0;
-      padding: 0 2px 2px 2px;
-    }
-    .hero-title {
-      font-size: clamp(42px, 5.1vw, 3.55rem);
-      font-weight: 850;
-      letter-spacing: -0.035em;
-      line-height: 1.08;
-      margin: 0 0 8px 0;
-      max-width: 880px;
-    }
-    .hero-subtitle {
-      color: var(--muted);
-      font-size: clamp(15px, 1.35vw, 1.05rem);
-      line-height: 1.45;
-      margin: 0;
-      max-width: 760px;
-    }
-    /* Mobile: remove aggressive negative hero offset (header is different on phones) */
-    @media (max-width: 640px) {
-      /* Pull the hero up to compensate for Streamlit's extra empty blocks on initial mobile render */
-      .hero { margin: -6.8rem 0 10px 0; }
-      .hero-title { font-size: clamp(34px, 9.5vw, 44px); }
-      .hero-subtitle { font-size: 1.00rem; }
-    }
-    .hero-chips {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 10px;
-      margin: 12px 0 10px 0;
-    }
-    .chip {
-      border: 1px solid var(--border);
-      border-radius: 999px;
-      padding: 7px 11px;
-      background: rgba(2,6,23,.30);
-      color: rgba(229,231,235,.92);
-      font-size: 0.92rem;
-      backdrop-filter: blur(6px);
-    }
-    .chip b { color: rgba(229,231,235,.98); }
-
-    /* Subtle label color-coding (keeps values neutral; avoids implying outcomes) */
-    .hero-chips .chip:nth-child(1) b { color: rgba(56,189,248,.95); }  /* Signal (accent) */
-    .hero-chips .chip:nth-child(2) b { color: rgba(34,197,94,.92); }   /* Projected gain (good) */
-    .hero-chips .chip:nth-child(3) b { color: rgba(245,158,11,.92); }  /* Volatility (warn) */
-    .hero-chips .chip:nth-child(4) b { color: rgba(148,163,184,.95); } /* Suggested hold (muted) */
-    .hero-caveat {
-      color: rgba(229,231,235,.70);
-      font-size: 0.92rem;
-      margin-top: 4px;
-    }
-
-    /* Generic card */
-    .card {
-      border: 1px solid var(--border);
-      background: linear-gradient(180deg, rgba(15,23,42,.92), rgba(15,23,42,.75));
-      border-radius: 14px;
-      padding: 16px;
     }
 
     /* Scan controls card (aligned with Home Market Scan card) */
@@ -385,8 +288,8 @@ st.markdown(
     }
 
     /* Secondary buttons (Deep Analyze) - stronger presence */
-    button[data-testid="stBaseButton-secondary"],
-    .stButton > button[kind="secondary"] {
+    [class*="st-key-scan_row_"] button[data-testid="stBaseButton-secondary"],
+    [class*="st-key-scan_row_"] .stButton > button[kind="secondary"] {
       background: rgba(56,189,248,.08) !important;
       background-color: rgba(56,189,248,.08) !important;
       color: rgba(56,189,248,.95) !important;
@@ -395,8 +298,8 @@ st.markdown(
       opacity: 1 !important;
       transition: all 0.15s ease !important;
     }
-    button[data-testid="stBaseButton-secondary"]:hover,
-    .stButton > button[kind="secondary"]:hover {
+    [class*="st-key-scan_row_"] button[data-testid="stBaseButton-secondary"]:hover,
+    [class*="st-key-scan_row_"] .stButton > button[kind="secondary"]:hover {
       background: rgba(56,189,248,.18) !important;
       background-color: rgba(56,189,248,.18) !important;
       border-color: rgba(56,189,248,0.75) !important;
@@ -424,65 +327,179 @@ st.markdown(
       filter: none !important;
     }
 
-    /* Dataframe */
-    .stDataFrame { width: 100%; }
-
-    /* Force KPI grid to fill full container width */
-    [data-testid="stMarkdownContainer"]:has(> div[style*="grid-template-columns:1fr 1fr"]) {
-      width: 100% !important;
-      display: block !important;
+    /* Release A: task-first hierarchy and native Streamlit result rows. */
+    .discovery-page-header {
+      max-width: 760px;
+      margin: 0 0 1.5rem;
     }
-    [data-testid="stMarkdownContainer"] > div[style*="grid-template-columns:1fr 1fr"] {
-      width: 100% !important;
+    .discovery-page-header h1 {
+      margin: 0 0 0.35rem;
+      color: var(--text);
+      font-size: clamp(2rem, 4vw, 2.65rem);
+      line-height: 1.08;
+      letter-spacing: -0.035em;
+      font-weight: 760;
     }
-
-    /* Validated ticker rows */
-    .ticker-row {
-      padding: 0.55rem 0.85rem;
-      border: 1px solid rgba(148,163,184,0.12);
-      border-radius: 12px;
-      margin-bottom: 0.40rem;
-      background: rgba(15, 23, 42, 0.55);
-      transition: background 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease;
-      cursor: pointer;
+    .discovery-page-header p {
+      margin: 0;
+      color: var(--muted);
+      font-size: 1rem;
+      line-height: 1.55;
     }
-    .ticker-row:hover {
-      background: rgba(15, 23, 42, 0.92) !important;
-      border-color: rgba(56, 189, 248, 0.45) !important;
-      box-shadow: 0 0 0 1px rgba(56,189,248,.12), 0 4px 16px rgba(56,189,248,.07) !important;
+    .st-key-discovery_scan_card {
+      padding: 1.1rem 1.15rem 0.95rem;
+      border: 1px solid var(--border);
+      border-radius: var(--radius-panel);
+      background: rgba(15, 23, 42, 0.68);
+      box-shadow: none;
+      margin-bottom: 1.25rem;
     }
-    /* Full row highlight on hover — override Streamlit column defaults */
-    .ticker-row:hover [data-testid="column"] p,
-    .ticker-row:hover [data-testid="column"] span {
-      color: rgba(248,250,252,.98) !important;
-    }
-
-    /* Top Signal elevated card */
-    .ticker-row--top-signal {
-      border: 1px solid rgba(56,189,248,.45) !important;
-      background: linear-gradient(180deg, rgba(56,189,248,.06), rgba(15,23,42,.85)) !important;
-      box-shadow: 0 0 0 1px rgba(56,189,248,.18), 0 8px 24px rgba(56,189,248,.08) !important;
-      position: relative;
-    }
-    .ticker-row--top-signal::before {
-      content: "TOP SIGNAL";
-      position: absolute;
-      top: -10px;
-      left: 14px;
-      font-size: 0.62rem;
-      font-weight: 800;
-      letter-spacing: 0.10em;
-      color: rgba(56,189,248,.95);
-      background: #020617;
-      padding: 0 6px;
-      border-radius: 4px;
-    }
-
-    .ticker-row [data-testid="column"]:nth-child(2) p {
+    .scan-balance {
+      min-height: 44px;
+      display: flex;
+      align-items: center;
+      color: var(--muted);
+      font-size: 0.86rem;
       white-space: nowrap;
-      overflow: hidden;
-      text-overflow: ellipsis;
-      max-width: 28ch;
+    }
+    .scan-balance strong {
+      color: var(--text);
+      font-weight: 720;
+    }
+    .scan-results-intro {
+      display: flex;
+      align-items: flex-end;
+      justify-content: space-between;
+      gap: 1rem;
+      margin: 1.65rem 0 0.75rem;
+    }
+    .scan-results-intro h2 {
+      margin: 0 0 0.2rem;
+      color: var(--text);
+      font-size: 1.35rem;
+      letter-spacing: -0.02em;
+    }
+    .scan-results-intro p,
+    .scan-results-freshness {
+      margin: 0;
+      color: var(--muted);
+      font-size: 0.83rem;
+    }
+    .scan-section-label {
+      margin: 1.15rem 0 0.45rem;
+      color: var(--muted);
+      font-size: 0.76rem;
+      font-weight: 750;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+    }
+    [class*="st-key-scan_row_"] {
+      padding: 0.72rem 0.15rem;
+      border-bottom: 1px solid rgba(148, 163, 184, 0.14);
+    }
+    [class*="st-key-scan_row_selected_"] {
+      padding-left: 0.65rem;
+      padding-right: 0.65rem;
+      border: 1px solid rgba(56, 189, 248, 0.42);
+      border-radius: var(--radius-control);
+      background: rgba(56, 189, 248, 0.055);
+    }
+    .scan-stock-cell strong {
+      color: var(--text);
+      font-size: 0.96rem;
+      letter-spacing: 0.01em;
+    }
+    .scan-stock-cell span,
+    .scan-attention,
+    .scan-evidence-state {
+      display: block;
+      margin-top: 0.16rem;
+      color: var(--muted);
+      font-size: 0.8rem;
+      line-height: 1.35;
+    }
+    .scan-evidence-state {
+      font-style: normal;
+    }
+    .scan-mobile-label { display: none; }
+    .scan-table-note {
+      margin-top: 0.8rem;
+      color: var(--muted);
+      font-size: 0.8rem;
+      line-height: 1.45;
+    }
+    .scan-view-result {
+      min-height: 44px;
+      display: inline-flex;
+      width: 100%;
+      align-items: center;
+      justify-content: center;
+      border: 1px solid rgba(56,189,248,.42);
+      border-radius: var(--radius-control);
+      background: rgba(56,189,248,.10);
+      color: rgba(125,211,252,.98) !important;
+      font-size: .86rem;
+      font-weight: 720;
+      text-decoration: none !important;
+    }
+    .scan-view-result:hover { background: rgba(56,189,248,.18); }
+    .selected-analysis-heading {
+      margin: 2rem 0 .75rem;
+      scroll-margin-top: 1rem;
+    }
+    .selected-analysis-heading h2 {
+      margin: 0 0 .2rem;
+      color: var(--text);
+      font-size: 1.35rem;
+      letter-spacing: -.02em;
+    }
+    .selected-analysis-heading p {
+      margin: 0;
+      color: var(--muted);
+      font-size: .84rem;
+    }
+
+    @media (max-width: 720px) {
+      .discovery-page-header { margin-bottom: 1rem; }
+      .st-key-discovery_scan_card [data-testid="stHorizontalBlock"] {
+        flex-wrap: wrap;
+      }
+      .st-key-discovery_scan_card [data-testid="column"] {
+        flex: 1 1 100% !important;
+        width: 100% !important;
+      }
+      .scan-results-intro {
+        align-items: flex-start;
+        flex-direction: column;
+        gap: 0.35rem;
+      }
+      [class*="st-key-scan_header_"] { display: none !important; }
+      [class*="st-key-scan_row_"] [data-testid="stHorizontalBlock"] {
+        flex-wrap: wrap;
+        gap: 0.35rem;
+      }
+      [class*="st-key-scan_row_"] [data-testid="column"] {
+        flex: 1 1 calc(50% - 0.5rem) !important;
+        width: auto !important;
+      }
+      [class*="st-key-scan_row_"] [data-testid="column"]:first-child {
+        flex-basis: 100% !important;
+      }
+      [class*="st-key-scan_row_"] [data-testid="column"]:last-child {
+        flex-basis: 100% !important;
+      }
+      .scan-mobile-label {
+        display: block;
+        margin-bottom: .16rem;
+        color: rgba(148,163,184,.72);
+        font-size: .68rem;
+        font-weight: 720;
+        letter-spacing: .055em;
+        text-transform: uppercase;
+      }
+      [class*="st-key-scan_row_"] .stButton > button {
+        width: 100%;
+      }
     }
 
     /* Hide Streamlit "Made with" footer */
@@ -490,95 +507,6 @@ st.markdown(
     </style>
     """,
     unsafe_allow_html=True,
-)
-
-# JS-only UI fix: Streamlit selectbox dropdown can render with forced white background on some builds.
-# This mutation observer applies a dark background + readable text whenever the dropdown menu appears.
-components.html(
-    """
-    <script>
-    (function () {
-      const APPLY_TO = (doc) => {
-        // Fix selectbox dropdown
-        const ul = doc.querySelector('ul[data-testid="stSelectboxVirtualDropdown"]');
-        if (ul) {
-          ul.style.setProperty('background-color', '#0F172A', 'important');
-          ul.style.setProperty('color', '#E5E7EB', 'important');
-          ul.querySelectorAll('li, li *').forEach((el) => {
-            el.style.setProperty('color', '#E5E7EB', 'important');
-            el.style.setProperty('opacity', '1', 'important');
-          });
-        }
-
-        // Deep Analyze buttons - teal tinted style via JS (overrides Streamlit forced white)
-        doc.querySelectorAll('button[data-testid="stBaseButton-secondary"]').forEach((btn) => {
-          const base = () => {
-            btn.style.setProperty('background-image', 'none', 'important');
-            btn.style.setProperty('background-color', 'rgba(56,189,248,.10)', 'important');
-            btn.style.setProperty('border', '1px solid rgba(56,189,248,0.42)', 'important');
-            btn.style.setProperty('color', 'rgba(56,189,248,.95)', 'important');
-            btn.style.setProperty('font-weight', '700', 'important');
-            btn.style.setProperty('opacity', '1', 'important');
-            btn.style.setProperty('filter', 'none', 'important');
-            btn.querySelectorAll('p, span').forEach((t) => {
-              t.style.setProperty('color', 'rgba(56,189,248,.95)', 'important');
-            });
-          };
-
-          const hover = () => {
-            btn.style.setProperty('background-image', 'none', 'important');
-            btn.style.setProperty('background-color', 'rgba(56,189,248,.22)', 'important');
-            btn.style.setProperty('border', '1px solid rgba(56,189,248,.75)', 'important');
-            btn.style.setProperty('color', 'rgba(255,255,255,.98)', 'important');
-            btn.style.setProperty('box-shadow', '0 0 14px rgba(56,189,248,.22)', 'important');
-            btn.querySelectorAll('p, span').forEach((t) => {
-              t.style.setProperty('color', 'rgba(255,255,255,.98)', 'important');
-            });
-          };
-
-          if (btn.matches(':hover') || btn.matches(':focus')) hover();
-          else base();
-
-          if (!btn.dataset.clawdHoverBound) {
-            btn.dataset.clawdHoverBound = '1';
-            btn.addEventListener('mouseenter', hover);
-            btn.addEventListener('mouseleave', base);
-            btn.addEventListener('focus', hover);
-            btn.addEventListener('blur', base);
-          }
-        });
-
-        // Restore primary button (Scan X) gradient
-        doc.querySelectorAll('button[data-testid="stBaseButton-primary"], button[kind="primary"]').forEach((btn) => {
-          btn.style.setProperty('background-image', 'linear-gradient(180deg, rgba(56,189,248,.95), rgba(14,116,144,.95))', 'important');
-          btn.style.setProperty('background-color', 'transparent', 'important');
-          btn.style.setProperty('border', '1px solid rgba(56,189,248,.45)', 'important');
-          btn.style.setProperty('color', '#001018', 'important');
-          btn.style.setProperty('font-weight', '650', 'important');
-          btn.style.setProperty('opacity', '1', 'important');
-        });
-      };
-
-      const APPLY = () => {
-        // Always apply to current document
-        APPLY_TO(document);
-
-        // Also try to apply to parent if accessible
-        try {
-          if (window.parent && window.parent.document) APPLY_TO(window.parent.document);
-        } catch (e) {}
-      };
-
-      const obs = new MutationObserver(() => APPLY());
-      obs.observe(document.documentElement, { childList: true, subtree: true });
-      window.addEventListener('load', APPLY);
-      setTimeout(APPLY, 250);
-      setTimeout(APPLY, 1000);
-      setInterval(APPLY, 750);
-    })();
-    </script>
-    """,
-    height=0,
 )
 
 st.markdown('<div class="clawd-app-wrapper discovery-wrapper">', unsafe_allow_html=True)
@@ -617,11 +545,11 @@ if "scan_corpus_age_s" not in st.session_state:
 # Scan controls (align with Home card styling)
 with st.container(key="discovery_scan_card"):
     st.markdown(
-        '<div class="cap-title">Market Scan</div>',
+        '<h2 class="cap-title">Scan a sector</h2>',
         unsafe_allow_html=True,
     )
 
-    sel_col, btn_col, meter_col = st.columns([1.4, 0.9, 1.7])
+    sel_col, btn_col, meter_col = st.columns([1.25, 1.0, 0.8])
 
     with sel_col:
         SECTOR_OPTIONS = [
@@ -659,13 +587,13 @@ with st.container(key="discovery_scan_card"):
             "Sector",
             options=SECTOR_OPTIONS,
             key="discovery_sector",
-            label_visibility="collapsed",
+            label_visibility="visible",
         )
 
     with btn_col:
         st.markdown("<div style='height:1.68rem'></div>", unsafe_allow_html=True)
         scan_clicked = st.button(
-            "Sentinel Scan",
+            "Run scan · 1 credit",
             type="primary",
             use_container_width=True,
         )
@@ -674,31 +602,27 @@ with st.container(key="discovery_scan_card"):
         # The same 1.68rem spacer btn_col uses, so the meter sits on the
         # button's baseline rather than floating above it.
         st.markdown("<div style='height:1.68rem'></div>", unsafe_allow_html=True)
-        # The pad this column has always been. Balance and buy sit beside the
-        # button that spends the credit, so buying never requires running out
-        # first -- and nothing about the layout moves to make room.
-        billing.render_credit_meter(profile=_profile, key="discovery")
+        _credits = int((_profile or {}).get("credits") or 0)
+        if _credits <= 1:
+            # Purchase affordance appears only when it is useful: blocked or
+            # one action away from blocked. The checkout behavior is unchanged.
+            billing.render_credit_meter(profile=_profile, key="discovery")
+        else:
+            _credit_word = "credit" if _credits == 1 else "credits"
+            st.markdown(
+                f'<div class="scan-balance"><strong>{_credits}</strong>&nbsp;{_credit_word} available</div>',
+                unsafe_allow_html=True,
+            )
 
     # Last scan context line
     _last_sector = st.session_state.get("selected_sector")
     _last_count = len(st.session_state.df_valid) if st.session_state.get("df_valid") is not None else None
     if _last_sector and _last_count is not None:
         st.markdown(
-            f'<div style="color:rgba(148,163,184,.58);font-size:0.78rem;margin-top:-0.35rem;margin-bottom:0.25rem;">'
+            f'<div style="color:var(--muted);font-size:0.78rem;margin-top:0.35rem;">'
             f'Last scan: <b style="color:rgba(148,163,184,.80);">{_last_sector}</b> · {_last_count} stocks found</div>',
             unsafe_allow_html=True,
         )
-
-# IMPORTED, not redeclared. Both of these were duplicated here after the scan
-# moved to utils/scan.py, and SENTIMENT_MARGIN was live in both places at once:
-# the KPI headline below read the page's copy while the row pills read
-# scan.py's. Change one and the headline announces "Bullish" over a table of
-# Neutrals, with nothing to catch it.
-# SENTIMENT_MARGIN alone: the KPI headline above the table classifies the
-# same way the row pills do, and a second copy of the threshold made the
-# headline announce "Bullish" over a table of Neutrals. BASKET_PER_PAGE
-# went with the pagination it describes.
-from utils.scan import SENTIMENT_MARGIN  # noqa: E402
 
 # Basket retrieval is the only path. The hand-written topic queries it
 # replaced were measured head-to-head on two sectors, same hour, equal spend:
@@ -1160,77 +1084,6 @@ if ADMIN_MODE:
         else:
             st.caption("Run Deep Analyze to enable saving deep snapshot.")
 
-# KPI strip (UI only)
-if st.session_state.df_valid is not None:
-    try:
-        dfv = st.session_state.df_valid
-        dfn = st.session_state.df_unvalidated
-
-        total_valid = int(len(dfv)) if dfv is not None else 0
-        total_other = int(len(dfn)) if dfn is not None else 0
-        total_unique = total_valid + total_other
-        # Average only over rows that CLEARED the evidence floor.
-        #
-        # Averaging everything let this headline assert "Bullish (0.20)" over a
-        # table where most rows say "Single mention", and it averaged in the 0.0
-        # of every Unscored ticker -- dragging the number toward Neutral for a
-        # reason that has nothing to do with sentiment.
-        _dfv_scored = None
-        if dfv is not None and "Avg Sentiment Score" in dfv.columns and len(dfv) > 0:
-            if "Evidence" in dfv.columns:
-                _dfv_scored = dfv[dfv["Evidence"] >= 3]
-            else:
-                _dfv_scored = dfv
-        avg_sent = (float(_dfv_scored["Avg Sentiment Score"].mean())
-                    if _dfv_scored is not None and len(_dfv_scored) > 0 else 0.0)
-        _n_scored = 0 if _dfv_scored is None else len(_dfv_scored)
-
-        if _n_scored == 0:
-            sent_label = "Not enough signal"
-            sent_color = "rgba(148,163,184,.75)"
-            sent_border = "rgba(148,163,184,.20)"
-        elif avg_sent >= SENTIMENT_MARGIN:
-            sent_label = f"Bullish ({avg_sent:.2f})"
-            sent_color = "rgba(56,189,248,.95)"
-            sent_border = "rgba(56,189,248,.28)"
-        elif avg_sent <= -SENTIMENT_MARGIN:
-            sent_label = f"Bearish ({avg_sent:.2f})"
-            sent_color = "rgba(239,68,68,.90)"
-            sent_border = "rgba(239,68,68,.25)"
-        else:
-            sent_label = f"Neutral ({avg_sent:.2f})"
-            sent_color = "rgba(148,163,184,.90)"
-            sent_border = "rgba(148,163,184,.22)"
-
-        _card_style = (
-            "border-radius:14px;padding:14px 16px;height:72px;"
-            "display:flex;flex-direction:column;justify-content:center;"
-            "background:linear-gradient(180deg,rgba(15,23,42,.90),rgba(15,23,42,.72));"
-        )
-        _label_style = "color:rgba(148,163,184,.75);font-size:0.75rem;font-weight:600;letter-spacing:0.04em;text-transform:uppercase;margin-bottom:5px;"
-        _value_style = "font-size:1.30rem;font-weight:800;letter-spacing:-0.02em;color:rgba(248,250,252,.98);"
-
-        # Use st.columns for guaranteed even width (Streamlit grid = truly equal)
-        kc1, kc2 = st.columns(2)
-        kc1.markdown(
-            f'<div style="{_card_style}border:1px solid rgba(148,163,184,.18);">'
-            f'<div style="{_label_style}">Stocks found</div>'
-            f'<div style="{_value_style}">{total_valid}</div>'
-            f'</div>',
-            unsafe_allow_html=True,
-        )
-        kc2.markdown(
-            f'<div style="{_card_style}border:1px solid {sent_border};">'
-            f'<div style="{_label_style}">Avg Sentiment</div>'
-            f'<div style="font-size:1.10rem;font-weight:750;color:{sent_color};">{sent_label}</div>'
-            f'</div>',
-            unsafe_allow_html=True,
-        )
-        st.markdown("<div style='height:0.25rem'></div>", unsafe_allow_html=True)
-    except Exception:
-        # Never let UI extras break the page
-        pass
-
 def _render_deep_panel(ticker, sector, deep_results):
     """Render the deep analysis panel inline below a ticker row.
 
@@ -1257,6 +1110,10 @@ def _render_deep_panel(ticker, sector, deep_results):
                 "again to see it.")
         return
 
+    def _esc(value) -> str:
+        """Render service/social text literally inside developer-authored HTML."""
+        return html.escape(str(value), quote=True)
+
     _evidence = _card.get("evidence") or {}
     # NOTE: the card carries a `movement` block (targets, band, horizon) and
     # this page draws none of it, while pages/Deep_Analysis.py renders a full
@@ -1280,14 +1137,22 @@ def _render_deep_panel(ticker, sector, deep_results):
     _ev_ct = _evidence.get("independent_voices")
     _mentions_ct = _ev_ct if _ev_ct is not None else (_evidence.get("mentions") or 0)
 
-    _rec = _card.get("verdict") or "—"
-    _conf = _card.get("confidence") or "—"
+    _rec = str(_card.get("verdict") or "—")
+    _conf = str(_card.get("confidence") or "—")
     # None means the fallback reported no score. Rendering it as +0.00 states
     # "Neutral" as a finding, which is what card() now refuses to do for us.
     _avg_raw = _card.get("avg_sentiment")
     _has_sent = _avg_raw is not None
     _avg_sent = float(_avg_raw) if _has_sent else 0.0
-    _rec_color = "rgba(56,189,248,.95)" if "buy" in _rec.lower() else "rgba(239,68,68,.90)" if "avoid" in _rec.lower() else "rgba(245,158,11,.90)"
+    if "buy" in _rec.lower():
+        _rec_color = "rgba(56,189,248,.95)"
+        _rec_border_color = "rgba(56,189,248,.28)"
+    elif "avoid" in _rec.lower():
+        _rec_color = "rgba(239,68,68,.90)"
+        _rec_border_color = "rgba(239,68,68,.25)"
+    else:
+        _rec_color = "rgba(245,158,11,.90)"
+        _rec_border_color = "rgba(245,158,11,.25)"
     _conf_color = "rgba(56,189,248,.90)" if _conf.lower()=="high" else "rgba(245,158,11,.90)" if _conf.lower()=="moderate" else "rgba(148,163,184,.80)"
     _sent_color = "rgba(56,189,248,.95)" if _avg_sent>=0.10 else "rgba(239,68,68,.88)" if _avg_sent<=-0.10 else "rgba(148,163,184,.85)"
     # ONE WORD: the mood tile renders _sent_lbl.split(" ")[0].
@@ -1296,7 +1161,7 @@ def _render_deep_panel(ticker, sector, deep_results):
                  f"Bearish ({_avg_sent:+.2f})" if _avg_sent<=-0.10 else
                  f"Neutral ({_avg_sent:+.2f})")
     _sent_score_txt = f"Score {_avg_sent:+.3f}" if _has_sent else "No score"
-    _sector_lbl = (" · "+sector.title()) if sector and sector.lower() not in ("unknown","") else ""
+    _sector_lbl = (" · " + _esc(sector.title())) if sector and sector.lower() not in ("unknown", "") else ""
     # From the card, not from a fourth copy of these dictionaries. The previous
     # copy was "kept verbatim in step" by hand with two other copies, which is
     # the arrangement that let one page say "Proj. Gain 30d" for months after
@@ -1310,7 +1175,10 @@ def _render_deep_panel(ticker, sector, deep_results):
         return f'<div style="width:100%;height:4px;background:rgba(148,163,184,.12);border-radius:999px;margin-top:6px;"><div style="width:{pct}%;height:4px;background:{color};border-radius:999px;"></div></div>'
 
     _mc = "border-radius:12px;padding:14px 16px 12px 16px;background:rgba(15,23,42,.75);flex:1;min-width:0;display:flex;flex-direction:column;gap:4px;"
-    _rationale_html = "".join(f'<li style="margin-bottom:5px;color:rgba(229,231,235,.85);font-size:0.88rem;line-height:1.45;">{b}</li>' for b in _card.get("rationale", []))
+    _rationale_html = "".join(
+        f'<li style="margin-bottom:5px;color:rgba(229,231,235,.85);font-size:0.88rem;line-height:1.45;">{_esc(b)}</li>'
+        for b in _card.get("rationale", [])
+    )
 
     _fc = "border-radius:10px;padding:10px 14px;background:rgba(15,23,42,.55);border:1px solid rgba(148,163,184,.12);flex:1;"
     _fl = "font-size:0.68rem;font-weight:700;letter-spacing:0.05em;text-transform:uppercase;color:rgba(148,163,184,.55);margin-bottom:3px;"
@@ -1320,7 +1188,7 @@ def _render_deep_panel(ticker, sector, deep_results):
     # were retired there for promising a forecast the band does not make, and
     # survived here -- so the same volatility range was captioned as a projected
     # gain on one page and as a range on the other.
-    _price_row = f'<div style="display:flex;gap:8px;margin-bottom:14px;flex-wrap:nowrap;"><div style="{_fc}"><div style="{_fl}">Last Price</div><div style="{_fv}">{_price}</div></div><div style="{_fc}"><div style="{_fl}">30d range (vol)</div><div style="{_fv}">{_proj}</div></div><div style="{_fc}"><div style="{_fl}">Drawdown first</div><div style="{_fv}">{_hold}</div></div></div>' if _price != "Unavailable" or _proj != "Unavailable" or _hold != "Unavailable" else ""
+    _price_row = f'<div class="ss-analysis-price" style="display:flex;gap:8px;margin-bottom:14px;flex-wrap:nowrap;"><div style="{_fc}"><div style="{_fl}">Last Price</div><div style="{_fv}">{_esc(_price)}</div></div><div style="{_fc}"><div style="{_fl}">30d range (vol)</div><div style="{_fv}">{_esc(_proj)}</div></div><div style="{_fc}"><div style="{_fl}">Drawdown first</div><div style="{_fv}">{_esc(_hold)}</div></div></div>' if _price != "Unavailable" or _proj != "Unavailable" or _hold != "Unavailable" else ""
 
     _tilt_color = {"Bullish":"rgba(56,189,248,.95)","Bearish":"rgba(239,68,68,.90)","Neutral":"rgba(148,163,184,.80)"}
 
@@ -1335,15 +1203,15 @@ def _render_deep_panel(ticker, sector, deep_results):
         _tc = _tilt_color.get(_tl,"rgba(148,163,184,.80)")
         _cov_rows += (
             f'<tr style="border-bottom:1px solid rgba(148,163,184,.10);">'
-            f'<td style="padding:9px 10px;color:rgba(229,231,235,.90);font-size:0.80rem;">{_pn}</td>'
-            f'<td style="padding:9px 10px;color:rgba(148,163,184,.70);font-size:0.80rem;">{_tf}</td>'
+            f'<td style="padding:9px 10px;color:rgba(229,231,235,.90);font-size:0.80rem;">{_esc(_pn)}</td>'
+            f'<td style="padding:9px 10px;color:rgba(148,163,184,.70);font-size:0.80rem;">{_esc(_tf)}</td>'
             f'<td style="padding:9px 10px;text-align:center;color:rgba(148,163,184,.80);font-size:0.80rem;">{_ev}</td>'
-            f'<td style="padding:9px 10px;color:rgba(148,163,184,.80);font-size:0.80rem;">{_st2}</td>'
-            f'<td style="padding:9px 10px;font-size:0.80rem;font-weight:700;color:{_tc};">{_tl}</td>'
+            f'<td style="padding:9px 10px;color:rgba(148,163,184,.80);font-size:0.80rem;">{_esc(_st2)}</td>'
+            f'<td style="padding:9px 10px;font-size:0.80rem;font-weight:700;color:{_tc};">{_esc(_tl)}</td>'
             f'</tr>'
         )
     _cov_table = (
-        f'<table style="width:100%;border-collapse:collapse;background:rgba(15,23,42,.60);border-radius:10px;overflow:hidden;margin-bottom:16px;">'
+        f'<table class="ss-analysis-table" style="width:100%;border-collapse:collapse;background:rgba(15,23,42,.60);border-radius:10px;overflow:hidden;margin-bottom:16px;">'
         f'<thead><tr style="border-bottom:1px solid rgba(148,163,184,.20);">'
         + "".join(f'<th style="padding:8px 10px;text-align:{"center" if h=="Evidence" else "left"};font-size:0.68rem;font-weight:700;letter-spacing:0.05em;text-transform:uppercase;color:rgba(148,163,184,.55);">{h}</th>' for h in ["Signal Type","Timeframe","Evidence","Strength","Tilt"])
         + f'</tr></thead><tbody>{_cov_rows}</tbody></table>'
@@ -1363,13 +1231,13 @@ def _render_deep_panel(ticker, sector, deep_results):
         _tc = _tilt_color.get(_tl, "rgba(148,163,184,.80)")
 
         _metrics = (
-            f'<div style="display:flex;gap:8px;margin:8px 0 6px 0;">'
+            f'<div class="ss-analysis-detail-metrics" style="display:flex;gap:8px;margin:8px 0 6px 0;">'
             f'<div style="flex:1;background:rgba(15,23,42,.55);border-radius:8px;padding:8px 10px;border:1px solid rgba(148,163,184,.10);">'
             f'<div style="font-size:0.65rem;color:rgba(148,163,184,.55);text-transform:uppercase;letter-spacing:0.05em;">Sentiment Score</div>'
             f'<div style="font-size:0.92rem;font-weight:700;color:rgba(248,250,252,.90);">{float(_sc):.3f}</div></div>'
             f'<div style="flex:1;background:rgba(15,23,42,.55);border-radius:8px;padding:8px 10px;border:1px solid rgba(148,163,184,.10);">'
             f'<div style="font-size:0.65rem;color:rgba(148,163,184,.55);text-transform:uppercase;letter-spacing:0.05em;">Overall</div>'
-            f'<div style="font-size:0.92rem;font-weight:700;color:{_tc};">{_tl}</div></div>'
+            f'<div style="font-size:0.92rem;font-weight:700;color:{_tc};">{_esc(_tl)}</div></div>'
             f'<div style="flex:1;background:rgba(15,23,42,.55);border-radius:8px;padding:8px 10px;border:1px solid rgba(148,163,184,.10);">'
             f'<div style="font-size:0.65rem;color:rgba(148,163,184,.55);text-transform:uppercase;letter-spacing:0.05em;">Mentions</div>'
             f'<div style="font-size:0.92rem;font-weight:700;color:rgba(248,250,252,.90);">{_ev}</div></div>'
@@ -1378,20 +1246,20 @@ def _render_deep_panel(ticker, sector, deep_results):
 
         _themes_html = ""
         if _themes:
-            _chips = "".join(f'<span style="display:inline-block;background:rgba(56,189,248,.10);border:1px solid rgba(56,189,248,.20);border-radius:999px;padding:2px 9px;font-size:0.70rem;color:rgba(148,163,184,.85);margin:2px 3px 2px 0;">{t}</span>' for t in _themes)
+            _chips = "".join(f'<span style="display:inline-block;background:rgba(56,189,248,.10);border:1px solid rgba(56,189,248,.20);border-radius:999px;padding:2px 9px;font-size:0.70rem;color:rgba(148,163,184,.85);margin:2px 3px 2px 0;">{_esc(t)}</span>' for t in _themes)
             _themes_html = f'<div style="margin:6px 0 8px 0;"><span style="font-size:0.72rem;font-weight:700;color:rgba(148,163,184,.55);text-transform:uppercase;letter-spacing:0.05em;">Themes: </span>{_chips}</div>'
 
         _tweets_html = ""
         if _samples:
-            _tweet_items = "".join(f'<div style="border-left:2px solid rgba(56,189,248,.25);padding:5px 10px;margin-bottom:6px;color:rgba(229,231,235,.75);font-size:0.78rem;line-height:1.45;font-style:italic;">{i}. {t}</div>' for i, t in enumerate(_samples, 1))
+            _tweet_items = "".join(f'<div style="border-left:2px solid rgba(56,189,248,.25);padding:5px 10px;margin-bottom:6px;color:rgba(229,231,235,.75);font-size:0.78rem;line-height:1.45;font-style:italic;">{i}. {_esc(t)}</div>' for i, t in enumerate(_samples, 1))
             _tweets_html = f'<div style="margin-top:6px;"><div style="font-size:0.72rem;font-weight:700;color:rgba(148,163,184,.55);text-transform:uppercase;letter-spacing:0.05em;margin-bottom:6px;">Sample posts:</div>{_tweet_items}</div>'
 
-        _insights_html = f'<div style="font-size:0.78rem;color:rgba(148,163,184,.65);margin-bottom:4px;"><b>Insights:</b> {_ins}</div>' if _ins else ""
+        _insights_html = f'<div style="font-size:0.78rem;color:rgba(148,163,184,.65);margin-bottom:4px;"><b>Insights:</b> {_esc(_ins)}</div>' if _ins else ""
         _detail_sections += (
             f'<div style="border-top:1px solid rgba(148,163,184,.10);padding:12px 0;">'
             f'<div style="display:flex;justify-content:space-between;align-items:center;">'
-            f'<span style="font-size:0.84rem;font-weight:700;color:rgba(229,231,235,.90);">{_pn}</span>'
-            f'<span style="font-size:0.72rem;color:rgba(148,163,184,.55);">{_tf}</span>'
+            f'<span style="font-size:0.84rem;font-weight:700;color:rgba(229,231,235,.90);">{_esc(_pn)}</span>'
+            f'<span style="font-size:0.72rem;color:rgba(148,163,184,.55);">{_esc(_tf)}</span>'
             f'</div>'
             f'{_metrics}'
             f'{_insights_html}'
@@ -1400,7 +1268,15 @@ def _render_deep_panel(ticker, sector, deep_results):
             f'</div>'
         )
 
-    _panel_html = f"""<div style="
+    _panel_html = f"""<style>
+      @media (max-width: 700px) {{
+        .ss-analysis-header, .ss-analysis-summary,
+        .ss-analysis-price, .ss-analysis-detail-metrics {{ flex-wrap:wrap !important; }}
+        .ss-analysis-summary > div, .ss-analysis-price > div,
+        .ss-analysis-detail-metrics > div {{ min-width:140px !important; }}
+        .ss-analysis-table {{ display:block;overflow-x:auto !important; }}
+      }}
+    </style><div style="
       width:100%;box-sizing:border-box;
       background:rgba(2,6,23,0.97);
       border:1px solid rgba(56,189,248,.25);
@@ -1409,25 +1285,25 @@ def _render_deep_panel(ticker, sector, deep_results):
       overflow:hidden;
       font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;
     ">
-      <div style="padding:16px 20px 12px 20px;border-bottom:1px solid rgba(56,189,248,.15);background:linear-gradient(180deg,rgba(56,189,248,.07),rgba(2,6,23,0));display:flex;align-items:center;justify-content:space-between;gap:12px;">
+      <div class="ss-analysis-header" style="padding:16px 20px 12px 20px;border-bottom:1px solid rgba(56,189,248,.15);background:linear-gradient(180deg,rgba(56,189,248,.07),rgba(2,6,23,0));display:flex;align-items:center;justify-content:space-between;gap:12px;">
         <div>
           <div style="font-size:0.68rem;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:rgba(56,189,248,.75);">Deep Analysis{_sector_lbl}</div>
-          <div style="font-size:1.40rem;font-weight:850;letter-spacing:-0.02em;color:rgba(248,250,252,.98);">{ticker}</div>
+          <div style="font-size:1.40rem;font-weight:850;letter-spacing:-0.02em;color:rgba(248,250,252,.98);">{_esc(ticker)}</div>
         </div>
         <div style="text-align:right;">
           <div style="font-size:0.68rem;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:rgba(148,163,184,.50);">Signal</div>
-          <div style="font-size:1.25rem;font-weight:850;color:{_rec_color};">{_rec}</div>
-          <div style="font-size:0.72rem;color:rgba(148,163,184,.60);">Confidence: {_conf}</div>
+          <div style="font-size:1.25rem;font-weight:850;color:{_rec_color};">{_esc(_rec)}</div>
+          <div style="font-size:0.72rem;color:rgba(148,163,184,.60);">Confidence: {_esc(_conf)}</div>
         </div>
       </div>
       <div style="padding:16px 20px 20px 20px;">
-        <div style="display:flex;gap:8px;margin-bottom:14px;">
-          <div style="{_mc}border:1px solid {_rec_color.replace('.95',',.28').replace('.90',',.25')};"><div style="font-size:0.68rem;font-weight:700;letter-spacing:0.06em;text-transform:uppercase;color:rgba(148,163,184,.55);">Recommendation</div><div style="font-size:1.05rem;font-weight:850;color:{_rec_color};">{_rec}</div><div style="font-size:0.72rem;color:rgba(148,163,184,.55);">{_rec_sub}</div>{_bar(_bar_pct,_rec_color)}</div>
-          <div style="{_mc}border:1px solid rgba(148,163,184,.15);"><div style="font-size:0.68rem;font-weight:700;letter-spacing:0.06em;text-transform:uppercase;color:rgba(148,163,184,.55);">Confidence</div><div style="font-size:1.05rem;font-weight:850;color:{_conf_color};">{_conf}</div><div style="font-size:0.72rem;color:rgba(148,163,184,.55);">{_conf_sub}</div>{_bar(_conf_bar,_conf_color)}</div>
-          <div style="{_mc}border:1px solid rgba(148,163,184,.15);"><div style="font-size:0.68rem;font-weight:700;letter-spacing:0.06em;text-transform:uppercase;color:rgba(148,163,184,.55);">Market Mood</div><div style="font-size:1.05rem;font-weight:850;color:{_sent_color};">{_sent_lbl.split(" ")[0]}</div><div style="font-size:0.72rem;color:rgba(148,163,184,.55);">{_sent_score_txt}</div>{_bar(min(100,int(abs(_avg_sent)*280)),_sent_color)}</div>
+        <div class="ss-analysis-summary" style="display:flex;gap:8px;margin-bottom:14px;">
+          <div style="{_mc}border:1px solid {_rec_border_color};"><div style="font-size:0.68rem;font-weight:700;letter-spacing:0.06em;text-transform:uppercase;color:rgba(148,163,184,.55);">Recommendation</div><div style="font-size:1.05rem;font-weight:850;color:{_rec_color};">{_esc(_rec)}</div><div style="font-size:0.72rem;color:rgba(148,163,184,.55);">{_esc(_rec_sub)}</div>{_bar(_bar_pct,_rec_color)}</div>
+          <div style="{_mc}border:1px solid rgba(148,163,184,.15);"><div style="font-size:0.68rem;font-weight:700;letter-spacing:0.06em;text-transform:uppercase;color:rgba(148,163,184,.55);">Confidence</div><div style="font-size:1.05rem;font-weight:850;color:{_conf_color};">{_esc(_conf)}</div><div style="font-size:0.72rem;color:rgba(148,163,184,.55);">{_esc(_conf_sub)}</div>{_bar(_conf_bar,_conf_color)}</div>
+          <div style="{_mc}border:1px solid rgba(148,163,184,.15);"><div style="font-size:0.68rem;font-weight:700;letter-spacing:0.06em;text-transform:uppercase;color:rgba(148,163,184,.55);">Market Mood</div><div style="font-size:1.05rem;font-weight:850;color:{_sent_color};">{_esc(_sent_lbl.split(" ")[0])}</div><div style="font-size:0.72rem;color:rgba(148,163,184,.55);">{_esc(_sent_score_txt)}</div>{_bar(min(100,int(abs(_avg_sent)*280)),_sent_color)}</div>
         </div>
         {_price_row}
-        <div style="color:rgba(148,163,184,.45);font-size:0.72rem;margin-bottom:14px;">{_mentions_ct} posts analysed · {_pts} price points</div>
+        <div style="color:rgba(148,163,184,.45);font-size:0.72rem;margin-bottom:14px;">{_esc(_mentions_ct)} posts analysed · {_esc(_pts)} price points</div>
         <div style="font-size:0.78rem;font-weight:700;color:rgba(148,163,184,.60);letter-spacing:0.05em;text-transform:uppercase;margin-bottom:8px;">Why this signal</div>
         <ul style="margin:0 0 18px 16px;padding:0;">{_rationale_html}</ul>
         <details style="margin-top:4px;">
@@ -1443,7 +1319,9 @@ def _render_deep_panel(ticker, sector, deep_results):
       </div>
     </div>"""
 
-    components.html(_panel_html, height=750, scrolling=True)
+    # Render in the page DOM so the result has one scrollbar, responds to the
+    # viewport, and remains reachable by the accessible anchor above it.
+    st.html(_panel_html)
 
     # The pillar readout, and the verdict record. This path previously wrote
     # NEITHER: a scan-row Deep Analyze produced no evidence check and no
@@ -1469,16 +1347,11 @@ def _render_deep_panel(ticker, sector, deep_results):
 
 # ── Results table ──
 if st.session_state.df_valid is not None:
-    df_valid_display = st.session_state.df_valid.drop(columns=["Mentions", "Sample Tweets", "Evidence"], errors="ignore")
+    df_valid_display = st.session_state.df_valid.drop(
+        columns=["Sample Tweets"], errors="ignore"
+    ).copy()
 
     if len(df_valid_display) > 0:
-        st.markdown(
-            f'<div style="font-size:1.15rem;font-weight:800;letter-spacing:-0.01em;'
-            f'color:rgba(229,231,235,.98);margin:0.35rem 0 0.65rem 0;">'
-            f'{sector.title()} · {len(df_valid_display)} stocks</div>',
-            unsafe_allow_html=True,
-        )
-
         # Say how old the chatter is whenever it did not come from X just now.
         # The page badges "Real-time social sentiment", and a corpus may be up
         # to six hours old -- unlabelled, that is a claim the product does not
@@ -1488,23 +1361,56 @@ if st.session_state.df_valid is not None:
         if _age_s >= 60:
             _mins = int(_age_s // 60)
             _age_label = f"{_mins // 60}h {_mins % 60}m" if _mins >= 60 else f"{_mins}m"
-            st.markdown(
-                f'<div style="color:rgba(148,163,184,.62);font-size:0.78rem;'
-                f'margin:-0.35rem 0 0.75rem 0;">Market chatter from {_age_label} ago</div>',
-                unsafe_allow_html=True,
-            )
+            _freshness = f"Market chatter from {_age_label} ago"
+        else:
+            _freshness = "Updated just now"
 
-        # Bullish, Neutral, Bearish, then everything we could not assert.
-        # Low-evidence rows sort last so the shortlist leads with the names the
-        # scan can actually say something about.
-        sentiment_order = {"bullish": 0, "neutral": 1, "bearish": 2,
-                           "limited signal": 3, "single mention": 4, "unscored": 5}
-        df_valid_display = df_valid_display.copy()
-        df_valid_display["_sort"] = df_valid_display["Overall Sentiment"].str.lower().map(lambda x: sentiment_order.get(x, 3))
-        df_valid_display = df_valid_display.sort_values("_sort").drop(columns=["_sort"])
+        # Market Scan has exactly three sentiment states. Sparse evidence is
+        # grouped separately instead of masquerading as a fourth sentiment.
+        if "Mentions" not in df_valid_display.columns:
+            df_valid_display["Mentions"] = 0
+        if "Evidence" not in df_valid_display.columns:
+            df_valid_display["Evidence"] = 0
+        for _numeric_column in ("Mentions", "Evidence"):
+            df_valid_display[_numeric_column] = (
+                pd.to_numeric(
+                    df_valid_display[_numeric_column], errors="coerce"
+                )
+                .fillna(0)
+                .clip(lower=0)
+                .astype(int)
+            )
+        _labels = df_valid_display["Overall Sentiment"].fillna("").str.lower()
+        df_valid_display["_group"] = [
+            0 if label in _ASSERTED and evidence >= 3 else 1
+            for label, evidence in zip(_labels, df_valid_display["Evidence"])
+        ]
+        df_valid_display = df_valid_display.sort_values(
+            ["_group", "Evidence", "Mentions", "Ticker"],
+            ascending=[True, False, False, True],
+        )
         df_valid_display = df_valid_display.reset_index(drop=True)
 
-        header_cols = st.columns([0.9, 1.5, 1.1, 0.95, 0.9])
+        _scored_count = int((df_valid_display["_group"] == 0).sum())
+        _low_count = int((df_valid_display["_group"] == 1).sum())
+        _summary_parts = [f"{_scored_count} with a sentiment signal"]
+        if _low_count:
+            _summary_parts.append(f"{_low_count} need more evidence")
+        _result_sector = st.session_state.get("selected_sector") or sector
+        st.markdown(
+            f'<div class="scan-results-intro">'
+            f'<div><h2>{html.escape(str(_result_sector).title())} scan · {len(df_valid_display)} stocks</h2>'
+            f'<p>{" · ".join(_summary_parts)}</p></div>'
+            f'<div class="scan-results-freshness">{_freshness}</div>'
+            f'</div>',
+            unsafe_allow_html=True,
+        )
+        if st.session_state.pop("_scroll_to_deep_panel", False):
+            st.success(
+                f"Analysis ready for {st.session_state.get('selected_ticker')}. "
+                "Use View result to jump to the completed analysis."
+            )
+
         # Load last close prices with a progress indicator so the user sees activity
         tickers_for_prices = [str(t) for t in df_valid_display["Ticker"].tolist()]
         last_close_map = {}
@@ -1525,46 +1431,131 @@ if st.session_state.df_valid is not None:
             _price_prog.empty()
             _price_status.empty()
 
-        st.markdown(
-            '<div style="display:flex;padding:0 0.85rem;margin-bottom:0.25rem;">'
-            '</div>',
-            unsafe_allow_html=True,
-        )
-        header_labels = ["Ticker", "Company", "Last Close", "Signal", "Action"]
-        for col, label in zip(header_cols, header_labels):
-            col.markdown(
-                f'<span style="font-size:0.75rem;font-weight:700;letter-spacing:0.06em;'
-                f'text-transform:uppercase;color:rgba(148,163,184,.70);">{label}</span>',
-                unsafe_allow_html=True,
+        def _render_scan_header(signal_label: str, parent=st) -> None:
+            _header = parent.container(
+                key=f"scan_header_{signal_label.lower().replace(' ', '_')}"
             )
+            _header_cols = _header.columns([1.8, 0.75, 1.0, 0.7, 0.95])
+            for _col, _label in zip(
+                _header_cols,
+                ["Stock", "Last close", signal_label, "Attention", "Action"],
+            ):
+                _col.markdown(
+                    f'<span style="font-size:0.72rem;font-weight:700;letter-spacing:0.06em;'
+                    f'text-transform:uppercase;color:var(--muted);">{_label}</span>',
+                    unsafe_allow_html=True,
+                )
 
-        _top_signal_shown = False
+        if _scored_count:
+            st.markdown('<div class="scan-section-label">Sentiment signals</div>', unsafe_allow_html=True)
+            _render_scan_header("Sentiment")
+
+        _low_parent = None
+        if _low_count:
+            _selected_for_expander = st.session_state.get("selected_ticker")
+            _selected_is_low = bool(
+                _selected_for_expander
+                and (
+                    (df_valid_display["_group"] == 1)
+                    & (df_valid_display["Ticker"] == _selected_for_expander)
+                ).any()
+            )
+        _low_header_shown = False
         for _, row in df_valid_display.iterrows():
             ticker_symbol = row["Ticker"]
             company_name = row["Company Name"]
             overall_sentiment = row["Overall Sentiment"]
+            _is_low_evidence = int(row["_group"]) == 1
+            _mentions = int(row.get("Mentions") or 0)
+            _evidence = int(row.get("Evidence") or 0)
             last_close = last_close_map.get(str(ticker_symbol).upper())
             last_close_display = "N/A" if last_close is None else f"${float(last_close):.2f}"
 
             _is_selected = ticker_symbol == st.session_state.get("selected_ticker")
-            if not _top_signal_shown and overall_sentiment.lower() == "bullish":
-                st.markdown("<div class='ticker-row ticker-row--top-signal'>", unsafe_allow_html=True)
-                _top_signal_shown = True
-            else:
-                st.markdown("<div class='ticker-row'>", unsafe_allow_html=True)
-            col1, col2, col3, col4, col5 = st.columns(
-                [0.9, 1.5, 1.1, 0.95, 0.9]
+            if _is_low_evidence and not _low_header_shown:
+                # Create this lazily after every scored row has rendered;
+                # Streamlit fixes a container's page position when created.
+                _low_parent = st.expander(
+                    f"Needs more evidence ({_low_count})",
+                    expanded=(not bool(_scored_count)) or _selected_is_low,
+                )
+                _low_parent.caption(
+                    "These stocks had too little directional evidence for a "
+                    "Bullish, Bearish, or Neutral scan result."
+                )
+                _render_scan_header("Evidence state", parent=_low_parent)
+                _low_header_shown = True
+
+            _safe_ticker = "".join(
+                character if character.isalnum() else "_"
+                for character in str(ticker_symbol)
+            )
+            _ticker_html = html.escape(str(ticker_symbol))
+            _company_html = html.escape(str(company_name))
+            _row_prefix = "scan_row_selected" if _is_selected else "scan_row"
+            _row_parent = _low_parent if _is_low_evidence else st
+            _row = _row_parent.container(key=f"{_row_prefix}_{_safe_ticker}")
+            col1, col2, col3, col4, col5 = _row.columns(
+                [1.8, 0.75, 1.0, 0.7, 0.95]
             )
             with col1:
-                st.markdown(f"**{ticker_symbol}**")
+                st.markdown(
+                    f'<div class="scan-stock-cell"><strong>{_ticker_html}</strong>'
+                    f'<span>{_company_html}</span></div>',
+                    unsafe_allow_html=True,
+                )
             with col2:
-                st.markdown(company_name)
+                st.markdown(
+                    f'<div class="scan-meta-cell"><span class="scan-mobile-label">'
+                    f'Last close</span>{last_close_display}</div>',
+                    unsafe_allow_html=True,
+                )
             with col3:
-                st.markdown(last_close_display)
+                if _is_low_evidence:
+                    if _evidence <= 0:
+                        _evidence_label = "Unscored"
+                    elif _evidence == 1:
+                        _evidence_label = "Single mention"
+                    else:
+                        _evidence_label = "Limited signal"
+                    st.markdown(
+                        f'<div class="scan-meta-cell"><span class="scan-mobile-label">'
+                        f'Evidence state</span><span class="scan-evidence-state">'
+                        f'{_evidence_label}</span></div>',
+                        unsafe_allow_html=True,
+                    )
+                else:
+                    st.markdown(
+                        '<div class="scan-meta-cell"><span class="scan-mobile-label">'
+                        'Sentiment</span>' + _sentiment_pill(overall_sentiment) + '</div>',
+                        unsafe_allow_html=True,
+                    )
             with col4:
-                st.markdown(_sentiment_pill(overall_sentiment), unsafe_allow_html=True)
+                _attention_word = "mention" if _mentions == 1 else "mentions"
+                st.markdown(
+                    f'<div class="scan-meta-cell"><span class="scan-mobile-label">'
+                    f'Attention</span><span class="scan-attention">'
+                    f'{_mentions} {_attention_word}</span></div>',
+                    unsafe_allow_html=True,
+                )
             with col5:
-                if st.button("Deep Analyze", key=f"deep_analyze_{ticker_symbol}"):
+                _has_selected_result = bool(
+                    _is_selected and st.session_state.get("deep_analysis_results")
+                )
+                if _has_selected_result:
+                    st.markdown(
+                        '<a class="scan-view-result" href="#selected-analysis">'
+                        'View result ↓</a>',
+                        unsafe_allow_html=True,
+                    )
+                    _analyze_clicked = False
+                else:
+                    _analyze_clicked = st.button(
+                        "Analyze · 1 credit",
+                        key=f"deep_analyze_{ticker_symbol}",
+                        use_container_width=True,
+                    )
+                if _analyze_clicked:
                     # Open a request scope BEFORE charging. Without this the
                     # ContextVar still holds whatever id the last action on this
                     # page set, and consume_credit reuses a non-"-" value as its
@@ -1583,7 +1574,7 @@ if st.session_state.df_valid is not None:
                         _bail()
                     _dcredit = consume_credit(
                         "deep_analyze",
-                        {"ticker": ticker_symbol, "sector": sector, "page": "discovery"},
+                        {"ticker": ticker_symbol, "sector": _result_sector, "page": "discovery"},
                     )
                     if not _dcredit.ok:
                         billing.render_credit_refusal(
@@ -1618,7 +1609,7 @@ if st.session_state.df_valid is not None:
 
                         _disc_holder: dict = {}
                         _disc_done = _th.Event()
-                        _disc_sector = st.session_state.get("selected_sector") or ""
+                        _disc_sector = _result_sector
 
                         def _disc_run():
                             # A new thread starts with an empty context, so the
@@ -1751,17 +1742,30 @@ if st.session_state.df_valid is not None:
                                     "refund failed for event %s; leaving "
                                     "work_run open so the reaper retries",
                                     _dcredit.event_id)
-            st.markdown("</div>", unsafe_allow_html=True)
+        st.markdown(
+            '<div class="scan-table-note">Market Scan reports sentiment only: '
+            'Bullish, Bearish, or Neutral. Analyze a stock to get a separate '
+            'Buy, Watch, or Avoid recommendation.</div>',
+            unsafe_allow_html=True,
+        )
 
-            # ── Inline deep panel — renders immediately below this ticker's row ──
-            if _is_selected and st.session_state.get("deep_analysis_results"):
-                _render_deep_panel(
-                    ticker_symbol,
-                    st.session_state.get("selected_sector") or "",
-                    st.session_state.deep_analysis_results,
-                )
-
-        st.caption(f"Click Deep Analyze on any ticker for catalysts, signals, and a Buy/Watch/Avoid recommendation.")
+        # A selected result appears once, below the shortlist. The paid action
+        # becomes an in-page View result link, so the same ticker never offers
+        # a second charge beside an already delivered result.
+        _selected_ticker = st.session_state.get("selected_ticker")
+        if _selected_ticker and st.session_state.get("deep_analysis_results"):
+            st.markdown(
+                f'<section id="selected-analysis" class="selected-analysis-heading" '
+                f'tabindex="-1"><h2>{html.escape(str(_selected_ticker))} analysis result</h2>'
+                f'<p>Buy, Watch, or Avoid recommendation based on the completed analysis.</p>'
+                f'</section>',
+                unsafe_allow_html=True,
+            )
+            _render_deep_panel(
+                _selected_ticker,
+                _result_sector,
+                st.session_state.deep_analysis_results,
+            )
     else:
         st.markdown(
             """
@@ -1808,77 +1812,3 @@ if st.session_state.df_valid is not None:
 #     st.info("• Only price analysis requires API calls")
 
 close_page()
-
-# Late-injected CSS to override Streamlit's selectbox dropdown (ensures readability on Windows)
-st.markdown(
-    """
-    <style>
-    body ul.st-cx.st-al.st-c1[data-testid="stSelectboxVirtualDropdown"],
-    body ul.st-cx.st-al[data-testid="stSelectboxVirtualDropdown"],
-    body ul[data-testid="stSelectboxVirtualDropdown"].st-cx,
-    body ul.st-cx[data-testid="stSelectboxVirtualDropdown"],
-    body ul[data-testid="stSelectboxVirtualDropdown"] {
-      background: #0F172A !important;
-      background-color: #0F172A !important;
-      background-image: none !important;
-    }
-    body ul[data-testid="stSelectboxVirtualDropdown"] li {
-      background: transparent !important;
-      background-color: transparent !important;
-      color: #E5E7EB !important;
-      opacity: 1 !important;
-    }
-    body ul[data-testid="stSelectboxVirtualDropdown"] li:hover {
-      background: rgba(56,189,248,.16) !important;
-      background-color: rgba(56,189,248,.16) !important;
-    }
-    body ul[data-testid="stSelectboxVirtualDropdown"] li * {
-      color: #E5E7EB !important;
-      opacity: 1 !important;
-    }
-
-    /* Deep Analyze button - teal tinted, visible, premium */
-    html body button[data-testid="stBaseButton-secondary"],
-    div.stButton > button[kind="secondary"][data-testid="stBaseButton-secondary"],
-    .stButton > button[kind="secondary"][data-testid="stBaseButton-secondary"],
-    button[kind="secondary"][data-testid="stBaseButton-secondary"] {
-      background-color: rgba(56,189,248,.10) !important;
-      background-image: none !important;
-      color: rgba(56,189,248,.95) !important;
-      border: 1px solid rgba(56,189,248,0.42) !important;
-      font-weight: 700 !important;
-      opacity: 1 !important;
-      filter: none !important;
-    }
-    html body button[data-testid="stBaseButton-secondary"]:hover,
-    div.stButton > button[kind="secondary"][data-testid="stBaseButton-secondary"]:hover,
-    .stButton > button[kind="secondary"][data-testid="stBaseButton-secondary"]:hover,
-    button[kind="secondary"][data-testid="stBaseButton-secondary"]:hover {
-      background-color: rgba(56,189,248,.22) !important;
-      background-image: none !important;
-      border-color: rgba(56,189,248,.75) !important;
-      color: rgba(255,255,255,.98) !important;
-      box-shadow: 0 0 14px rgba(56,189,248,.22) !important;
-    }
-    html body button[data-testid="stBaseButton-secondary"] p,
-    html body button[data-testid="stBaseButton-secondary"] span {
-      color: rgba(56,189,248,.95) !important;
-    }
-    html body button[data-testid="stBaseButton-secondary"]:hover p,
-    html body button[data-testid="stBaseButton-secondary"]:hover span {
-      color: rgba(255,255,255,.98) !important;
-    }
-
-    /* Force Scan X primary button back to gradient */
-    html body button[data-testid="stBaseButton-primary"],
-    html body .stButton > button[kind="primary"][data-testid="stBaseButton-primary"] {
-      background-image: linear-gradient(180deg, rgba(56,189,248,.95), rgba(14,116,144,.95)) !important;
-      background-color: transparent !important;
-      border: 1px solid rgba(56,189,248,.45) !important;
-      color: #001018 !important;
-      font-weight: 650 !important;
-    }
-    </style>
-    """,
-    unsafe_allow_html=True,
-)

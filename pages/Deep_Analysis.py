@@ -46,7 +46,7 @@ st.set_page_config(
 
 # Sidebar navigation
 render_sidebar_navigation()
-render_top_nav()
+render_top_nav(active="deep_analyze")
 
 # Apply theme + hero BEFORE guard — logged-out users see the full styled page
 from utils.ui import apply_theme
@@ -69,26 +69,28 @@ st.markdown(
     }
     section[data-testid="stMain"] > div { padding-top: 0 !important; }
 
-    .da-hero { margin: -11.0rem 0 10px 0; padding: 0 2px 2px 2px; }
+    .da-hero { margin: 0 0 1.25rem; padding: 0; max-width: 760px; }
     .da-hero-title {
-      font-size: clamp(42px, 5.1vw, 3.55rem); font-weight: 850;
-      letter-spacing: -0.035em; line-height: 1.08; margin: 0 0 8px 0;
+      font-size: clamp(2rem, 4vw, 2.65rem); font-weight: 760;
+      letter-spacing: -0.035em; line-height: 1.08; margin: 0 0 0.35rem;
     }
     .da-hero-sub {
       color: var(--muted); font-size: clamp(15px, 1.35vw, 1.05rem);
       line-height: 1.45; margin: 0 0 0.85rem 0; max-width: 680px;
     }
-    /* Mobile: remove aggressive negative hero offset (header is different on phones) */
     @media (max-width: 640px) {
-      /* Pull the hero up to compensate for Streamlit's extra empty blocks on initial mobile render */
-      .da-hero { margin: -6.8rem 0 10px 0; }
-      .da-hero-title { font-size: clamp(34px, 9.5vw, 44px); }
+      .da-hero { margin-bottom: 1rem; }
+      .da-hero-title { font-size: clamp(2rem, 9vw, 2.5rem); }
       .da-hero-sub { font-size: 1.00rem; }
     }
 
     .st-key-da_scan_card {
-      background: transparent !important; border: none !important;
-      box-shadow: none !important; padding: 0 !important; margin-bottom: 0.25rem;
+      background: rgba(15,23,42,.68) !important;
+      border: 1px solid var(--border) !important;
+      border-radius: var(--radius-panel) !important;
+      box-shadow: none !important;
+      padding: 1rem !important;
+      margin-bottom: 1rem;
     }
     /* Kill Streamlit block gap between input row and results panel */
     .st-key-da_scan_card + div[data-testid="stVerticalBlock"],
@@ -103,21 +105,27 @@ st.markdown(
       align-items: center !important; gap: 10px !important;
     }
     .st-key-da_scan_card [data-baseweb="input"] > div {
-      border-radius: 10px !important; min-height: 38px !important;
+      border-radius: 10px !important; min-height: 44px !important;
     }
     .st-key-da_scan_card .stButton > button {
-      min-height: 38px !important; border-radius: 10px !important;
+      min-height: 44px !important; border-radius: 10px !important;
       padding-top: 0 !important; padding-bottom: 0 !important;
+    }
+    .da-balance {
+      min-height: 44px; display: flex; align-items: center;
+      color: var(--muted); font-size: .86rem; white-space: nowrap;
+    }
+    .da-balance strong { color: var(--text); font-weight: 720; }
+    @media (max-width: 720px) {
+      .st-key-da_scan_card [data-testid="stHorizontalBlock"] { flex-wrap: wrap; }
+      .st-key-da_scan_card [data-testid="column"] {
+        flex: 1 1 100% !important; width: 100% !important;
+      }
     }
     </style>
     <div class="clawd-app-wrapper">
     <div class="da-hero">
-      <div style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:14px;">
-        <span style="display:inline-flex;align-items:center;gap:6px;background:rgba(56,189,248,.06);border:1px solid rgba(56,189,248,.18);border-radius:999px;padding:5px 12px;font-size:0.80rem;font-weight:600;color:rgba(229,231,235,.80);">📡 Real-time social sentiment</span>
-        <span style="display:inline-flex;align-items:center;gap:6px;background:rgba(56,189,248,.06);border:1px solid rgba(56,189,248,.18);border-radius:999px;padding:5px 12px;font-size:0.80rem;font-weight:600;color:rgba(229,231,235,.80);">🏦 4,000+ US stocks</span>
-        <span style="display:inline-flex;align-items:center;gap:6px;background:rgba(56,189,248,.06);border:1px solid rgba(56,189,248,.18);border-radius:999px;padding:5px 12px;font-size:0.80rem;font-weight:600;color:rgba(229,231,235,.80);">⚡ Signal in under 60 seconds</span>
-      </div>
-      <div class="da-hero-title">Analyze any US stock.</div>
+      <h1 class="da-hero-title">Analyze any US stock.</h1>
       <div class="da-hero-sub">Enter a ticker and get a clear signal — Buy, Watch, or Avoid — built from real social sentiment and market data.</div>
     </div>
     """,
@@ -159,25 +167,34 @@ _autorun = bool(st.session_state.pop("_autorun_deep_analysis", False))
 
 # ── Compact scan card ──
 with st.container(key="da_scan_card"):
-    ticker_col, btn_col, meter_col = st.columns([0.55, 0.45, 2.0])
+    ticker_col, btn_col, meter_col = st.columns([1.25, 1.0, 0.8])
     with ticker_col:
         ticker = st.text_input(
             "Ticker",
             value=_prefill,
             placeholder="e.g. RCAT",
             key="da_ticker_input",
-            label_visibility="collapsed",
+            label_visibility="visible",
             max_chars=6,
         )
     with btn_col:
-        _run_clicked = st.button("Deep Analyze", type="primary", use_container_width=True)
+        st.markdown("<div style='height:1.68rem'></div>", unsafe_allow_html=True)
+        _run_clicked = st.button(
+            "Analyze · 1 credit", type="primary", use_container_width=True
+        )
 
     with meter_col:
-        # This page showed no balance at all -- a user could spend their last
-        # analysis without ever seeing a number, and running out here was a
-        # bare st.error() with no way to buy. The count comes from the profile
-        # require_active_account() already fetched above, so it costs nothing.
-        billing.render_credit_meter(profile=_profile, key="deep")
+        st.markdown("<div style='height:1.68rem'></div>", unsafe_allow_html=True)
+        _credits = int((_profile or {}).get("credits") or 0)
+        if _credits <= 1:
+            billing.render_credit_meter(profile=_profile, key="deep")
+        else:
+            _credit_word = "credit" if _credits == 1 else "credits"
+            st.markdown(
+                f'<div class="da-balance"><strong>{_credits}</strong>&nbsp;'
+                f'{_credit_word} available</div>',
+                unsafe_allow_html=True,
+            )
 
 # Auto-sector: Deep analysis can run without sector input. Default to unknown.
 sector = "unknown"

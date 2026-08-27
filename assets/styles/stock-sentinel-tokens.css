@@ -1,0 +1,41 @@
+/*
+ * Stock Sentinel platform-neutral design tokens.
+ *
+ * Current Streamlit pages load this file through utils/ui.py. A future web
+ * frontend should import the same file at its application root; component
+ * behavior and financial meaning must not depend on Streamlit selectors.
+ */
+:root {
+  --ss-color-bg: #0b1220;
+  --ss-color-panel: #0f172a;
+  --ss-color-panel-subtle: rgba(15, 23, 42, 0.55);
+  --ss-color-border: rgba(148, 163, 184, 0.18);
+  --ss-color-text: #e5e7eb;
+  --ss-color-text-muted: #a8b5c7;
+  --ss-color-action: #38bdf8;
+  --ss-color-positive: #22c55e;
+  --ss-color-negative: #ef4444;
+  --ss-color-caution: #f59e0b;
+  --ss-color-focus: rgba(56, 189, 248, 0.8);
+
+  --ss-radius-control: 10px;
+  --ss-radius-panel: 16px;
+  --ss-control-min-height: 44px;
+  --ss-content-max-width: 1180px;
+  --ss-reading-max-width: 760px;
+
+  /* Backward-compatible aliases used by the current adapter. */
+  --bg: var(--ss-color-bg);
+  --panel: var(--ss-color-panel);
+  --panel2: var(--ss-color-panel-subtle);
+  --border: var(--ss-color-border);
+  --text: var(--ss-color-text);
+  --muted: var(--ss-color-text-muted);
+  --accent: var(--ss-color-action);
+  --good: var(--ss-color-positive);
+  --bad: var(--ss-color-negative);
+  --warn: var(--ss-color-caution);
+  --focus-ring: var(--ss-color-focus);
+  --radius-control: var(--ss-radius-control);
+  --radius-panel: var(--ss-radius-panel);
+}

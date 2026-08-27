@@ -7,14 +7,18 @@ our shared CSS + wrapper layout so all pages stay consistent.
 from __future__ import annotations
 
 import logging
+from pathlib import Path
 
 import streamlit as st
-import streamlit.components.v1 as components
 
 
 LOG = logging.getLogger(__name__)
 
 GENERIC_ERROR_TEXT = "Something went wrong. Please try again later."
+_TOKEN_CSS = (
+    Path(__file__).resolve().parents[1]
+    / "assets" / "styles" / "stock-sentinel-tokens.css"
+).read_text(encoding="utf-8")
 
 
 def apply_theme() -> None:
@@ -22,22 +26,13 @@ def apply_theme() -> None:
 
     Safe to call multiple times.
     """
+    # Adapter boundary: load portable product tokens first, then map them onto
+    # the current Streamlit renderer below. Future frontends import the CSS
+    # asset directly and replace only this adapter layer.
+    st.markdown(f"<style>{_TOKEN_CSS}</style>", unsafe_allow_html=True)
     st.markdown(
         """
         <style>
-        :root {
-          --bg: #0B1220;
-          --panel: #0F172A;
-          --panel2: rgba(15, 23, 42, 0.55);
-          --border: rgba(148, 163, 184, 0.18);
-          --text: #E5E7EB;
-          --muted: #94A3B8;
-          --accent: #38BDF8;
-          --good: #22C55E;
-          --bad: #EF4444;
-          --warn: #F59E0B;
-        }
-
         h1, h2, h3, h4, h5, h6, p, span, div, label {
           color: var(--text);
         }
@@ -46,8 +41,7 @@ def apply_theme() -> None:
         }
 
         [data-testid="stAppViewContainer"] {
-          background: radial-gradient(1200px 500px at 20% 0%, rgba(56,189,248,.12), transparent 50%),
-                      radial-gradient(900px 400px at 80% 10%, rgba(34,197,94,.10), transparent 45%),
+          background: radial-gradient(1000px 420px at 18% 0%, rgba(56,189,248,.08), transparent 55%),
                       var(--bg);
           color: var(--text);
         }
@@ -74,39 +68,15 @@ def apply_theme() -> None:
         }
 
         div[data-testid="stMainBlockContainer"] {
-          /* Global container: match Option B tighter layout */
-          max-width: 1100px;
+          max-width: 1180px;
           margin: 0 auto;
-          padding-left: 2rem;
-          padding-right: 2rem;
-          padding-top: 0rem;
+          padding: 0 clamp(16px, 3vw, 32px) 2rem;
         }
 
-        /* Mobile: remove the “big empty band” on first load by tightening Streamlit's
-           default vertical spacing and overriding hero offsets globally.
-           (Desktop untouched.) */
         @media (max-width: 640px) {
           div[data-testid="stMainBlockContainer"] {
             padding-left: 1.05rem !important;
             padding-right: 1.05rem !important;
-          }
-
-          /* Streamlit sometimes inserts empty element containers that still reserve space */
-          section[data-testid="stMain"] [data-testid="stVerticalBlock"] {
-            gap: 0.18rem !important;
-          }
-          section[data-testid="stMain"] .stElementContainer {
-            margin-top: 0 !important;
-            margin-bottom: 0 !important;
-          }
-
-          /* Hero: pull up aggressively on mobile (we use a fixed mobile topbar) */
-          section[data-testid="stMain"] .hero {
-            /* Keep chips/hero just under the fixed mobile topbar */
-            margin-top: -4.2rem !important;
-          }
-          section[data-testid="stMain"] .da-hero {
-            margin-top: -4.2rem !important;
           }
         }
 
@@ -125,9 +95,30 @@ def apply_theme() -> None:
           color: var(--text) !important;
         }
 
+        /* BaseWeb portals render outside the page container. Keep every
+           select menu readable without page-specific DOM observers. */
+        [data-baseweb="popover"] [role="listbox"],
+        ul[data-testid="stSelectboxVirtualDropdown"] {
+          background: #0F172A !important;
+          color: var(--text) !important;
+          border: 1px solid var(--border) !important;
+        }
+        [data-baseweb="popover"] [role="option"],
+        ul[data-testid="stSelectboxVirtualDropdown"] li,
+        ul[data-testid="stSelectboxVirtualDropdown"] li * {
+          color: var(--text) !important;
+          opacity: 1 !important;
+        }
+        [data-baseweb="popover"] [role="option"]:hover,
+        [data-baseweb="popover"] [role="option"][aria-selected="true"],
+        ul[data-testid="stSelectboxVirtualDropdown"] li:hover {
+          background: rgba(56,189,248,.14) !important;
+        }
+
         /* Buttons */
         .stButton > button {
-          border-radius: 12px;
+          min-height: 44px;
+          border-radius: var(--radius-control);
           border: 1px solid rgba(56,189,248,0.28);
           background: rgba(15, 23, 42, 0.85);
           color: #E5E7EB;
@@ -144,92 +135,30 @@ def apply_theme() -> None:
           font-weight: 650 !important;
         }
 
+        a:focus-visible,
+        button:focus-visible,
+        input:focus-visible,
+        [role="button"]:focus-visible,
+        [tabindex]:focus-visible {
+          outline: 3px solid var(--focus-ring) !important;
+          outline-offset: 3px !important;
+          box-shadow: none !important;
+        }
+
+        @media (prefers-reduced-motion: reduce) {
+          *, *::before, *::after {
+            scroll-behavior: auto !important;
+            transition-duration: .01ms !important;
+            animation-duration: .01ms !important;
+            animation-iteration-count: 1 !important;
+          }
+        }
+
         footer { visibility: hidden; }
         </style>
         """,
         unsafe_allow_html=True,
     )
-
-    # Branded page-transition overlay.
-    # Fires on every page load/rerun — overlays the page with the brand dark color
-    # then fades out, giving a smooth "entering the app" feel between pages.
-    # Uses components.html (not st.markdown) so the <script> actually executes.
-    components.html(
-        """
-        <script>
-        (function () {
-          try {
-            const doc = (window.parent && window.parent.document) ? window.parent.document : document;
-            const id = 'clawd-transition-overlay';
-
-            const mount = () => {
-              // Kill any stale overlay from a previous run
-              try { const s = doc.getElementById(id); if (s) { s.style.transition = 'none'; s.remove(); } } catch (e) {}
-
-              const el = doc.createElement('div');
-              el.id = id;
-              el.style.cssText = [
-                'position:fixed',
-                'inset:0',
-                'z-index:99998',
-                'background:#020617',
-                'pointer-events:none',
-                'opacity:1',
-                'transition:opacity 0.40s cubic-bezier(0.4,0,0.2,1)',
-                'will-change:opacity',
-              ].join(';');
-              (doc.body || doc.documentElement).appendChild(el);
-
-              // Begin fade-out after a single paint frame
-              requestAnimationFrame(() => {
-                requestAnimationFrame(() => {
-                  el.style.opacity = '0';
-                });
-              });
-
-              // Remove after transition completes
-              el.addEventListener('transitionend', () => { try { el.remove(); } catch (e) {} });
-
-              // Safety net cleanup
-              setTimeout(() => { try { const m = doc.getElementById(id); if (m) m.remove(); } catch (e) {} }, 1500);
-            };
-
-            // Mount as soon as the parent document body exists
-            if (doc && (doc.body || doc.documentElement)) mount();
-            else setTimeout(mount, 0);
-          } catch (e) {}
-        })();
-        </script>
-        """,
-        height=0,
-    )
-
-    # Minimal dropdown readability fix (keeps select menus dark on Windows)
-    components.html(
-        """
-        <script>
-        (function () {
-          const APPLY = () => {
-            const ul = document.querySelector('ul[data-testid="stSelectboxVirtualDropdown"]');
-            if (ul) {
-              ul.style.setProperty('background-color', '#0F172A', 'important');
-              ul.style.setProperty('color', '#E5E7EB', 'important');
-              ul.querySelectorAll('li, li *').forEach((el) => {
-                el.style.setProperty('color', '#E5E7EB', 'important');
-                el.style.setProperty('opacity', '1', 'important');
-              });
-            }
-          };
-          const obs = new MutationObserver(APPLY);
-          obs.observe(document.documentElement, { childList: true, subtree: true });
-          window.addEventListener('load', APPLY);
-          setTimeout(APPLY, 250);
-        })();
-        </script>
-        """,
-        height=0,
-    )
-
 
 def render_footer() -> None:
     """Simple footer with support + disclaimer.

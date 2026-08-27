@@ -118,7 +118,7 @@ st.set_page_config(
 )
 
 render_sidebar_navigation()
-render_top_nav()
+render_top_nav(active="home")
 apply_theme()
 from utils.auth import flush_pending_rt_save; flush_pending_rt_save()
 
@@ -233,7 +233,7 @@ st.markdown(
 
     /* Hero (no box) */
     .hero {
-      margin: -9.8rem 0 2px 0;
+      margin: 0 0 1rem;
       padding: 0 2px 2px 2px;
     }
     .hero-title {
@@ -255,10 +255,10 @@ st.markdown(
     /* Mobile: remove aggressive negative hero offset (header is different on phones) */
     /* iPad / tablet */
     @media (min-width: 641px) and (max-width: 1024px) {
-      .hero { margin: -11.2rem 0 2px 0; }
+      .hero { margin: 0 0 1rem; }
     }
     @media (max-width: 640px) {
-      .hero { margin: -6.0rem 0 10px 0; }
+      .hero { margin: 0 0 1rem; }
       .hero-title { font-size: clamp(34px, 9.5vw, 44px); }
       .hero-subtitle { font-size: 1.00rem; }
 
@@ -522,7 +522,7 @@ st.markdown(
     /* On phones, force single-column flow for these sections */
     @media (max-width: 640px) {
       .hero {
-        margin: -6.0rem 0 14px 0;
+        margin: 0 0 1rem;
       }
 
       .how-grid [data-testid="column"],
@@ -565,7 +565,7 @@ if is_logged_in():
         """
         <style>
         .clawd-dashboard-hero {
-          margin: -9.2rem 0 0.4rem 0;
+          margin: 0 0 1rem;
         }
         [data-testid="stVerticalBlock"] > [data-testid="stElementContainer"],
         [data-testid="stVerticalBlock"] > [data-testid="stVerticalBlockBorderWrapper"] {
@@ -574,7 +574,7 @@ if is_logged_in():
           gap: 0 !important;
         }
         [data-testid="stVerticalBlock"] { gap: 0.55rem !important; }
-        .st-key-home_cap_grid { margin-top: -2.8rem !important; }
+        .st-key-home_cap_grid { margin-top: 0 !important; }
         @media (max-width: 640px) {
           .clawd-credits-row { flex-direction: column !important; align-items: flex-start !important; }
           .clawd-credits-row > div { width: 100% !important; justify-content: space-between !important; }
@@ -582,27 +582,9 @@ if is_logged_in():
         </style>
         """ + f"""
         <div class="clawd-dashboard-hero">
-          <div style="font-size:clamp(32px,3.8vw,2.8rem);font-weight:850;letter-spacing:-0.035em;line-height:1.08;color:rgba(229,231,235,.98);">{_greeting}</div>
+          <h1 style="margin:0;font-size:clamp(32px,3.8vw,2.8rem);font-weight:850;letter-spacing:-0.035em;line-height:1.08;color:rgba(229,231,235,.98);">{_greeting}</h1>
           <div style="color:rgba(148,163,184,.78);font-size:clamp(15px,1.35vw,1.05rem);line-height:1.45;margin-top:5px;">What are you trading today?</div>
         </div>
-        <script>
-        (function () {{
-          const APPLY_TO = (doc) => {{
-            const ul = doc.querySelector('ul[data-testid="stSelectboxVirtualDropdown"]');
-            if (ul) {{
-              ul.style.setProperty('background-color', '#0F172A', 'important');
-              ul.style.setProperty('color', '#E5E7EB', 'important');
-              ul.querySelectorAll('li, li *').forEach((el) => {{
-                el.style.setProperty('color', '#E5E7EB', 'important');
-                el.style.setProperty('opacity', '1', 'important');
-              }});
-            }}
-          }};
-          const obs = new MutationObserver(() => {{ try {{ APPLY_TO(document); }} catch(e){{}} }});
-          obs.observe(document.documentElement, {{ childList: true, subtree: true }});
-          setTimeout(() => {{ try {{ APPLY_TO(document); }} catch(e){{}} }}, 500);
-        }})();
-        </script>
         """,
         unsafe_allow_html=True,
     )
@@ -615,27 +597,9 @@ else:
             <span style="display:inline-flex;align-items:center;gap:6px;background:rgba(56,189,248,.06);border:1px solid rgba(56,189,248,.18);border-radius:999px;padding:5px 12px;font-size:0.80rem;font-weight:600;color:rgba(229,231,235,.80);">🏦 Thousands of US stocks</span>
             <span style="display:inline-flex;align-items:center;gap:6px;background:rgba(56,189,248,.06);border:1px solid rgba(56,189,248,.18);border-radius:999px;padding:5px 12px;font-size:0.80rem;font-weight:600;color:rgba(229,231,235,.80);">⚡ Signal in under 60 seconds</span>
           </div>
-          <div class="hero-title">Finding short-term opportunities shouldn't feel like a full-time job.</div>
+          <h1 class="hero-title">Finding short-term opportunities shouldn't feel like a full-time job.</h1>
           <div class="hero-subtitle">We turn noise into signals by analyzing social media sentiment and using market data to validate real momentum.</div>
         </div>
-        <script>
-        (function () {
-          const APPLY_TO = (doc) => {
-            const ul = doc.querySelector('ul[data-testid="stSelectboxVirtualDropdown"]');
-            if (ul) {
-              ul.style.setProperty('background-color', '#0F172A', 'important');
-              ul.style.setProperty('color', '#E5E7EB', 'important');
-              ul.querySelectorAll('li, li *').forEach((el) => {
-                el.style.setProperty('color', '#E5E7EB', 'important');
-                el.style.setProperty('opacity', '1', 'important');
-              });
-            }
-          };
-          const obs = new MutationObserver(() => { try { APPLY_TO(document); } catch(e){} });
-          obs.observe(document.documentElement, { childList: true, subtree: true });
-          setTimeout(() => { try { APPLY_TO(document); } catch(e){} }, 500);
-        })();
-        </script>
         """,
         unsafe_allow_html=True,
     )
@@ -647,7 +611,7 @@ with st.container(key="home_cap_grid"):
         with st.container(key="home_card_scan"):
             st.markdown(
                 """
-                <div class="cap-title">Market Scan</div>
+                <h2 class="cap-title">Market Scan</h2>
                 <p class="cap-desc">Pick a sector and we identify US stocks gaining unusual social media attention.</p>
                 """,
                 unsafe_allow_html=True,
@@ -676,7 +640,7 @@ with st.container(key="home_cap_grid"):
                     )
                 with btn_col:
                     if st.button(
-                        "Sentinel Scan",
+                        "Run scan · 1 credit",
                         type="primary",
                         key="home_cap_scan",
                         use_container_width=True,
@@ -693,7 +657,7 @@ with st.container(key="home_cap_grid"):
         with st.container(key="home_card_analyze"):
             st.markdown(
                 """
-                <div class="cap-title">Analyze a Stock</div>
+                <h2 class="cap-title">Analyze a Stock</h2>
                 <p class="cap-desc">Enter a ticker and get a clear signal (Buy/Watch/Avoid) with catalysts, risks, and growth projections.</p>
                 """,
                 unsafe_allow_html=True,
@@ -711,7 +675,7 @@ with st.container(key="home_cap_grid"):
                     )
                 with btn_col:
                     if st.button(
-                        "Deep Analyze",
+                        "Analyze · 1 credit",
                         type="primary",
                         key="home_cap_analyze",
                         use_container_width=True,

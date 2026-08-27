@@ -1,594 +1,231 @@
-"""Streamlit navigation helpers."""
+"""Shared application navigation for Stock Sentinel."""
 
 from __future__ import annotations
 
+import html
 import streamlit as st
-import streamlit.components.v1 as st_components
+
+_ACTIVE_KEYS = {"home", "market_scan", "deep_analyze"}
 
 
 def render_sidebar_navigation() -> None:
-    """Hide Streamlit's sidebar/navigation for a cleaner, focused layout."""
+    """Hide Streamlit's generated sidebar navigation."""
     st.markdown(
-        """
-        <style>
-        [data-testid="stSidebar"],
-        [data-testid="stSidebarNav"] {
-            display: none;
+        """<style>
+        [data-testid="stSidebar"], [data-testid="stSidebarNav"] {
+          display: none !important;
         }
-        </style>
-        """,
+        </style>""",
         unsafe_allow_html=True,
     )
 
 
-def render_top_nav() -> None:
-    """Render a LunarCrush-style top nav header.
+def _nav_link(column, page: str, label: str, key: str,
+              active: str, surface: str) -> None:
+    with column:
+        with st.container(key=f"nav_{surface}_{key}"):
+            st.page_link(page, label=label, use_container_width=True)
+            if active == key:
+                st.markdown(
+                    f'<span class="ss-sr-only">Current page: '
+                    f'{html.escape(label)}</span>'
+                    '<span class="ss-nav-current" aria-hidden="true"></span>',
+                    unsafe_allow_html=True,
+                )
 
-    (Hotfix: touched to force Streamlit Cloud redeploy after a transient tokenizer/caching error.)
 
-    Streamlit has no global layout template, so call this at the top of every page.
+def _brand(column, surface: str) -> None:
+    with column:
+        with st.container(key=f"nav_{surface}_brand"):
+            st.page_link(
+                "pages/Home.py", label="STOCK SENTINEL",
+                use_container_width=True,
+            )
 
-    Notes:
-    - This nav is made *sticky* via a small JS helper (reliable across Streamlit versions).
-    - We keep it simple: Streamlit buttons + switch_page.
-    """
-    from utils.auth import is_logged_in, sign_out, get_user
-    from utils.supabase_client import get_client
 
-    # Anchor so we can locate this block in the DOM and make it sticky.
-    st.markdown('<div id="clawd-topnav-anchor"></div>', unsafe_allow_html=True)
+def _admin_link(column, surface: str) -> None:
+    with column:
+        with st.container(key=f"nav_{surface}_admin"):
+            st.page_link("pages/Admin.py", label="Admin",
+                         use_container_width=True)
 
-    # Nav styling (background + separation)
-    st.markdown(
-        """
-        <style>
-        /* Make buttons in the top nav look more like a real navbar (compact like LunarCrush)
-           Note: nav links override this via .clawd-navlink.
-        */
-        .clawd-topnav [data-testid="stButton"] > button {
-          border-radius: 999px;
-          padding: 0.16rem 0.42rem;
-          font-size: 0.80rem;
-          letter-spacing: -0.01em;
-          border: 1px solid rgba(148,163,184,0.18);
-          background: rgba(15,23,42,0.62);
-          min-height: 32px;
-          line-height: 1;
-          width: fit-content !important;
-          white-space: nowrap !important;
-        }
 
-        /* Prevent iPad/Safari from wrapping the auth label vertically (desktop/tablet landscape) */
-        @media (min-width: 1025px) {
-          .clawd-topnav button[data-testid="stBaseButton-primary"],
-          .clawd-topnav .stButton > button[kind="primary"] {
-            white-space: nowrap !important;
-            min-width: 86px !important;
-          }
-        }
+def _auth_control(column, *, logged_in: bool, surface: str) -> None:
+    from utils.auth import sign_out
 
-        /* Tablet (641–1024px): compact nav buttons, no wrapping */
-        @media (min-width: 641px) and (max-width: 1024px) {
-          /* Use attribute selector to match Streamlit's specificity and override min-height */
-          .st-key-nav_auth_login button[data-testid],
-          .st-key-nav_auth_logout button[data-testid],
-          .st-key-nav_home button[data-testid],
-          .st-key-nav_auth_login button,
-          .st-key-nav_auth_logout button,
-          .st-key-nav_home button {
-            white-space: nowrap !important;
-            width: fit-content !important;
-            min-width: 44px !important;
-            max-width: 80px !important;
-            min-height: 28px !important;
-            max-height: 28px !important;
-            height: 28px !important;
-            padding: 0 0.60rem !important;
-            font-size: 0.76rem !important;
-            line-height: 28px !important;
-            border-radius: 999px !important;
-            overflow: hidden !important;
-          }
-          .st-key-nav_auth_login button p,
-          .st-key-nav_auth_logout button p,
-          .st-key-nav_home button p {
-            white-space: nowrap !important;
-            line-height: 28px !important;
-            margin: 0 !important;
-            padding: 0 !important;
-          }
-          .clawd-topnav .clawd-brandtext {
-            font-size: 0.72rem !important;
-            white-space: nowrap !important;
-          }
-        }
-
-        /* Primary (Log in) — slightly more premium, less "bulky" */
-        .clawd-topnav button[data-testid="stBaseButton-primary"],
-        .clawd-topnav .stButton > button[kind="primary"] {
-          min-height: 32px !important;
-          padding: 0.10rem 0.52rem !important;
-          font-size: 0.80rem !important;
-          font-weight: 750 !important;
-          border-radius: 999px !important;
-          box-shadow: 0 10px 24px rgba(0,0,0,.18);
-          width: fit-content !important;
-          line-height: 1 !important;
-        }
-
-        /* Top header */
-        .clawd-topnav {
-          margin-top: -5.20rem !important;
-          margin-bottom: -4.20rem !important;
-          padding: 0.20rem 0 0.20rem 0 !important;
-          border-bottom: 1px solid rgba(148,163,184,0.18);
-          backdrop-filter: blur(16px);
-          -webkit-backdrop-filter: blur(16px);
-          background: rgba(2,6,23,0.85);
-          position: relative;
-          z-index: 100;
-          box-shadow: 0 1px 0 rgba(56,189,248,0.06);
-        }
-
-        /* Mobile nav: replace desktop header with a dedicated fixed mobile topbar */
-        @media (max-width: 640px) {
-          /* Hide the entire desktop header — it stacks weirdly in Streamlit on iOS/Android */
-          .clawd-topnav { display: none !important; }
-          /* Hide the whole Streamlit nav container too (the buttons sometimes render outside our wrapper) */
-          .st-key-clawd_nav_container { display: none !important; }
-
-          /* Also hide any leftover Streamlit button containers from the header */
-          .clawd-brand,
-          .clawd-navlink,
-          .clawd-auth,
-          .st-key-nav_home,
-          .st-key-nav_discover,
-          .st-key-nav_deep,
-          .st-key-nav_auth_login,
-          .st-key-nav_auth_logout {
-            display: none !important;
-          }
-
-          /* Give the app content room under the fixed mobile bar */
-          div[data-testid="stAppViewContainer"] section.main {
-            padding-top: 56px !important;
-          }
-
-          /* Fixed mobile bar — visible by default via CSS; JS only needed for hamburger toggle */
-          #clawd-mobile-topbar {
-            position: fixed;
-            top: 0;
-            left: 0;
-            right: 0;
-            height: 52px;
-            padding: 0 12px;
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            background: rgba(2,6,23,0.88);
-            border-bottom: 1px solid rgba(148,163,184,0.18);
-            backdrop-filter: blur(16px);
-            -webkit-backdrop-filter: blur(16px);
-            z-index: 100000;
-          }
-          #clawd-mobile-topbar .brand {
-            color: rgba(56,189,248,.95);
-            font-weight: 800;
-            letter-spacing: 0.08em;
-            text-transform: uppercase;
-            font-size: 0.78rem;
-            white-space: nowrap;
-          }
-
-          /* Mobile menu drawer */
-          #clawd-mobile-menu {
-            position: fixed;
-            top: 52px;
-            left: 0;
-            right: 0;
-            display: none;
-            flex-direction: column;
-            background: rgba(2,6,23,0.97);
-            border-bottom: 1px solid rgba(148,163,184,0.18);
-            backdrop-filter: blur(16px);
-            -webkit-backdrop-filter: blur(16px);
-            z-index: 100000;
-            padding: 8px 0;
-          }
-          #clawd-mobile-menu.open { display: flex !important; }
-          #clawd-mobile-menu a {
-            display: block;
-            width: 100%;
-            padding: 12px 16px;
-            color: rgba(229,231,235,.92) !important;
-            text-decoration: none;
-            font-size: 0.96rem;
-            font-weight: 650;
-          }
-          #clawd-mobile-menu a:active,
-          #clawd-mobile-menu a:hover {
-            background: rgba(56,189,248,.08);
-          }
-
-          #clawd-hamburger {
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            background: rgba(148,163,184,0.08);
-            border: 1px solid rgba(148,163,184,0.22);
-            border-radius: 10px;
-            width: 36px;
-            height: 36px;
-            cursor: pointer;
-            color: rgba(229,231,235,.92);
-            font-size: 1.1rem;
-          }
-        }
-
-        @media (min-width: 641px) {
-          #clawd-mobile-topbar, #clawd-mobile-menu { display: none !important; }
-        }
-
-        .clawd-topnav [data-testid="stHorizontalBlock"] {
-          gap: 0.35rem !important;
-          align-items: center !important;
-        }
-
-        .clawd-topnav .clawd-brand {
-          display: flex;
-          align-items: center !important;
-          justify-content: flex-start;
-          width: 100%;
-          min-height: 32px;
-        }
-        .clawd-topnav .clawd-brandtext {
-          color: rgba(56,189,248,.95) !important;
-          -webkit-text-fill-color: rgba(56,189,248,.95) !important;
-          font-weight: 750;
-          letter-spacing: 0.06em;
-          text-transform: uppercase;
-          font-size: 0.78rem;
-          line-height: 32px;
-          white-space: nowrap !important;
-          overflow: hidden;
-          text-overflow: clip;
-          margin: 0;
-          display: inline-block;
-        }
-        .clawd-topnav .clawd-brand {
-          min-width: 120px;
-          overflow: visible;
-        }
-
-        /* Responsive nav note:
-           Do NOT hide Market Scan / Analyze a Stock on mobile unless we actually render a replacement menu.
-        */
-
-        /* Align nav items to the right edge of their columns so spacing is consistent */
-        .clawd-topnav .clawd-navlink,
-        .clawd-topnav .clawd-auth {
-          display: flex;
-          justify-content: flex-end;
-          align-items: center !important;
-          width: 100%;
-          min-height: 32px;
-        }
-
-        /* Keep Home and auth visually adjacent like the mockup */
-        .clawd-topnav .clawd-auth {
-          margin-left: 0.00rem;
-        }
-
-        /* Top-nav link buttons (Market Scan / Analyze a Stock):
-           We can't reliably "wrap" Streamlit elements with HTML, so we target by key.
-        */
-        .st-key-nav_discover [data-testid="stButton"] > button,
-        .st-key-nav_deep [data-testid="stButton"] > button {
-          background: transparent !important;
-          background-color: transparent !important;
-          /* keep a 1px border for consistent sizing/spacing, but make it invisible */
-          border: 1px solid rgba(0,0,0,0) !important;
-          outline: 0 !important;
-          box-shadow: none !important;
-          padding: 0.10rem 0.10rem !important;
-          min-height: 32px !important;
-          color: rgba(229,231,235,.92) !important;
-          font-weight: 750 !important;
-          font-size: 0.86rem !important;
-          letter-spacing: -0.01em;
-          white-space: nowrap !important;
-        }
-        .st-key-nav_discover [data-testid="stButton"] > button:hover,
-        .st-key-nav_deep [data-testid="stButton"] > button:hover {
-          background: transparent !important;
-          background-color: transparent !important;
-          border-color: transparent !important;
-          text-decoration: underline;
-          text-underline-offset: 4px;
-          text-decoration-color: rgba(56,189,248,.55);
-        }
-        .st-key-nav_discover [data-testid="stButton"] > button:focus,
-        .st-key-nav_deep [data-testid="stButton"] > button:focus,
-        .st-key-nav_discover [data-testid="stButton"] > button:focus-visible,
-        .st-key-nav_deep [data-testid="stButton"] > button:focus-visible {
-          outline: 0 !important;
-          border-color: transparent !important;
-          box-shadow: none !important;
-        }
-
-        /* Home nav link: match the mockup-style text link next to auth */
-        .st-key-nav_home [data-testid="stButton"] > button {
-          background: transparent !important;
-          background-color: transparent !important;
-          border: 1px solid rgba(0,0,0,0) !important;
-          outline: 0 !important;
-          box-shadow: none !important;
-          padding: 0.10rem 0.10rem !important;
-          min-height: 32px !important;
-          color: rgba(229,231,235,.92) !important;
-          font-weight: 750 !important;
-          font-size: 0.86rem !important;
-          letter-spacing: -0.01em;
-          white-space: nowrap !important;
-          width: fit-content !important;
-          min-width: auto !important;
-        }
-        .st-key-nav_home [data-testid="stButton"] > button:hover {
-          background: transparent !important;
-          background-color: transparent !important;
-          border-color: transparent !important;
-          text-decoration: underline;
-          text-underline-offset: 4px;
-          text-decoration-color: rgba(56,189,248,.55);
-        }
-        .st-key-nav_home [data-testid="stButton"] > button:focus,
-        .st-key-nav_home [data-testid="stButton"] > button:focus-visible {
-          outline: 0 !important;
-          border-color: transparent !important;
-          box-shadow: none !important;
-        }
-        .clawd-topnav .clawd-navlink [data-testid="stButton"] > button:hover {
-          background: transparent !important;
-          background-color: transparent !important;
-          border-color: transparent !important;
-          color: rgba(229,231,235,1) !important;
-          text-decoration: underline;
-          text-underline-offset: 4px;
-          text-decoration-color: rgba(56,189,248,.55);
-        }
-        .clawd-topnav .clawd-navlink [data-testid="stButton"] > button:focus,
-        .clawd-topnav .clawd-navlink [data-testid="stButton"] > button:focus-visible {
-          outline: none !important;
-          box-shadow: none !important;
-          border-color: transparent !important;
-        }
-
-        /* Ensure global topnav button styling doesn't re-add pill borders to nav links */
-        .clawd-topnav .clawd-navlink [data-testid="stButton"] > button {
-          border-radius: 10px !important;
-          border: none !important;
-          min-height: 32px !important;
-          line-height: 1 !important;
-          padding-top: 0.10rem !important;
-          padding-bottom: 0.10rem !important;
-        }
-
-        /* Services dropdown (native Streamlit selectbox) — tighten empty space before caret */
-        .clawd-topnav .clawd-services {
-          display: inline-flex;
-          justify-content: flex-end;
-          align-items: center;
-        }
-
-        /* (1) Make the control narrower so there's less gap between label and caret */
-        .clawd-topnav .clawd-services [data-testid="stSelectbox"] {
-          min-width: 150px !important;
-          max-width: 170px !important;
-        }
-        .clawd-topnav .clawd-services [data-baseweb="select"] {
-          width: 100% !important;
-          max-width: 170px !important;
-        }
-
-        /* (2) Reduce internal padding so caret feels closer */
-        .clawd-topnav .clawd-services [data-baseweb="select"] > div {
-          border-radius: 999px !important;
-          background-color: rgba(2,6,23,.52) !important;
-          border-color: rgba(148,163,184,0.16) !important;
-          min-height: 32px !important;
-          padding-left: 10px !important;
-          padding-right: 10px !important;
-        }
-        /* Make sure the word "Services" is readable (some browsers dim placeholder text) */
-        .clawd-topnav .clawd-services [data-baseweb="select"] [role="button"],
-        .clawd-topnav .clawd-services [data-baseweb="select"] [role="button"] * {
-          color: rgba(229,231,235,.95) !important;
-          -webkit-text-fill-color: rgba(229,231,235,.95) !important; /* Safari/Chrome */
-          opacity: 1 !important;
-          font-weight: 700 !important;
-        }
-        .clawd-topnav .clawd-services [data-baseweb="select"] [role="button"] {
-          padding-right: 8px !important;
-        }
-        /* Some BaseWeb builds mark placeholder/value with lower-opacity styles */
-        .clawd-topnav .clawd-services [data-baseweb="select"] [aria-selected],
-        .clawd-topnav .clawd-services [data-baseweb="select"] [data-baseweb="tag"],
-        .clawd-topnav .clawd-services [data-baseweb="select"] [data-baseweb="select"] {
-          opacity: 1 !important;
-        }
-
-        /* Tablet: give Services a touch more width so it doesn't look cramped */
-        @media (min-width: 700px) and (max-width: 1024px) {
-          .clawd-topnav .clawd-services [data-testid="stSelectbox"] {
-            min-width: 170px !important;
-            max-width: 190px !important;
-          }
-          .clawd-topnav .clawd-services [data-baseweb="select"] {
-            max-width: 190px !important;
-          }
-        }
-
-        
-        /* (Services is a nav-link dropdown) */
-        
-        /* Auth button wrapper (keeps Login styling without affecting Services) */
-        .clawd-topnav .clawd-auth [data-testid="stButton"] {
-          flex-grow: 0 !important;
-        }
-
-        /* Keep hover on non-primary buttons, but scope it away from Services link trigger */
-        .clawd-topnav :not(.clawd-services) [data-testid="stButton"] > button:hover {
-          border-color: rgba(56,189,248,0.55);
-          background: rgba(15,23,42,0.95);
-        }
-
-        .clawd-topnav .brand [data-testid="stButton"] > button {
-          font-weight: 800;
-          letter-spacing: -0.01em;
-          border-color: rgba(56,189,248,0.28);
-        }
-        </style>
-        """,
-        unsafe_allow_html=True,
-    )
-
-    # Use a stable key so we can hide the entire Streamlit-rendered nav block on mobile.
-    nav = st.container(key="clawd_nav_container")
-    with nav:
-        st.markdown('<div class="clawd-topnav">', unsafe_allow_html=True)
-
-        # Keep header minimal: Services dropdown immediately adjacent to Log in/Log out.
-        # Important: if we reserve empty columns (credits/admin) while logged out,
-        # Services will NOT sit next to the auth button. So we render two layouts.
-
-        # _load_credit_counts lived here and was never called -- credits were
-        # pulled out of the nav (see below) without removing the fetcher. It
-        # selected scan_credits/deep_credits, which are now frozen pre-merge
-        # snapshots, so leaving it would have left a plausible-looking helper
-        # that silently returns the wrong balance to whoever revives it.
-
-        # Phase 1 fix: unified column layout for both logged-in and logged-out states.
-        # Credits are removed from the nav entirely — they render in the page body (Home.py).
-        # This prevents the nav from gaining height on login and breaking the hero layout.
-        brand_col, spacer_col, admin_col, auth_col = st.columns([1.80, 7.60, 0.38, 0.98])
-
-        with brand_col:
-            st.markdown('<div class="clawd-brand"><a href="/Home" target="_self" style="text-decoration:none;"><div class="clawd-brandtext"><span>STOCK SENTINEL</span></div></a></div>', unsafe_allow_html=True)
-
-        with spacer_col:
-            st.markdown("")
-
-        with admin_col:
-            if is_logged_in():
-                user = get_user() or {}
-                user_email = (user.get("email") if isinstance(user, dict) else getattr(user, "email", None)) or ""
-                admin_email = st.secrets.get("ADMIN_EMAIL", "").lower().strip()
-                if user_email.lower().strip() == admin_email and admin_email:
-                    if st.button("🛠️", use_container_width=True, help="Admin Dashboard"):
-                        st.switch_page("pages/Admin.py")
-
-        # Auth button (right-most)
-        with auth_col:
-            st.markdown('<div class="clawd-auth">', unsafe_allow_html=True)
-            if is_logged_in():
-                if st.button("Log out", use_container_width=False, key="nav_auth_logout"):
+    with column:
+        with st.container(key=f"nav_{surface}_auth"):
+            if logged_in:
+                if st.button("Log out", use_container_width=True,
+                             key=f"nav_{surface}_logout_button"):
                     sign_out()
                     st.switch_page("pages/Home.py")
-            else:
-                if st.button("Log in", use_container_width=False, type="primary", key="nav_auth_login"):
-                    st.switch_page("pages/Auth.py")
-            st.markdown('</div>', unsafe_allow_html=True)
+            elif st.button("Log in", type="primary", use_container_width=True,
+                           key=f"nav_{surface}_login_button"):
+                st.switch_page("pages/Auth.py")
 
-        st.markdown('</div>', unsafe_allow_html=True)
 
-    # Mobile hamburger menu (injected via components.html so JS runs in iframe → parent)
-    st_components.html(
-        """
-        <script>
-        (function () {
-          const pickDoc = () => {
-            // Streamlit runs inside nested iframes (and iOS Safari can be picky).
-            // Walk up a few parents and pick the first document we can access that contains .clawd-topnav.
-            let w = window;
-            for (let i = 0; i < 4; i++) {
-              try {
-                const d = w.document;
-                if (d && d.querySelector && d.querySelector('.clawd-topnav')) return d;
-              } catch (e) {}
-              try {
-                if (w === w.parent) break;
-                w = w.parent;
-              } catch (e) { break; }
-            }
-            return document;
-          };
+def render_top_nav(*, active: str = "", credits: int | None = None) -> None:
+    """Render a shared two-layout header without extra data reads."""
+    from utils.auth import get_user, is_logged_in
 
-          const tryInject = () => {
-            const doc = pickDoc();
-            if (doc.getElementById('clawd-mobile-topbar')) return;
+    active = active if active in _ACTIVE_KEYS else ""
+    logged_in = is_logged_in()
+    user = get_user() or {}
+    email = ((user.get("email") if isinstance(user, dict)
+              else getattr(user, "email", None)) or "").strip()
+    initial = email[:1].upper() if email else "A"
+    admin_email = str(st.secrets.get("ADMIN_EMAIL", "") or "").lower().strip()
+    is_admin = bool(logged_in and admin_email and email.lower() == admin_email)
+    show_credits = bool(logged_in and credits is not None)
 
-            // Fixed topbar
-            const bar = doc.createElement('div');
-            bar.id = 'clawd-mobile-topbar';
-            bar.innerHTML = [
-              '<div class="brand">STOCK SENTINEL</div>',
-              '<button id="clawd-hamburger" aria-label="Menu">&#9776;</button>',
-            ].join('');
-
-            // Menu
-            const menu = doc.createElement('div');
-            menu.id = 'clawd-mobile-menu';
-            menu.innerHTML = [
-              '<a href="./Discovery">Market Scan</a>',
-              '<a href="./Deep_Analysis">Deep Analyze</a>',
-              '<a href="./Auth">Log in / Account</a>',
-            ].join('');
-
-            doc.body.appendChild(bar);
-            doc.body.appendChild(menu);
-
-            const btn = doc.getElementById('clawd-hamburger');
-
-            const sync = () => {
-              const w = (doc.documentElement.clientWidth || doc.body.clientWidth || 0);
-              const isMobile = w <= 640;
-              // On desktop hide it; on mobile let CSS display:flex handle it
-              if (!isMobile) {
-                bar.style.display = 'none';
-                menu.classList.remove('open');
-                btn.innerHTML = '&#9776;';
-              } else {
-                bar.style.removeProperty('display'); // let CSS take over
-              }
-            };
-
-            btn.addEventListener('click', () => {
-              menu.classList.toggle('open');
-              btn.innerHTML = menu.classList.contains('open') ? '&#10005;' : '&#9776;';
-            });
-
-            // Close menu after navigation
-            menu.addEventListener('click', (e) => {
-              if (e.target && e.target.tagName === 'A') {
-                menu.classList.remove('open');
-                btn.innerHTML = '&#9776;';
-              }
-            });
-
-            sync();
-            (doc.defaultView || window).addEventListener('resize', sync);
-          };
-
-          const obs = new MutationObserver(tryInject);
-          try { obs.observe(document.documentElement, { childList: true, subtree: true }); } catch (e) {}
-          try { const d = pickDoc(); obs.observe(d.documentElement, { childList: true, subtree: true }); } catch (e) {}
-          setTimeout(tryInject, 300);
-          setTimeout(tryInject, 900);
-          setTimeout(tryInject, 1800);
-        })();
-        </script>
-        """,
-        height=0,
+    st.markdown(
+        """<style>
+        .ss-sr-only {
+          position:absolute!important;width:1px!important;height:1px!important;
+          padding:0!important;margin:-1px!important;overflow:hidden!important;
+          clip:rect(0,0,0,0)!important;white-space:nowrap!important;border:0!important;
+        }
+        .st-key-ss_top_nav {
+          border-bottom:1px solid rgba(148,163,184,.18);
+          background:rgba(6,13,27,.94);padding:.62rem 0 .58rem;
+          margin:0 0 1.7rem;
+        }
+        .st-key-ss_top_nav [data-testid="stHorizontalBlock"] {
+          align-items:center!important;gap:.6rem!important;
+        }
+        .st-key-ss_nav_mobile { display:none; }
+        [class*="st-key-nav_desktop_"],
+        [class*="st-key-nav_mobile_"] { position:relative; }
+        [class*="st-key-nav_desktop_"] [data-testid="stPageLink"] a,
+        [class*="st-key-nav_mobile_"] [data-testid="stPageLink"] a {
+          min-height:44px;justify-content:center;border-radius:8px;
+          padding:.45rem .55rem;color:rgba(203,213,225,.88)!important;
+          font-size:.86rem;font-weight:680;text-decoration:none!important;
+          white-space:nowrap;
+        }
+        [class*="st-key-nav_desktop_brand"] [data-testid="stPageLink"] a,
+        [class*="st-key-nav_mobile_brand"] [data-testid="stPageLink"] a {
+          justify-content:flex-start;padding:0;color:var(--accent)!important;
+          font-size:.88rem;font-weight:800;letter-spacing:.07em;
+        }
+        [class*="st-key-nav_desktop_"] [data-testid="stPageLink"] a:hover,
+        [class*="st-key-nav_mobile_"] [data-testid="stPageLink"] a:hover {
+          background:rgba(56,189,248,.07);
+          color:rgba(248,250,252,.98)!important;
+        }
+        [class*="st-key-nav_desktop_admin"] [data-testid="stPageLink"] a,
+        [class*="st-key-nav_mobile_admin"] [data-testid="stPageLink"] a {
+          border:1px solid rgba(148,163,184,.24);
+        }
+        .ss-nav-current {
+          position:absolute;left:18%;right:18%;bottom:-9px;height:2px;
+          border-radius:999px;background:var(--accent);
+        }
+        .ss-credit-badge,.ss-account-badge {
+          display:inline-flex;min-height:40px;align-items:center;
+          justify-content:center;border:1px solid rgba(56,189,248,.34);
+          font-size:.81rem;font-weight:750;
+        }
+        .ss-credit-badge {
+          border-radius:9px;padding:0 .65rem;color:rgba(125,211,252,.98)!important;
+          white-space:nowrap;
+        }
+        .ss-account-badge {
+          width:40px;border-color:rgba(148,163,184,.25);border-radius:999px;
+          color:rgba(226,232,240,.92)!important;
+        }
+        [class*="st-key-nav_desktop_auth"] button,
+        [class*="st-key-nav_mobile_auth"] button {
+          min-height:40px!important;border-radius:9px!important;
+          white-space:nowrap!important;
+        }
+        .st-key-ss_top_nav a:focus-visible,
+        .st-key-ss_top_nav button:focus-visible {
+          outline:3px solid rgba(56,189,248,.78)!important;
+          outline-offset:3px!important;box-shadow:none!important;
+        }
+        @media (max-width:760px) {
+          .st-key-ss_top_nav {padding:.45rem 0 .4rem;margin-bottom:1.15rem;}
+          .st-key-ss_nav_desktop {display:none!important;}
+          .st-key-ss_nav_mobile {display:block!important;}
+          .st-key-ss_nav_mobile_links {
+            margin-top:.2rem;padding-top:.2rem;
+            border-top:1px solid rgba(148,163,184,.12);
+          }
+          .st-key-ss_nav_mobile_links [data-testid="stHorizontalBlock"] {
+            gap:.25rem!important;
+          }
+          [class*="st-key-nav_mobile_"] [data-testid="stPageLink"] a {
+            padding-left:.2rem;padding-right:.2rem;font-size:.79rem;
+          }
+          [class*="st-key-nav_mobile_brand"] [data-testid="stPageLink"] a {
+            font-size:.76rem;
+          }
+          .ss-nav-current {bottom:-5px;}
+        }
+        </style>""",
+        unsafe_allow_html=True,
     )
 
-    # No extra spacer after nav (prevents big gap before the hero)
+    with st.container(key="ss_top_nav"):
+        with st.container(key="ss_nav_desktop"):
+            widths = [1.55, 3.2]
+            if show_credits:
+                widths.append(.82)
+            if is_admin:
+                widths.append(.58)
+            if logged_in:
+                widths.append(.42)
+            widths.append(.82)
+            cols = iter(st.columns(widths))
+
+            _brand(next(cols), "desktop")
+            links_col = next(cols)
+            with links_col:
+                home, scan, deep = st.columns(3)
+                _nav_link(home, "pages/Home.py", "Home", "home",
+                          active, "desktop")
+                _nav_link(scan, "pages/Discovery.py", "Market Scan",
+                          "market_scan", active, "desktop")
+                _nav_link(deep, "pages/Deep_Analysis.py", "Deep Analyze",
+                          "deep_analyze", active, "desktop")
+
+            if show_credits:
+                with next(cols):
+                    word = "credit" if int(credits) == 1 else "credits"
+                    st.markdown(
+                        f'<span class="ss-credit-badge">{int(credits)} {word}</span>',
+                        unsafe_allow_html=True,
+                    )
+            if is_admin:
+                _admin_link(next(cols), "desktop")
+            if logged_in:
+                with next(cols):
+                    safe_email = html.escape(email or "Account", quote=True)
+                    st.markdown(
+                        f'<span class="ss-account-badge" title="{safe_email}">'
+                        f'{html.escape(initial)}</span>',
+                        unsafe_allow_html=True,
+                    )
+            _auth_control(next(cols), logged_in=logged_in, surface="desktop")
+
+        with st.container(key="ss_nav_mobile"):
+            if is_admin:
+                brand_col, admin_col, auth_col = st.columns([2.1, .75, .8])
+            else:
+                brand_col, auth_col = st.columns([2.4, .8])
+                admin_col = None
+            _brand(brand_col, "mobile")
+            if admin_col is not None:
+                _admin_link(admin_col, "mobile")
+            _auth_control(auth_col, logged_in=logged_in, surface="mobile")
+
+            with st.container(key="ss_nav_mobile_links"):
+                home, scan, deep = st.columns(3)
+                _nav_link(home, "pages/Home.py", "Home", "home",
+                          active, "mobile")
+                _nav_link(scan, "pages/Discovery.py", "Market Scan",
+                          "market_scan", active, "mobile")
+                _nav_link(deep, "pages/Deep_Analysis.py", "Deep Analyze",
+                          "deep_analyze", active, "mobile")
