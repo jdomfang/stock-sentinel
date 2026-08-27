@@ -32,9 +32,8 @@ def main() -> int:
     print("=" * 72)
 
     check(
-        "all analysis entry points use the shared decision summary",
-        "render_recommendation_panel(" in home
-        and "render_recommendation_panel(" in deep
+        "all delivered analysis entry points use the shared decision summary",
+        "render_recommendation_panel(" in deep
         and "render_recommendation_panel(" in discovery,
     )
     check(
@@ -66,18 +65,17 @@ def main() -> int:
     check(
         "landing preview is capped and links a selected analysis ticker",
         "limit: int = 5" in home
-        and "preferred_tickers=available_demo_tickers" in home
-        and "ss-demo-selected" in home,
+        and "preferred_tickers=_demo_available" in home
+        and 'selected = " selected"' in home,
     )
     check(
-        "demo prices and data are explicitly illustrative",
-        "prices are not live" in home
-        and "Illustrative demo snapshot" in home,
+        "demo product data is explicitly illustrative",
+        home.count("illustrative") >= 2,
     )
     check(
         "landing proof language avoids unsupported speed/freshness claims",
-        "Recent social sentiment" in home
-        and "Evidence context shown" in home
+        "Freshness shown" in home
+        and "Evidence explained" in home
         and "Results in under 60 seconds" not in home,
     )
     check(
@@ -86,8 +84,8 @@ def main() -> int:
         and 'flex:1 1 100% !important' in home,
     )
     check(
-        "the demo table is named for assistive technology",
-        '<caption class="ss-sr-only">' in home,
+        "the product preview is named for assistive technology",
+        'aria-label="Illustrative product preview"' in home,
     )
     check(
         "full breakdown is keyboard reachable and mobile contained",

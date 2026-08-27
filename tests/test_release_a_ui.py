@@ -43,7 +43,9 @@ def main() -> int:
     check("analysis cost is disclosed before activation",
           "Analyze · 1 credit" in discovery and "Analyze · 1 credit" in deep)
     check("a delivered analysis becomes a nonpaying result link",
-          "scan-view-result" in discovery and 'href="#selected-analysis"' in discovery)
+          "scan-view-result" in discovery
+          and "Viewing result" in discovery
+          and '"pages/Analysis_Result.py"' in discovery)
     check("analysis renders in the page rather than a scrolling iframe",
           "render_recommendation_panel(" in discovery and
           "components.html(_panel_html" not in discovery)

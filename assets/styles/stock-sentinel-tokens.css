@@ -32,8 +32,14 @@
   --ss-control-min-height: 44px;
   --ss-content-max-width: 1180px;
   --ss-reading-max-width: 760px;
+  --ss-workspace-max-width: 1240px;
+  --ss-marketing-max-width: 1408px;
+  --ss-font-display: clamp(2.65rem, 5vw, 4.3rem);
+  --ss-font-page-title: clamp(2rem, 4vw, 2.85rem);
+  --ss-space-control: 0.75rem;
   --ss-space-section: clamp(1.5rem, 3vw, 2.5rem);
   --ss-shadow-panel: 0 14px 36px rgba(2, 6, 23, 0.28);
+  --ss-shadow-focus-panel: 0 22px 60px rgba(2, 6, 23, 0.36);
 
   /* Backward-compatible aliases used by the current adapter. */
   --bg: var(--ss-color-bg);

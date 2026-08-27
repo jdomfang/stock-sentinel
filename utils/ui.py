@@ -286,6 +286,8 @@ def render_recommendation_panel(
     freshness: str = "Generated for this request",
     evidence_label: str = "",
     source_context: str = "Public social discussion and market-price data",
+    would_change: list[str] | None = None,
+    compact: bool = False,
 ) -> None:
     """Render one self-contained, portable decision-summary component.
 
@@ -354,6 +356,16 @@ def render_recommendation_panel(
     reasons_html = "".join(
         f"<li>{html.escape(reason)}</li>" for reason in rationale[:3]
     ) or "<li>No supporting explanation was returned for this analysis.</li>"
+    change_items = [
+        str(item).strip() for item in (would_change or [])
+        if str(item).strip()
+    ]
+    change_html = (
+        '<div class="ss-decision-change"><h3>What would change this</h3>'
+        f'<p>{html.escape(change_items[0])}</p></div>'
+        if change_items else ""
+    )
+    density_class = " compact" if compact else ""
 
     financial_tiles = []
     for label, value in (
@@ -421,7 +433,15 @@ def render_recommendation_panel(
           .ss-decision-reasons h3 {{margin:0 0 7px;font-size:.78rem;letter-spacing:.06em;text-transform:uppercase;color:#8192aa;}}
           .ss-decision-reasons ul {{margin:0;padding-left:1.15rem;}}
           .ss-decision-reasons li {{margin:.4rem 0;color:#dbe3ee;font-size:.91rem;line-height:1.45;}}
+          .ss-decision-change {{margin-top:15px;padding-top:13px;border-top:1px solid rgba(148,163,184,.14);}}
+          .ss-decision-change h3 {{margin:0 0 5px;font-size:.78rem;letter-spacing:.06em;text-transform:uppercase;color:#8192aa;}}
+          .ss-decision-change p {{margin:0;color:#a8b5c7;font-size:.86rem;line-height:1.45;}}
           .ss-decision-source {{margin:15px 0 0;color:#8192aa;font-size:.73rem;line-height:1.4;}}
+          .ss-decision-card.compact {{margin:0 0 .7rem;}}
+          .ss-decision-card.compact .ss-decision-head {{padding:16px;}}
+          .ss-decision-card.compact .ss-decision-body {{padding:15px 16px 17px;}}
+          .ss-decision-card.compact .ss-decision-context {{grid-template-columns:repeat(2,minmax(0,1fr));}}
+          .ss-decision-card.compact .ss-decision-financials {{grid-template-columns:repeat(2,minmax(0,1fr));}}
           @media (max-width:720px) {{
             .ss-decision-head {{padding:15px 16px;}}
             .ss-decision-body {{padding:15px 16px 17px;}}
@@ -433,7 +453,7 @@ def render_recommendation_panel(
             .ss-decision-signal {{text-align:left;margin-top:14px;}}
           }}
         </style>
-        <article class="ss-decision-card" aria-label="Deep analysis summary for {ticker_safe}">
+        <article class="ss-decision-card{density_class}" aria-label="Deep analysis summary for {ticker_safe}">
           <header class="ss-decision-head">
             <div>
               <div class="ss-decision-eyebrow">Deep analysis · {sector_safe}</div>
@@ -457,6 +477,7 @@ def render_recommendation_panel(
               <h3>Why this recommendation</h3>
               <ul>{reasons_html}</ul>
             </div>
+            {change_html}
             <p class="ss-decision-source">{freshness_safe} · {sources_safe}</p>
           </div>
         </article>
@@ -464,7 +485,13 @@ def render_recommendation_panel(
     )
 
 
-def render_full_analysis_expander(analysis_results: dict, key_suffix: str = "") -> None:
+def render_full_analysis_expander(
+    analysis_results: dict,
+    key_suffix: str = "",
+    *,
+    expanded: bool = False,
+    label: str = "Full breakdown",
+) -> None:
     """Styled 'Full breakdown' expander — visually obvious, premium look."""
     from utils.deep_analysis import ANALYSIS_PROMPTS
 
@@ -488,7 +515,7 @@ def render_full_analysis_expander(analysis_results: dict, key_suffix: str = "") 
         unsafe_allow_html=True,
     )
 
-    with st.expander("Full breakdown", expanded=False):
+    with st.expander(label, expanded=expanded):
         coverage_rows = []
         for prompt_name, result in (analysis_results or {}).items():
             timeframe = (ANALYSIS_PROMPTS.get(prompt_name, {}) or {}).get("timeframe", "")
@@ -583,7 +610,13 @@ def safe_ui(fn, *, context: str = ""):
         return None
 
 
-def render_evidence_check(card: dict, ticker: str = "") -> None:
+def render_evidence_check(
+    card: dict,
+    ticker: str = "",
+    *,
+    show_header: bool = True,
+    show_change: bool = True,
+) -> None:
     """The pillar readout: which gates passed, which failed, what would change it.
 
     TAKES THE CARD, not a Verdict. The remote path has no Verdict object -- it
@@ -637,7 +670,7 @@ def render_evidence_check(card: dict, ticker: str = "") -> None:
         )
 
     change = ""
-    if card.get("would_change"):
+    if show_change and card.get("would_change"):
         items = "".join(f"<li style='margin:2px 0;'>{_html.escape(str(c))}</li>"
                         for c in card["would_change"])
         label = ("What would make this a Buy" if recommendation == "Watch"
@@ -656,18 +689,26 @@ def render_evidence_check(card: dict, ticker: str = "") -> None:
                  + _html.escape(" · ".join(str(n) for n in card["confidence_notes"]))
                  + "</div>")
 
+    header = ""
+    lead = ""
+    if show_header:
+        header = (
+            f"<div style='display:flex;align-items:baseline;gap:10px;margin-bottom:2px;'>"
+            f"<span style='font-size:1.05rem;font-weight:800;'>{dot} "
+            f"{_html.escape(ticker) + ' — ' if ticker else ''}{_html.escape(recommendation)}</span>"
+            f"<span style='color:rgba(148,163,184,.8);font-size:0.86rem;'>"
+            f"{_html.escape(str(card.get('confidence') or ''))} confidence</span></div>"
+        )
+        lead = (
+            f"<div style='color:rgba(203,213,225,{'.95' if thin else '.8'});"
+            f"font-size:0.9rem;margin-bottom:12px;'>"
+            f"{_html.escape(str(card.get('reason') or ''))}</div>"
+        )
+
     st.markdown(
         f"<div style='border:1px solid rgba({rgb},.28);border-radius:14px;"
         f"padding:16px 20px;margin:0.75rem 0;background:rgba({rgb},.04);'>"
-        f"<div style='display:flex;align-items:baseline;gap:10px;margin-bottom:2px;'>"
-        f"<span style='font-size:1.05rem;font-weight:800;'>{dot} "
-        f"{_html.escape(ticker) + ' — ' if ticker else ''}{_html.escape(recommendation)}</span>"
-        f"<span style='color:rgba(148,163,184,.8);font-size:0.86rem;'>"
-        f"{_html.escape(str(card.get('confidence') or ''))} confidence</span></div>"
-        # Watch/Low leads with the reason, because "we could not judge" is the
-        # message -- not a hedged verdict.
-        f"<div style='color:rgba(203,213,225,{'.95' if thin else '.8'});"
-        f"font-size:0.9rem;margin-bottom:12px;'>{_html.escape(str(card.get('reason') or ''))}</div>"
+        f"{header}{lead}"
         f"<table style='width:100%;border-collapse:collapse;'>{''.join(rows)}</table>"
         f"{change}{notes}</div>",
         unsafe_allow_html=True,

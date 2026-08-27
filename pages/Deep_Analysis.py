@@ -27,8 +27,7 @@ _da_logger = logging.getLogger(__name__)
 
 from utils.navigation import render_sidebar_navigation, render_top_nav
 from utils.ui import (close_page, render_recommendation_panel,
-                      render_full_analysis_expander, render_evidence_check,
-                      render_workflow_hint)
+                      render_evidence_check, render_workflow_hint)
 # NOT the pipeline. This page charges a credit, draws a progress bar and
 # renders a card; the analysis itself lives in core-api and is reached over
 # HTTPS. utils.analyze is deliberately absent from these imports -- the day it
@@ -118,6 +117,15 @@ st.markdown(
       color: var(--muted); font-size: .86rem; white-space: nowrap;
     }
     .da-balance strong { color: var(--text); font-weight: 720; }
+    .st-key-deep_full_result_link [data-testid="stPageLink"] a {
+      min-height:44px;display:flex;align-items:center;justify-content:center;
+      border:1px solid rgba(56,189,248,.46);border-radius:var(--radius-control);
+      color:var(--accent)!important;font-size:.9rem;font-weight:720;
+      text-decoration:none!important;background:rgba(56,189,248,.04);
+    }
+    .st-key-deep_full_result_link [data-testid="stPageLink"] a:hover {
+      background:rgba(56,189,248,.11);
+    }
     @media (max-width: 720px) {
       .st-key-da_scan_card [data-testid="stHorizontalBlock"] { flex-wrap: wrap; }
       .st-key-da_scan_card [data-testid="column"] {
@@ -503,12 +511,21 @@ if _run_clicked or (_autorun and _prefill):
                 evidence_label=_evidence_label,
                 horizon=_horizon_label,
                 freshness="Analysis generated now",
+                would_change=_card.get("would_change") or [],
             )
 
             # The recommendation panel IS the product. Once it has rendered the user
             # has what they paid for, so anything that fails after this point is a
             # presentation bug, not a delivery failure.
             _delivered = True
+            # Preserve the delivered view model for the nonpaying breakdown
+            # route. This is presentation state only; core-api already owns the
+            # analysis and persistence, and opening the route performs no work.
+            st.session_state.selected_ticker = _run_ticker
+            st.session_state.selected_sector = sector
+            st.session_state.deep_analysis_card = _card
+            st.session_state.deep_analysis_results = analysis_results
+            st.session_state["analysis_result_origin"] = "deep_analyze"
 
             # EVIDENCE CHECK. Which gates passed, which failed, and what would
             # change the call. Generated from cascade state, so it cannot
@@ -598,11 +615,13 @@ if _run_clicked or (_autorun and _prefill):
             # raises RerunException (a BaseException, so no `except Exception`
             # catches it) and the user is charged for an analysis they never
             # fully saw.
-            # SKIPPED when empty. A core-api older than the analysis_results
-            # field returns a good card without it, and drawing the expander
-            # anyway gives the user an empty panel where a breakdown belongs.
-            if analysis_results:
-                render_full_analysis_expander(analysis_results)
+            with st.container(key="deep_full_result_link"):
+                st.page_link(
+                    "pages/Analysis_Result.py",
+                    label="View full breakdown",
+                    use_container_width=True,
+                )
+                st.caption("Already analyzed · no additional credit")
 
             # Written AFTER delivery, and unable to affect it. This is the only
             # record that this call was ever made: X's index is 7 days deep and

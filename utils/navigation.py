@@ -74,9 +74,43 @@ def _auth_control(column, *, logged_in: bool, surface: str) -> None:
                              key=f"nav_{surface}_logout_button"):
                     sign_out()
                     st.switch_page("pages/Home.py")
-            elif st.button("Log in", type="primary", use_container_width=True,
+            elif st.button("Log in", use_container_width=True,
                            key=f"nav_{surface}_login_button"):
                 st.switch_page("pages/Auth.py")
+
+
+def _signup_control(column, *, surface: str) -> None:
+    """Public primary action; authentication behavior remains owned by Auth."""
+    with column:
+        with st.container(key=f"nav_{surface}_signup"):
+            if st.button(
+                "Start free", type="primary", use_container_width=True,
+                key=f"nav_{surface}_signup_button",
+            ):
+                st.session_state["auth_initial_mode"] = "Create Account"
+                st.switch_page("pages/Auth.py")
+
+
+def _marketing_links(column, surface: str) -> None:
+    """Small public information architecture used only on the landing page."""
+    with column:
+        with st.container(key=f"nav_{surface}_marketing"):
+            how, method, faq = st.columns(3)
+            with how:
+                st.markdown(
+                    '<a class="ss-marketing-nav-link" href="#how-it-works">'
+                    'How it works</a>',
+                    unsafe_allow_html=True,
+                )
+            with method:
+                st.page_link(
+                    "pages/Trust_Center.py", label="Methodology",
+                    use_container_width=True,
+                )
+            with faq:
+                st.page_link(
+                    "pages/FAQ.py", label="FAQ", use_container_width=True,
+                )
 
 
 def render_top_nav(*, active: str = "", credits: int | None = None) -> None:
@@ -152,9 +186,24 @@ def render_top_nav(*, active: str = "", credits: int | None = None) -> None:
           color:rgba(226,232,240,.94)!important;
         }
         [class*="st-key-nav_desktop_auth"] button,
-        [class*="st-key-nav_mobile_auth"] button {
+        [class*="st-key-nav_mobile_auth"] button,
+        [class*="st-key-nav_desktop_signup"] button,
+        [class*="st-key-nav_mobile_signup"] button {
           min-height:44px!important;border-radius:9px!important;
           white-space:nowrap!important;
+        }
+        [class*="st-key-nav_desktop_marketing"] [data-testid="stHorizontalBlock"] {
+          gap:.2rem!important;
+        }
+        [class*="st-key-nav_desktop_marketing"] [data-testid="stPageLink"] a,
+        .ss-marketing-nav-link {
+          min-height:44px;display:flex;align-items:center;justify-content:center;
+          padding:.4rem .35rem;color:rgba(203,213,225,.82)!important;
+          font-size:.82rem;font-weight:650;text-decoration:none!important;
+          white-space:nowrap;border-radius:8px;
+        }
+        .ss-marketing-nav-link:hover {
+          background:rgba(56,189,248,.07);color:#f8fafc!important;
         }
         .st-key-ss_top_nav a:focus-visible,
         .st-key-ss_top_nav button:focus-visible {
@@ -186,46 +235,53 @@ def render_top_nav(*, active: str = "", credits: int | None = None) -> None:
 
     with st.container(key="ss_top_nav"):
         with st.container(key="ss_nav_desktop"):
-            widths = [1.55, 3.2]
-            if show_credits:
-                widths.append(.82)
-            if is_admin:
-                widths.append(.58)
-            if logged_in:
+            if not logged_in:
+                brand, marketing, login, signup = st.columns(
+                    [1.55, 2.7, .72, .82]
+                )
+                _brand(brand, "desktop")
+                _marketing_links(marketing, "desktop")
+                _auth_control(login, logged_in=False, surface="desktop")
+                _signup_control(signup, surface="desktop")
+            else:
+                widths = [1.55, 3.2]
+                if show_credits:
+                    widths.append(.82)
+                if is_admin:
+                    widths.append(.58)
                 widths.append(.74)
-            widths.append(.82)
-            cols = iter(st.columns(widths))
+                widths.append(.82)
+                cols = iter(st.columns(widths))
 
-            _brand(next(cols), "desktop")
-            links_col = next(cols)
-            with links_col:
-                home, scan, deep = st.columns(3)
-                _nav_link(home, "pages/Home.py", "Home", "home",
-                          active, "desktop")
-                _nav_link(scan, "pages/Discovery.py", "Market Scan",
-                          "market_scan", active, "desktop")
-                _nav_link(deep, "pages/Deep_Analysis.py", "Deep Analyze",
-                          "deep_analyze", active, "desktop")
+                _brand(next(cols), "desktop")
+                links_col = next(cols)
+                with links_col:
+                    home, scan, deep = st.columns(3)
+                    _nav_link(home, "pages/Home.py", "Home", "home",
+                              active, "desktop")
+                    _nav_link(scan, "pages/Discovery.py", "Market Scan",
+                              "market_scan", active, "desktop")
+                    _nav_link(deep, "pages/Deep_Analysis.py", "Deep Analyze",
+                              "deep_analyze", active, "desktop")
 
-            if show_credits:
-                with next(cols):
-                    word = "credit" if int(credits) == 1 else "credits"
-                    st.markdown(
-                        f'<span class="ss-credit-badge">{int(credits)} {word}</span>',
-                        unsafe_allow_html=True,
-                    )
-            if is_admin:
-                _admin_link(next(cols), "desktop")
-            if logged_in:
+                if show_credits:
+                    with next(cols):
+                        word = "credit" if int(credits) == 1 else "credits"
+                        st.markdown(
+                            f'<span class="ss-credit-badge">{int(credits)} {word}</span>',
+                            unsafe_allow_html=True,
+                        )
+                if is_admin:
+                    _admin_link(next(cols), "desktop")
                 _account_link(next(cols), "desktop", active)
-            _auth_control(next(cols), logged_in=logged_in, surface="desktop")
+                _auth_control(next(cols), logged_in=True, surface="desktop")
 
         with st.container(key="ss_nav_mobile"):
             if logged_in:
                 brand_col, account_col, auth_col = st.columns([2.0, .8, .8])
                 admin_col = None
             else:
-                brand_col, auth_col = st.columns([2.4, .8])
+                brand_col, auth_col, signup_col = st.columns([1.8, .7, .8])
                 admin_col = None
                 account_col = None
             _brand(brand_col, "mobile")
@@ -234,15 +290,18 @@ def render_top_nav(*, active: str = "", credits: int | None = None) -> None:
             if account_col is not None:
                 _account_link(account_col, "mobile", active)
             _auth_control(auth_col, logged_in=logged_in, surface="mobile")
+            if not logged_in:
+                _signup_control(signup_col, surface="mobile")
 
-            with st.container(key="ss_nav_mobile_links"):
-                home, scan, deep = st.columns(3)
-                _nav_link(home, "pages/Home.py", "Home", "home",
-                          active, "mobile")
-                _nav_link(scan, "pages/Discovery.py", "Market Scan",
-                          "market_scan", active, "mobile")
-                _nav_link(deep, "pages/Deep_Analysis.py", "Deep Analyze",
-                          "deep_analyze", active, "mobile")
+            if logged_in:
+                with st.container(key="ss_nav_mobile_links"):
+                    home, scan, deep = st.columns(3)
+                    _nav_link(home, "pages/Home.py", "Home", "home",
+                              active, "mobile")
+                    _nav_link(scan, "pages/Discovery.py", "Market Scan",
+                              "market_scan", active, "mobile")
+                    _nav_link(deep, "pages/Deep_Analysis.py", "Deep Analyze",
+                              "deep_analyze", active, "mobile")
             if is_admin:
                 with st.container(key="ss_nav_mobile_admin_row"):
                     spacer, admin = st.columns([2.5, .7])

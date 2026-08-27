@@ -68,7 +68,18 @@ Suggested future component mapping:
   data sources, privacy, and terms. These are presentation changes only; the
   existing authentication, payment, credit, database, and API paths remain the
   source of truth.
-- **Later releases:** incremental route-level frontend migration and optional
+- **Release D — Flow and layout convergence:** bring the working product into
+  the approved `stock-sentinel-premium-flow-v4` composition: a two-column
+  public hero with an honest product preview, a three-step workflow and trust
+  strip, compact attention-led scan results, a selected analysis workspace,
+  and a nonpaying dedicated full-breakdown route. Delivered results must never
+  expose a second paid action for the same result.
+- **Release E — Responsive production polish:** complete mobile navigation and
+  card composition, loading/failure/zero-credit states, cross-browser spacing,
+  keyboard and assistive-technology verification, and visual regression
+  coverage against the approved desktop and mobile references.
+- **Release F — Optional frontend migration:** incremental route-level frontend
+  migration when the replacement host is selected, followed by optional
   research-history/watchlist surfaces after their product and data contracts
   are defined.
 

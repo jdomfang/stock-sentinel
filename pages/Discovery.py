@@ -471,6 +471,34 @@ st.markdown(
       color: var(--muted);
       font-size: .84rem;
     }
+    .st-key-scan_result_workspace [data-testid="stHorizontalBlock"]:has(
+      .st-key-scan_workspace_results
+    ):has(.st-key-scan_workspace_analysis) {
+      align-items:flex-start!important;gap:20px!important;
+    }
+    .st-key-scan_result_workspace [data-testid="stHorizontalBlock"]:has(
+      .st-key-scan_workspace_results
+    ):has(.st-key-scan_workspace_analysis) > [data-testid="column"] {
+      min-width:0!important;
+    }
+    .st-key-selected_analysis_panel {
+      position:sticky;top:16px;padding:14px;border:1px solid rgba(56,189,248,.18);
+      border-radius:var(--radius-panel);background:rgba(8,15,30,.72);
+    }
+    .st-key-selected_analysis_panel .selected-analysis-heading {margin:0 0 .7rem;}
+    .st-key-selected_analysis_panel .stButton > button {width:100%;}
+    .st-key-selected_analysis_panel [data-testid="stPageLink"] a {
+      min-height:44px;display:flex;align-items:center;justify-content:center;
+      border:1px solid rgba(56,189,248,.48);border-radius:var(--radius-control);
+      color:var(--accent)!important;font-size:.86rem;font-weight:720;
+      text-decoration:none!important;background:rgba(56,189,248,.04);
+    }
+    .st-key-selected_analysis_panel [data-testid="stPageLink"] a:hover {
+      background:rgba(56,189,248,.11);
+    }
+    .scan-view-result {
+      box-sizing:border-box;
+    }
 
     @media (max-width: 720px) {
       .discovery-page-header { margin-bottom: 1rem; }
@@ -513,6 +541,15 @@ st.markdown(
       [class*="st-key-scan_row_"] .stButton > button {
         width: 100%;
       }
+      .st-key-scan_result_workspace [data-testid="stHorizontalBlock"]:has(
+        .st-key-scan_workspace_results
+      ):has(.st-key-scan_workspace_analysis) {flex-wrap:wrap!important;}
+      .st-key-scan_result_workspace [data-testid="stHorizontalBlock"]:has(
+        .st-key-scan_workspace_results
+      ):has(.st-key-scan_workspace_analysis) > [data-testid="column"] {
+        flex:1 1 100%!important;width:100%!important;
+      }
+      .st-key-selected_analysis_panel {position:static;padding:11px;margin-top:14px;}
     }
 
     /* Hide Streamlit "Made with" footer */
@@ -1108,7 +1145,7 @@ if ADMIN_MODE:
         else:
             st.caption("Run Deep Analyze to enable saving deep snapshot.")
 
-def _render_deep_panel(ticker, sector, deep_results):
+def _render_deep_panel(ticker, sector, deep_results, *, compact=False):
     """Render the same paid analysis summary used by the dedicated route."""
     card = st.session_state.get("deep_analysis_card") or {}
     if not card:
@@ -1173,20 +1210,31 @@ def _render_deep_panel(ticker, sector, deep_results):
         horizon=horizon_label,
         freshness="Analysis generated now",
         evidence_label=evidence_label,
+        would_change=card.get("would_change") or [],
+        compact=compact,
     )
-    render_full_analysis_expander(
-        deep_results or {},
-        key_suffix=f"_discovery_{ticker}",
-    )
+    if compact:
+        st.session_state["analysis_result_origin"] = "market_scan"
+        st.page_link(
+            "pages/Analysis_Result.py",
+            label="View full breakdown",
+            use_container_width=True,
+        )
+        st.caption("Already analyzed · no additional credit")
+    else:
+        render_full_analysis_expander(
+            deep_results or {},
+            key_suffix=f"_discovery_{ticker}",
+        )
 
-    if card.get("pillars"):
-        try:
-            render_evidence_check(card, ticker)
-        except Exception:
-            logger.warning(
-                "discovery: evidence check render failed",
-                exc_info=True,
-            )
+        if card.get("pillars"):
+            try:
+                render_evidence_check(card, ticker)
+            except Exception:
+                logger.warning(
+                    "discovery: evidence check render failed",
+                    exc_info=True,
+                )
 
 
 # ── Results table ──
@@ -1252,7 +1300,7 @@ if st.session_state.df_valid is not None:
         if st.session_state.pop("_scroll_to_deep_panel", False):
             st.success(
                 f"Analysis ready for {st.session_state.get('selected_ticker')}. "
-                "Use View result to jump to the completed analysis."
+                "The completed result is open beside the shortlist."
             )
 
         # Load last close prices with a progress indicator so the user sees activity
@@ -1275,7 +1323,30 @@ if st.session_state.df_valid is not None:
             _price_prog.empty()
             _price_status.empty()
 
-        def _render_scan_header(signal_label: str, parent=st) -> None:
+        _selected_ticker = st.session_state.get("selected_ticker")
+        _scan_tickers = {
+            str(value).strip().upper()
+            for value in df_valid_display["Ticker"].tolist()
+        }
+        # A delivered recommendation card is the paid product. Detailed signal
+        # excerpts are optional for results returned by older core-api builds,
+        # so their absence must never expose a second paid Analyze action.
+        _has_delivered_analysis = bool(
+            _selected_ticker
+            and str(_selected_ticker).strip().upper() in _scan_tickers
+            and st.session_state.get("deep_analysis_card")
+        )
+        _workspace = st.container(key="scan_result_workspace")
+        if _has_delivered_analysis:
+            _results_outer, _analysis_outer = _workspace.columns([1.18, .92])
+            _results_col = _results_outer.container(key="scan_workspace_results")
+            _analysis_col = _analysis_outer.container(key="scan_workspace_analysis")
+        else:
+            _results_col, _analysis_col = _workspace, None
+
+        def _render_scan_header(signal_label: str, parent=None) -> None:
+            if parent is None:
+                parent = _results_col
             _header = parent.container(
                 key=f"scan_header_{signal_label.lower().replace(' ', '_')}"
             )
@@ -1291,7 +1362,10 @@ if st.session_state.df_valid is not None:
                 )
 
         if _scored_count:
-            st.markdown('<div class="scan-section-label">Sentiment signals</div>', unsafe_allow_html=True)
+            _results_col.markdown(
+                '<div class="scan-section-label">Sentiment signals</div>',
+                unsafe_allow_html=True,
+            )
             _render_scan_header("Sentiment")
 
         _low_parent = None
@@ -1319,7 +1393,7 @@ if st.session_state.df_valid is not None:
             if _is_low_evidence and not _low_header_shown:
                 # Create this lazily after every scored row has rendered;
                 # Streamlit fixes a container's page position when created.
-                _low_parent = st.expander(
+                _low_parent = _results_col.expander(
                     f"Needs more evidence ({_low_count})",
                     expanded=(not bool(_scored_count)) or _selected_is_low,
                 )
@@ -1337,7 +1411,7 @@ if st.session_state.df_valid is not None:
             _ticker_html = html.escape(str(ticker_symbol))
             _company_html = html.escape(str(company_name))
             _row_prefix = "scan_row_selected" if _is_selected else "scan_row"
-            _row_parent = _low_parent if _is_low_evidence else st
+            _row_parent = _low_parent if _is_low_evidence else _results_col
             _row = _row_parent.container(key=f"{_row_prefix}_{_safe_ticker}")
             col1, col2, col3, col4, col5 = _row.columns(
                 [1.8, 0.75, 1.0, 0.7, 0.95]
@@ -1384,12 +1458,11 @@ if st.session_state.df_valid is not None:
                 )
             with col5:
                 _has_selected_result = bool(
-                    _is_selected and st.session_state.get("deep_analysis_results")
+                    _is_selected and st.session_state.get("deep_analysis_card")
                 )
                 if _has_selected_result:
                     st.markdown(
-                        '<a class="scan-view-result" href="#selected-analysis">'
-                        'View result ↓</a>',
+                        '<span class="scan-view-result">Viewing result</span>',
                         unsafe_allow_html=True,
                     )
                     _analyze_clicked = False
@@ -1586,30 +1659,33 @@ if st.session_state.df_valid is not None:
                                     "refund failed for event %s; leaving "
                                     "work_run open so the reaper retries",
                                     _dcredit.event_id)
-        st.markdown(
+        _results_col.markdown(
             '<div class="scan-table-note">Market Scan reports sentiment only: '
             'Bullish, Bearish, or Neutral. Analyze a stock to get a separate '
             'Buy, Watch, or Avoid recommendation.</div>',
             unsafe_allow_html=True,
         )
 
-        # A selected result appears once, below the shortlist. The paid action
-        # becomes an in-page View result link, so the same ticker never offers
-        # a second charge beside an already delivered result.
-        _selected_ticker = st.session_state.get("selected_ticker")
-        if _selected_ticker and st.session_state.get("deep_analysis_results"):
-            st.markdown(
-                f'<section id="selected-analysis" class="selected-analysis-heading" '
-                f'tabindex="-1"><h2>{html.escape(str(_selected_ticker))} analysis result</h2>'
-                f'<p>Buy, Watch, or Avoid recommendation based on the completed analysis.</p>'
-                f'</section>',
-                unsafe_allow_html=True,
-            )
-            _render_deep_panel(
-                _selected_ticker,
-                _result_sector,
-                st.session_state.deep_analysis_results,
-            )
+        # The completed result occupies a separate desktop workspace column and
+        # stacks after the shortlist on mobile. It is a view of work already
+        # delivered, so its only action is the nonpaying full breakdown route.
+        if _has_delivered_analysis and _analysis_col is not None:
+            with _analysis_col:
+                with st.container(key="selected_analysis_panel"):
+                    st.markdown(
+                        f'<section id="selected-analysis" '
+                        f'class="selected-analysis-heading" tabindex="-1">'
+                        f'<h2>{html.escape(str(_selected_ticker))} analysis result</h2>'
+                        f'<p>Completed Buy, Watch, or Avoid recommendation.</p>'
+                        f'</section>',
+                        unsafe_allow_html=True,
+                    )
+                    _render_deep_panel(
+                        _selected_ticker,
+                        _result_sector,
+                        st.session_state.deep_analysis_results,
+                        compact=True,
+                    )
     else:
         st.markdown(
             """
