@@ -22,7 +22,7 @@ from utils.ui import apply_theme, render_footer
 from utils.auth import sign_in, sign_up, is_logged_in, try_restore_cached_session, restore_session_from_refresh_token
 
 st.set_page_config(
-    page_title="Stock Sentinel - Sign In",
+    page_title="Stock Sentinel - Account Access",
     page_icon="📈",
     layout="wide",
     initial_sidebar_state="collapsed",
@@ -31,280 +31,62 @@ st.set_page_config(
 render_sidebar_navigation()
 apply_theme()
 
-# --- Auth-specific layout styling ---
+# --- Auth-specific presentation. Authentication behavior stays below. ---
 st.markdown(
     """
     <style>
-    /* Auth page keeps a centered, focused layout; global theme comes from utils.ui.apply_theme() */
-
-    .stCaption, [data-testid="stCaptionContainer"] {
-      text-align: center !important;
-    }
-
-    /* Main container spacing */
-    div[data-testid="stMainBlockContainer"] {
-      max-width: 100%;
-      padding-left: 2rem;
-      padding-right: 2rem;
-      padding-top: 0.75rem;
-    }
-
-    .auth-wrapper {
-      max-width: 900px;
-      margin: 0 auto;
-      padding: 0 1rem;
-    }
-
-    .auth-form-container {
-      max-width: 420px;
-      margin: 0 auto;
-      position: relative;
-    }
-
-    /* Titles */
-    .auth-title {
-      font-size: clamp(2rem, 4vw, 2.65rem);
-      font-weight: 850;
-      letter-spacing: -0.02em;
-      margin: 0;
-      line-height: 1.1;
-      text-align: center;
-    }
-    .auth-subtitle {
-      color: var(--muted);
-      margin-top: 0.75rem;
-      margin-bottom: 1rem;
-      font-size: 1.0rem;
-      text-align: center;
-      line-height: 1.5;
-    }
-
-    /* Hero section for auth */
-    .auth-hero {
-      margin: 0;
-      padding: 0;
-      text-align: left;
-    }
-
-    /* Auth mode tabs (prominent) */
-    .auth-tabs {
-      display: flex;
-      justify-content: center;
-      gap: 1rem;
-      margin-bottom: 2.5rem;
-      margin-top: 0.5rem;
-    }
-
-    /* HIDE THE DIVIDER BAR COMPLETELY */
-    [data-testid="stRadio"] {
-      all: revert !important;
-      border: none !important;
-      border-bottom: none !important;
-      border-top: none !important;
-      padding: 0 !important;
-      margin: 0 !important;
-      min-height: 0 !important;
-      height: auto !important;
-      width: 100% !important;
-    }
-
-    [data-testid="stRadio"]::before,
-    [data-testid="stRadio"]::after,
-    .stRadio::before,
-    .stRadio::after {
-      display: none !important;
-      content: "" !important;
-    }
-
-    .stRadio {
-      width: 100% !important;
-      margin: 0 !important;
-      padding: 0 !important;
-      border: none !important;
-    }
-
-    .stRadio > div {
-      flex-direction: row !important;
-      justify-content: center !important;
-      gap: 0.75rem !important;
-      width: 100% !important;
-      margin: 0 !important;
-      padding: 0 !important;
-      border: none !important;
-    }
-    
-    .stRadio label {
-      margin-bottom: 0 !important;
-      padding: 0.6rem 1.5rem !important;
-      border-radius: 999px !important;
-      border: 2px solid var(--border) !important;
-      background: rgba(2,6,23,.3) !important;
-      color: var(--text) !important;
-      font-weight: 600 !important;
-      font-size: 0.95rem !important;
-      cursor: pointer !important;
-      transition: all 0.2s ease !important;
-    }
-
-    .stRadio label:hover {
-      border-color: rgba(56,189,248,.6) !important;
-      background: rgba(56,189,248,.1) !important;
-    }
-
-    .stRadio label {
-      margin-bottom: 0 !important;
-      padding: 0.6rem 1.5rem !important;
-      border-radius: 999px !important;
-      border: 2px solid var(--border) !important;
-      background: rgba(2,6,23,.3) !important;
-      color: var(--text) !important;
-      font-weight: 600 !important;
-      font-size: 0.95rem !important;
-      cursor: pointer !important;
-      transition: all 0.2s ease !important;
-    }
-
-    .stRadio label:hover {
-      border-color: rgba(56,189,248,.6) !important;
-      background: rgba(56,189,248,.1) !important;
-    }
-
-    /* Radio button checked state */
-    .stRadio [role="radio"][aria-checked="true"] + label {
-      border-color: rgba(56,189,248,.95) !important;
-      background: rgba(56,189,248,.2) !important;
-    }
-
-    /* Hide radio button container div/spacing */
-    .stRadio > div {
-      margin: 0 !important;
-      padding: 0 !important;
-      gap: 0.5rem !important;
-    }
-
-    /* Collapse stRadio wrapper */
-    [data-testid="stRadio"] {
-      margin: 0 !important;
-      padding: 0 !important;
-      min-height: 0 !important;
-    }
-    
-    /* Hide any HR/divider elements */
-    hr {
-      display: none !important;
-    }
-    
-    /* Hide element dividers */
-    [data-testid*="element"] > div {
-      border-bottom: none !important;
-    }
-    
-    /* Hide dividers between elements */
-    .stVerticalBlock > [data-testid] {
-      border-bottom: 0 !important;
-    }
-
-    /* Input fields - constrained width */
-    .stTextInput {
-      max-width: 420px !important;
-      margin: 0 auto 0.8rem auto !important;
-    }
-
-    /* Center the Remember me checkbox row */
-    div[data-testid="stCheckbox"] {
-      max-width: 420px !important;
-      margin: 0 auto 0.8rem auto !important;
-    }
-    div[data-testid="stCheckbox"] label {
-      justify-content: center !important;
-      width: 100% !important;
-    }
-
-    [data-baseweb="input"] > div {
-      background-color: rgba(2,6,23,.55) !important;
-      border-color: var(--border) !important;
-      color: var(--text) !important;
-      border-radius: 12px !important;
-      padding: 0.75rem 1rem !important;
-    }
-
-    .stTextInput > label {
-      color: var(--text) !important;
-      font-weight: 550 !important;
-      font-size: 0.95rem !important;
-      margin-bottom: 0.5rem !important;
-    }
-
-    /* Primary buttons + form submit button */
-    button[data-testid="stBaseButton-primary"],
-    button[data-testid="stFormSubmitButton"],
-    .stButton > button[kind="primary"],
-    .stFormSubmitButton > button {
-      background: linear-gradient(180deg, rgba(56,189,248,.95), rgba(14,116,144,.95)) !important;
-      background-color: transparent !important;
-      border: 1px solid rgba(56,189,248,.45) !important;
-      color: #001018 !important;
-      font-weight: 700 !important;
-      padding: 0.65rem 2rem !important;
-      font-size: 0.98rem !important;
-      min-height: 44px !important;
-      border-radius: 10px !important;
-      margin-top: 0.5rem !important;
-    }
-
-    .stButton,
-    .stFormSubmitButton {
-      text-align: center !important;
-    }
-
-    .stButton > button,
-    .stFormSubmitButton > button {
-      width: 100% !important;
-      max-width: 420px !important;
-      margin: 0 auto !important;
-    }
-
-    /* Remove default form border/padding that Streamlit adds */
-    [data-testid="stForm"] {
-      border: none !important;
-      padding: 0 !important;
-    }
-
-    /* Hide Streamlit "Made with" footer */
-    footer { visibility: hidden; }
-    </style>
-    
-    """,
-    unsafe_allow_html=True,
-)
-
-st.markdown(
-    """
-    <style>
-      div[data-testid="stMainBlockContainer"] {max-width:1100px;margin:0 auto;padding-top:.25rem;}
-      .st-key-auth_topbar {border-bottom:1px solid rgba(148,163,184,.16);padding:.45rem 0 .65rem;margin-bottom:1.25rem;}
+      div[data-testid="stMainBlockContainer"] {max-width:1100px;margin:0 auto;padding:.35rem 1.25rem 1rem;}
+      div[data-testid="stMainBlockContainer"] > div > [data-testid="stVerticalBlock"] {gap:.75rem!important;}
+      .st-key-auth_topbar {border-bottom:1px solid rgba(148,163,184,.16);padding:.35rem 0 .55rem;margin-bottom:.25rem;}
       .st-key-auth_topbar [data-testid="stHorizontalBlock"] {align-items:center!important;}
       .st-key-auth_brand [data-testid="stPageLink"] a {color:var(--accent)!important;font-weight:800;letter-spacing:.07em;text-decoration:none!important;}
       .st-key-auth_home [data-testid="stPageLink"] a {justify-content:flex-end;color:#cbd5e1!important;text-decoration:none!important;}
-      .st-key-auth_shell {border:1px solid var(--border);border-radius:18px;background:rgba(8,15,30,.66);overflow:hidden;box-shadow:var(--ss-shadow-panel);}
-      .st-key-auth_shell > div > [data-testid="stHorizontalBlock"] {gap:0!important;align-items:stretch!important;}
-      .st-key-auth_value {height:100%;padding:clamp(1.25rem,3vw,2.2rem);background:linear-gradient(145deg,rgba(56,189,248,.075),rgba(15,23,42,.3));}
-      .auth-value-kicker {color:#7dd3fc;font-size:.72rem;font-weight:800;letter-spacing:.07em;text-transform:uppercase;margin-bottom:.7rem;}
-      .auth-value-title {font-size:clamp(2rem,4vw,2.7rem);font-weight:850;letter-spacing:-.04em;line-height:1.07;margin:0 0 .75rem;}
-      .auth-value-copy {color:#a8b5c7;line-height:1.55;margin:0;max-width:470px;}
-      .auth-value-list {list-style:none;margin:1.2rem 0 0;padding:0;}
-      .auth-value-list li {padding:.62rem 0;border-top:1px solid rgba(148,163,184,.12);color:#cbd5e1;font-size:.86rem;}
-      .st-key-auth_form_panel {padding:clamp(1.25rem,3vw,2.2rem);height:100%;}
-      .auth-form-heading {font-size:1.15rem;font-weight:800;margin:0 0 .25rem;}
-      .auth-form-copy {color:#94a3b8;font-size:.84rem;margin:0 0 1rem;line-height:1.45;}
-      .st-key-auth_form_panel [data-testid="stRadio"] {margin-bottom:.85rem!important;}
-      .st-key-auth_form_panel .stTextInput {max-width:none!important;margin:0 0 .55rem!important;}
-      .st-key-auth_form_panel [data-testid="stCheckbox"] {max-width:none!important;margin:.2rem 0 .65rem!important;}
-      .st-key-auth_form_panel [data-testid="stCheckbox"] label {justify-content:flex-start!important;}
-      .auth-security-note {margin-top:.8rem;color:#8192aa;font-size:.75rem;line-height:1.45;}
+      .st-key-auth_shell {margin:.25rem 0;border:1px solid var(--border);border-radius:18px;background:rgba(8,15,30,.76);overflow:hidden;box-shadow:var(--ss-shadow-panel);}
+      .st-key-auth_shell [data-testid="stHorizontalBlock"]:has(.st-key-auth_form_panel):has(.st-key-auth_value) {gap:0!important;align-items:stretch!important;}
+      .st-key-auth_shell [data-testid="stHorizontalBlock"]:has(.st-key-auth_form_panel):has(.st-key-auth_value) > [data-testid="stColumn"]:first-child {order:2;}
+      .st-key-auth_shell [data-testid="stHorizontalBlock"]:has(.st-key-auth_form_panel):has(.st-key-auth_value) > [data-testid="stColumn"]:last-child {order:1;}
+      .st-key-auth_value {height:100%;padding:clamp(1.25rem,2.5vw,1.8rem);background:linear-gradient(145deg,rgba(56,189,248,.075),rgba(15,23,42,.3));}
+      .auth-value-kicker {color:#7dd3fc;font-size:.7rem;font-weight:800;letter-spacing:.08em;text-transform:uppercase;margin-bottom:.65rem;}
+      .auth-value-title {font-size:clamp(1.75rem,3.3vw,2.25rem);font-weight:850;letter-spacing:-.04em;line-height:1.08;margin:0 0 .65rem;}
+      .auth-value-copy {color:#a8b5c7;font-size:.9rem;line-height:1.55;margin:0;max-width:440px;}
+      .auth-value-list {list-style:none;margin:1rem 0 0;padding:0;}
+      .auth-value-list li {padding:.55rem 0;border-top:1px solid rgba(148,163,184,.12);color:#cbd5e1;font-size:.82rem;}
+      .st-key-auth_form_panel {padding:clamp(1.25rem,2.5vw,1.8rem);height:100%;}
+      .auth-form-heading {font-size:clamp(1.35rem,2.2vw,1.65rem);font-weight:820;letter-spacing:-.025em;margin:0 0 .3rem;}
+      .auth-form-copy {color:#a8b5c7;font-size:.86rem;margin:0 0 .85rem;line-height:1.45;}
+      .st-key-auth_form_panel [data-testid="stRadio"] {width:100%!important;margin:0 0 .8rem!important;padding:0!important;}
+      .st-key-auth_form_panel [data-testid="stRadio"] > div {display:flex!important;flex-direction:row!important;gap:.5rem!important;width:100%!important;}
+      .st-key-auth_form_panel [data-testid="stRadio"] label {flex:1 1 0;min-height:44px;margin:0!important;padding:.55rem .7rem!important;border:1px solid rgba(148,163,184,.24)!important;border-radius:10px!important;background:#07101f!important;color:#dbe3ee!important;justify-content:center!important;font-weight:700!important;cursor:pointer!important;}
+      .st-key-auth_form_panel [data-testid="stRadio"] label:hover {border-color:rgba(56,189,248,.55)!important;background:rgba(56,189,248,.06)!important;}
+      .st-key-auth_form_panel [data-testid="stRadio"] label:has([aria-checked="true"]),
+      .st-key-auth_form_panel [data-testid="stRadio"] label:has(input:checked) {border-color:rgba(56,189,248,.78)!important;background:rgba(56,189,248,.13)!important;color:#f8fafc!important;box-shadow:inset 0 0 0 1px rgba(56,189,248,.18)!important;}
+      .st-key-auth_form_panel [role="radio"][aria-checked="true"] {background:#38bdf8!important;border-color:#38bdf8!important;}
+      .st-key-auth_form_panel .stTextInput {max-width:none!important;margin:0 0 .5rem!important;}
+      .st-key-auth_form_panel .stTextInput > label {color:#e2e8f0!important;font-size:.85rem!important;font-weight:650!important;margin-bottom:.32rem!important;}
+      .st-key-auth_form_panel [data-baseweb="input"] {min-height:48px!important;background:#07101f!important;border:1px solid rgba(148,163,184,.28)!important;border-radius:10px!important;box-shadow:none!important;}
+      .st-key-auth_form_panel [data-baseweb="input"]:focus-within {border-color:rgba(56,189,248,.82)!important;box-shadow:0 0 0 3px rgba(56,189,248,.12)!important;}
+      .st-key-auth_form_panel [data-baseweb="input"] > div,
+      .st-key-auth_form_panel [data-baseweb="input"] input {background:transparent!important;color:#f1f5f9!important;}
+      .st-key-auth_form_panel input:-webkit-autofill {-webkit-text-fill-color:#f1f5f9!important;-webkit-box-shadow:0 0 0 1000px #07101f inset!important;caret-color:#f1f5f9!important;}
+      .st-key-auth_form_panel [data-testid="stCheckbox"] {max-width:none!important;margin:.05rem 0 .55rem!important;}
+      .st-key-auth_form_panel [data-testid="stCheckbox"] label {justify-content:flex-start!important;min-height:40px;}
+      .st-key-auth_form_panel [data-testid="stForm"] {border:0!important;padding:0!important;}
+      .st-key-auth_form_panel [data-testid="stFormSubmitButton"] button {width:100%!important;min-height:48px!important;margin-top:.1rem!important;border-radius:10px!important;font-weight:760!important;}
+      .auth-security-note {margin-top:.65rem;color:#94a3b8;font-size:.75rem;line-height:1.45;}
+      .st-key-auth_topbar a:focus-visible,.st-key-auth_shell button:focus-visible,.st-key-auth_shell input:focus-visible {outline:3px solid rgba(56,189,248,.75)!important;outline-offset:3px!important;}
+      footer {visibility:hidden;}
       @media (max-width:760px) {
-        .st-key-auth_shell > div > [data-testid="stHorizontalBlock"] {flex-wrap:wrap!important;}
-        .st-key-auth_shell [data-testid="column"] {flex:1 1 100%!important;min-width:100%!important;}
+        div[data-testid="stMainBlockContainer"] {padding:.2rem .75rem .75rem;}
+        .st-key-auth_topbar [data-testid="stHorizontalBlock"] {flex-wrap:nowrap!important;}
+        .st-key-auth_topbar [data-testid="stColumn"] {min-width:0!important;width:0!important;}
+        .st-key-auth_topbar [data-testid="stColumn"]:first-child {flex:2.5 1 0!important;}
+        .st-key-auth_topbar [data-testid="stColumn"]:last-child {flex:1 1 0!important;}
+        .st-key-auth_shell [data-testid="stHorizontalBlock"]:has(.st-key-auth_form_panel):has(.st-key-auth_value) {flex-wrap:wrap!important;}
+        .st-key-auth_shell [data-testid="stColumn"] {flex:1 1 100%!important;min-width:100%!important;}
+        .st-key-auth_shell [data-testid="stHorizontalBlock"]:has(.st-key-auth_form_panel):has(.st-key-auth_value) > [data-testid="stColumn"]:first-child {order:1;}
+        .st-key-auth_shell [data-testid="stHorizontalBlock"]:has(.st-key-auth_form_panel):has(.st-key-auth_value) > [data-testid="stColumn"]:last-child {display:none!important;}
+        .st-key-auth_form_panel {padding:1.15rem;}
+        .st-key-auth_form_panel [data-testid="stRadio"] label {min-width:0!important;padding:.5rem .35rem!important;font-size:.84rem!important;gap:.3rem!important;}
       }
     </style>
     """,
@@ -373,6 +155,12 @@ def _switch_to_next_page() -> None:
     nxt = (st.session_state.pop("_after_auth_page", None) or "Home").strip().lower()
     if nxt in {"deep_analysis", "deep-analysis", "deep", "analysis"}:
         st.switch_page("pages/Deep_Analysis.py")
+    elif nxt in {"analysis_result", "analysis-result", "result"}:
+        st.switch_page("pages/Analysis_Result.py")
+    elif nxt == "account":
+        st.switch_page("pages/Account.py")
+    elif nxt == "admin":
+        st.switch_page("pages/Admin.py")
     elif nxt in {"home"}:
         st.switch_page("pages/Home.py")
     else:
@@ -447,14 +235,24 @@ if _requested_mode in {"Sign In", "Create Account"}:
 elif st.session_state.get("auth_mode") not in {"Sign In", "Create Account"}:
     st.session_state["auth_mode"] = "Sign In"
 
+_create_mode = st.session_state["auth_mode"] == "Create Account"
+_form_heading = "Create your free account" if _create_mode else "Welcome back"
+_form_copy = (
+    "Start with 2 free credits. No card required."
+    if _create_mode else
+    "Sign in to continue to your scans and analysis."
+)
+
 with st.container(key="auth_shell"):
-    value_col, form_col = st.columns([.92, 1.08])
+    # Form comes first in source/reading order. CSS places the supporting value
+    # panel on the left at desktop widths; mobile keeps this natural order.
+    form_col, value_col = st.columns([1.08, .92])
     with value_col:
         with st.container(key="auth_value"):
             st.html(
                 """
                 <div class="auth-value-kicker">Short-term market intelligence</div>
-                <h1 class="auth-value-title">Move from market noise to a decision-ready shortlist.</h1>
+                <h2 class="auth-value-title">Turn market noise into a decision-ready shortlist.</h2>
                 <p class="auth-value-copy">Scan sectors for unusual social attention, then evaluate a selected ticker with evidence, risk context, and a clear Buy, Watch, or Avoid recommendation.</p>
                 <ul class="auth-value-list">
                   <li>Two free credits when you create an account</li>
@@ -466,8 +264,8 @@ with st.container(key="auth_shell"):
     with form_col:
         with st.container(key="auth_form_panel"):
             st.markdown(
-                '<h2 class="auth-form-heading">Access Stock Sentinel</h2>'
-                '<p class="auth-form-copy">Choose an existing account or create a new one.</p>',
+                f'<h1 class="auth-form-heading">{_form_heading}</h1>'
+                f'<p class="auth-form-copy">{_form_copy}</p>',
                 unsafe_allow_html=True,
             )
             mode = st.radio(
@@ -479,7 +277,7 @@ with st.container(key="auth_shell"):
             )
 
             _pw_ac = "current-password" if mode == "Sign In" else "new-password"
-            _btn_label = "Sign In" if mode == "Sign In" else "Create Account"
+            _btn_label = "Sign In" if mode == "Sign In" else "Create free account"
 
             # st.form handles Enter key submission natively.
             with st.form("auth_form", clear_on_submit=False):
@@ -487,18 +285,31 @@ with st.container(key="auth_shell"):
                     "Email address", placeholder="you@example.com", key="auth_email"
                 )
                 password = st.text_input(
-                    "Password", type="password", placeholder="Password",
+                    "Password", type="password",
+                    placeholder=(
+                        "Password" if mode == "Sign In"
+                        else "Create a password"
+                    ),
                     key="auth_password",
                 )
-                remember_me = st.checkbox(
-                    "Remember me on this device", value=False,
-                    help="Use only on a private device.",
-                )
+                if mode == "Sign In":
+                    remember_me = st.checkbox(
+                        "Remember me on this device", value=False,
+                        help="Use only on a private device.",
+                    )
+                else:
+                    remember_me = False
                 submitted = st.form_submit_button(
                     _btn_label, type="primary", use_container_width=True
                 )
+            _security_note = (
+                "No card required · We’ll email you to confirm your account · "
+                "Secure access powered by Supabase."
+                if mode == "Create Account" else
+                "Secure account access powered by Supabase."
+            )
             st.markdown(
-                '<div class="auth-security-note">Account access is protected by Supabase authentication. Payment details are entered only on Stripe.</div>',
+                f'<div class="auth-security-note">{_security_note}</div>',
                 unsafe_allow_html=True,
             )
 

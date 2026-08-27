@@ -40,7 +40,7 @@ apply_theme()
 from utils.auth import flush_pending_rt_save
 
 flush_pending_rt_save()
-profile = require_active_account()
+profile = require_active_account(after_auth_page="Analysis_Result")
 credits = int((profile or {}).get("credits") or 0)
 render_top_nav(active="deep_analyze", credits=credits)
 

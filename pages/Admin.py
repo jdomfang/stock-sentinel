@@ -27,7 +27,7 @@ from utils.supabase_client import get_admin_client
 
 st.set_page_config(page_title="Admin - Stock Sentinel", page_icon="🛠️", layout="wide", initial_sidebar_state="collapsed")
 render_sidebar_navigation()
-render_top_nav()
+render_top_nav(after_auth_page="Admin")
 apply_theme()
 
 st.markdown('<div class="clawd-app-wrapper">', unsafe_allow_html=True)
@@ -49,6 +49,8 @@ st.markdown("# 🛠️ Admin Dashboard")
 if not is_logged_in():
     st.warning("Please log in first.")
     if st.button("Go to Login", type="primary"):
+        st.session_state["auth_initial_mode"] = "Sign In"
+        st.session_state["_after_auth_page"] = "Admin"
         st.switch_page("pages/Auth.py")
     _bail()
 

@@ -41,7 +41,7 @@ def main() -> int:
     )
     check(
         "account reads existing profile state without owning credit behavior",
-        "require_active_account()" in account
+        'require_active_account(after_auth_page="Account")' in account
         and "billing.render_buy_credits" in account
         and "consume_credit" not in account
         and "refund_credit" not in account,
@@ -96,8 +96,9 @@ def main() -> int:
     check(
         "trust center consolidates the required credibility surfaces",
         all(label in trust for label in (
-            "Methodology", "Data sources", "Privacy overview",
-            "Use and risk overview",
+            "Methodology", "Data sources and freshness",
+            "Confidence and limitations", "Credits and refunds",
+            "Privacy and payment handling", "Not financial advice",
         )),
     )
     check(

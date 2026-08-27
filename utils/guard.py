@@ -6,7 +6,7 @@ from utils.auth import is_logged_in
 from utils.profile import get_my_profile
 
 
-def require_login() -> None:
+def require_login(*, after_auth_page: str = "Home") -> None:
     if not is_logged_in():
         st.markdown(
             """
@@ -31,13 +31,15 @@ def require_login() -> None:
         col_a, col_b, col_c = st.columns([1.5, 1, 1.5])
         with col_b:
             if st.button("Log in →", type="primary", use_container_width=True, key="guard_login_button"):
+                st.session_state["auth_initial_mode"] = "Sign In"
+                st.session_state["_after_auth_page"] = after_auth_page
                 st.switch_page("pages/Auth.py")
         st.stop()
 
 
-def require_active_account() -> dict:
+def require_active_account(*, after_auth_page: str = "Home") -> dict:
     """Ensure the user is logged in and not disabled; returns profile."""
-    require_login()
+    require_login(after_auth_page=after_auth_page)
     prof = get_my_profile()
     if not prof:
         st.error("Account profile not found. Try logging out/in.")

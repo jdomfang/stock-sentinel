@@ -726,6 +726,14 @@ st.markdown(
     .st-key-home_public_ctas {margin-top:1.35rem;max-width:520px;}
     .st-key-home_public_ctas [data-testid="stHorizontalBlock"] {gap:12px!important;}
     .st-key-home_public_ctas .stButton > button {min-height:50px!important;}
+    .st-key-home_how_link [data-testid="stPageLink"] a {
+      min-height:50px;justify-content:center;border:1px solid rgba(148,163,184,.24);
+      border-radius:10px;color:#dbe3ee!important;font-weight:720;text-decoration:none!important;
+      background:rgba(15,23,42,.46)!important;
+    }
+    .st-key-home_how_link [data-testid="stPageLink"] a:hover {
+      border-color:rgba(56,189,248,.48);background:rgba(56,189,248,.07)!important;
+    }
     .ss-public-caveat {margin-top:.65rem;color:#8192aa;font-size:.78rem;}
     .ss-hero-preview {
       border:1px solid rgba(56,189,248,.25);border-radius:18px;
@@ -993,13 +1001,15 @@ else:
                         key="home_start_free", use_container_width=True,
                     ):
                         st.session_state["auth_initial_mode"] = "Create Account"
+                        st.session_state["_after_auth_page"] = "Home"
                         st.switch_page("pages/Auth.py")
                 with explain_col:
-                    st.markdown(
-                        '<a class="scan-view-result" href="#how-it-works">'
-                        'See how it works</a>',
-                        unsafe_allow_html=True,
-                    )
+                    with st.container(key="home_how_link"):
+                        st.page_link(
+                            "pages/How_It_Works.py",
+                            label="See how it works",
+                            use_container_width=True,
+                        )
             st.markdown(
                 '<div class="ss-public-caveat">No card required · '
                 '1 credit per scan or analysis<br>Research support, not '

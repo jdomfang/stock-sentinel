@@ -86,7 +86,7 @@ if (
 from utils.guard import require_active_account
 from utils.auth import refresh_session_if_needed, flush_pending_rt_save
 flush_pending_rt_save()
-_profile = require_active_account()
+_profile = require_active_account(after_auth_page="Discovery")
 render_top_nav(active="market_scan")
 
 

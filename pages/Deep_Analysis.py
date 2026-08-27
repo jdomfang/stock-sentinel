@@ -52,7 +52,7 @@ from utils.auth import flush_pending_rt_save
 apply_theme()
 flush_pending_rt_save()
 from utils.guard import require_active_account
-_profile = require_active_account()
+_profile = require_active_account(after_auth_page="Deep_Analysis")
 render_top_nav(active="deep_analyze")
 
 st.markdown(

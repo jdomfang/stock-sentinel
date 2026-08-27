@@ -5,7 +5,10 @@ from __future__ import annotations
 import html
 import streamlit as st
 
-_ACTIVE_KEYS = {"home", "market_scan", "deep_analyze", "account"}
+_ACTIVE_KEYS = {
+    "home", "market_scan", "deep_analyze", "account",
+    "how_it_works", "faq",
+}
 
 
 def render_sidebar_navigation() -> None:
@@ -64,7 +67,9 @@ def _account_link(column, surface: str, active: str) -> None:
                 )
 
 
-def _auth_control(column, *, logged_in: bool, surface: str) -> None:
+def _auth_control(
+    column, *, logged_in: bool, surface: str, after_auth_page: str = "Home"
+) -> None:
     from utils.auth import sign_out
 
     with column:
@@ -76,6 +81,8 @@ def _auth_control(column, *, logged_in: bool, surface: str) -> None:
                     st.switch_page("pages/Home.py")
             elif st.button("Log in", use_container_width=True,
                            key=f"nav_{surface}_login_button"):
+                st.session_state["auth_initial_mode"] = "Sign In"
+                st.session_state["_after_auth_page"] = after_auth_page
                 st.switch_page("pages/Auth.py")
 
 
@@ -88,32 +95,28 @@ def _signup_control(column, *, surface: str) -> None:
                 key=f"nav_{surface}_signup_button",
             ):
                 st.session_state["auth_initial_mode"] = "Create Account"
+                st.session_state["_after_auth_page"] = "Home"
                 st.switch_page("pages/Auth.py")
 
 
-def _marketing_links(column, surface: str) -> None:
-    """Small public information architecture used only on the landing page."""
+def _marketing_links(column, surface: str, active: str) -> None:
+    """Public information architecture shared by every marketing route."""
     with column:
         with st.container(key=f"nav_{surface}_marketing"):
-            how, method, faq = st.columns(3)
-            with how:
-                st.markdown(
-                    '<a class="ss-marketing-nav-link" href="#how-it-works">'
-                    'How it works</a>',
-                    unsafe_allow_html=True,
-                )
-            with method:
-                st.page_link(
-                    "pages/Trust_Center.py", label="Methodology",
-                    use_container_width=True,
-                )
-            with faq:
-                st.page_link(
-                    "pages/FAQ.py", label="FAQ", use_container_width=True,
-                )
+            how, faq = st.columns(2)
+            _nav_link(
+                how, "pages/How_It_Works.py", "How it works",
+                "how_it_works", active, surface,
+            )
+            _nav_link(
+                faq, "pages/FAQ.py", "FAQ", "faq", active, surface,
+            )
 
 
-def render_top_nav(*, active: str = "", credits: int | None = None) -> None:
+def render_top_nav(
+    *, active: str = "", credits: int | None = None,
+    after_auth_page: str = "Home",
+) -> None:
     """Render a shared two-layout header without extra data reads."""
     from utils.auth import get_user, is_logged_in
 
@@ -218,6 +221,10 @@ def render_top_nav(*, active: str = "", credits: int | None = None) -> None:
             margin-top:.2rem;padding-top:.2rem;
             border-top:1px solid rgba(148,163,184,.12);
           }
+          .st-key-ss_nav_mobile_marketing {
+            margin-top:.2rem;padding-top:.2rem;
+            border-top:1px solid rgba(148,163,184,.12);
+          }
           .st-key-ss_nav_mobile_links [data-testid="stHorizontalBlock"] {
             gap:.25rem!important;
           }
@@ -237,11 +244,14 @@ def render_top_nav(*, active: str = "", credits: int | None = None) -> None:
         with st.container(key="ss_nav_desktop"):
             if not logged_in:
                 brand, marketing, login, signup = st.columns(
-                    [1.55, 2.7, .72, .82]
+                    [1.55, 2.15, .72, .82]
                 )
                 _brand(brand, "desktop")
-                _marketing_links(marketing, "desktop")
-                _auth_control(login, logged_in=False, surface="desktop")
+                _marketing_links(marketing, "desktop", active)
+                _auth_control(
+                    login, logged_in=False, surface="desktop",
+                    after_auth_page=after_auth_page,
+                )
                 _signup_control(signup, surface="desktop")
             else:
                 widths = [1.55, 3.2]
@@ -289,9 +299,23 @@ def render_top_nav(*, active: str = "", credits: int | None = None) -> None:
                 _admin_link(admin_col, "mobile")
             if account_col is not None:
                 _account_link(account_col, "mobile", active)
-            _auth_control(auth_col, logged_in=logged_in, surface="mobile")
+            _auth_control(
+                auth_col, logged_in=logged_in, surface="mobile",
+                after_auth_page=after_auth_page,
+            )
             if not logged_in:
                 _signup_control(signup_col, surface="mobile")
+
+            if not logged_in:
+                with st.container(key="ss_nav_mobile_marketing"):
+                    how, faq = st.columns(2)
+                    _nav_link(
+                        how, "pages/How_It_Works.py", "How it works",
+                        "how_it_works", active, "mobile",
+                    )
+                    _nav_link(
+                        faq, "pages/FAQ.py", "FAQ", "faq", active, "mobile",
+                    )
 
             if logged_in:
                 with st.container(key="ss_nav_mobile_links"):

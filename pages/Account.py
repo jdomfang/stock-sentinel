@@ -32,7 +32,7 @@ st.set_page_config(
 render_sidebar_navigation()
 apply_theme()
 flush_pending_rt_save()
-profile = require_active_account()
+profile = require_active_account(after_auth_page="Account")
 credits = int((profile or {}).get("credits") or 0)
 render_top_nav(active="account", credits=credits)
 

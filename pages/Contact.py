@@ -53,7 +53,7 @@ st.markdown(
     """
     <div style="margin: -22px 0 8px 0;">
       <div style="color: rgba(56,189,248,.95); font-weight: 750; letter-spacing: 0.06em; text-transform: uppercase; font-size: 0.78rem; margin-bottom: 10px;">Support</div>
-      <div style="font-size: 2.05rem; font-weight: 850; letter-spacing: -0.03em; line-height: 1.1; margin: 0 0 6px 0;">Contact</div>
+      <h1 style="font-size: 2.05rem; font-weight: 850; letter-spacing: -0.03em; line-height: 1.1; margin: 0 0 6px 0;">Contact</h1>
       <div style="color: rgba(148,163,184,.95); font-size: 1.02rem; line-height: 1.5; margin: 0 0 10px 0; max-width: 980px;">Questions, billing issues, or a bug report? Send a message—include screenshots and the ticker/sector if relevant.</div>
     </div>
     """,

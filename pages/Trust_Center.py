@@ -53,24 +53,34 @@ st.html(
       <section class="ss-trust-card">
         <h2>Methodology</h2>
         <p>Market Scan identifies unusual social attention and labels sentiment as Bullish, Bearish, or Neutral. Deep Analyze separately combines available social and market evidence into Buy, Watch, or Avoid for short-term triage.</p>
-        <ul><li>Confidence describes evidence consistency, not probability.</li><li>Sparse or conflicting evidence lowers confidence.</li><li>Every analysis displays available evidence context and, when calculated, its horizon.</li></ul>
+        <ul><li>Market Scan sentiment and Deep Analyze recommendations are separate outputs.</li><li>Deep Analyze evaluates one ticker at a time.</li><li>Available analysis context includes key reasons and, when calculated, its horizon.</li></ul>
       </section>
       <section class="ss-trust-card">
-        <h2>Data sources</h2>
+        <h2>Data sources and freshness</h2>
         <p>Current analysis uses recent public posts from X and Polygon market-price and ticker-reference data. Coverage and availability vary by ticker, source, and timeframe.</p>
         <ul><li>Recent social corpora and closing-price data may be cached for reliability and rate-limit management; cached scan context is age-labelled when available.</li><li>Social evidence is a sampled discussion set, not exhaustive or independently verified.</li><li>Missing values are shown as unavailable rather than estimated, and illustrative examples are explicitly identified as not live.</li></ul>
       </section>
       <section class="ss-trust-card">
-        <h2>Privacy overview</h2>
+        <h2>Confidence and limitations</h2>
+        <p>Confidence summarizes how consistent and complete the available evidence is. It is not a probability of gain or a guarantee of a future outcome.</p>
+        <ul><li>Conflicting or sparse evidence lowers confidence.</li><li>Results identify key reasons and, when available, what could change the call.</li><li>Short-term signals can reverse quickly.</li></ul>
+      </section>
+      <section class="ss-trust-card">
+        <h2>Credits and refunds</h2>
+        <p>One credit runs one Market Scan or one Deep Analyze request. The cost and available balance are shown before a signed-in action.</p>
+        <ul><li>Credits are one-time purchases and do not expire.</li><li>Eligible failed runs return the reserved credit automatically.</li><li>There is no recurring subscription to cancel.</li></ul>
+      </section>
+      <section class="ss-trust-card">
+        <h2>Privacy and payment handling</h2>
         <div class="ss-trust-meta">Product summary · updated August 26, 2026</div>
         <p>Account information is used to provide authentication, credit access, support, and product operation. Card details are entered on Stripe's checkout surface and are not displayed by Stock Sentinel.</p>
         <ul><li>This is a product summary, not a complete legal privacy policy.</li><li>Do not submit sensitive personal information through ticker inputs or support messages.</li><li>Contact support for access, retention, deletion, or other privacy questions while a formal policy is prepared.</li></ul>
       </section>
       <section class="ss-trust-card">
-        <h2>Use and risk overview</h2>
+        <h2>Not financial advice</h2>
         <div class="ss-trust-meta">Product summary · updated August 26, 2026</div>
         <p>Stock Sentinel is an informational research tool. Outputs are not financial advice, an offer, or a guarantee of future performance.</p>
-        <ul><li>This is a plain-language product summary, not a complete legal terms document.</li><li>You remain responsible for investment decisions and risk management.</li><li>Market and social data can be delayed, incomplete, or inaccurate.</li><li>Credits are one-time purchases and do not constitute a subscription.</li></ul>
+        <ul><li>This is a plain-language product summary, not a complete legal terms document.</li><li>You remain responsible for investment decisions and risk management.</li><li>Market and social data can be delayed, incomplete, or inaccurate.</li></ul>
       </section>
     </div>
     <div class="ss-trust-notice"><strong>Important:</strong> Short-term market signals can change quickly. Verify material information independently before making a financial decision.</div>

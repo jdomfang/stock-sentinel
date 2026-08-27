@@ -29,7 +29,7 @@ st.set_page_config(
 )
 
 render_sidebar_navigation()
-render_top_nav()
+render_top_nav(active="faq")
 apply_theme()
 
 st.markdown('<div class="clawd-app-wrapper">', unsafe_allow_html=True)
@@ -38,7 +38,7 @@ st.markdown(
     """
     <div style="margin: -22px 0 8px 0;">
       <div style="color: rgba(56,189,248,.95); font-weight: 750; letter-spacing: 0.06em; text-transform: uppercase; font-size: 0.78rem; margin-bottom: 10px;">Support</div>
-      <div style="font-size: 2.05rem; font-weight: 850; letter-spacing: -0.03em; line-height: 1.1; margin: 0 0 6px 0;">FAQ</div>
+      <h1 style="font-size: 2.05rem; font-weight: 850; letter-spacing: -0.03em; line-height: 1.1; margin: 0 0 6px 0;">FAQ</h1>
       <div style="color: rgba(148,163,184,.95); font-size: 1.02rem; line-height: 1.5; margin: 0 0 10px 0; max-width: 980px;">Quick answers for short-term traders using Scan + Deep Analyze.</div>
     </div>
     """,
@@ -80,7 +80,9 @@ st.markdown(
 
 query = st.text_input("Search FAQs", placeholder="Try: credits, confidence, alerts, data source…")
 
-st.markdown("<div class='faq-note'>If you still have questions, use <b>Services → Contact</b> and we’ll help.</div>", unsafe_allow_html=True)
+with st.container(key="faq_contact_support"):
+    st.caption("Still have questions? We’ll help.")
+    st.page_link("pages/Contact.py", label="Contact support")
 
 
 def show(q: str, a: str, *, tags: list[str]):
