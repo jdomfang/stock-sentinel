@@ -17,6 +17,7 @@ from utils.ui import (
     render_evidence_check,
     render_full_analysis_expander,
     render_recommendation_panel,
+    render_workflow_hint,
 )
 from utils.finance import get_last_close_prices_best_effort
 # NOT the scan. Pagination, ticker validation, sentiment attribution and the
@@ -64,8 +65,29 @@ logger = logging.getLogger(__name__)
 
 # Sidebar navigation
 render_sidebar_navigation()
-render_top_nav(active="market_scan")
 apply_theme()
+
+# Preserve a validated sector deep-link before the login guard stops this run.
+# Autostart consumption and every paid action remain below the guard.
+from utils.scan_intent import get_query_params, patch_query_params
+_qp = get_query_params()
+_intent_sector = (_qp.get("sector") or "").strip().lower()
+_sector_intent_options = {
+    "tech", "healthcare", "energy", "finance", "consumer", "utilities",
+    "real estate", "industrials", "materials", "communication",
+}
+if (
+    _intent_sector in _sector_intent_options
+    and not st.session_state.get("_intent_sector_applied")
+):
+    st.session_state["discovery_sector"] = _intent_sector
+    st.session_state["_intent_sector_applied"] = True
+
+from utils.guard import require_active_account
+from utils.auth import refresh_session_if_needed, flush_pending_rt_save
+flush_pending_rt_save()
+_profile = require_active_account()
+render_top_nav(active="market_scan")
 
 
 # Compact task header. The public Home page carries the marketing narrative;
@@ -80,17 +102,8 @@ st.markdown(
     unsafe_allow_html=True,
 )
 
-from utils.scan_intent import get_query_params, patch_query_params
-
 # ---- Intent prefill (optional, for direct links) ----
-_qp = get_query_params()
-_intent_sector = (_qp.get("sector") or "").strip().lower()
 _intent_autostart = (_qp.get("autostart") or "").strip().lower() in {"1", "true", "yes", "y", "on"}
-
-# Apply sector intent once (do not stomp user changes on reruns)
-if _intent_sector and not st.session_state.get("_intent_sector_applied"):
-    st.session_state["discovery_sector"] = _intent_sector
-    st.session_state["_intent_sector_applied"] = True
 
 # Determine whether we should auto-run the scan on this load.
 # Primary mechanism is session_state (Home -> Auth -> Discovery).
@@ -99,12 +112,7 @@ if _intent_autostart and not st.session_state.get("_scan_autostart_consumed"):
     st.session_state["_scan_autostart_consumed"] = True
     _autostart_scan = True
 
-from utils.guard import require_active_account
-from utils.auth import refresh_session_if_needed, flush_pending_rt_save
-flush_pending_rt_save()
 from utils.credits import consume_credit, refund_credit, complete_work
-
-_profile = require_active_account()
 
 st.markdown(
     """
@@ -643,6 +651,17 @@ with st.container(key="discovery_scan_card"):
 # its query fails and refunds instead.
 
 scan_triggered = bool(scan_clicked or _autostart_scan)
+
+if st.session_state.df_valid is None and not scan_triggered:
+    render_workflow_hint(
+        title="Your scan results will appear here",
+        message="Market Scan reports social sentiment only. It does not create a Buy, Watch, or Avoid recommendation.",
+        steps=[
+            "Choose a market sector.",
+            "Run the one-credit scan.",
+            "Select a result for Deep Analyze when you want an action recommendation.",
+        ],
+    )
 
 # Scan button
 # _get_checkout_url and _upgrade_modal used to live here, page-private -- which

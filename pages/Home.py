@@ -622,6 +622,14 @@ st.markdown(
     .ss-home-cta {margin-bottom:10px;}
     .ss-home-cta h2 {margin:0;font-size:1.02rem;}
     .ss-home-cta p {margin:4px 0 0;color:#94a3b8;font-size:.84rem;}
+    .st-key-home_credit_hub {
+      margin:.45rem 0 .7rem;padding:10px 12px;border:1px solid rgba(148,163,184,.16);
+      border-radius:12px;background:rgba(8,15,30,.62);
+    }
+    .st-key-home_credit_hub [data-testid="stHorizontalBlock"] {align-items:center!important;}
+    .ss-credit-hub-copy {display:flex;align-items:baseline;gap:8px;flex-wrap:wrap;}
+    .ss-credit-hub-copy strong {font-size:1.2rem;color:var(--accent);}
+    .ss-credit-hub-copy span {color:#94a3b8;font-size:.8rem;}
     @media (max-width:700px) {
       .hero-title {font-size:clamp(2rem,10vw,2.65rem);}
       .st-key-home_cap_grid [data-testid="stHorizontalBlock"] {flex-wrap:wrap !important;}
@@ -632,6 +640,10 @@ st.markdown(
       .ss-demo-table-head span {display:block;margin-top:3px;}
       .ss-demo-table th:nth-child(2),.ss-demo-table td:nth-child(2) {display:none;}
       .ss-demo-table th,.ss-demo-table td {padding-left:11px;padding-right:11px;}
+      .st-key-home_credit_hub [data-testid="stHorizontalBlock"] {flex-wrap:wrap!important;}
+      .st-key-home_credit_hub [data-testid="column"] {
+        flex:1 1 100%!important;min-width:100%!important;
+      }
     }
     </style>
     """,
@@ -822,45 +834,20 @@ if is_logged_in():
     credits_c = _get_credits(uid)
 
 
-    # Credits row. ONE pill, because there is one wallet.
-    #
-    # The legend lives here and nowhere else. Home is the dashboard, and the pad
-    # beside each spend button already states the price on the button itself --
-    # repeating "1 credit = 1 scan or 1 analysis" next to every control would be
-    # noise in the one place that earns its quiet.
-    if credits_c is not None:
-        st.markdown(
-            f"""
-            <div class="clawd-credits-row" style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin:0.5rem 0 0.9rem 0;">
-              <div style="display:inline-flex;align-items:center;gap:8px;
-                background:linear-gradient(135deg,rgba(15,23,42,.92),rgba(2,6,23,.80));
-                border:1px solid rgba(56,189,248,.22);border-radius:12px;
-                padding:8px 14px;">
-                <span style="color:rgba(148,163,184,.80);font-size:0.76rem;font-weight:600;text-transform:uppercase;letter-spacing:0.04em;">Credits</span>
-                <span style="color:rgba(56,189,248,.98);font-size:1.20rem;font-weight:800;line-height:1;">{credits_c}</span>
-              </div>
-              <span style="color:rgba(148,163,184,.70);font-size:0.80rem;">
-                1 credit = 1 sector scan <em>or</em> 1 deep analysis
-              </span>
-            </div>
-            """,
-            unsafe_allow_html=True,
-        )
-
-    # OUTSIDE the `if credits_c is not None` above, deliberately.
-    #
-    # It used to be inside it, so a balance we could not READ removed the
-    # ability to BUY -- the one control that is still correct and still useful
-    # when the read fails. That is backwards: not knowing the number is a reason
-    # to show the button, not to hide it. The control was previously an inert
-    # <span> (cursor:not-allowed, title="Coming soon"); hiding it on a failed
-    # read reproduced that dead end by another route.
-    #
-    # A real widget cannot live inside the markdown blob above, so it renders
-    # beneath it. Nothing above moves.
-    _bc, _bpad = st.columns([1.1, 3.9])
-    with _bc:
-        billing.render_buy_credits(key="home")
+    # One compact wallet band replaces the detached balance, legend, and buy
+    # control. The purchase implementation is still delegated to billing.
+    with st.container(key="home_credit_hub"):
+        balance_col, buy_col = st.columns([3.15, .85])
+        with balance_col:
+            shown_balance = str(credits_c) if credits_c is not None else "—"
+            balance_label = "credits available" if credits_c is not None else "balance unavailable"
+            st.markdown(
+                f'<div class="ss-credit-hub-copy"><strong>{shown_balance}</strong>'
+                f'<span>{balance_label} · 1 credit runs one scan or analysis</span></div>',
+                unsafe_allow_html=True,
+            )
+        with buy_col:
+            billing.render_buy_credits(key="home", compact=True)
 
 
 else:

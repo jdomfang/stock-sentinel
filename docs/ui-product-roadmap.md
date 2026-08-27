@@ -61,10 +61,16 @@ Suggested future component mapping:
   evidence, freshness, source context, and top reasons. Decorative
   probability-like bars are removed. The summary fields are the portable
   component contract; Streamlit remains only the current adapter.
-- **Later releases:** authentication and purchase-review polish, trust/legal
-  surfaces, and incremental route-level frontend migration. These remain
-  separate from backend, authentication, credit, payment, database, and API
-  behavior.
+- **Release C — Account and transaction trust:** a persistent Account route,
+  compact authenticated wallet presentation, explicit purchase review before
+  Stripe handoff, a structurally contained authentication experience, clear
+  task empty states, and one consolidated Trust Center covering methodology,
+  data sources, privacy, and terms. These are presentation changes only; the
+  existing authentication, payment, credit, database, and API paths remain the
+  source of truth.
+- **Later releases:** incremental route-level frontend migration and optional
+  research-history/watchlist surfaces after their product and data contracts
+  are defined.
 
 ## Ranked improvements
 

@@ -5,7 +5,7 @@ from __future__ import annotations
 import html
 import streamlit as st
 
-_ACTIVE_KEYS = {"home", "market_scan", "deep_analyze"}
+_ACTIVE_KEYS = {"home", "market_scan", "deep_analyze", "account"}
 
 
 def render_sidebar_navigation() -> None:
@@ -50,6 +50,20 @@ def _admin_link(column, surface: str) -> None:
                          use_container_width=True)
 
 
+def _account_link(column, surface: str, active: str) -> None:
+    with column:
+        with st.container(key=f"nav_{surface}_account"):
+            st.page_link(
+                "pages/Account.py", label="Account", use_container_width=True,
+            )
+            if active == "account":
+                st.markdown(
+                    '<span class="ss-sr-only">Current page: Account</span>'
+                    '<span class="ss-nav-current" aria-hidden="true"></span>',
+                    unsafe_allow_html=True,
+                )
+
+
 def _auth_control(column, *, logged_in: bool, surface: str) -> None:
     from utils.auth import sign_out
 
@@ -74,7 +88,6 @@ def render_top_nav(*, active: str = "", credits: int | None = None) -> None:
     user = get_user() or {}
     email = ((user.get("email") if isinstance(user, dict)
               else getattr(user, "email", None)) or "").strip()
-    initial = email[:1].upper() if email else "A"
     admin_email = str(st.secrets.get("ADMIN_EMAIL", "") or "").lower().strip()
     is_admin = bool(logged_in and admin_email and email.lower() == admin_email)
     show_credits = bool(logged_in and credits is not None)
@@ -124,7 +137,7 @@ def render_top_nav(*, active: str = "", credits: int | None = None) -> None:
           position:absolute;left:18%;right:18%;bottom:-9px;height:2px;
           border-radius:999px;background:var(--accent);
         }
-        .ss-credit-badge,.ss-account-badge {
+        .ss-credit-badge {
           display:inline-flex;min-height:40px;align-items:center;
           justify-content:center;border:1px solid rgba(56,189,248,.34);
           font-size:.81rem;font-weight:750;
@@ -133,13 +146,14 @@ def render_top_nav(*, active: str = "", credits: int | None = None) -> None:
           border-radius:9px;padding:0 .65rem;color:rgba(125,211,252,.98)!important;
           white-space:nowrap;
         }
-        .ss-account-badge {
-          width:40px;border-color:rgba(148,163,184,.25);border-radius:999px;
-          color:rgba(226,232,240,.92)!important;
+        [class*="st-key-nav_desktop_account"] [data-testid="stPageLink"] a,
+        [class*="st-key-nav_mobile_account"] [data-testid="stPageLink"] a {
+          border:1px solid rgba(148,163,184,.24)!important;
+          color:rgba(226,232,240,.94)!important;
         }
         [class*="st-key-nav_desktop_auth"] button,
         [class*="st-key-nav_mobile_auth"] button {
-          min-height:40px!important;border-radius:9px!important;
+          min-height:44px!important;border-radius:9px!important;
           white-space:nowrap!important;
         }
         .st-key-ss_top_nav a:focus-visible,
@@ -178,7 +192,7 @@ def render_top_nav(*, active: str = "", credits: int | None = None) -> None:
             if is_admin:
                 widths.append(.58)
             if logged_in:
-                widths.append(.42)
+                widths.append(.74)
             widths.append(.82)
             cols = iter(st.columns(widths))
 
@@ -203,24 +217,22 @@ def render_top_nav(*, active: str = "", credits: int | None = None) -> None:
             if is_admin:
                 _admin_link(next(cols), "desktop")
             if logged_in:
-                with next(cols):
-                    safe_email = html.escape(email or "Account", quote=True)
-                    st.markdown(
-                        f'<span class="ss-account-badge" title="{safe_email}">'
-                        f'{html.escape(initial)}</span>',
-                        unsafe_allow_html=True,
-                    )
+                _account_link(next(cols), "desktop", active)
             _auth_control(next(cols), logged_in=logged_in, surface="desktop")
 
         with st.container(key="ss_nav_mobile"):
-            if is_admin:
-                brand_col, admin_col, auth_col = st.columns([2.1, .75, .8])
+            if logged_in:
+                brand_col, account_col, auth_col = st.columns([2.0, .8, .8])
+                admin_col = None
             else:
                 brand_col, auth_col = st.columns([2.4, .8])
                 admin_col = None
+                account_col = None
             _brand(brand_col, "mobile")
             if admin_col is not None:
                 _admin_link(admin_col, "mobile")
+            if account_col is not None:
+                _account_link(account_col, "mobile", active)
             _auth_control(auth_col, logged_in=logged_in, surface="mobile")
 
             with st.container(key="ss_nav_mobile_links"):
@@ -231,3 +243,8 @@ def render_top_nav(*, active: str = "", credits: int | None = None) -> None:
                           "market_scan", active, "mobile")
                 _nav_link(deep, "pages/Deep_Analysis.py", "Deep Analyze",
                           "deep_analyze", active, "mobile")
+            if is_admin:
+                with st.container(key="ss_nav_mobile_admin_row"):
+                    spacer, admin = st.columns([2.5, .7])
+                    del spacer
+                    _admin_link(admin, "mobile_utility")

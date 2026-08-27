@@ -63,7 +63,7 @@ st.markdown(
 
     /* Titles */
     .auth-title {
-      font-size: 2.4rem;
+      font-size: clamp(2rem, 4vw, 2.65rem);
       font-weight: 850;
       letter-spacing: -0.02em;
       margin: 0;
@@ -73,7 +73,7 @@ st.markdown(
     .auth-subtitle {
       color: var(--muted);
       margin-top: 0.75rem;
-      margin-bottom: 3rem;
+      margin-bottom: 1rem;
       font-size: 1.0rem;
       text-align: center;
       line-height: 1.5;
@@ -81,9 +81,9 @@ st.markdown(
 
     /* Hero section for auth */
     .auth-hero {
-      margin: 3rem 0 -5rem 0;
-      padding: 2rem 0 1rem 0;
-      text-align: center;
+      margin: 0;
+      padding: 0;
+      text-align: left;
     }
 
     /* Auth mode tabs (prominent) */
@@ -274,29 +274,51 @@ st.markdown(
     footer { visibility: hidden; }
     </style>
     
-    <script>
-    // Remove the divider bar line next to radio buttons
-    document.addEventListener('DOMContentLoaded', function() {
-      setTimeout(function() {
-        const radioElement = document.querySelector('[data-testid="stRadio"]');
-        if (radioElement && radioElement.parentElement) {
-          // Find and remove any border/line elements
-          const parent = radioElement.parentElement;
-          parent.style.border = 'none';
-          parent.style.borderBottom = '0';
-          parent.style.borderTop = '0';
-          radioElement.style.borderWidth = '0';
-          radioElement.style.borderBottomWidth = '0';
-          radioElement.style.borderTopWidth = '0';
-        }
-      }, 100);
-    });
-    </script>
     """,
     unsafe_allow_html=True,
 )
 
-st.markdown('<div class="auth-wrapper">', unsafe_allow_html=True)
+st.markdown(
+    """
+    <style>
+      div[data-testid="stMainBlockContainer"] {max-width:1100px;margin:0 auto;padding-top:.25rem;}
+      .st-key-auth_topbar {border-bottom:1px solid rgba(148,163,184,.16);padding:.45rem 0 .65rem;margin-bottom:1.25rem;}
+      .st-key-auth_topbar [data-testid="stHorizontalBlock"] {align-items:center!important;}
+      .st-key-auth_brand [data-testid="stPageLink"] a {color:var(--accent)!important;font-weight:800;letter-spacing:.07em;text-decoration:none!important;}
+      .st-key-auth_home [data-testid="stPageLink"] a {justify-content:flex-end;color:#cbd5e1!important;text-decoration:none!important;}
+      .st-key-auth_shell {border:1px solid var(--border);border-radius:18px;background:rgba(8,15,30,.66);overflow:hidden;box-shadow:var(--ss-shadow-panel);}
+      .st-key-auth_shell > div > [data-testid="stHorizontalBlock"] {gap:0!important;align-items:stretch!important;}
+      .st-key-auth_value {height:100%;padding:clamp(1.25rem,3vw,2.2rem);background:linear-gradient(145deg,rgba(56,189,248,.075),rgba(15,23,42,.3));}
+      .auth-value-kicker {color:#7dd3fc;font-size:.72rem;font-weight:800;letter-spacing:.07em;text-transform:uppercase;margin-bottom:.7rem;}
+      .auth-value-title {font-size:clamp(2rem,4vw,2.7rem);font-weight:850;letter-spacing:-.04em;line-height:1.07;margin:0 0 .75rem;}
+      .auth-value-copy {color:#a8b5c7;line-height:1.55;margin:0;max-width:470px;}
+      .auth-value-list {list-style:none;margin:1.2rem 0 0;padding:0;}
+      .auth-value-list li {padding:.62rem 0;border-top:1px solid rgba(148,163,184,.12);color:#cbd5e1;font-size:.86rem;}
+      .st-key-auth_form_panel {padding:clamp(1.25rem,3vw,2.2rem);height:100%;}
+      .auth-form-heading {font-size:1.15rem;font-weight:800;margin:0 0 .25rem;}
+      .auth-form-copy {color:#94a3b8;font-size:.84rem;margin:0 0 1rem;line-height:1.45;}
+      .st-key-auth_form_panel [data-testid="stRadio"] {margin-bottom:.85rem!important;}
+      .st-key-auth_form_panel .stTextInput {max-width:none!important;margin:0 0 .55rem!important;}
+      .st-key-auth_form_panel [data-testid="stCheckbox"] {max-width:none!important;margin:.2rem 0 .65rem!important;}
+      .st-key-auth_form_panel [data-testid="stCheckbox"] label {justify-content:flex-start!important;}
+      .auth-security-note {margin-top:.8rem;color:#8192aa;font-size:.75rem;line-height:1.45;}
+      @media (max-width:760px) {
+        .st-key-auth_shell > div > [data-testid="stHorizontalBlock"] {flex-wrap:wrap!important;}
+        .st-key-auth_shell [data-testid="column"] {flex:1 1 100%!important;min-width:100%!important;}
+      }
+    </style>
+    """,
+    unsafe_allow_html=True,
+)
+
+with st.container(key="auth_topbar"):
+    brand_col, home_col = st.columns([2.5, 1])
+    with brand_col:
+        with st.container(key="auth_brand"):
+            st.page_link("pages/Home.py", label="STOCK SENTINEL")
+    with home_col:
+        with st.container(key="auth_home"):
+            st.page_link("pages/Home.py", label="Back to home")
 
 # ── Remember Me restore (two-stage) ──────────────────────────────────────────
 # Stage 1: fast-path — same browser session (st.session_state survives navigation
@@ -357,6 +379,49 @@ def _switch_to_next_page() -> None:
         st.switch_page("pages/Discovery.py")
 
 
+def _render_password_manager_adapter(password_autocomplete: str) -> None:
+    """Current-renderer bridge for password-manager metadata.
+
+    A future frontend puts these attributes directly on its inputs. The
+    Streamlit adapter disconnects as soon as both generated inputs are patched
+    and has a short timeout backstop, so observers do not accumulate.
+    """
+    import streamlit.components.v1 as components
+
+    components.html(
+        f"""
+        <script>
+        (function(){{
+          try {{
+            const doc = window.parent ? window.parent.document : document;
+            let observer = null;
+            let timer = null;
+            const apply = () => {{
+              const em = Array.from(doc.querySelectorAll('input')).find(i => i.getAttribute('aria-label') === 'Email address');
+              const pw = Array.from(doc.querySelectorAll('input')).find(i => i.getAttribute('aria-label') === 'Password');
+              if (em) {{ em.setAttribute('name','email'); em.setAttribute('autocomplete','username'); em.setAttribute('inputmode','email'); }}
+              if (pw) {{ pw.setAttribute('name','password'); pw.setAttribute('autocomplete','{password_autocomplete}'); }}
+              if (em && pw) {{
+                if (observer) observer.disconnect();
+                if (timer) window.clearTimeout(timer);
+                return true;
+              }}
+              return false;
+            }};
+            if (!apply()) {{
+              observer = new MutationObserver(apply);
+              observer.observe(doc.body, {{ subtree:true, childList:true }});
+              timer = window.setTimeout(() => observer && observer.disconnect(), 3000);
+            }}
+            window.addEventListener('pagehide', () => observer && observer.disconnect(), {{once:true}});
+          }} catch(e) {{}}
+        }})();
+        </script>
+        """,
+        height=0,
+    )
+
+
 # Check if already logged in
 if is_logged_in():
     st.success("✅ You are already signed in.")
@@ -374,72 +439,71 @@ if is_logged_in():
 
     st.stop()
 
-# --- Hero Section ---
-st.markdown(
-    """
-    <div class="auth-hero">
-      <div class="auth-title">Welcome to Stock Sentinel</div>
-      <div class="auth-subtitle">AI-powered stock sentiment analysis and market intelligence</div>
-    </div>
-    """,
-    unsafe_allow_html=True,
-)
+# Preserve an explicit Create Account intent from the landing CTA across form
+# reruns. The auth implementation itself remains unchanged.
+_requested_mode = st.session_state.pop("auth_initial_mode", None)
+if _requested_mode in {"Sign In", "Create Account"}:
+    st.session_state["auth_mode"] = _requested_mode
+elif st.session_state.get("auth_mode") not in {"Sign In", "Create Account"}:
+    st.session_state["auth_mode"] = "Sign In"
 
-# --- Form Container ---
-st.markdown('<div class="auth-form-container">', unsafe_allow_html=True)
+with st.container(key="auth_shell"):
+    value_col, form_col = st.columns([.92, 1.08])
+    with value_col:
+        with st.container(key="auth_value"):
+            st.html(
+                """
+                <div class="auth-value-kicker">Short-term market intelligence</div>
+                <h1 class="auth-value-title">Move from market noise to a decision-ready shortlist.</h1>
+                <p class="auth-value-copy">Scan sectors for unusual social attention, then evaluate a selected ticker with evidence, risk context, and a clear Buy, Watch, or Avoid recommendation.</p>
+                <ul class="auth-value-list">
+                  <li>Two free credits when you create an account</li>
+                  <li>No card required and no subscription</li>
+                  <li>Evidence context shown with every analysis</li>
+                </ul>
+                """
+            )
+    with form_col:
+        with st.container(key="auth_form_panel"):
+            st.markdown(
+                '<h2 class="auth-form-heading">Access Stock Sentinel</h2>'
+                '<p class="auth-form-copy">Choose an existing account or create a new one.</p>',
+                unsafe_allow_html=True,
+            )
+            mode = st.radio(
+                "Account access",
+                ["Sign In", "Create Account"],
+                horizontal=True,
+                label_visibility="collapsed",
+                key="auth_mode",
+            )
 
-# --- Auth Mode Toggle ---
-st.markdown('<div style="margin: 0.5rem 0;"></div>', unsafe_allow_html=True)
-col1, col2, col3 = st.columns([1, 2, 1])
-with col2:
-    _requested_mode = st.session_state.pop("auth_initial_mode", None)
-    if _requested_mode in {"Sign In", "Create Account"}:
-        st.session_state["auth_mode"] = _requested_mode
-    elif st.session_state.get("auth_mode") not in {"Sign In", "Create Account"}:
-        st.session_state["auth_mode"] = "Sign In"
-    mode = st.radio(
-        "Auth Mode",
-        ["Sign In", "Create Account"],
-        horizontal=True,
-        label_visibility="collapsed",
-        key="auth_mode",
-    )
-st.markdown("<div style=\'margin-top: -1.2rem;\'></div>", unsafe_allow_html=True)
+            _pw_ac = "current-password" if mode == "Sign In" else "new-password"
+            _btn_label = "Sign In" if mode == "Sign In" else "Create Account"
 
-import streamlit.components.v1 as components
-_pw_ac = "current-password" if mode == "Sign In" else "new-password"
-_btn_label = "Sign In" if mode == "Sign In" else "Create Account"
+            # st.form handles Enter key submission natively.
+            with st.form("auth_form", clear_on_submit=False):
+                email = st.text_input(
+                    "Email address", placeholder="you@example.com", key="auth_email"
+                )
+                password = st.text_input(
+                    "Password", type="password", placeholder="Password",
+                    key="auth_password",
+                )
+                remember_me = st.checkbox(
+                    "Remember me on this device", value=False,
+                    help="Use only on a private device.",
+                )
+                submitted = st.form_submit_button(
+                    _btn_label, type="primary", use_container_width=True
+                )
+            st.markdown(
+                '<div class="auth-security-note">Account access is protected by Supabase authentication. Payment details are entered only on Stripe.</div>',
+                unsafe_allow_html=True,
+            )
 
-# st.form handles Enter key submission natively
-with st.form("auth_form", clear_on_submit=False):
-    email = st.text_input("Email address", placeholder="you@example.com", key="auth_email")
-    password = st.text_input("Password", type="password", placeholder="Password", key="auth_password")
-    _c1, _c2, _c3 = st.columns([1, 2, 1])
-    with _c2:
-        remember_me = st.checkbox("Remember me on this device", value=False)
-    submitted = st.form_submit_button(_btn_label, type="primary", use_container_width=True)
-
-# Autofill / password manager hints
-components.html(
-    f"""
-    <script>
-    (function(){{
-      try {{
-        const doc = window.parent ? window.parent.document : document;
-        const apply = () => {{
-          const em = Array.from(doc.querySelectorAll('input')).find(i => i.getAttribute('aria-label') === 'Email address');
-          const pw = Array.from(doc.querySelectorAll('input')).find(i => i.getAttribute('aria-label') === 'Password');
-          if (em) {{ em.setAttribute('name','email'); em.setAttribute('autocomplete','username'); em.setAttribute('inputmode','email'); }}
-          if (pw) {{ pw.setAttribute('name','password'); pw.setAttribute('autocomplete','{_pw_ac}'); }}
-        }};
-        apply();
-        new MutationObserver(apply).observe(doc.body, {{ subtree:true, childList:true }});
-      }} catch(e) {{}}
-    }})();
-    </script>
-    """,
-    height=0,
-)
+# Autofill / password-manager hints belong to the current renderer adapter.
+_render_password_manager_adapter(_pw_ac)
 
 if submitted:
     if not email or not password:
@@ -457,8 +521,5 @@ if submitted:
             st.success("Account created! Check your email to confirm, then sign in.")
         else:
             st.error(err or "Account creation failed. Email may already be in use.")
-
-st.markdown('</div>', unsafe_allow_html=True)
-st.markdown('</div>', unsafe_allow_html=True)
 
 render_footer()

@@ -163,6 +163,45 @@ def apply_theme() -> None:
         unsafe_allow_html=True,
     )
 
+
+def render_workflow_hint(*, title: str, message: str, steps: list[str]) -> None:
+    """Render a quiet, portable empty-state contract for task pages."""
+    safe_title = html.escape(str(title))
+    heading_id = "workflow-" + "-".join(
+        part for part in "".join(
+            char.lower() if char.isalnum() else " " for char in str(title)
+        ).split()[:6]
+    )
+    heading_id = heading_id or "workflow-next-steps"
+    safe_message = html.escape(str(message))
+    safe_steps = "".join(
+        f"<li>{html.escape(str(step))}</li>" for step in steps[:3]
+    )
+    st.html(
+        f"""
+        <section class="ss-workflow-hint" aria-labelledby="{heading_id}">
+          <div>
+            <h2 id="{heading_id}">{safe_title}</h2>
+            <p>{safe_message}</p>
+          </div>
+          <ol>{safe_steps}</ol>
+        </section>
+        <style>
+          .ss-workflow-hint {{
+            display:grid;grid-template-columns:minmax(0,1fr) minmax(280px,.9fr);
+            gap:20px;align-items:start;margin:.75rem 0 1rem;padding:14px 16px;
+            border:1px solid rgba(148,163,184,.14);border-radius:12px;
+            background:rgba(8,15,30,.46);
+          }}
+          .ss-workflow-hint h2 {{margin:0;font-size:.88rem;color:#dbe3ee;}}
+          .ss-workflow-hint p {{margin:.25rem 0 0;color:#8192aa;font-size:.8rem;line-height:1.45;}}
+          .ss-workflow-hint ol {{margin:0;padding-left:1.15rem;}}
+          .ss-workflow-hint li {{color:#a8b5c7;font-size:.78rem;line-height:1.45;margin:.12rem 0;}}
+          @media (max-width:700px) {{.ss-workflow-hint {{grid-template-columns:1fr;gap:10px;}}}}
+        </style>
+        """
+    )
+
 def render_footer() -> None:
     """Simple footer with support + disclaimer.
 
@@ -205,13 +244,16 @@ def render_footer() -> None:
         unsafe_allow_html=True,
     )
 
-    # Links row (keep FAQ + Contact adjacent)
+    # Small, stable support/trust set. The trust center keeps methodology,
+    # sources, privacy, and terms together instead of adding four nav items.
     try:
-        c1, c2, _sp = st.columns([0.25, 0.35, 5.0])
+        c1, c2, c3, _sp = st.columns([0.25, 0.35, 0.7, 4.3])
         with c1:
             st.page_link("pages/FAQ.py", label="FAQ")
         with c2:
             st.page_link("pages/Contact.py", label="Contact")
+        with c3:
+            st.page_link("pages/Trust_Center.py", label="Trust Center")
     except Exception:
         # Older Streamlit builds: fail silently
         pass

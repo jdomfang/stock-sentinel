@@ -38,6 +38,7 @@ clicks beat one fragile one.
 
 from __future__ import annotations
 
+import html
 import logging
 
 import streamlit as st
@@ -135,8 +136,11 @@ def clear_pending_url() -> None:
     st.session_state.pop("billing.url", None)
 
 
-def render_buy_credits(*, key: str, label: str = "", primary: bool = False) -> None:
-    """The buy control. Two clicks: fetch, then follow the link.
+def render_buy_credits(
+    *, key: str, label: str = "", primary: bool = False,
+    compact: bool = False,
+) -> None:
+    """The buy control. Two clicks: request a review, then follow the link.
 
     `key` is mandatory -- it disambiguates the widget (Streamlit raises on
     duplicate ids) and names the container for CSS.
@@ -149,10 +153,56 @@ def render_buy_credits(*, key: str, label: str = "", primary: bool = False) -> N
     url = _pending_url(uid)
 
     if url:
-        st.link_button("Continue to checkout →", url,
+        if compact:
+            if st.button(
+                "Review purchase →", key=f"review_{key}",
+                type="primary" if primary else "secondary",
+                use_container_width=True,
+            ):
+                st.switch_page("pages/Account.py")
+            st.caption("Review the total and Stripe handoff on Account.")
+            return
+
+        # This is a purchase REVIEW, not a second upsell. The Checkout Session
+        # already exists, but no charge happens until the user completes the
+        # Stripe surface. Keeping quantity, total, and terms visible here makes
+        # the handoff explicit without changing the payment implementation.
+        st.markdown(
+            f"""
+            <div class="ss-purchase-review" role="region" aria-label="Purchase review">
+              <div class="ss-purchase-review-head">
+                <strong>Purchase review</strong>
+                <span>One-time purchase</span>
+              </div>
+              <dl>
+                <div><dt>Credits</dt><dd>{PACK_CREDITS}</dd></div>
+                <div><dt>Total</dt><dd>{PACK_PRICE}</dd></div>
+                <div><dt>Credit expiration</dt><dd>Never</dd></div>
+                <div><dt>Payment</dt><dd>Secure Stripe checkout</dd></div>
+              </dl>
+            </div>
+            <style>
+              .ss-purchase-review {{
+                border:1px solid rgba(56,189,248,.24);border-radius:12px;
+                background:rgba(8,15,30,.72);padding:.8rem;margin:.15rem 0 .65rem;
+              }}
+              .ss-purchase-review-head {{display:flex;justify-content:space-between;gap:12px;margin-bottom:.55rem;}}
+              .ss-purchase-review-head strong {{font-size:.9rem;}}
+              .ss-purchase-review-head span {{color:#94a3b8;font-size:.75rem;}}
+              .ss-purchase-review dl {{margin:0;}}
+              .ss-purchase-review dl div {{display:flex;justify-content:space-between;gap:16px;padding:.3rem 0;border-top:1px solid rgba(148,163,184,.1);}}
+              .ss-purchase-review dt {{color:#94a3b8;font-size:.78rem;}}
+              .ss-purchase-review dd {{margin:0;color:#e2e8f0;font-size:.78rem;font-weight:700;text-align:right;}}
+            </style>
+            """,
+            unsafe_allow_html=True,
+        )
+        st.link_button("Continue to Stripe →", url,
                        type="primary", use_container_width=True)
-        st.caption(f"Opens Stripe. {PACK_CREDITS} credits for {PACK_PRICE}. "
-                   f"They never expire.")
+        st.caption("You can review the final payment details on Stripe before paying.")
+        if st.button("Not now", key=f"cancel_{key}", use_container_width=True):
+            clear_pending_url()
+            st.rerun()
         return
 
     if st.button(label, key=f"buy_{key}",
@@ -162,7 +212,10 @@ def render_buy_credits(*, key: str, label: str = "", primary: bool = False) -> N
             got, err = get_checkout_url(uid)
         if got:
             st.session_state["billing.url"] = {"uid": uid, "url": got, "at": time.time()}
-            st.rerun()
+            if compact:
+                st.switch_page("pages/Account.py")
+            else:
+                st.rerun()
         else:
             # SHOWN, not swallowed. See get_checkout_url.
             st.error(err or "Checkout is unavailable right now.")
@@ -191,7 +244,9 @@ def render_credit_meter(*, profile: dict | None, key: str) -> None:
                 '<div style="color:rgba(248,113,113,.95);font-size:0.82rem;'
                 'font-weight:700;margin-bottom:4px;">Out of credits</div>',
                 unsafe_allow_html=True)
-            render_buy_credits(key=key, label="Buy credits →", primary=True)
+            render_buy_credits(
+                key=key, label="Buy credits →", primary=True, compact=True,
+            )
             return
 
         # LOW IS 1, and it has to be, because a pack is PACK_CREDITS = 2.
@@ -212,7 +267,7 @@ def render_credit_meter(*, profile: dict | None, key: str) -> None:
             f'margin-bottom:2px;">'
             f'<b style="color:{colour};font-weight:800;">{n}</b> {word} left</div>',
             unsafe_allow_html=True)
-        render_buy_credits(key=key)
+        render_buy_credits(key=key, compact=True)
 
 
 # The refusal reasons that actually mean "buy something". Every OTHER reason
@@ -243,8 +298,10 @@ def render_upgrade_modal(reason: str, event_type: str = "", *,
     what_you_get = [
         f"{PACK_CREDITS} credits for $5 — one per scan or analysis",
         "Spend them whichever way you want",
-        "Credits never expire, and a failed run returns its credit",
+        "Eligible failed runs are automatically refunded",
     ]
+    safe_reason = html.escape(str(reason), quote=True)
+    safe_benefits = [html.escape(item, quote=True) for item in what_you_get]
 
     st.markdown(
         f"""
@@ -254,12 +311,12 @@ def render_upgrade_modal(reason: str, event_type: str = "", *,
           border-radius:16px;
           padding:24px 24px 20px 24px;
           margin:1rem 0;
-          box-shadow:0 0 0 1px rgba(56,189,248,.15),0 12px 32px rgba(56,189,248,.08);
+          box-shadow:0 12px 28px rgba(2,6,23,.24);
         ">
-          <div style="font-size:1.4rem;font-weight:800;color:rgba(248,250,252,.98);margin-bottom:6px;">💳 You're out of credits</div>
-          <div style="color:rgba(148,163,184,.85);font-size:0.93rem;margin-bottom:14px;">{reason}</div>
+          <div style="font-size:1.2rem;font-weight:800;color:rgba(248,250,252,.98);margin-bottom:6px;">You're out of credits</div>
+          <div style="color:rgba(148,163,184,.85);font-size:0.93rem;margin-bottom:14px;">{safe_reason}</div>
           <ul style="list-style:none;padding:0;margin:0 0 18px 0;">
-            {"".join(f'<li style="color:rgba(229,231,235,.90);font-size:0.93rem;margin-bottom:6px;">✓ {item}</li>' for item in what_you_get)}
+            {"".join(f'<li style="color:rgba(229,231,235,.90);font-size:0.93rem;margin-bottom:6px;">✓ {item}</li>' for item in safe_benefits)}
           </ul>
         </div>
         """,
@@ -267,7 +324,10 @@ def render_upgrade_modal(reason: str, event_type: str = "", *,
     )
     col_a, col_b = st.columns([1.2, 2.8])
     with col_a:
-        render_buy_credits(key=f"modal_{key}", label="Buy credits →", primary=True)
+        render_buy_credits(
+            key=f"modal_{key}", label="Buy credits →", primary=True,
+            compact=True,
+        )
     with col_b:
         st.caption("Secure checkout via Stripe. Credits never expire.")
 
@@ -348,6 +408,7 @@ def render_payment_return() -> None:
         st.info("Checkout cancelled — you have not been charged.")
         return
     st.success(
-        "Payment received. Credits usually appear within a few seconds — "
-        "refresh the page if the balance below has not updated yet."
+        "Returned from Stripe. If your payment completed, credits usually "
+        "appear within a few seconds — refresh the page if the balance below "
+        "has not updated yet."
     )

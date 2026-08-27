@@ -27,7 +27,8 @@ _da_logger = logging.getLogger(__name__)
 
 from utils.navigation import render_sidebar_navigation, render_top_nav
 from utils.ui import (close_page, render_recommendation_panel,
-                      render_full_analysis_expander, render_evidence_check)
+                      render_full_analysis_expander, render_evidence_check,
+                      render_workflow_hint)
 # NOT the pipeline. This page charges a credit, draws a progress bar and
 # renders a card; the analysis itself lives in core-api and is reached over
 # HTTPS. utils.analyze is deliberately absent from these imports -- the day it
@@ -45,13 +46,15 @@ st.set_page_config(
 
 # Sidebar navigation
 render_sidebar_navigation()
-render_top_nav(active="deep_analyze")
 
-# Apply theme + hero BEFORE guard — logged-out users see the full styled page
+# Apply the shared theme before the authenticated workspace shell.
 from utils.ui import apply_theme
 from utils.auth import flush_pending_rt_save
 apply_theme()
 flush_pending_rt_save()
+from utils.guard import require_active_account
+_profile = require_active_account()
+render_top_nav(active="deep_analyze")
 
 st.markdown(
     """
@@ -131,7 +134,6 @@ st.markdown(
     unsafe_allow_html=True,
 )
 
-from utils.guard import require_active_account
 from utils.credits import consume_credit, refund_credit, complete_work
 from utils.scan_intent import get_query_params
 
@@ -148,8 +150,6 @@ def _bail() -> None:
     """
     close_page()
     st.stop()
-
-_profile = require_active_account()
 
 # If we arrived via Home → Auth redirect, the ticker may be in query params.
 _qp = get_query_params()
@@ -197,6 +197,17 @@ with st.container(key="da_scan_card"):
 
 # Auto-sector: Deep analysis can run without sector input. Default to unknown.
 sector = "unknown"
+
+if not (_run_clicked or (_autorun and _prefill)):
+    render_workflow_hint(
+        title="Your analysis will appear here",
+        message="Deep Analyze evaluates one ticker and produces a separate Buy, Watch, or Avoid recommendation.",
+        steps=[
+            "Enter a valid US ticker.",
+            "Review the one-credit cost and current balance.",
+            "Run the analysis to see confidence, horizon, evidence, and key reasons.",
+        ],
+    )
 
 # Main analysis button — or auto-triggered from Home
 if _run_clicked or (_autorun and _prefill):

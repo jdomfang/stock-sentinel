@@ -8,6 +8,7 @@
 :root {
   --ss-color-bg: #0b1220;
   --ss-color-panel: #0f172a;
+  --ss-color-panel-raised: #111c31;
   --ss-color-panel-subtle: rgba(15, 23, 42, 0.55);
   --ss-color-border: rgba(148, 163, 184, 0.18);
   --ss-color-text: #e5e7eb;
@@ -31,6 +32,8 @@
   --ss-control-min-height: 44px;
   --ss-content-max-width: 1180px;
   --ss-reading-max-width: 760px;
+  --ss-space-section: clamp(1.5rem, 3vw, 2.5rem);
+  --ss-shadow-panel: 0 14px 36px rgba(2, 6, 23, 0.28);
 
   /* Backward-compatible aliases used by the current adapter. */
   --bg: var(--ss-color-bg);

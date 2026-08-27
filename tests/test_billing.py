@@ -248,7 +248,9 @@ def test_success_never_claims_credits_arrived():
     st.session_state["billing.return"] = "success"
     B.render_payment_return()
     msg = " ".join(calls["success"]).lower()
-    check("it acknowledges the payment", "payment received" in msg, msg)
+    check("it acknowledges the Stripe return without asserting payment",
+          "returned from stripe" in msg and "if your payment completed" in msg,
+          msg)
     check("...without claiming credits are already added",
           "credits added" not in msg and "credits have been" not in msg, msg)
     check("...and tells the user what to do if the number lags",
