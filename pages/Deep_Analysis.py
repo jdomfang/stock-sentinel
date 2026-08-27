@@ -26,8 +26,14 @@ _install_logging()
 _da_logger = logging.getLogger(__name__)
 
 from utils.navigation import render_sidebar_navigation, render_top_nav
-from utils.ui import (close_page, render_recommendation_panel,
-                      render_evidence_check, render_workflow_hint)
+from utils.ui import (
+    close_page,
+    processing_state_html,
+    render_evidence_check,
+    render_recommendation_panel,
+    render_system_state,
+    render_workflow_hint,
+)
 # NOT the pipeline. This page charges a credit, draws a progress bar and
 # renders a card; the analysis itself lives in core-api and is reached over
 # HTTPS. utils.analyze is deliberately absent from these imports -- the day it
@@ -128,7 +134,7 @@ st.markdown(
     }
     @media (max-width: 720px) {
       .st-key-da_scan_card [data-testid="stHorizontalBlock"] { flex-wrap: wrap; }
-      .st-key-da_scan_card [data-testid="column"] {
+      .st-key-da_scan_card [data-testid="stColumn"] {
         flex: 1 1 100% !important; width: 100% !important;
       }
     }
@@ -238,8 +244,12 @@ if _run_clicked or (_autorun and _prefill):
         # credit and then be refunded, it must never take one.
         if not _client.configured():
             _da_logger.error("deep_analyze unavailable: core-api not configured")
-            st.error("Deep Analysis is temporarily unavailable. "
-                     "No credit has been used.")
+            render_system_state(
+                kind="error",
+                title="Deep Analyze is temporarily unavailable",
+                message="The analysis service is not available right now.",
+                meta="No credit has been used.",
+            )
             _bail()
 
         _credit = consume_credit("deep_analyze", {"ticker": _run_ticker, "page": "deep_analysis"})
@@ -264,8 +274,9 @@ if _run_clicked or (_autorun and _prefill):
             _da_progress = st.progress(0)
             _da_status = st.empty()
             _da_status.markdown(
-                f'<div style="color:rgba(229,231,235,.85);font-size:0.92rem;font-weight:600;margin-bottom:0.25rem;">'
-                f'📡 Gathering market chatter for <b>{_run_ticker}</b>...</div>',
+                processing_state_html(
+                    f"Gathering market discussion for {_run_ticker}…"
+                ),
                 unsafe_allow_html=True,
             )
             _da_progress.progress(12)
@@ -323,12 +334,12 @@ if _run_clicked or (_autorun and _prefill):
             _t.start()
 
             _steps = [
-                (20, "📰 Reading what traders are saying..."),
-                (35, "📊 Weighing bullish vs bearish signals..."),
-                (50, "🔍 Cross-referencing sentiment over time..."),
-                (65, "📈 Running price projection models..."),
-                (78, "⚡ Measuring signal strength..."),
-                (88, "🔬 Building your recommendation..."),
+                (20, "Reading what traders are saying…"),
+                (35, "Weighing bullish and bearish signals…"),
+                (50, "Cross-referencing sentiment over time…"),
+                (65, "Running price projection models…"),
+                (78, "Measuring signal strength…"),
+                (88, "Building your recommendation…"),
             ]
             _step_idx = 0
             _start = _time.time()
@@ -347,7 +358,7 @@ if _run_clicked or (_autorun and _prefill):
                     prog, msg = _steps[_step_idx]
                     _da_progress.progress(prog)
                     _da_status.markdown(
-                        f'<div style="color:rgba(229,231,235,.85);font-size:0.92rem;font-weight:600;">{msg}</div>',
+                        processing_state_html(msg),
                         unsafe_allow_html=True,
                     )
                     _step_idx += 1
@@ -361,25 +372,26 @@ if _run_clicked or (_autorun and _prefill):
                 """ONE panel for every failure. The same paid outcome used to
                 render as a red box on one path and a blank page on the other
                 -- two products for one failure."""
-                st.markdown(
-                    '<div style="border:1px solid rgba(239,68,68,.30);border-radius:14px;padding:18px 20px;'
-                    'background:rgba(239,68,68,.05);text-align:center;margin:0.5rem 0;">'
-                    '<div style="font-size:1.2rem;margin-bottom:6px;">⚠️</div>'
-                    f'<div style="font-weight:700;color:rgba(248,113,113,.95);">{html.escape(headline)}</div>'
-                    '<div style="color:rgba(148,163,184,.75);font-size:0.85rem;margin-top:4px;">'
-                    # TWO INDEPENDENT FACTS, and they were tangled: whether
-                    # the credit came back, and whether retrying is safe. When
-                    # the refund RPC failed after a possible spend the old
-                    # expression fell through to the most retry-inviting
-                    # string in the function -- the one case where a retry
-                    # re-buys up to 400 X posts and adds a second verdict_log
-                    # row that no constraint will catch.
-                    + ("Your credit was not used." if refunded else
-                       "If your credit was not returned it will be released "
-                       "automatically within 15 minutes.")
-                    + (" Try again in a moment." if retry_ok else "")
-                    + '</div></div>',
-                    unsafe_allow_html=True,
+                # TWO INDEPENDENT FACTS: whether the credit came back and
+                # whether retrying is safe. Keep both explicit in one shared,
+                # platform-neutral state component.
+                _credit_message = (
+                    "Your credit was not used."
+                    if refunded else
+                    "If your credit was not returned, it will be released "
+                    "automatically within 15 minutes."
+                )
+                # Do not invite a second debit while the first credit still
+                # appears spent. Retry guidance is safe only when the refund
+                # landed and the service reports that work had not begun.
+                _retry_message = (
+                    "Try again in a moment." if refunded and retry_ok else ""
+                )
+                render_system_state(
+                    kind="error",
+                    title=headline,
+                    message=_credit_message,
+                    meta=_retry_message,
                 )
 
             if "error" in _result_holder:

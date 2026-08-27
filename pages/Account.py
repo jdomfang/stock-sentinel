@@ -82,7 +82,7 @@ st.markdown(
       .st-key-account_purchase p {color:var(--muted);font-size:.86rem;margin:0 0 .8rem;}
       @media (max-width:720px) {
         .st-key-account_grid [data-testid="stHorizontalBlock"] {flex-wrap:wrap!important;}
-        .st-key-account_grid [data-testid="column"] {
+        .st-key-account_grid [data-testid="stColumn"] {
           flex:1 1 100%!important;min-width:100%!important;
         }
       }

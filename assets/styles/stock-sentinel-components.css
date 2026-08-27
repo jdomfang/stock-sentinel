@@ -1,0 +1,107 @@
+/*
+ * Platform-neutral Stock Sentinel component contracts.
+ *
+ * These classes contain no Streamlit selectors. A future frontend can render
+ * the same semantic markup and import this file unchanged.
+ */
+
+.ss-system-state {
+  --ss-state-accent: var(--ss-color-action);
+  --ss-state-border: var(--ss-color-info-border);
+  --ss-state-surface: var(--ss-color-info-surface);
+  margin: 0.75rem 0;
+  padding: 1rem 1.05rem;
+  border: 1px solid var(--ss-state-border);
+  border-left: 3px solid var(--ss-state-accent);
+  border-radius: var(--ss-radius-control);
+  background: var(--ss-state-surface);
+  color: var(--ss-color-text);
+}
+
+.ss-system-state[data-kind="success"] {
+  --ss-state-accent: var(--ss-color-positive);
+  --ss-state-border: var(--ss-color-success-border);
+  --ss-state-surface: var(--ss-color-success-surface);
+}
+
+.ss-system-state[data-kind="warning"] {
+  --ss-state-accent: var(--ss-color-caution);
+  --ss-state-border: var(--ss-color-warning-border);
+  --ss-state-surface: var(--ss-color-warning-surface);
+}
+
+.ss-system-state[data-kind="error"] {
+  --ss-state-accent: var(--ss-color-negative);
+  --ss-state-border: var(--ss-color-error-border);
+  --ss-state-surface: var(--ss-color-error-surface);
+}
+
+.ss-system-state__eyebrow {
+  margin: 0 0 0.25rem;
+  color: var(--ss-state-accent);
+  font-size: 0.69rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.ss-system-state__title {
+  margin: 0;
+  color: var(--ss-color-text);
+  font-size: 0.98rem;
+  font-weight: 760;
+  line-height: 1.35;
+}
+
+.ss-system-state__message,
+.ss-system-state__meta {
+  margin: 0.3rem 0 0;
+  color: var(--ss-color-text-muted);
+  font-size: 0.84rem;
+  line-height: 1.5;
+}
+
+.ss-system-state__meta {
+  padding-top: 0.5rem;
+  border-top: 1px solid var(--ss-color-border);
+}
+
+.ss-processing-state {
+  display: flex;
+  min-height: var(--ss-control-min-height);
+  align-items: center;
+  gap: 0.7rem;
+  margin: 0.55rem 0;
+  color: var(--ss-color-text-muted);
+  font-size: 0.86rem;
+  font-weight: 650;
+}
+
+.ss-processing-state::before {
+  width: 0.72rem;
+  height: 0.72rem;
+  flex: 0 0 auto;
+  border: 2px solid rgba(56, 189, 248, 0.25);
+  border-top-color: var(--ss-color-action);
+  border-radius: 50%;
+  content: "";
+  animation: ss-state-spin 0.8s linear infinite;
+}
+
+.ss-visually-hidden {
+  position: absolute !important;
+  width: 1px !important;
+  height: 1px !important;
+  padding: 0 !important;
+  margin: -1px !important;
+  overflow: hidden !important;
+  clip: rect(0, 0, 0, 0) !important;
+  white-space: nowrap !important;
+  border: 0 !important;
+}
+
+@keyframes ss-state-spin { to { transform: rotate(360deg); } }
+
+@media (prefers-reduced-motion: reduce) {
+  .ss-processing-state::before { animation: none; }
+}

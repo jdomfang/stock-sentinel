@@ -14,10 +14,24 @@
   --ss-color-text: #e5e7eb;
   --ss-color-text-muted: #a8b5c7;
   --ss-color-action: #38bdf8;
+  --ss-color-action-hover: #22aee8;
+  --ss-color-action-rest-end: #0891b2;
+  --ss-color-action-pressed: #0e7490;
+  --ss-color-action-ink: #001018;
   --ss-color-positive: #22c55e;
   --ss-color-negative: #ef4444;
   --ss-color-caution: #f59e0b;
   --ss-color-focus: rgba(56, 189, 248, 0.8);
+
+  /* Feedback surfaces are product states, not host-framework theme colors. */
+  --ss-color-info-surface: rgba(56, 189, 248, 0.07);
+  --ss-color-info-border: rgba(56, 189, 248, 0.34);
+  --ss-color-success-surface: rgba(34, 197, 94, 0.07);
+  --ss-color-success-border: rgba(34, 197, 94, 0.34);
+  --ss-color-warning-surface: rgba(245, 158, 11, 0.07);
+  --ss-color-warning-border: rgba(245, 158, 11, 0.34);
+  --ss-color-error-surface: rgba(239, 68, 68, 0.07);
+  --ss-color-error-border: rgba(239, 68, 68, 0.34);
 
   /* Product semantics, intentionally separate from framework widget states. */
   --ss-color-sentiment-bullish: #7dd3fc;

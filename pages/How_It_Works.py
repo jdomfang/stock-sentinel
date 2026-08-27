@@ -50,7 +50,7 @@ st.markdown(
       .ss-how-method-card strong {display:block;font-size:.86rem;margin-bottom:.28rem;}
       .ss-how-method-card span {display:block;color:#94a3b8;font-size:.8rem;line-height:1.5;}
       .st-key-how_trust_link {margin:-.35rem 0 1.2rem;}
-      .st-key-how_trust_link [data-testid="stPageLink"] a {display:inline-flex;width:auto;color:#7dd3fc!important;font-size:.82rem;text-decoration:none!important;padding:0!important;}
+      .st-key-how_trust_link [data-testid="stPageLink"] a {display:inline-flex;width:auto;min-height:var(--ss-control-min-height);align-items:center;color:#7dd3fc!important;font-size:.82rem;text-decoration:none!important;padding:0!important;}
       .st-key-how_trust_link [data-testid="stPageLink"] a:hover {text-decoration:underline!important;}
       .st-key-how_cta {border:1px solid var(--border);border-radius:15px;background:rgba(15,23,42,.55);padding:1rem;margin-bottom:.5rem;}
       .st-key-how_cta [data-testid="stHorizontalBlock"] {align-items:center!important;}
@@ -62,7 +62,7 @@ st.markdown(
         .ss-how-boundary {grid-template-columns:1fr;}
         .ss-how-method-grid {grid-template-columns:1fr;}
         .st-key-how_cta [data-testid="stHorizontalBlock"] {flex-wrap:wrap!important;}
-        .st-key-how_cta [data-testid="column"] {flex:1 1 100%!important;min-width:100%!important;}
+        .st-key-how_cta [data-testid="stColumn"] {flex:1 1 100%!important;min-width:100%!important;}
       }
     </style>
     """,

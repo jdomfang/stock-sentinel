@@ -14,9 +14,11 @@ from utils.navigation import render_sidebar_navigation, render_top_nav
 from utils.ui import (
     apply_theme,
     close_page,
+    processing_state_html,
     render_evidence_check,
     render_full_analysis_expander,
     render_recommendation_panel,
+    render_system_state,
     render_workflow_hint,
 )
 from utils.finance import get_last_close_prices_best_effort
@@ -175,10 +177,10 @@ st.markdown(
     }
     .st-key-discovery_scan_card [data-baseweb="select"] > div {
       border-radius: 12px !important;
-      min-height: 38px !important;
+      min-height: var(--ss-control-min-height) !important;
     }
     .st-key-discovery_scan_card .stButton > button {
-      min-height: 38px !important;
+      min-height: var(--ss-control-min-height) !important;
       border-radius: 12px !important;
     }
 
@@ -324,8 +326,8 @@ st.markdown(
     /* Primary buttons (Scan X) - must override the generic button rule */
     button[data-testid="stBaseButton-primary"],
     .stButton > button[kind="primary"] {
-      background: linear-gradient(180deg, rgba(56,189,248,.95), rgba(14,116,144,.95)) !important;
-      background-color: transparent !important;
+      background: linear-gradient(180deg, var(--ss-color-action), var(--ss-color-action-rest-end)) !important;
+      background-color: var(--ss-color-action) !important;
       border: 1px solid rgba(56,189,248,.45) !important;
       color: #001018 !important;
       font-weight: 650 !important;
@@ -478,7 +480,7 @@ st.markdown(
     }
     .st-key-scan_result_workspace [data-testid="stHorizontalBlock"]:has(
       .st-key-scan_workspace_results
-    ):has(.st-key-scan_workspace_analysis) > [data-testid="column"] {
+    ):has(.st-key-scan_workspace_analysis) > [data-testid="stColumn"] {
       min-width:0!important;
     }
     .st-key-selected_analysis_panel {
@@ -505,7 +507,7 @@ st.markdown(
       .st-key-discovery_scan_card [data-testid="stHorizontalBlock"] {
         flex-wrap: wrap;
       }
-      .st-key-discovery_scan_card [data-testid="column"] {
+      .st-key-discovery_scan_card [data-testid="stColumn"] {
         flex: 1 1 100% !important;
         width: 100% !important;
       }
@@ -519,14 +521,14 @@ st.markdown(
         flex-wrap: wrap;
         gap: 0.35rem;
       }
-      [class*="st-key-scan_row_"] [data-testid="column"] {
+      [class*="st-key-scan_row_"] [data-testid="stColumn"] {
         flex: 1 1 calc(50% - 0.5rem) !important;
         width: auto !important;
       }
-      [class*="st-key-scan_row_"] [data-testid="column"]:first-child {
+      [class*="st-key-scan_row_"] [data-testid="stColumn"]:first-child {
         flex-basis: 100% !important;
       }
-      [class*="st-key-scan_row_"] [data-testid="column"]:last-child {
+      [class*="st-key-scan_row_"] [data-testid="stColumn"]:last-child {
         flex-basis: 100% !important;
       }
       .scan-mobile-label {
@@ -546,7 +548,7 @@ st.markdown(
       ):has(.st-key-scan_workspace_analysis) {flex-wrap:wrap!important;}
       .st-key-scan_result_workspace [data-testid="stHorizontalBlock"]:has(
         .st-key-scan_workspace_results
-      ):has(.st-key-scan_workspace_analysis) > [data-testid="column"] {
+      ):has(.st-key-scan_workspace_analysis) > [data-testid="stColumn"] {
         flex:1 1 100%!important;width:100%!important;
       }
       .st-key-selected_analysis_panel {position:static;padding:11px;margin-top:14px;}
@@ -720,13 +722,6 @@ if scan_triggered:
     _rid = new_request_id()
     logger.info("scan requested sector=%s", sector)
 
-    # NOTHING TO RUN, SO NOTHING TO CHARGE -- checked before the debit.
-    # Unlike Deep Analyze this page can still scan locally while the in-process
-    # path exists, so an unconfigured core-api is a fallback rather than a
-    # refusal. But the local path needs the PORTAL to hold an X token, and the
-    # migration is moving that the other way: with neither, every click would
-    # take a credit and refund it, once per click, each refund another chance
-    # for the RPC to fail and lose it for real.
     # NOTHING TO CALL, SO NOTHING TO CHARGE. Mandatory now that the local
     # path is gone: without it a misconfigured CORE_API_URL would take a
     # credit and refund it, once per click, each refund another chance for the
@@ -734,7 +729,12 @@ if scan_triggered:
     # _base() asks, so a bare host or an http:// URL is refused here.
     if not _client.configured():
         logger.error("scan unavailable: core-api not configured")
-        st.error("Scanning is temporarily unavailable. No credit has been used.")
+        render_system_state(
+            kind="error",
+            title="Market Scan is temporarily unavailable",
+            message="The analysis service is not available right now.",
+            meta="No credit has been used.",
+        )
         _bail()
 
     _credit = consume_credit("scan", {"sector": sector, "page": "discovery"})
@@ -766,8 +766,9 @@ if scan_triggered:
         progress_bar = st.progress(0)
         status_text = st.empty()
         status_text.markdown(
-            f'<div style="color:rgba(229,231,235,.85);font-size:0.92rem;font-weight:600;">'
-            f'\U0001F4E1 Scanning X for {sector} momentum...</div>',
+            processing_state_html(
+                f"Scanning recent discussion for {sector} momentum…"
+            ),
             unsafe_allow_html=True,
         )
         progress_bar.progress(8)
@@ -825,11 +826,11 @@ if scan_triggered:
         # entire run abortable -- and an abort after the service has
         # paginated is up to 300 posts bought that nobody sees.
         _steps = [
-            (20, "\U0001F4E1 Scanning X for %s momentum..." % sector),
-            (40, "\U0001F50D Filtering noise, validating tickers..."),
-            (60, "\u26A1 Building your shortlist..."),
-            (80, "\U0001F9E0 Reading the mood on your shortlist..."),
-            (92, "\U0001F4CA Ranking what people are talking about..."),
+            (20, "Scanning recent discussion for %s momentum…" % sector),
+            (40, "Filtering noise and validating tickers…"),
+            (60, "Building your shortlist…"),
+            (80, "Reading the mood on your shortlist…"),
+            (92, "Ranking unusual attention…"),
         ]
         _i = 0
         while not _done.wait(timeout=1.5):
@@ -837,8 +838,7 @@ if scan_triggered:
                 _pct, _msg = _steps[_i]
                 progress_bar.progress(_pct)
                 status_text.markdown(
-                    f'<div style="color:rgba(229,231,235,.85);'
-                    f'font-size:0.92rem;font-weight:600;">{_msg}</div>',
+                    processing_state_html(_msg),
                     unsafe_allow_html=True)
                 _i += 1
 
@@ -849,15 +849,19 @@ if scan_triggered:
         if "error" in _holder:
             _refunded = refund_credit("scan", _credit.event_id,
                                       f"scan failed: {str(_holder['error'])[:120]}")
-            st.markdown(
-                '<div style="border:1px solid rgba(239,68,68,.25);border-radius:16px;padding:24px;'
-                'background:rgba(239,68,68,.04);margin:1rem 0;text-align:center;">'
-                '<div style="font-size:1.5rem;margin-bottom:8px;">\u26A0\uFE0F</div>'
-                '<div style="font-weight:700;color:rgba(248,113,113,.95);font-size:1.0rem;margin-bottom:4px;">Something went wrong</div>'
-                '<div style="color:rgba(148,163,184,.80);font-size:0.88rem;">'
-                + ("Your credit was not used." if _refunded
-                   else "The scan hit an unexpected error.")
-                + '</div></div>', unsafe_allow_html=True)
+            render_system_state(
+                kind="error",
+                title="The scan could not be completed",
+                message=(
+                    "Your credit was not used."
+                    if _refunded else
+                    "If your credit was not returned, it will be released "
+                    "automatically within 15 minutes."
+                ),
+                # The worker escaped without a service response, so spend
+                # status is unknown even if the credit refund succeeded.
+                meta="",
+            )
             _bail()
 
         # ONE SHAPE, because there is one path. The local Scan and the
@@ -865,6 +869,7 @@ if scan_triggered:
         _r = _holder["remote"]
         _rows, _ok, _err, _kind = _r.rows, _r.ok, _r.error, _r.kind
         _x_err, _age, _posts = _r.x_error, _r.corpus_age_s, _r.posts_seen
+        _retryable = bool(_r.retryable)
         _no_query = (_r.kind == "no_query")
 
         if _no_query:
@@ -881,17 +886,14 @@ if scan_triggered:
                 "scan", _credit.event_id, f"query build failed: {(_err or '')[:120]}")
             _credit_line = ("Your credit was not used."
                             if _refunded
-                            else "We are returning your credit; it may take a moment to appear.")
-            st.markdown(
-                f"""
-                <div style="border:1px solid rgba(245,158,11,.28);border-radius:14px;padding:18px 20px;
-                  background:rgba(245,158,11,.05);margin:0.5rem 0;text-align:center;">
-                  <div style="font-size:1.2rem;margin-bottom:6px;">\U0001F9FA</div>
-                  <div style="font-weight:700;color:rgba(251,191,36,.95);font-size:0.95rem;margin-bottom:4px;">Could not build the scan for this sector</div>
-                  <div style="color:rgba(148,163,184,.75);font-size:0.82rem;">{_credit_line} This is usually temporary \u2014 try again shortly.</div>
-                </div>
-                """,
-                unsafe_allow_html=True,
+                            else "If your credit was not returned, it will be released "
+                                 "automatically within 15 minutes.")
+            render_system_state(
+                kind="warning",
+                title="Could not build this sector scan",
+                message=_credit_line,
+                meta=("This is usually temporary—try again shortly."
+                      if _refunded else ""),
             )
             _bail()
 
@@ -911,57 +913,73 @@ if scan_triggered:
                         # looking at the wrong provider.
                         "transport": "core-api unreachable",
                         "ticker_db": "ticker database unavailable"}
-            refund_credit("scan", _credit.event_id,
-                          _REASONS.get(_kind,
-                                       f"scan error: {(_err or '')[:120]}"))
+            _refunded = refund_credit(
+                "scan", _credit.event_id,
+                _REASONS.get(_kind, f"scan error: {(_err or '')[:120]}"),
+            )
             if _kind == "credentials":
-                _tone, _icon, _title, _body = (
-                    "239,68,68", "\U0001F511", "Configuration error",
+                _title, _body = (
+                    "Configuration error",
                     "Missing API credentials. Contact support if this keeps happening.")
             elif _kind in ("network", "transport"):
-                _tone, _icon, _title, _body = (
-                    "245,158,11", "\U0001F4E1", "Connection issue",
-                    "Couldn't reach the data source. Check your connection and try again.")
+                _title, _body = (
+                    "Connection issue",
+                    "Couldn't reach the data source.")
             elif _kind == "ticker_db":
-                _tone, _icon, _title, _body = (
-                    "239,68,68", "\u274C", "Could not load ticker database",
+                _title, _body = (
+                    "Could not load ticker database",
                     "Please check the data directory.")
             else:
-                _tone, _icon, _title, _body = (
-                    "239,68,68", "\u26A0\uFE0F", "Something went wrong",
-                    "The scan hit an unexpected error. Try again in a moment "
-                    "\u2014 this is usually temporary.")
-            st.markdown(
-                f"""
-                <div style="border:1px solid rgba({_tone},.28);border-radius:16px;padding:24px;
-                  background:rgba({_tone},.05);margin:1rem 0;text-align:center;">
-                  <div style="font-size:1.5rem;margin-bottom:8px;">{_icon}</div>
-                  <div style="font-weight:700;color:rgba(248,113,113,.95);font-size:1.0rem;margin-bottom:4px;">{_title}</div>
-                  <div style="color:rgba(148,163,184,.80);font-size:0.88rem;">{_body}</div>
-                </div>
-                """,
-                unsafe_allow_html=True,
+                _title, _body = (
+                    "Something went wrong",
+                    "The scan hit an unexpected error.")
+            _credit_line = (
+                "Your credit was not used."
+                if _refunded else
+                "If your credit was not returned, it will be released "
+                "automatically within 15 minutes."
+            )
+            render_system_state(
+                kind="warning" if _kind in ("network", "transport") else "error",
+                title=_title,
+                message=f"{_body} {_credit_line}",
+                meta=(
+                    "Try again in a moment."
+                    if _refunded and _retryable
+                    and _kind in ("network", "transport")
+                    else ""
+                ),
             )
             _bail()
 
-        if _x_err:
-            st.markdown(
-                f"""
-                <div style="border:1px solid rgba(245,158,11,.28);border-radius:14px;padding:18px 20px;
-                  background:rgba(245,158,11,.05);margin:0.5rem 0;text-align:center;">
-                  <div style="font-size:1.2rem;margin-bottom:6px;">\U0001F4E1</div>
-                  <div style="font-weight:700;color:rgba(251,191,36,.95);font-size:0.95rem;margin-bottom:4px;">X data feed unavailable</div>
-                  <div style="color:rgba(148,163,184,.75);font-size:0.82rem;">{_x_err[:200]}</div>
-                </div>
-                """,
-                unsafe_allow_html=True,
+        if _x_err and _posts != 0:
+            render_system_state(
+                kind="warning",
+                title="Social data feed unavailable",
+                message=_x_err[:200],
+                meta="The availability issue is upstream and may be temporary.",
             )
 
         if _posts == 0:
             if _x_err:
                 # Upstream failure, zero posts: the user paid and got nothing.
-                if refund_credit("scan", _credit.event_id, f"x api: {_x_err[:120]}"):
-                    st.info("Your credit was not used.")
+                _refunded = refund_credit(
+                    "scan", _credit.event_id, f"x api: {_x_err[:120]}")
+                render_system_state(
+                    kind="error",
+                    title="Social data feed unavailable",
+                    message=(
+                        "No scan result was delivered. Your credit was not used."
+                        if _refunded else
+                        "No scan result was delivered. If your credit was not "
+                        "returned, it will be released automatically within "
+                        "15 minutes."
+                    ),
+                    # The upstream call returned no posts; it may already have
+                    # incurred provider work, so a second purchase is not
+                    # suggested here.
+                    meta="",
+                )
             else:
                 # A genuinely empty result is an answer, not a failure -- the
                 # scan ran and the sector simply had no chatter. Still charged,
@@ -970,7 +988,15 @@ if scan_triggered:
                 # made a quiet sector an unlimited supply of free scans paid
                 # for at X.
                 _delivered = True
-                st.warning("No posts returned from X for this query.")
+                render_system_state(
+                    kind="info",
+                    title="No recent discussion found",
+                    message=(
+                        "No posts returned from the social data feed for "
+                        "this query."
+                    ),
+                    meta="Try another sector or return later.",
+                )
             _bail()
 
         # AFTER the bails, as it was. Setting it earlier overwrote the
@@ -1011,12 +1037,22 @@ if scan_triggered:
             _delivered = True
 
             if len(df_valid) == 0:
-                st.warning("\u26A0\uFE0F No validated stock tickers found. Try a different sector/time window.")
+                render_system_state(
+                    kind="info",
+                    title="No validated stock tickers found",
+                    message="The scan completed without a trustworthy ticker match.",
+                    meta="Try a different sector or time window.",
+                )
         else:
             # Posts were fetched and scored, they just contained no tickers.
             # Work was done and an answer given, so this stays charged.
             _delivered = True
-            st.warning("\u26A0\uFE0F No stock tickers found in the posts. Try a different search query.")
+            render_system_state(
+                kind="info",
+                title="No stock tickers found",
+                message="The retrieved discussion did not contain usable ticker references.",
+                meta="Try a different sector.",
+            )
 
     # `except KeyError` and `except requests.exceptions.RequestException`
     # used to live here. They are gone rather than left as dead code: scan()
@@ -1026,17 +1062,19 @@ if scan_triggered:
     # coverage.
     except Exception:
         logger.exception("Discovery scan failed")
-        refund_credit("scan", _credit.event_id, "unhandled scan error")
-        st.markdown(
-            """
-            <div style="border:1px solid rgba(239,68,68,.25);border-radius:16px;padding:24px;
-              background:rgba(239,68,68,.04);margin:1rem 0;text-align:center;">
-              <div style="font-size:1.5rem;margin-bottom:8px;">⚠️</div>
-              <div style="font-weight:700;color:rgba(248,113,113,.95);font-size:1.0rem;margin-bottom:4px;">Something went wrong</div>
-              <div style="color:rgba(148,163,184,.80);font-size:0.88rem;">The scan hit an unexpected error. Try again in a moment — this is usually temporary.</div>
-            </div>
-            """,
-            unsafe_allow_html=True,
+        _refunded = refund_credit(
+            "scan", _credit.event_id, "unhandled scan error")
+        render_system_state(
+            kind="error",
+            title="Something went wrong",
+            message=(
+                "The scan could not be completed. Your credit was not used."
+                if _refunded else
+                "The scan could not be completed. If your credit was not "
+                "returned, it will be released automatically within 15 minutes."
+            ),
+            # This catch-all has no reliable pre-spend signal.
+            meta="",
         )
 
     finally:
@@ -1309,7 +1347,7 @@ if st.session_state.df_valid is not None:
         _price_prog = st.progress(0)
         _price_status = st.empty()
         _price_status.markdown(
-            '<div style="color:rgba(148,163,184,.70);font-size:0.82rem;">💹 Fetching live prices...</div>',
+            processing_state_html("Fetching recent closing prices…"),
             unsafe_allow_html=True,
         )
         try:
@@ -1512,12 +1550,13 @@ if st.session_state.df_valid is not None:
                         st.session_state.deep_analysis_results = None
                         st.session_state.deep_analysis_card = None
 
-                        _deep_error = None
+                        _deep_state = None
                         _disc_prog = st.progress(0)
                         _disc_status = st.empty()
                         _disc_status.markdown(
-                            f'<div style="color:rgba(229,231,235,.85);font-size:0.92rem;font-weight:600;">'
-                            f'📡 Gathering market chatter for <b>{ticker_symbol}</b>...</div>',
+                            processing_state_html(
+                                f"Gathering market discussion for {ticker_symbol}…"
+                            ),
                             unsafe_allow_html=True,
                         )
                         _disc_prog.progress(10)
@@ -1564,12 +1603,12 @@ if st.session_state.df_valid is not None:
                         _disc_thread.start()
 
                         _disc_steps = [
-                            (20, "📰 Reading what traders are saying..."),
-                            (35, "📊 Weighing bullish vs bearish signals..."),
-                            (50, "🔍 Cross-referencing sentiment over time..."),
-                            (65, "📈 Running price projection models..."),
-                            (78, "⚡ Measuring signal strength..."),
-                            (88, "🔬 Building your recommendation..."),
+                            (20, "Reading what traders are saying…"),
+                            (35, "Weighing bullish and bearish signals…"),
+                            (50, "Cross-referencing sentiment over time…"),
+                            (65, "Running price projection models…"),
+                            (78, "Measuring signal strength…"),
+                            (88, "Building your recommendation…"),
                         ]
                         _disc_step_idx = 0
                         while not _disc_done.wait(timeout=1.5):
@@ -1577,7 +1616,7 @@ if st.session_state.df_valid is not None:
                                 _dp, _dm = _disc_steps[_disc_step_idx]
                                 _disc_prog.progress(_dp)
                                 _disc_status.markdown(
-                                    f'<div style="color:rgba(229,231,235,.85);font-size:0.92rem;font-weight:600;">{_dm}</div>',
+                                    processing_state_html(_dm),
                                     unsafe_allow_html=True,
                                 )
                                 _disc_step_idx += 1
@@ -1588,16 +1627,39 @@ if st.session_state.df_valid is not None:
 
                         if "error" in _disc_holder:
                             # Charged before the work started; the work failed.
-                            if refund_credit("deep_analyze", _dcredit.event_id,
-                                             f"analysis failed: {str(_disc_holder['error'])[:120]}"):
-                                _deep_error = (f"Analysis failed for {ticker_symbol}. "
-                                               "Your credit was not used — try again in a moment.")
-                            else:
-                                _deep_error = f"Analysis failed for {ticker_symbol}. Try again in a moment."
+                            _refunded = refund_credit(
+                                "deep_analyze", _dcredit.event_id,
+                                f"analysis failed: {str(_disc_holder['error'])[:120]}",
+                            )
+                            _deep_state = {
+                                "title": f"Analysis failed for {ticker_symbol}",
+                                "message": (
+                                    "Your credit was not used."
+                                    if _refunded else
+                                    "If your credit was not returned, it will be "
+                                    "released automatically within 15 minutes."
+                                ),
+                                "meta": (
+                                    "Try again in a moment."
+                                    if _refunded and _disc_holder.get("pre_spend")
+                                    else ""
+                                ),
+                            }
                         elif not _disc_holder.get("result"):
-                            refund_credit("deep_analyze", _dcredit.event_id, "analysis returned no results")
-                            _deep_error = (f"No results for {ticker_symbol}. "
-                                           "Your credit was not used — try again in a moment.")
+                            _refunded = refund_credit(
+                                "deep_analyze", _dcredit.event_id,
+                                "analysis returned no results",
+                            )
+                            _deep_state = {
+                                "title": f"No results for {ticker_symbol}",
+                                "message": (
+                                    "Your credit was not used."
+                                    if _refunded else
+                                    "If your credit was not returned, it will be "
+                                    "released automatically within 15 minutes."
+                                ),
+                                "meta": "",
+                            }
                         elif not _disc_holder.get("card"):
                             # Neither adjudicator produced anything. Falling
                             # through here marked the run delivered, kept the
@@ -1606,11 +1668,20 @@ if st.session_state.df_valid is not None:
                             # page refunds this state; so does this one now.
                             logger.error("no verdict and no legacy summary for %s",
                                          ticker_symbol)
-                            refund_credit("deep_analyze", _dcredit.event_id,
-                                          "no summary could be produced")
-                            _deep_error = (f"No analysis could be produced for "
-                                           f"{ticker_symbol}. Your credit was not "
-                                           "used — try again in a moment.")
+                            _refunded = refund_credit(
+                                "deep_analyze", _dcredit.event_id,
+                                "no summary could be produced",
+                            )
+                            _deep_state = {
+                                "title": f"No analysis could be produced for {ticker_symbol}",
+                                "message": (
+                                    "Your credit was not used."
+                                    if _refunded else
+                                    "If your credit was not returned, it will be "
+                                    "released automatically within 15 minutes."
+                                ),
+                                "meta": "",
+                            }
                         else:
                             st.session_state.deep_analysis_results = _disc_holder.get("result")
                             st.session_state.deep_analysis_card = _disc_holder.get("card")
@@ -1627,13 +1698,8 @@ if st.session_state.df_valid is not None:
                             _ddelivered = True
                             st.rerun()
 
-                        if _deep_error:
-                            st.markdown(
-                                f'<div style="border:1px solid rgba(239,68,68,.30);border-radius:12px;padding:14px 16px;'
-                                f'background:rgba(239,68,68,.06);color:rgba(248,113,113,.95);margin:0.5rem 0;">'
-                                f'⚠️ {_deep_error}</div>',
-                                unsafe_allow_html=True,
-                            )
+                        if _deep_state:
+                            render_system_state(kind="error", **_deep_state)
                     finally:
                         # NOTE: the success path below calls st.rerun(), which
                         # itself raises RerunException -- so _ddelivered must be

@@ -305,20 +305,14 @@ def render_upgrade_modal(reason: str, event_type: str = "", *,
 
     st.markdown(
         f"""
-        <div style="
-          border:1px solid rgba(56,189,248,.35);
-          background:linear-gradient(180deg,rgba(56,189,248,.06),rgba(15,23,42,.92));
-          border-radius:16px;
-          padding:24px 24px 20px 24px;
-          margin:1rem 0;
-          box-shadow:0 12px 28px rgba(2,6,23,.24);
-        ">
-          <div style="font-size:1.2rem;font-weight:800;color:rgba(248,250,252,.98);margin-bottom:6px;">You're out of credits</div>
-          <div style="color:rgba(148,163,184,.85);font-size:0.93rem;margin-bottom:14px;">{safe_reason}</div>
+        <section class="ss-system-state" data-kind="warning" role="status" aria-live="polite" aria-atomic="true">
+          <p class="ss-system-state__eyebrow">Action required</p>
+          <h2 class="ss-system-state__title">You're out of credits</h2>
+          <p class="ss-system-state__message">{safe_reason}</p>
           <ul style="list-style:none;padding:0;margin:0 0 18px 0;">
             {"".join(f'<li style="color:rgba(229,231,235,.90);font-size:0.93rem;margin-bottom:6px;">✓ {item}</li>' for item in safe_benefits)}
           </ul>
-        </div>
+        </section>
         """,
         unsafe_allow_html=True,
     )

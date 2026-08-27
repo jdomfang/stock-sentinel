@@ -21,6 +21,14 @@ _TOKEN_CSS_PATH = (
     Path(__file__).resolve().parents[1]
     / "assets" / "styles" / "stock-sentinel-tokens.css"
 )
+_COMPONENT_CSS_PATH = (
+    Path(__file__).resolve().parents[1]
+    / "assets" / "styles" / "stock-sentinel-components.css"
+)
+_STREAMLIT_ADAPTER_CSS_PATH = (
+    Path(__file__).resolve().parents[1]
+    / "assets" / "styles" / "stock-sentinel-streamlit-adapter.css"
+)
 
 
 def apply_theme() -> None:
@@ -31,8 +39,11 @@ def apply_theme() -> None:
     # Adapter boundary: load portable product tokens first, then map them onto
     # the current Streamlit renderer below. Future frontends import the CSS
     # asset directly and replace only this adapter layer.
-    token_css = _TOKEN_CSS_PATH.read_text(encoding="utf-8")
-    st.markdown(f"<style>{token_css}</style>", unsafe_allow_html=True)
+    portable_css = "\n".join(
+        path.read_text(encoding="utf-8")
+        for path in (_TOKEN_CSS_PATH, _COMPONENT_CSS_PATH)
+    )
+    st.markdown(f"<style>{portable_css}</style>", unsafe_allow_html=True)
     st.markdown(
         """
         <style>
@@ -90,77 +101,55 @@ def apply_theme() -> None:
           padding: 0 1rem;
         }
 
-        /* Inputs */
-        [data-baseweb="select"] > div,
-        [data-baseweb="input"] > div {
-          background-color: rgba(2,6,23,.55) !important;
-          border-color: var(--border) !important;
-          color: var(--text) !important;
-        }
-
-        /* BaseWeb portals render outside the page container. Keep every
-           select menu readable without page-specific DOM observers. */
-        [data-baseweb="popover"] [role="listbox"],
-        ul[data-testid="stSelectboxVirtualDropdown"] {
-          background: #0F172A !important;
-          color: var(--text) !important;
-          border: 1px solid var(--border) !important;
-        }
-        [data-baseweb="popover"] [role="option"],
-        ul[data-testid="stSelectboxVirtualDropdown"] li,
-        ul[data-testid="stSelectboxVirtualDropdown"] li * {
-          color: var(--text) !important;
-          opacity: 1 !important;
-        }
-        [data-baseweb="popover"] [role="option"]:hover,
-        [data-baseweb="popover"] [role="option"][aria-selected="true"],
-        ul[data-testid="stSelectboxVirtualDropdown"] li:hover {
-          background: rgba(56,189,248,.14) !important;
-        }
-
-        /* Buttons */
-        .stButton > button {
-          min-height: 44px;
-          border-radius: var(--radius-control);
-          border: 1px solid rgba(56,189,248,0.28);
-          background: rgba(15, 23, 42, 0.85);
-          color: #E5E7EB;
-          font-weight: 650;
-          opacity: 1;
-        }
-
-        button[data-testid="stBaseButton-primary"],
-        .stButton > button[kind="primary"] {
-          background: linear-gradient(180deg, rgba(56,189,248,.95), rgba(14,116,144,.95)) !important;
-          background-color: transparent !important;
-          border: 1px solid rgba(56,189,248,.45) !important;
-          color: #001018 !important;
-          font-weight: 650 !important;
-        }
-
-        a:focus-visible,
-        button:focus-visible,
-        input:focus-visible,
-        [role="button"]:focus-visible,
-        [tabindex]:focus-visible {
-          outline: 3px solid var(--focus-ring) !important;
-          outline-offset: 3px !important;
-          box-shadow: none !important;
-        }
-
-        @media (prefers-reduced-motion: reduce) {
-          *, *::before, *::after {
-            scroll-behavior: auto !important;
-            transition-duration: .01ms !important;
-            animation-duration: .01ms !important;
-            animation-iteration-count: 1 !important;
-          }
-        }
-
         footer { visibility: hidden; }
         </style>
         """,
         unsafe_allow_html=True,
+    )
+    # Loaded last so host defaults cannot override product tokens. This file
+    # is the only shared layer that knows how Streamlit names its widgets.
+    adapter_css = _STREAMLIT_ADAPTER_CSS_PATH.read_text(encoding="utf-8")
+    st.markdown(f"<style>{adapter_css}</style>", unsafe_allow_html=True)
+
+
+def system_state_html(
+    *, kind: str, title: str, message: str, meta: str = ""
+) -> str:
+    """Return portable, semantic feedback markup without host-specific state."""
+    normalized = kind if kind in {"info", "success", "warning", "error"} else "info"
+    role = "alert" if normalized == "error" else "status"
+    live = "assertive" if normalized == "error" else "polite"
+    eyebrow = {
+        "info": "Status", "success": "Completed",
+        "warning": "Needs attention", "error": "Request not completed",
+    }[normalized]
+    meta_html = (
+        f'<p class="ss-system-state__meta">{html.escape(str(meta))}</p>'
+        if meta else ""
+    )
+    return (
+        f'<section class="ss-system-state" data-kind="{normalized}" '
+        f'role="{role}" aria-live="{live}" aria-atomic="true">'
+        f'<p class="ss-system-state__eyebrow">{eyebrow}</p>'
+        f'<h2 class="ss-system-state__title">{html.escape(str(title))}</h2>'
+        f'<p class="ss-system-state__message">{html.escape(str(message))}</p>'
+        f'{meta_html}</section>'
+    )
+
+
+def render_system_state(
+    *, kind: str, title: str, message: str, meta: str = ""
+) -> None:
+    """Render a consistent loading/failure/empty/payment-adjacent state."""
+    st.html(system_state_html(kind=kind, title=title, message=message, meta=meta))
+
+
+def processing_state_html(message: str) -> str:
+    """Return a screen-reader-announced processing state for live updates."""
+    return (
+        '<div class="ss-processing-state" role="status" aria-live="polite" '
+        'aria-atomic="true">'
+        f'{html.escape(str(message))}</div>'
     )
 
 

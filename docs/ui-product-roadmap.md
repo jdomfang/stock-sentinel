@@ -77,7 +77,12 @@ Suggested future component mapping:
 - **Release E — Responsive production polish:** complete mobile navigation and
   card composition, loading/failure/zero-credit states, cross-browser spacing,
   keyboard and assistive-technology verification, and visual regression
-  coverage against the approved desktop and mobile references.
+  coverage against the approved desktop and mobile references. Product tokens
+  and semantic component styles remain platform-neutral. Shared widget color,
+  control, focus, and motion mappings live in the disposable Streamlit adapter;
+  route-level responsive selectors remain part of their equally disposable
+  current-page adapters. Host theme defaults are never a source of product
+  color or financial meaning.
 - **Release F — Optional frontend migration:** incremental route-level frontend
   migration when the replacement host is selected, followed by optional
   research-history/watchlist surfaces after their product and data contracts

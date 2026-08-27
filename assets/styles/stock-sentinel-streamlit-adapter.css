@@ -1,0 +1,176 @@
+/*
+ * Current Streamlit renderer adapter.
+ *
+ * Product colors and component semantics belong to the token/component files;
+ * only framework widget mapping belongs here. A future host discards this
+ * file without changing product rules or business behavior.
+ */
+
+/* Inputs and BaseWeb portals. Size both the widget root and its inner control:
+   Streamlit may leave the root at 40px even when the child is taller. */
+[data-baseweb="select"],
+[data-baseweb="input"],
+[data-baseweb="select"] > div,
+[data-baseweb="input"] > div {
+  min-height: var(--ss-control-min-height) !important;
+  background-color: rgba(2, 6, 23, 0.72) !important;
+  border-color: var(--ss-color-border) !important;
+  color: var(--ss-color-text) !important;
+}
+
+[data-baseweb="popover"] [role="listbox"],
+ul[data-testid="stSelectboxVirtualDropdown"] {
+  background: var(--ss-color-panel) !important;
+  color: var(--ss-color-text) !important;
+  border: 1px solid var(--ss-color-border) !important;
+}
+
+[data-baseweb="popover"] [role="option"],
+ul[data-testid="stSelectboxVirtualDropdown"] li,
+ul[data-testid="stSelectboxVirtualDropdown"] li * {
+  color: var(--ss-color-text) !important;
+  opacity: 1 !important;
+}
+
+[data-baseweb="popover"] [role="option"]:hover,
+[data-baseweb="popover"] [role="option"][aria-selected="true"],
+ul[data-testid="stSelectboxVirtualDropdown"] li:hover {
+  background: var(--ss-color-info-surface) !important;
+}
+
+/* Every primary action, including Streamlit's distinct form-submit variant. */
+.stButton > button {
+  min-height: var(--ss-control-min-height) !important;
+  border-radius: var(--ss-radius-control) !important;
+  border: 1px solid rgba(56, 189, 248, 0.28) !important;
+  background: rgba(15, 23, 42, 0.85) !important;
+  color: var(--ss-color-text) !important;
+  font-weight: 650 !important;
+  opacity: 1;
+}
+
+[data-testid="stFormSubmitButton"] button,
+[data-testid="stPageLink"] a,
+[data-testid="stLinkButton"] a,
+.stLinkButton > a,
+[data-testid="stCheckbox"] label {
+  min-height: var(--ss-control-min-height) !important;
+}
+
+/* Host primaryColor also colors framework navigation links. Keep generic
+   links in the product interaction family; route adapters may deliberately
+   override this with neutral navigation text. */
+[data-testid="stPageLink"] a,
+[data-testid="stLinkButton"] a,
+.stLinkButton > a {
+  color: var(--ss-color-action) !important;
+}
+
+button[data-testid^="stBaseButton-primary"],
+a[data-testid^="stBaseLinkButton-primary"],
+.stButton > button[kind="primary"],
+[data-testid="stLinkButton"] a[kind="primary"],
+[data-testid="stFormSubmitButton"] button[kind="primary"] {
+  background: linear-gradient(
+    180deg,
+    var(--ss-color-action),
+    var(--ss-color-action-rest-end)
+  ) !important;
+  background-color: var(--ss-color-action) !important;
+  border-color: rgba(56, 189, 248, 0.58) !important;
+  color: var(--ss-color-action-ink) !important;
+}
+
+button[data-testid^="stBaseButton-primary"]:hover,
+a[data-testid^="stBaseLinkButton-primary"]:hover,
+.stButton > button[kind="primary"]:hover,
+[data-testid="stLinkButton"] a[kind="primary"]:hover,
+[data-testid="stFormSubmitButton"] button[kind="primary"]:hover {
+  background: var(--ss-color-action-hover) !important;
+  border-color: var(--ss-color-action) !important;
+}
+
+button[data-testid^="stBaseButton-primary"]:active,
+a[data-testid^="stBaseLinkButton-primary"]:active,
+.stButton > button[kind="primary"]:active,
+[data-testid="stLinkButton"] a[kind="primary"]:active,
+[data-testid="stFormSubmitButton"] button[kind="primary"]:active {
+  background: var(--ss-color-action-pressed) !important;
+  color: #ffffff !important;
+}
+
+button:disabled,
+[aria-disabled="true"] {
+  cursor: not-allowed !important;
+  filter: saturate(0.45) !important;
+  opacity: 0.58 !important;
+}
+
+/* Selection controls must never inherit a host's coral default. */
+[data-testid="stRadio"] input,
+[data-testid="stCheckbox"] input {
+  accent-color: var(--ss-color-action) !important;
+}
+
+[data-testid="stRadio"] [data-baseweb="radio"] > div:first-child,
+[data-testid="stRadio"] [data-baseweb="radio"] > span:first-child,
+[data-testid="stCheckbox"] [data-baseweb="checkbox"] > div:first-child {
+  border-color: rgba(148, 163, 184, 0.5) !important;
+  background-color: #07101f !important;
+}
+
+[data-testid="stCheckbox"] [data-baseweb="checkbox"] > span:first-child {
+  border-color: rgba(148, 163, 184, 0.5) !important;
+  background-color: #07101f !important;
+}
+
+[data-testid="stRadio"] [data-baseweb="radio"]:has(input:checked) > div:first-child,
+[data-testid="stRadio"] [data-baseweb="radio"]:has(input:checked) > span:first-child,
+[data-testid="stRadio"] label:has(input:checked) > div:first-child,
+[data-testid="stRadio"] label:has(input:checked) > span:first-child,
+[data-testid="stRadio"] [role="radio"][aria-checked="true"] > div:first-child,
+[data-testid="stRadio"] [role="radio"][aria-checked="true"] > span:first-child,
+[data-testid="stCheckbox"] [data-baseweb="checkbox"]:has(input:checked) > div:first-child,
+[data-testid="stCheckbox"] [data-baseweb="checkbox"]:has(input:checked) > span:first-child,
+[data-testid="stCheckbox"] label:has(input:checked) > div:first-child,
+[data-testid="stCheckbox"] label:has(input:checked) > span:first-child {
+  border-color: var(--ss-color-action) !important;
+  background-color: var(--ss-color-action) !important;
+}
+
+/* Progress and transient status use interaction cyan, never financial colors. */
+[data-testid="stProgress"] [role="progressbar"] > div,
+[data-testid="stProgress"] div[data-testid="stProgressBar"] > div {
+  background-color: var(--ss-color-action) !important;
+}
+
+[data-testid="stSpinner"] svg { color: var(--ss-color-action) !important; }
+
+/* Framework alerts inherit the same restrained state palette. */
+[data-testid="stAlert"] {
+  border-radius: var(--ss-radius-control) !important;
+  border: 1px solid var(--ss-color-border) !important;
+  background: var(--ss-color-panel-subtle) !important;
+}
+
+a:focus-visible,
+button:focus-visible,
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible,
+[role="button"]:focus-visible,
+[role="radio"]:focus-visible,
+[tabindex]:focus-visible {
+  outline: 3px solid var(--ss-color-focus) !important;
+  outline-offset: 3px !important;
+  box-shadow: none !important;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    scroll-behavior: auto !important;
+    transition-duration: 0.01ms !important;
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+  }
+}

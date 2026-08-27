@@ -217,6 +217,17 @@ def render_top_nav(
           .st-key-ss_top_nav {padding:.45rem 0 .4rem;margin-bottom:1.15rem;}
           .st-key-ss_nav_desktop {display:none!important;}
           .st-key-ss_nav_mobile {display:block!important;}
+          .st-key-ss_nav_mobile_primary [data-testid="stHorizontalBlock"],
+          .st-key-ss_nav_mobile_links [data-testid="stHorizontalBlock"],
+          .st-key-ss_nav_mobile_marketing [data-testid="stHorizontalBlock"] {
+            display:flex!important;flex-wrap:nowrap!important;
+            align-items:center!important;gap:.35rem!important;
+          }
+          .st-key-ss_nav_mobile_primary [data-testid="stColumn"],
+          .st-key-ss_nav_mobile_links [data-testid="stColumn"],
+          .st-key-ss_nav_mobile_marketing [data-testid="stColumn"] {
+            min-width:0!important;width:auto!important;
+          }
           .st-key-ss_nav_mobile_links {
             margin-top:.2rem;padding-top:.2rem;
             border-top:1px solid rgba(148,163,184,.12);
@@ -224,9 +235,6 @@ def render_top_nav(
           .st-key-ss_nav_mobile_marketing {
             margin-top:.2rem;padding-top:.2rem;
             border-top:1px solid rgba(148,163,184,.12);
-          }
-          .st-key-ss_nav_mobile_links [data-testid="stHorizontalBlock"] {
-            gap:.25rem!important;
           }
           [class*="st-key-nav_mobile_"] [data-testid="stPageLink"] a {
             padding-left:.2rem;padding-right:.2rem;font-size:.79rem;
@@ -287,24 +295,22 @@ def render_top_nav(
                 _auth_control(next(cols), logged_in=True, surface="desktop")
 
         with st.container(key="ss_nav_mobile"):
-            if logged_in:
-                brand_col, account_col, auth_col = st.columns([2.0, .8, .8])
-                admin_col = None
-            else:
-                brand_col, auth_col, signup_col = st.columns([1.8, .7, .8])
-                admin_col = None
-                account_col = None
-            _brand(brand_col, "mobile")
-            if admin_col is not None:
-                _admin_link(admin_col, "mobile")
-            if account_col is not None:
-                _account_link(account_col, "mobile", active)
-            _auth_control(
-                auth_col, logged_in=logged_in, surface="mobile",
-                after_auth_page=after_auth_page,
-            )
-            if not logged_in:
-                _signup_control(signup_col, surface="mobile")
+            with st.container(key="ss_nav_mobile_primary"):
+                if logged_in:
+                    brand_col, account_col, auth_col = st.columns([1.75, .8, .8])
+                    signup_col = None
+                else:
+                    brand_col, auth_col, signup_col = st.columns([1.65, .72, .82])
+                    account_col = None
+                _brand(brand_col, "mobile")
+                if account_col is not None:
+                    _account_link(account_col, "mobile", active)
+                _auth_control(
+                    auth_col, logged_in=logged_in, surface="mobile",
+                    after_auth_page=after_auth_page,
+                )
+                if signup_col is not None:
+                    _signup_control(signup_col, surface="mobile")
 
             if not logged_in:
                 with st.container(key="ss_nav_mobile_marketing"):

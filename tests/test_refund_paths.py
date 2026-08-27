@@ -371,7 +371,9 @@ def test_the_scan_route_says_which_path_served_it() -> None:
     check("...with no in-process path left to say so about",
           "served IN-PROCESS" not in scan_src)
     check("a remote scan never falls back to a local one",
-          "_r.retryable" not in scan_src,
+          scan_src.count("scan_remote(") == 1
+          and "scan_mod.scan(" not in scan_src
+          and "scan.scan(" not in scan_src,
           "the fallback re-buys the corpus core-api is already buying")
     # The local scan must stay on the SCRIPT thread. On a worker it survives
     # the Streamlit abort, buys the whole corpus for a page that is gone, and

@@ -398,13 +398,13 @@ st.markdown(
       align-items: stretch !important;
     }
 
-    .st-key-home_cap_grid [data-testid="column"] {
+    .st-key-home_cap_grid [data-testid="stColumn"] {
       min-width: 0 !important;
       display: flex !important;
       align-self: stretch !important;
     }
 
-    .st-key-home_cap_grid [data-testid="column"] > div {
+    .st-key-home_cap_grid [data-testid="stColumn"] > div {
       width: 100% !important;
     }
 
@@ -466,8 +466,8 @@ st.markdown(
         align-items: stretch !important;
       }
 
-      .st-key-home_card_scan_actions [data-testid="column"],
-      .st-key-home_card_analyze_actions [data-testid="column"] {
+      .st-key-home_card_scan_actions [data-testid="stColumn"],
+      .st-key-home_card_analyze_actions [data-testid="stColumn"] {
         flex: 1 1 100% !important;
         min-width: 100% !important;
       }
@@ -484,8 +484,8 @@ st.markdown(
       }
     }
 
-    .st-key-home_card_scan_actions [data-testid="column"],
-    .st-key-home_card_analyze_actions [data-testid="column"] {
+    .st-key-home_card_scan_actions [data-testid="stColumn"],
+    .st-key-home_card_analyze_actions [data-testid="stColumn"] {
       min-width: 0 !important;
     }
 
@@ -557,8 +557,8 @@ st.markdown(
     /* Primary buttons */
     button[data-testid="stBaseButton-primary"],
     .stButton > button[kind="primary"] {
-      background: linear-gradient(180deg, rgba(56,189,248,.95), rgba(14,116,144,.95)) !important;
-      background-color: transparent !important;
+      background: linear-gradient(180deg, var(--ss-color-action), var(--ss-color-action-rest-end)) !important;
+      background-color: var(--ss-color-action) !important;
       border: 1px solid rgba(56,189,248,.45) !important;
       color: #001018 !important;
       font-weight: 650 !important;
@@ -593,8 +593,8 @@ st.markdown(
     }
 
     /* Give Streamlit columns a sane min width so they wrap to 2-up / 1-up naturally */
-    .how-grid [data-testid="column"],
-    .cap-grid [data-testid="column"] {
+    .how-grid [data-testid="stColumn"],
+    .cap-grid [data-testid="stColumn"] {
       flex: 1 1 260px !important;
       min-width: 260px !important;
     }
@@ -605,8 +605,8 @@ st.markdown(
         margin: 0 0 1rem;
       }
 
-      .how-grid [data-testid="column"],
-      .cap-grid [data-testid="column"] {
+      .how-grid [data-testid="stColumn"],
+      .cap-grid [data-testid="stColumn"] {
         flex: 1 1 100% !important;
         min-width: 100% !important;
       }
@@ -700,17 +700,17 @@ st.markdown(
     }
     .st-key-home_public_hero [data-testid="stHorizontalBlock"]:has(
       .st-key-home_public_story
-    ):has(.st-key-home_public_preview) > [data-testid="column"] {
+    ):has(.st-key-home_public_preview) > [data-testid="stColumn"] {
       min-width:0!important;width:0!important;
     }
     .st-key-home_public_hero [data-testid="stHorizontalBlock"]:has(
       .st-key-home_public_story
-    ):has(.st-key-home_public_preview) > [data-testid="column"]:first-child {
+    ):has(.st-key-home_public_preview) > [data-testid="stColumn"]:first-child {
       flex:1.04 1 0!important;
     }
     .st-key-home_public_hero [data-testid="stHorizontalBlock"]:has(
       .st-key-home_public_story
-    ):has(.st-key-home_public_preview) > [data-testid="column"]:last-child {
+    ):has(.st-key-home_public_preview) > [data-testid="stColumn"]:last-child {
       flex:.96 1 0!important;
     }
     .ss-public-hero-copy {padding:clamp(1rem,3vw,2.2rem) 0;}
@@ -811,7 +811,7 @@ st.markdown(
     @media (max-width:700px) {
       .hero-title {font-size:clamp(2rem,10vw,2.65rem);}
       .st-key-home_cap_grid [data-testid="stHorizontalBlock"] {flex-wrap:wrap !important;}
-      .st-key-home_cap_grid [data-testid="column"] {
+      .st-key-home_cap_grid [data-testid="stColumn"] {
         flex:1 1 100% !important;min-width:100% !important;
       }
       .ss-demo-table-head {display:block;}
@@ -819,7 +819,7 @@ st.markdown(
       .ss-demo-table th:nth-child(2),.ss-demo-table td:nth-child(2) {display:none;}
       .ss-demo-table th,.ss-demo-table td {padding-left:11px;padding-right:11px;}
       .st-key-home_credit_hub [data-testid="stHorizontalBlock"] {flex-wrap:wrap!important;}
-      .st-key-home_credit_hub [data-testid="column"] {
+      .st-key-home_credit_hub [data-testid="stColumn"] {
         flex:1 1 100%!important;min-width:100%!important;
       }
       .st-key-home_public_hero [data-testid="stHorizontalBlock"]:has(
@@ -827,7 +827,7 @@ st.markdown(
       ):has(.st-key-home_public_preview) {flex-wrap:wrap!important;}
       .st-key-home_public_hero [data-testid="stHorizontalBlock"]:has(
         .st-key-home_public_story
-      ):has(.st-key-home_public_preview) > [data-testid="column"] {
+      ):has(.st-key-home_public_preview) > [data-testid="stColumn"] {
         flex:1 1 100%!important;min-width:100%!important;width:100%!important;
       }
       .ss-public-hero-copy {padding:.5rem 0;}

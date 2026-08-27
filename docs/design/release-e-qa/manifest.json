@@ -1,0 +1,36 @@
+{
+  "release": "E",
+  "purpose": "Platform-neutral responsive and visual acceptance matrix",
+  "viewports": [
+    {"name": "mobile", "width": 390, "height": 844},
+    {"name": "tablet", "width": 768, "height": 1024},
+    {"name": "compact-desktop", "width": 1024, "height": 768},
+    {"name": "desktop", "width": 1440, "height": 900}
+  ],
+  "public_routes": [
+    {"route": "Home", "marker": "Finding short-term opportunities"},
+    {"route": "How_It_Works", "marker": "How Stock Sentinel works"},
+    {"route": "FAQ", "marker": "Search FAQs"},
+    {"route": "Contact", "marker": "Send a message"},
+    {"route": "Trust_Center", "marker": "Data sources and freshness"},
+    {"route": "Auth", "marker": "Welcome back"}
+  ],
+  "authenticated_surfaces": [
+    "Home",
+    "Market Scan empty, loading, failure, sparse-evidence and results",
+    "Deep Analyze empty, loading, failure and delivered result",
+    "Analysis Result",
+    "Account zero-credit, purchase-review and payment-return"
+  ],
+  "acceptance": [
+    "No horizontal document overflow",
+    "Every interactive target is at least 44 CSS pixels high",
+    "Primary actions use interaction cyan, never host coral",
+    "Amber appears only for caution and Watch semantics",
+    "Bullish/Bearish/Neutral and Buy/Watch/Avoid include text labels",
+    "Keyboard focus is visible and follows source order",
+    "Loading and feedback states expose live-region semantics",
+    "Reduced-motion preferences disable nonessential animation",
+    "No scan, analysis or checkout is triggered by visual QA"
+  ]
+}

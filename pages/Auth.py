@@ -56,11 +56,10 @@ st.markdown(
       .auth-form-copy {color:#a8b5c7;font-size:.86rem;margin:0 0 .85rem;line-height:1.45;}
       .st-key-auth_form_panel [data-testid="stRadio"] {width:100%!important;margin:0 0 .8rem!important;padding:0!important;}
       .st-key-auth_form_panel [data-testid="stRadio"] > div {display:flex!important;flex-direction:row!important;gap:.5rem!important;width:100%!important;}
-      .st-key-auth_form_panel [data-testid="stRadio"] label {flex:1 1 0;min-height:44px;margin:0!important;padding:.55rem .7rem!important;border:1px solid rgba(148,163,184,.24)!important;border-radius:10px!important;background:#07101f!important;color:#dbe3ee!important;justify-content:center!important;font-weight:700!important;cursor:pointer!important;}
-      .st-key-auth_form_panel [data-testid="stRadio"] label:hover {border-color:rgba(56,189,248,.55)!important;background:rgba(56,189,248,.06)!important;}
+      .st-key-auth_form_panel [data-testid="stRadio"] label {flex:1 1 0;min-height:var(--ss-control-min-height);margin:0!important;padding:.55rem .7rem!important;border:1px solid var(--ss-color-border)!important;border-radius:var(--ss-radius-control)!important;background:#07101f!important;color:var(--ss-color-text)!important;justify-content:center!important;font-weight:700!important;cursor:pointer!important;}
+      .st-key-auth_form_panel [data-testid="stRadio"] label:hover {border-color:var(--ss-color-action)!important;background:var(--ss-color-info-surface)!important;}
       .st-key-auth_form_panel [data-testid="stRadio"] label:has([aria-checked="true"]),
-      .st-key-auth_form_panel [data-testid="stRadio"] label:has(input:checked) {border-color:rgba(56,189,248,.78)!important;background:rgba(56,189,248,.13)!important;color:#f8fafc!important;box-shadow:inset 0 0 0 1px rgba(56,189,248,.18)!important;}
-      .st-key-auth_form_panel [role="radio"][aria-checked="true"] {background:#38bdf8!important;border-color:#38bdf8!important;}
+      .st-key-auth_form_panel [data-testid="stRadio"] label:has(input:checked) {border-color:var(--ss-color-action)!important;background:var(--ss-color-info-surface)!important;color:var(--ss-color-text)!important;box-shadow:inset 0 0 0 1px var(--ss-color-info-border)!important;}
       .st-key-auth_form_panel .stTextInput {max-width:none!important;margin:0 0 .5rem!important;}
       .st-key-auth_form_panel .stTextInput > label {color:#e2e8f0!important;font-size:.85rem!important;font-weight:650!important;margin-bottom:.32rem!important;}
       .st-key-auth_form_panel [data-baseweb="input"] {min-height:48px!important;background:#07101f!important;border:1px solid rgba(148,163,184,.28)!important;border-radius:10px!important;box-shadow:none!important;}
@@ -69,11 +68,11 @@ st.markdown(
       .st-key-auth_form_panel [data-baseweb="input"] input {background:transparent!important;color:#f1f5f9!important;}
       .st-key-auth_form_panel input:-webkit-autofill {-webkit-text-fill-color:#f1f5f9!important;-webkit-box-shadow:0 0 0 1000px #07101f inset!important;caret-color:#f1f5f9!important;}
       .st-key-auth_form_panel [data-testid="stCheckbox"] {max-width:none!important;margin:.05rem 0 .55rem!important;}
-      .st-key-auth_form_panel [data-testid="stCheckbox"] label {justify-content:flex-start!important;min-height:40px;}
+      .st-key-auth_form_panel [data-testid="stCheckbox"] label {justify-content:flex-start!important;min-height:var(--ss-control-min-height);}
       .st-key-auth_form_panel [data-testid="stForm"] {border:0!important;padding:0!important;}
       .st-key-auth_form_panel [data-testid="stFormSubmitButton"] button {width:100%!important;min-height:48px!important;margin-top:.1rem!important;border-radius:10px!important;font-weight:760!important;}
       .auth-security-note {margin-top:.65rem;color:#94a3b8;font-size:.75rem;line-height:1.45;}
-      .st-key-auth_topbar a:focus-visible,.st-key-auth_shell button:focus-visible,.st-key-auth_shell input:focus-visible {outline:3px solid rgba(56,189,248,.75)!important;outline-offset:3px!important;}
+      .st-key-auth_topbar a:focus-visible,.st-key-auth_shell button:focus-visible,.st-key-auth_shell input:focus-visible {outline:3px solid var(--ss-color-focus)!important;outline-offset:3px!important;}
       footer {visibility:hidden;}
       @media (max-width:760px) {
         div[data-testid="stMainBlockContainer"] {padding:.2rem .75rem .75rem;}
