@@ -51,5 +51,22 @@ jobs:
           python -m pip install --upgrade pip
           pip install -r requirements-dev.txt
 
+      - name: Verify PostgreSQL test service
+        run: >-
+          python3 -c "import psycopg2;
+          c=psycopg2.connect('host=127.0.0.1 port=5433 dbname=sentinel_test user=supabase_admin password=postgres');
+          c.close(); print('PostgreSQL test service is ready')"
+
       - name: Run every suite
-        run: python3 tests/run_all.py
+        shell: bash
+        run: |
+          set -o pipefail
+          python3 tests/run_all.py 2>&1 | tee test-results.log
+
+      - name: Publish test summary
+        if: always()
+        run: |
+          echo '### Full test-suite output' >> "$GITHUB_STEP_SUMMARY"
+          echo '```text' >> "$GITHUB_STEP_SUMMARY"
+          tail -n 500 test-results.log >> "$GITHUB_STEP_SUMMARY" 2>/dev/null || true
+          echo '```' >> "$GITHUB_STEP_SUMMARY"

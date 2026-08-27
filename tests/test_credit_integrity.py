@@ -34,7 +34,6 @@ except ImportError:
 REPO = Path(__file__).resolve().parents[1]
 DSN = "host=127.0.0.1 port=5433 dbname=sentinel_test user=supabase_admin password=postgres"
 
-STUB = REPO / "tests" / "sql" / "00_supabase_stub.sql"
 # Import by repo root rather than by whatever happens to be on sys.path
 # when this file is invoked -- running it as a script puts tests/ first,
 # running it under a runner from the repo root does not.
@@ -119,8 +118,6 @@ def setup() -> None:
     with conn() as c, c.cursor() as cur:
         cur.execute("drop schema if exists public cascade; create schema public;")
         cur.execute("drop schema if exists auth cascade;")
-        run_sql(cur, STUB)
-        print(f"  applied {STUB.name}")
         for m in MIGRATIONS:
             run_sql(cur, m)
             print(f"  applied {m.name}")

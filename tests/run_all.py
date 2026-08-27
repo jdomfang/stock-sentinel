@@ -20,6 +20,7 @@ The five SQL suites need the throwaway database:
 
 from __future__ import annotations
 
+import os
 import re
 import subprocess
 import sys
@@ -42,6 +43,13 @@ NEEDS_DB = {
 SUMMARY = re.compile(r"(\d+) passed, (\d+) failed")
 
 
+def _output_text(value: str | bytes | None) -> str:
+    """Normalize TimeoutExpired output across supported Python versions."""
+    if isinstance(value, bytes):
+        return value.decode(errors="replace")
+    return value or ""
+
+
 def main() -> int:
     no_db = "--no-db" in sys.argv
     files = sorted(TESTS.glob("test_*.py"))
@@ -57,8 +65,17 @@ def main() -> int:
         if no_db and f.name in NEEDS_DB:
             skipped.append(f.name)
             continue
-        r = subprocess.run([sys.executable, str(f)], cwd=REPO,
-                           capture_output=True, text=True, timeout=900)
+        command = [sys.executable, str(f)]
+        try:
+            r = subprocess.run(command, cwd=REPO, capture_output=True,
+                               text=True, timeout=900)
+        except subprocess.TimeoutExpired as exc:
+            r = subprocess.CompletedProcess(
+                command,
+                124,
+                stdout=_output_text(exc.stdout),
+                stderr=_output_text(exc.stderr) + "\nsuite timed out after 900 seconds",
+            )
         m = SUMMARY.search(r.stdout)
         if m:
             p, fl = int(m.group(1)), int(m.group(2))
@@ -79,6 +96,23 @@ def main() -> int:
             if r.stderr.strip():
                 print("--- stderr ---")
                 print(r.stderr[-2000:])
+            # GitHub's public check API exposes annotations even when the
+            # repository's full Actions log needs an authenticated browser.
+            # Name the suite here so a red integration run is diagnosable from
+            # the check itself instead of collapsing to the unhelpful
+            # "Process completed with exit code 1" annotation.
+            if os.environ.get("GITHUB_ACTIONS") == "true":
+                details = []
+                if r.stdout.strip():
+                    details.append("stdout:\n" + r.stdout.strip()[-1000:])
+                if r.stderr.strip():
+                    details.append("stderr:\n" + r.stderr.strip()[-1000:])
+                detail = "\n".join(details) or "suite exited non-zero without output"
+                # Workflow commands are line-oriented. Keep the useful tail on
+                # one line and encode the characters GitHub reserves.
+                detail = detail[-1500:].replace("%", "%25")
+                detail = detail.replace("\r", "%0D").replace("\n", "%0A")
+                print(f"::error file=tests/{f.name},title=Failed test suite::{detail}")
         print(f"  {status:<4}  {f.name:<34} "
               f"{m.group(1) + ' passed, ' + m.group(2) + ' failed' if m else '(own format)'}")
 
