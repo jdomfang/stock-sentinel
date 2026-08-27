@@ -69,12 +69,21 @@ def _margin_for(text: str) -> float:
 def install(corpus: dict, *, sectors=None, master=None, fail_page=None,
             repeat_pages=False, cached=False, spy=None):
     """Point utils.scan at a recorded corpus instead of X."""
+    import utils.config as CFG
     import utils.corpus_cache as CC
     import utils.deep_analysis as DA
     import utils.finance as FIN
     import utils.sector_query as SQ
     import utils.sentiment as SENT
     import utils.x_metrics as XM
+
+    # Replays must never depend on a developer's secrets.toml. scan() checks
+    # this credential before consulting the installed corpus/fetcher stubs, so
+    # a clean CI worker otherwise returns "missing API credentials" without
+    # exercising any of the orchestration this suite exists to pin.
+    CFG.get = lambda name, default="": (
+        "test-token" if name == "X_BEARER_TOKEN" else default
+    )
 
     tweets = corpus["tweets"]
     # Every cashtag in the corpus becomes a real ticker in the master, in the

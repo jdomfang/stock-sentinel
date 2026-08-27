@@ -151,25 +151,40 @@ def test_concurrency_is_bounded():
 
 def test_health_reports_what_would_change_an_answer():
     print("\nhealth: a misconfigured deploy must not look merely quiet")
-    c, _ = client()
-    h = c.get("/health").json()
-    for k in ("ok", "service", "version", "secret_configured",
-              "missing_config", "model", "directional_margin"):
-        check(f"health reports {k}", k in h)
-    check("ok is True when both are configured", h["ok"] is True)
-
     import utils.config as CFG
-    real_get = CFG.get
-    CFG.get = lambda n, d="": ("" if n == "INFERENCE_URL" else real_get(n, d))
-    c, _ = client(inference="")
-    h = c.get("/health").json()
-    check("no INFERENCE_URL -> ok False", h["ok"] is False, str(h))
-    check("...and it names what is missing", "INFERENCE_URL" in h["missing_config"],
-          str(h.get("missing_config")))
-    # Railway keys on the STATUS CODE, never the body.
-    check("...and /ready returns 503 so the platform fails the deploy",
-          c.get("/ready").status_code == 503)
-    CFG.get = real_get
+    import utils.finance as FIN
+    real_get, real_master = CFG.get, FIN.get_ticker_master_list
+    # This test is about the configuration contract, not Supabase reachability.
+    # client() deliberately installs a fake URL, so the real loader makes a
+    # clean worker report ok:false while a developer machine with ambient
+    # credentials can pass. The separate ticker-master test below owns that
+    # readiness behavior.
+    FIN.get_ticker_master_list = lambda: {
+        "TSLA": {"sector": "Technology", "name": "Tesla Inc"}
+    }
+    try:
+        c, _ = client()
+        h = c.get("/health").json()
+        for k in ("ok", "service", "version", "secret_configured",
+                  "missing_config", "model", "directional_margin"):
+            check(f"health reports {k}", k in h)
+        check("ok is True when both are configured", h["ok"] is True, str(h))
+
+        CFG.get = lambda n, d="": (
+            "" if n == "INFERENCE_URL" else real_get(n, d)
+        )
+        c, _ = client(inference="")
+        h = c.get("/health").json()
+        check("no INFERENCE_URL -> ok False", h["ok"] is False, str(h))
+        check("...and it names what is missing",
+              "INFERENCE_URL" in h["missing_config"],
+              str(h.get("missing_config")))
+        # Railway keys on the STATUS CODE, never the body.
+        check("...and /ready returns 503 so the platform fails the deploy",
+              c.get("/ready").status_code == 503)
+    finally:
+        CFG.get = real_get
+        FIN.get_ticker_master_list = real_master
 
 
 def _stub_analysis(recommendation="Buy"):
