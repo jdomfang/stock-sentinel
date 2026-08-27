@@ -1,0 +1,126 @@
+#!/usr/bin/env python3
+"""Release B landing and decision-clarity source contract."""
+
+from __future__ import annotations
+
+from pathlib import Path
+
+
+REPO = Path(__file__).resolve().parent.parent
+PASSED: list[str] = []
+FAILED: list[tuple[str, str]] = []
+
+
+def check(name: str, condition: bool, detail: str = "") -> None:
+    (PASSED.append(name) if condition else FAILED.append((name, detail)))
+    print(f"  {'PASS' if condition else 'FAIL'}  {name}")
+
+
+def main() -> int:
+    home = (REPO / "pages" / "Home.py").read_text()
+    auth = (REPO / "pages" / "Auth.py").read_text()
+    discovery = (REPO / "pages" / "Discovery.py").read_text()
+    deep = (REPO / "pages" / "Deep_Analysis.py").read_text()
+    nav = (REPO / "utils" / "navigation.py").read_text()
+    ui = (REPO / "utils" / "ui.py").read_text()
+    tokens = (
+        REPO / "assets" / "styles" / "stock-sentinel-tokens.css"
+    ).read_text()
+
+    print("=" * 72)
+    print("  Release B UI: landing and decision clarity")
+    print("=" * 72)
+
+    check(
+        "all analysis entry points use the shared decision summary",
+        "render_recommendation_panel(" in home
+        and "render_recommendation_panel(" in deep
+        and "render_recommendation_panel(" in discovery,
+    )
+    check(
+        "legacy probability-like bars are absent from decision summaries",
+        "_bar_pct" not in ui and "_bar_pct" not in discovery,
+    )
+    check(
+        "live signal horizon comes from the result model",
+        'movement.get("horizon_days")' in discovery
+        and '_movement.get("horizon_days")' in deep,
+    )
+    check(
+        "analysis generation time does not claim evidence freshness",
+        'freshness="Analysis generated now"' in discovery
+        and 'freshness="Analysis generated now"' in deep
+        and "Updated just now" not in ui,
+    )
+    check(
+        "degraded evidence remains posts rather than independent clusters",
+        'elif raw_mentions is not None' in discovery
+        and 'elif _raw_mentions is not None' in deep
+        and "post{post_suffix} analyzed" in discovery
+        and "post{_post_suffix} analyzed" in deep,
+    )
+    check(
+        "non-finite sentiment is rendered as unscored",
+        "math.isfinite(avg_sentiment)" in ui,
+    )
+    check(
+        "landing preview is capped and links a selected analysis ticker",
+        "limit: int = 5" in home
+        and "preferred_tickers=available_demo_tickers" in home
+        and "ss-demo-selected" in home,
+    )
+    check(
+        "demo prices and data are explicitly illustrative",
+        "prices are not live" in home
+        and "Illustrative demo snapshot" in home,
+    )
+    check(
+        "landing proof language avoids unsupported speed/freshness claims",
+        "Recent social sentiment" in home
+        and "Evidence context shown" in home
+        and "Results in under 60 seconds" not in home,
+    )
+    check(
+        "landing controls and mobile cards use accessible sizing",
+        home.count("min-height: 44px") >= 3
+        and 'flex:1 1 100% !important' in home,
+    )
+    check(
+        "the demo table is named for assistive technology",
+        '<caption class="ss-sr-only">' in home,
+    )
+    check(
+        "full breakdown is keyboard reachable and mobile contained",
+        'class="ss-breakdown-scroll"' in ui
+        and 'tabindex="0"' in ui
+        and "overflow-wrap:anywhere" in ui,
+    )
+    check(
+        "create-account intent survives auth reruns",
+        'key="auth_mode"' in auth
+        and 'st.session_state["auth_mode"]' in auth,
+    )
+    check(
+        "navigation retains hover and admin differentiation",
+        "background:rgba(56,189,248,.07)!important" in nav
+        and "border:1px solid rgba(148,163,184,.24)!important" in nav,
+    )
+    check(
+        "portable tokens include product semantics",
+        all(token in tokens for token in (
+            "--ss-color-sentiment-bullish",
+            "--ss-color-recommendation-watch",
+            "--ss-color-recommendation-avoid",
+        )),
+    )
+
+    print("\n" + "=" * 72)
+    print(f"  {len(PASSED)} passed, {len(FAILED)} failed")
+    for name, detail in FAILED:
+        print(f"    - {name}: {detail}")
+    print("=" * 72)
+    return 1 if FAILED else 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

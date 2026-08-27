@@ -28,7 +28,6 @@ _da_logger = logging.getLogger(__name__)
 from utils.navigation import render_sidebar_navigation, render_top_nav
 from utils.ui import (close_page, render_recommendation_panel,
                       render_full_analysis_expander, render_evidence_check)
-import streamlit.components.v1 as _components
 # NOT the pipeline. This page charges a credit, draws a progress bar and
 # renders a card; the analysis itself lives in core-api and is reached over
 # HTTPS. utils.analyze is deliberately absent from these imports -- the day it
@@ -450,17 +449,36 @@ if _run_clicked or (_autorun and _prefill):
             # one figure a reader takes as sample size, off by ~18x. Both come
             # from the card, so this page and Discovery cannot disagree about
             # which of them is being shown.
-            _shown_mentions = (_evidence.get("independent_voices")
-                               if _evidence.get("independent_voices") is not None
-                               else _evidence.get("mentions") or 0)
+            _independent_voices = _evidence.get("independent_voices")
+            _raw_mentions = _evidence.get("mentions")
+            if _independent_voices is not None:
+                _shown_mentions = int(_independent_voices or 0)
+                _cluster_suffix = "s" if _shown_mentions != 1 else ""
+                _evidence_label = (
+                    f"{_shown_mentions} independent evidence "
+                    f"cluster{_cluster_suffix}"
+                )
+            elif _raw_mentions is not None:
+                _shown_mentions = int(_raw_mentions or 0)
+                _post_suffix = "s" if _shown_mentions != 1 else ""
+                _evidence_label = (
+                    f"{_shown_mentions} post{_post_suffix} analyzed"
+                )
+            else:
+                _shown_mentions = 0
+                _evidence_label = "Evidence count unavailable"
+            _horizon_days = int(_movement.get("horizon_days") or 0)
+            _day_suffix = "s" if _horizon_days != 1 else ""
+            _horizon_label = (
+                f"{_horizon_days} trading day{_day_suffix}"
+                if _horizon_days else "Short-term horizon"
+            )
 
-            # Anchor + auto-scroll so panel comes into view immediately
+            # Semantic result anchor. The current adapter does not inject
+            # parent-frame scrolling JavaScript; future hosts can route/focus
+            # this product state using their native navigation primitives.
             import streamlit as _st
             _st.markdown('<div id="da-results-anchor"></div>', unsafe_allow_html=True)
-            _components.html(
-                '<script>setTimeout(()=>{ const el = window.parent.document.getElementById("da-results-anchor"); if(el) el.scrollIntoView({behavior:"smooth",block:"start"}); }, 200);</script>',
-                height=0,
-            )
 
             render_recommendation_panel(
                 ticker=_run_ticker,
@@ -471,6 +489,9 @@ if _run_clicked or (_autorun and _prefill):
                 drawdown_first=drawdown_first,
                 mentions=_shown_mentions,
                 price_points=price_points,
+                evidence_label=_evidence_label,
+                horizon=_horizon_label,
+                freshness="Analysis generated now",
             )
 
             # The recommendation panel IS the product. Once it has rendered the user

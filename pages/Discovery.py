@@ -11,9 +11,14 @@ import pandas as pd
 import logging
 
 from utils.navigation import render_sidebar_navigation, render_top_nav
-from utils.ui import apply_theme, close_page, render_evidence_check
+from utils.ui import (
+    apply_theme,
+    close_page,
+    render_evidence_check,
+    render_full_analysis_expander,
+    render_recommendation_panel,
+)
 from utils.finance import get_last_close_prices_best_effort
-from utils.deep_analysis import ANALYSIS_PROMPTS
 # NOT the scan. Pagination, ticker validation, sentiment attribution and the
 # effectiveness telemetry all moved to utils/scan.py; the seven imports that
 # used to sit here were what made this page the only thing able to run one.
@@ -1085,264 +1090,84 @@ if ADMIN_MODE:
             st.caption("Run Deep Analyze to enable saving deep snapshot.")
 
 def _render_deep_panel(ticker, sector, deep_results):
-    """Render the deep analysis panel inline below a ticker row.
-
-    Adjudicates from the SAME evidence ledger as pages/Deep_Analysis.py. This
-    path used to run generate_ai_summary instead, so clicking Deep Analyze on a
-    scan row and typing the same ticker on the other page produced two
-    different products at one credit price -- and only the typed path ever
-    reached verdict_log, making that table a biased sample of one entry route.
-    """
-    # READ, do not recompute. Everything below this line used to be re-derived
-    # from the session-state corpus on every rerun -- roughly 90 posts rescored,
-    # a price call, a benchmark call, a fresh adjudication and a fresh Monte
-    # Carlo, each time the user changed a sector or clicked a download button.
-    # The analysis is now computed once, by the same function the other page
-    # calls, and carried in session state.
-    # THE CARD, computed by core-api and carried in session state. This panel
-    # used to re-derive the whole analysis from the corpus on every rerun, then
-    # (briefly) read an in-process Analysis object. Both are gone: the same
-    # service answers this button and the Deep Analysis page, so one credit
-    # buys one product regardless of which one the user pressed.
-    _card = st.session_state.get("deep_analysis_card") or {}
-    if not _card:
-        st.info("This analysis is from an earlier session. Run Deep Analyze "
-                "again to see it.")
+    """Render the same paid analysis summary used by the dedicated route."""
+    card = st.session_state.get("deep_analysis_card") or {}
+    if not card:
+        st.info(
+            "This analysis is from an earlier session. Run Deep Analyze "
+            "again to see it."
+        )
         return
 
-    def _esc(value) -> str:
-        """Render service/social text literally inside developer-authored HTML."""
-        return html.escape(str(value), quote=True)
-
-    _evidence = _card.get("evidence") or {}
-    # NOTE: the card carries a `movement` block (targets, band, horizon) and
-    # this page draws none of it, while pages/Deep_Analysis.py renders a full
-    # Movement Profile table from the same card for the same credit. Not read
-    # here on purpose -- adding the table is a product decision, not cleanup --
-    # but the asymmetry is real and is recorded here rather than left implicit.
-    _pts = _evidence.get("price_points") or 0
-
-    _price = _proj = _hold = "Unavailable"
-    for _t in (_card.get("tiles") or []):
-        if _t.get("key") == "last_price":
-            _price = _t.get("value", "Unavailable")
-        elif _t.get("key") == "range_30d":
-            _proj = _t.get("value", "Unavailable")
-        elif _t.get("key") == "drawdown_first":
-            _hold = _t.get("value", "Unavailable")
-
-    # THE NUMBER THAT DECIDED THE CALL, matching pages/Deep_Analysis.py. This
-    # page printed the corpus union -- ~90 of 98 posts -- beside a verdict
-    # resting on 5 independent voices, while the other page printed the 5.
-    _ev_ct = _evidence.get("independent_voices")
-    _mentions_ct = _ev_ct if _ev_ct is not None else (_evidence.get("mentions") or 0)
-
-    _rec = str(_card.get("verdict") or "—")
-    _conf = str(_card.get("confidence") or "—")
-    # None means the fallback reported no score. Rendering it as +0.00 states
-    # "Neutral" as a finding, which is what card() now refuses to do for us.
-    _avg_raw = _card.get("avg_sentiment")
-    _has_sent = _avg_raw is not None
-    _avg_sent = float(_avg_raw) if _has_sent else 0.0
-    if "buy" in _rec.lower():
-        _rec_color = "rgba(56,189,248,.95)"
-        _rec_border_color = "rgba(56,189,248,.28)"
-    elif "avoid" in _rec.lower():
-        _rec_color = "rgba(239,68,68,.90)"
-        _rec_border_color = "rgba(239,68,68,.25)"
+    evidence = card.get("evidence") or {}
+    movement = card.get("movement") or {}
+    price_points = int(evidence.get("price_points") or 0)
+    independent_voices = evidence.get("independent_voices")
+    raw_mentions = evidence.get("mentions")
+    if independent_voices is not None:
+        voice_count = int(independent_voices or 0)
+        cluster_suffix = "s" if voice_count != 1 else ""
+        evidence_label = (
+            f"{voice_count} independent evidence cluster{cluster_suffix}"
+        )
+    elif raw_mentions is not None:
+        voice_count = int(raw_mentions or 0)
+        post_suffix = "s" if voice_count != 1 else ""
+        evidence_label = (
+            f"{voice_count} post{post_suffix} analyzed"
+        )
     else:
-        _rec_color = "rgba(245,158,11,.90)"
-        _rec_border_color = "rgba(245,158,11,.25)"
-    _conf_color = "rgba(56,189,248,.90)" if _conf.lower()=="high" else "rgba(245,158,11,.90)" if _conf.lower()=="moderate" else "rgba(148,163,184,.80)"
-    _sent_color = "rgba(56,189,248,.95)" if _avg_sent>=0.10 else "rgba(239,68,68,.88)" if _avg_sent<=-0.10 else "rgba(148,163,184,.85)"
-    # ONE WORD: the mood tile renders _sent_lbl.split(" ")[0].
-    _sent_lbl = ("Unscored" if not _has_sent else
-                 f"Bullish ({_avg_sent:+.2f})" if _avg_sent>=0.10 else
-                 f"Bearish ({_avg_sent:+.2f})" if _avg_sent<=-0.10 else
-                 f"Neutral ({_avg_sent:+.2f})")
-    _sent_score_txt = f"Score {_avg_sent:+.3f}" if _has_sent else "No score"
-    _sector_lbl = (" · " + _esc(sector.title())) if sector and sector.lower() not in ("unknown", "") else ""
-    # From the card, not from a fourth copy of these dictionaries. The previous
-    # copy was "kept verbatim in step" by hand with two other copies, which is
-    # the arrangement that let one page say "Proj. Gain 30d" for months after
-    # the other retired the phrase.
-    _rec_sub = _card.get("headline", "")
-    _conf_sub = _card.get("confidence_note", "")
-    _bar_pct = min(100, int(abs(_avg_sent)*250 + {"high":30,"moderate":15,"low":0}.get(_conf.lower(),0)))
-    _conf_bar = {"high":90,"moderate":55,"low":25}.get(_conf.lower(),30)
+        voice_count = 0
+        evidence_label = "Evidence count unavailable"
 
-    def _bar(pct, color):
-        return f'<div style="width:100%;height:4px;background:rgba(148,163,184,.12);border-radius:999px;margin-top:6px;"><div style="width:{pct}%;height:4px;background:{color};border-radius:999px;"></div></div>'
+    current_price = projected_range = drawdown_first = "Unavailable"
+    for tile in card.get("tiles") or []:
+        if tile.get("key") == "last_price":
+            current_price = tile.get("value", "Unavailable")
+        elif tile.get("key") == "range_30d":
+            projected_range = tile.get("value", "Unavailable")
+        elif tile.get("key") == "drawdown_first":
+            drawdown_first = tile.get("value", "Unavailable")
 
-    _mc = "border-radius:12px;padding:14px 16px 12px 16px;background:rgba(15,23,42,.75);flex:1;min-width:0;display:flex;flex-direction:column;gap:4px;"
-    _rationale_html = "".join(
-        f'<li style="margin-bottom:5px;color:rgba(229,231,235,.85);font-size:0.88rem;line-height:1.45;">{_esc(b)}</li>'
-        for b in _card.get("rationale", [])
+    horizon_days = int(movement.get("horizon_days") or 0)
+    day_suffix = "s" if horizon_days != 1 else ""
+    horizon_label = (
+        f"{horizon_days} trading day{day_suffix}"
+        if horizon_days else "Short-term horizon"
+    )
+    ai_summary = {
+        "recommendation": card.get("verdict") or "—",
+        "confidence": card.get("confidence") or "—",
+        "avg_sentiment": card.get("avg_sentiment"),
+        "rationale": card.get("rationale") or [],
+    }
+
+    render_recommendation_panel(
+        ticker=ticker,
+        sector=sector,
+        ai_summary=ai_summary,
+        current_price=current_price,
+        projected_gain=projected_range,
+        drawdown_first=drawdown_first,
+        mentions=voice_count,
+        price_points=price_points,
+        horizon=horizon_label,
+        freshness="Analysis generated now",
+        evidence_label=evidence_label,
+    )
+    render_full_analysis_expander(
+        deep_results or {},
+        key_suffix=f"_discovery_{ticker}",
     )
 
-    _fc = "border-radius:10px;padding:10px 14px;background:rgba(15,23,42,.55);border:1px solid rgba(148,163,184,.12);flex:1;"
-    _fl = "font-size:0.68rem;font-weight:700;letter-spacing:0.05em;text-transform:uppercase;color:rgba(148,163,184,.55);margin-bottom:3px;"
-    _fv = "font-size:1.00rem;font-weight:800;color:rgba(248,250,252,.92);"
-    # Labels kept in step with utils.ui.render_recommendation_panel, which this
-    # markup duplicates. They had drifted: "Proj. Gain 30d" and "Hold Period"
-    # were retired there for promising a forecast the band does not make, and
-    # survived here -- so the same volatility range was captioned as a projected
-    # gain on one page and as a range on the other.
-    _price_row = f'<div class="ss-analysis-price" style="display:flex;gap:8px;margin-bottom:14px;flex-wrap:nowrap;"><div style="{_fc}"><div style="{_fl}">Last Price</div><div style="{_fv}">{_esc(_price)}</div></div><div style="{_fc}"><div style="{_fl}">30d range (vol)</div><div style="{_fv}">{_esc(_proj)}</div></div><div style="{_fc}"><div style="{_fl}">Drawdown first</div><div style="{_fv}">{_esc(_hold)}</div></div></div>' if _price != "Unavailable" or _proj != "Unavailable" or _hold != "Unavailable" else ""
-
-    _tilt_color = {"Bullish":"rgba(56,189,248,.95)","Bearish":"rgba(239,68,68,.90)","Neutral":"rgba(148,163,184,.80)"}
-
-    # ── Coverage summary table (all signals at a glance) ──
-    _cov_rows = ""
-    for _pn, _res in (deep_results or {}).items():
-        _tf = (ANALYSIS_PROMPTS.get(_pn,{}) or {}).get("timeframe","")
-        _ev = int(_res.get("mention_count",0) or 0)
-        _ov = (_res.get("overall_sentiment") or "").lower()
-        _st2 = "Unavailable" if _ov=="error" else ("No Signal" if _ev==0 else ("Strong" if _ev>5 else "Weak"))
-        _tl = "Unavailable" if _ov=="error" else ("Neutral" if _ev==0 else _ov.title())
-        _tc = _tilt_color.get(_tl,"rgba(148,163,184,.80)")
-        _cov_rows += (
-            f'<tr style="border-bottom:1px solid rgba(148,163,184,.10);">'
-            f'<td style="padding:9px 10px;color:rgba(229,231,235,.90);font-size:0.80rem;">{_esc(_pn)}</td>'
-            f'<td style="padding:9px 10px;color:rgba(148,163,184,.70);font-size:0.80rem;">{_esc(_tf)}</td>'
-            f'<td style="padding:9px 10px;text-align:center;color:rgba(148,163,184,.80);font-size:0.80rem;">{_ev}</td>'
-            f'<td style="padding:9px 10px;color:rgba(148,163,184,.80);font-size:0.80rem;">{_esc(_st2)}</td>'
-            f'<td style="padding:9px 10px;font-size:0.80rem;font-weight:700;color:{_tc};">{_esc(_tl)}</td>'
-            f'</tr>'
-        )
-    _cov_table = (
-        f'<table class="ss-analysis-table" style="width:100%;border-collapse:collapse;background:rgba(15,23,42,.60);border-radius:10px;overflow:hidden;margin-bottom:16px;">'
-        f'<thead><tr style="border-bottom:1px solid rgba(148,163,184,.20);">'
-        + "".join(f'<th style="padding:8px 10px;text-align:{"center" if h=="Evidence" else "left"};font-size:0.68rem;font-weight:700;letter-spacing:0.05em;text-transform:uppercase;color:rgba(148,163,184,.55);">{h}</th>' for h in ["Signal Type","Timeframe","Evidence","Strength","Tilt"])
-        + f'</tr></thead><tbody>{_cov_rows}</tbody></table>'
-    ) if _cov_rows else ""
-
-    # ── Detailed per-signal breakdown ──
-    _detail_sections = ""
-    for _pn, _res in (deep_results or {}).items():
-        _tf  = (ANALYSIS_PROMPTS.get(_pn,{}) or {}).get("timeframe","")
-        _ev  = int(_res.get("mention_count",0) or 0)
-        _ov  = (_res.get("overall_sentiment") or "neutral").lower()
-        _sc  = _res.get("sentiment_score", 0.0)
-        _ins = _res.get("insights") or ""
-        _themes = _res.get("key_themes") or []
-        _samples = _res.get("sample_tweets") or []
-        _tl = ("Neutral" if _ev==0 else _ov.title())
-        _tc = _tilt_color.get(_tl, "rgba(148,163,184,.80)")
-
-        _metrics = (
-            f'<div class="ss-analysis-detail-metrics" style="display:flex;gap:8px;margin:8px 0 6px 0;">'
-            f'<div style="flex:1;background:rgba(15,23,42,.55);border-radius:8px;padding:8px 10px;border:1px solid rgba(148,163,184,.10);">'
-            f'<div style="font-size:0.65rem;color:rgba(148,163,184,.55);text-transform:uppercase;letter-spacing:0.05em;">Sentiment Score</div>'
-            f'<div style="font-size:0.92rem;font-weight:700;color:rgba(248,250,252,.90);">{float(_sc):.3f}</div></div>'
-            f'<div style="flex:1;background:rgba(15,23,42,.55);border-radius:8px;padding:8px 10px;border:1px solid rgba(148,163,184,.10);">'
-            f'<div style="font-size:0.65rem;color:rgba(148,163,184,.55);text-transform:uppercase;letter-spacing:0.05em;">Overall</div>'
-            f'<div style="font-size:0.92rem;font-weight:700;color:{_tc};">{_esc(_tl)}</div></div>'
-            f'<div style="flex:1;background:rgba(15,23,42,.55);border-radius:8px;padding:8px 10px;border:1px solid rgba(148,163,184,.10);">'
-            f'<div style="font-size:0.65rem;color:rgba(148,163,184,.55);text-transform:uppercase;letter-spacing:0.05em;">Mentions</div>'
-            f'<div style="font-size:0.92rem;font-weight:700;color:rgba(248,250,252,.90);">{_ev}</div></div>'
-            f'</div>'
-        )
-
-        _themes_html = ""
-        if _themes:
-            _chips = "".join(f'<span style="display:inline-block;background:rgba(56,189,248,.10);border:1px solid rgba(56,189,248,.20);border-radius:999px;padding:2px 9px;font-size:0.70rem;color:rgba(148,163,184,.85);margin:2px 3px 2px 0;">{_esc(t)}</span>' for t in _themes)
-            _themes_html = f'<div style="margin:6px 0 8px 0;"><span style="font-size:0.72rem;font-weight:700;color:rgba(148,163,184,.55);text-transform:uppercase;letter-spacing:0.05em;">Themes: </span>{_chips}</div>'
-
-        _tweets_html = ""
-        if _samples:
-            _tweet_items = "".join(f'<div style="border-left:2px solid rgba(56,189,248,.25);padding:5px 10px;margin-bottom:6px;color:rgba(229,231,235,.75);font-size:0.78rem;line-height:1.45;font-style:italic;">{i}. {_esc(t)}</div>' for i, t in enumerate(_samples, 1))
-            _tweets_html = f'<div style="margin-top:6px;"><div style="font-size:0.72rem;font-weight:700;color:rgba(148,163,184,.55);text-transform:uppercase;letter-spacing:0.05em;margin-bottom:6px;">Sample posts:</div>{_tweet_items}</div>'
-
-        _insights_html = f'<div style="font-size:0.78rem;color:rgba(148,163,184,.65);margin-bottom:4px;"><b>Insights:</b> {_esc(_ins)}</div>' if _ins else ""
-        _detail_sections += (
-            f'<div style="border-top:1px solid rgba(148,163,184,.10);padding:12px 0;">'
-            f'<div style="display:flex;justify-content:space-between;align-items:center;">'
-            f'<span style="font-size:0.84rem;font-weight:700;color:rgba(229,231,235,.90);">{_esc(_pn)}</span>'
-            f'<span style="font-size:0.72rem;color:rgba(148,163,184,.55);">{_esc(_tf)}</span>'
-            f'</div>'
-            f'{_metrics}'
-            f'{_insights_html}'
-            f'{_themes_html}'
-            f'{_tweets_html}'
-            f'</div>'
-        )
-
-    _panel_html = f"""<style>
-      @media (max-width: 700px) {{
-        .ss-analysis-header, .ss-analysis-summary,
-        .ss-analysis-price, .ss-analysis-detail-metrics {{ flex-wrap:wrap !important; }}
-        .ss-analysis-summary > div, .ss-analysis-price > div,
-        .ss-analysis-detail-metrics > div {{ min-width:140px !important; }}
-        .ss-analysis-table {{ display:block;overflow-x:auto !important; }}
-      }}
-    </style><div style="
-      width:100%;box-sizing:border-box;
-      background:rgba(2,6,23,0.97);
-      border:1px solid rgba(56,189,248,.25);
-      border-radius:16px;
-      box-shadow:0 8px 40px rgba(0,0,0,.55);
-      overflow:hidden;
-      font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;
-    ">
-      <div class="ss-analysis-header" style="padding:16px 20px 12px 20px;border-bottom:1px solid rgba(56,189,248,.15);background:linear-gradient(180deg,rgba(56,189,248,.07),rgba(2,6,23,0));display:flex;align-items:center;justify-content:space-between;gap:12px;">
-        <div>
-          <div style="font-size:0.68rem;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:rgba(56,189,248,.75);">Deep Analysis{_sector_lbl}</div>
-          <div style="font-size:1.40rem;font-weight:850;letter-spacing:-0.02em;color:rgba(248,250,252,.98);">{_esc(ticker)}</div>
-        </div>
-        <div style="text-align:right;">
-          <div style="font-size:0.68rem;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:rgba(148,163,184,.50);">Signal</div>
-          <div style="font-size:1.25rem;font-weight:850;color:{_rec_color};">{_esc(_rec)}</div>
-          <div style="font-size:0.72rem;color:rgba(148,163,184,.60);">Confidence: {_esc(_conf)}</div>
-        </div>
-      </div>
-      <div style="padding:16px 20px 20px 20px;">
-        <div class="ss-analysis-summary" style="display:flex;gap:8px;margin-bottom:14px;">
-          <div style="{_mc}border:1px solid {_rec_border_color};"><div style="font-size:0.68rem;font-weight:700;letter-spacing:0.06em;text-transform:uppercase;color:rgba(148,163,184,.55);">Recommendation</div><div style="font-size:1.05rem;font-weight:850;color:{_rec_color};">{_esc(_rec)}</div><div style="font-size:0.72rem;color:rgba(148,163,184,.55);">{_esc(_rec_sub)}</div>{_bar(_bar_pct,_rec_color)}</div>
-          <div style="{_mc}border:1px solid rgba(148,163,184,.15);"><div style="font-size:0.68rem;font-weight:700;letter-spacing:0.06em;text-transform:uppercase;color:rgba(148,163,184,.55);">Confidence</div><div style="font-size:1.05rem;font-weight:850;color:{_conf_color};">{_esc(_conf)}</div><div style="font-size:0.72rem;color:rgba(148,163,184,.55);">{_esc(_conf_sub)}</div>{_bar(_conf_bar,_conf_color)}</div>
-          <div style="{_mc}border:1px solid rgba(148,163,184,.15);"><div style="font-size:0.68rem;font-weight:700;letter-spacing:0.06em;text-transform:uppercase;color:rgba(148,163,184,.55);">Market Mood</div><div style="font-size:1.05rem;font-weight:850;color:{_sent_color};">{_esc(_sent_lbl.split(" ")[0])}</div><div style="font-size:0.72rem;color:rgba(148,163,184,.55);">{_esc(_sent_score_txt)}</div>{_bar(min(100,int(abs(_avg_sent)*280)),_sent_color)}</div>
-        </div>
-        {_price_row}
-        <div style="color:rgba(148,163,184,.45);font-size:0.72rem;margin-bottom:14px;">{_esc(_mentions_ct)} posts analysed · {_esc(_pts)} price points</div>
-        <div style="font-size:0.78rem;font-weight:700;color:rgba(148,163,184,.60);letter-spacing:0.05em;text-transform:uppercase;margin-bottom:8px;">Why this signal</div>
-        <ul style="margin:0 0 18px 16px;padding:0;">{_rationale_html}</ul>
-        <details style="margin-top:4px;">
-          <summary style="cursor:pointer;font-size:0.80rem;font-weight:700;color:rgba(148,163,184,.60);letter-spacing:0.05em;text-transform:uppercase;padding:10px 0;list-style:none;display:flex;align-items:center;gap:8px;">
-            <span style="color:rgba(56,189,248,.70);">▶</span> Full breakdown
-          </summary>
-          <div style="margin-top:8px;">
-            {_cov_table}
-            <div style="font-size:0.78rem;font-weight:700;color:rgba(148,163,184,.60);letter-spacing:0.05em;text-transform:uppercase;margin-bottom:4px;">Detailed breakdown</div>
-            {_detail_sections}
-          </div>
-        </details>
-      </div>
-    </div>"""
-
-    # Render in the page DOM so the result has one scrollbar, responds to the
-    # viewport, and remains reachable by the accessible anchor above it.
-    st.html(_panel_html)
-
-    # The pillar readout, and the verdict record. This path previously wrote
-    # NEITHER: a scan-row Deep Analyze produced no evidence check and no
-    # verdict_log row, so the table built to measure this product only ever saw
-    # users who typed the ticker on the other page.
-    if _card.get("pillars"):
+    if card.get("pillars"):
         try:
-            # THE CARD, not the Verdict: one renderer, and the remote path
-            # has no Verdict object to hand it.
-            render_evidence_check(_card, ticker)
+            render_evidence_check(card, ticker)
         except Exception:
-            logger.warning("discovery: evidence check render failed", exc_info=True)
-
-    # NO WRITE HERE. core-api persisted both rows before it answered, under
-    # feature="discovery" and route="discovery" -- the tags this page used to
-    # apply itself, passed on the request so the cohort is unchanged.
-    #
-    # The rerun guard that used to live here is unnecessary as a result: this
-    # function runs on every rerun that re-selects the row, but it no longer
-    # writes anything, so a sector change or a download click cannot append a
-    # duplicate. One request, one write, decided by the service.
+            logger.warning(
+                "discovery: evidence check render failed",
+                exc_info=True,
+            )
 
 
 # ── Results table ──

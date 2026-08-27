@@ -45,7 +45,7 @@ def main() -> int:
     check("a delivered analysis becomes a nonpaying result link",
           "scan-view-result" in discovery and 'href="#selected-analysis"' in discovery)
     check("analysis renders in the page rather than a scrolling iframe",
-          "st.html(_panel_html)" in discovery and
+          "render_recommendation_panel(" in discovery and
           "components.html(_panel_html" not in discovery)
 
     check("asserted scan sentiment enforces the evidence floor",

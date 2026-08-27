@@ -392,7 +392,18 @@ st.markdown('<div class="auth-form-container">', unsafe_allow_html=True)
 st.markdown('<div style="margin: 0.5rem 0;"></div>', unsafe_allow_html=True)
 col1, col2, col3 = st.columns([1, 2, 1])
 with col2:
-    mode = st.radio("Auth Mode", ["Sign In", "Create Account"], horizontal=True, label_visibility="collapsed")
+    _requested_mode = st.session_state.pop("auth_initial_mode", None)
+    if _requested_mode in {"Sign In", "Create Account"}:
+        st.session_state["auth_mode"] = _requested_mode
+    elif st.session_state.get("auth_mode") not in {"Sign In", "Create Account"}:
+        st.session_state["auth_mode"] = "Sign In"
+    mode = st.radio(
+        "Auth Mode",
+        ["Sign In", "Create Account"],
+        horizontal=True,
+        label_visibility="collapsed",
+        key="auth_mode",
+    )
 st.markdown("<div style=\'margin-top: -1.2rem;\'></div>", unsafe_allow_html=True)
 
 import streamlit.components.v1 as components

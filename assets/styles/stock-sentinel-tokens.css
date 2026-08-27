@@ -18,6 +18,14 @@
   --ss-color-caution: #f59e0b;
   --ss-color-focus: rgba(56, 189, 248, 0.8);
 
+  /* Product semantics, intentionally separate from framework widget states. */
+  --ss-color-sentiment-bullish: #7dd3fc;
+  --ss-color-sentiment-bearish: #fca5a5;
+  --ss-color-sentiment-neutral: #cbd5e1;
+  --ss-color-recommendation-buy: #38bdf8;
+  --ss-color-recommendation-watch: #f59e0b;
+  --ss-color-recommendation-avoid: #f87171;
+
   --ss-radius-control: 10px;
   --ss-radius-panel: 16px;
   --ss-control-min-height: 44px;

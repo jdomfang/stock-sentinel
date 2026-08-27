@@ -49,6 +49,23 @@ Suggested future component mapping:
 | Selected analysis | semantic in-page section | `AnalysisSummary` |
 | Credit context | billing presentation helper | `CreditBalance` + `PurchaseReview` |
 
+## Release delivery map
+
+- **Release A — Core repair:** stable app shell, portable tokens, compact scan
+  results, correct sentiment/recommendation taxonomy, paid-action disclosure,
+  responsive result states, and removal of brittle DOM mutation workarounds.
+- **Release B — Landing and decision clarity:** restrained navigation and hero
+  proportions, equal-priority Scan/Analyze entry points, a five-row
+  representative product walkthrough, no disabled demo actions, and one
+  self-contained analysis summary with recommendation, confidence, horizon,
+  evidence, freshness, source context, and top reasons. Decorative
+  probability-like bars are removed. The summary fields are the portable
+  component contract; Streamlit remains only the current adapter.
+- **Later releases:** authentication and purchase-review polish, trust/legal
+  surfaces, and incremental route-level frontend migration. These remain
+  separate from backend, authentication, credit, payment, database, and API
+  behavior.
+
 ## Ranked improvements
 
 | Rank | Improvement | Phase | Impact | Effort | Risk | Priority |

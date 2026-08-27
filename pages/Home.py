@@ -1,9 +1,9 @@
+import html
 import json
 from pathlib import Path
 
 import pandas as pd
 import streamlit as st
-import streamlit.components.v1 as components
 
 # PROJECT ROOT ON sys.path, BEFORE THE FIRST `utils` IMPORT.
 #
@@ -35,19 +35,6 @@ from utils.deep_analysis import generate_ai_summary
 _ASSERTED = {"bullish", "bearish", "neutral"}
 
 
-def _sentiment_pill(label: str) -> str:
-    label = (label or "").strip()
-    low = label.lower()
-    if low == "bullish":
-        return '<span style="background:rgba(56,189,248,.18);color:rgba(56,189,248,.98);border:1px solid rgba(56,189,248,.35);padding:3px 10px;border-radius:999px;font-size:0.83rem;font-weight:700;">Bullish</span>'
-    if low == "bearish":
-        return '<span style="background:rgba(239,68,68,.15);color:rgba(248,113,113,.98);border:1px solid rgba(239,68,68,.30);padding:3px 10px;border-radius:999px;font-size:0.83rem;font-weight:700;">Bearish</span>'
-    if low in _ASSERTED:
-        return f'<span style="background:rgba(148,163,184,.12);color:rgba(148,163,184,.92);border:1px solid rgba(148,163,184,.25);padding:3px 10px;border-radius:999px;font-size:0.83rem;font-weight:700;">{label or "Neutral"}</span>'
-    return (f'<span style="color:rgba(148,163,184,.62);font-size:0.78rem;'
-            f'font-style:italic;">{label or "Neutral"}</span>')
-
-
 def _load_demo_scan() -> pd.DataFrame:
     """Load the saved Scan demo.
 
@@ -75,10 +62,15 @@ def _load_demo_scan() -> pd.DataFrame:
         return pd.DataFrame()
 
     rows = payload.get("validated_rows", []) or []
-    return pd.DataFrame(rows) if rows else pd.DataFrame()
+    frame = pd.DataFrame(rows) if rows else pd.DataFrame()
+    frame.attrs["sector"] = payload.get("sector", "") or ""
+    frame.attrs["generated_at"] = payload.get("generated_at", "") or ""
+    return frame
 
 
-def _load_demo_deep() -> tuple[str, str, dict]:
+def _load_demo_deep(
+    preferred_tickers: set[str] | None = None,
+) -> tuple[str, str, dict]:
     """Load a saved Deep Analyze demo payload (no API calls).
 
     Priority:
@@ -91,23 +83,60 @@ def _load_demo_deep() -> tuple[str, str, dict]:
         root / "data" / "demo" / "deep_NVDA_tech.json",
     ]
 
-    payload = None
     for p in candidates:
         if not p.exists():
             continue
         try:
             payload = json.loads(p.read_text(encoding="utf-8"))
-            break
         except Exception:
-            payload = None
+            continue
+        ticker = str(payload.get("ticker", "") or "").strip().upper()
+        if preferred_tickers and ticker not in preferred_tickers:
+            continue
+        sector = payload.get("sector", "") or ""
+        results = payload.get("analysis_results", {}) or {}
+        if ticker and results:
+            return ticker, sector, results
+    return "", "", {}
 
-    if not payload:
-        return "", "", {}
 
-    ticker = payload.get("ticker", "") or ""
-    sector = payload.get("sector", "") or ""
-    results = payload.get("analysis_results", {}) or {}
-    return ticker, sector, results
+def _select_demo_rows(
+    frame: pd.DataFrame,
+    limit: int = 5,
+    selected_ticker: str = "",
+) -> list[dict]:
+    """Return a small representative preview without changing scan ranking.
+
+    The landing page demonstrates the three Market Scan sentiment states; it
+    is not a second results page. Rows retain their source order after we make
+    sure the available Bullish, Bearish, and Neutral examples are represented.
+    """
+    if frame.empty or limit <= 0:
+        return []
+
+    records = [
+        row for row in frame.to_dict("records")
+        if str(row.get("Overall Sentiment", "")).strip().lower() in _ASSERTED
+    ]
+    if not records:
+        return []
+    chosen: set[int] = set()
+    selected_ticker = str(selected_ticker or "").strip().upper()
+    if selected_ticker:
+        for index, row in enumerate(records):
+            if str(row.get("Ticker", "")).strip().upper() == selected_ticker:
+                chosen.add(index)
+                break
+    for sentiment in ("bullish", "bearish", "neutral"):
+        for index, row in enumerate(records):
+            if str(row.get("Overall Sentiment", "")).strip().lower() == sentiment:
+                chosen.add(index)
+                break
+    for index in range(len(records)):
+        if len(chosen) >= limit:
+            break
+        chosen.add(index)
+    return [records[index] for index in sorted(chosen)[:limit]]
 
 
 st.set_page_config(
@@ -199,21 +228,6 @@ st.markdown(
       font-size: 0.94rem;
       line-height: 1.45;
       margin: 0;
-    }
-
-    /* Demo table tweaks */
-    .demo-note {
-      color: rgba(229,231,235,.70);
-      font-size: 0.92rem;
-      margin-top: -11px;
-      margin-bottom: 3px;
-    }
-    .ticker-row {
-      border: 1px solid rgba(148,163,184,0.14);
-      border-radius: 14px;
-      padding: 10px 10px;
-      margin: 10px 0;
-      background: rgba(2,6,23,.22);
     }
 
     /* Titles */
@@ -427,7 +441,7 @@ st.markdown(
     .st-key-home_card_scan [data-baseweb="select"] > div,
     .st-key-home_card_analyze [data-baseweb="input"] > div {
       border-radius: 12px !important;
-      min-height: 38px !important;
+      min-height: 44px !important;
       padding-left: 11px !important;
       padding-right: 11px !important;
       box-shadow: inset 0 1px 0 rgba(255,255,255,.02) !important;
@@ -480,13 +494,13 @@ st.markdown(
       font-weight: 650 !important;
       padding: 0.25rem 0.65rem !important;
       font-size: 0.85rem !important;
-      min-height: 34px !important;
+      min-height: 44px !important;
     }
 
     .st-key-home_card_scan .stButton > button,
     .st-key-home_card_analyze .stButton > button {
       border-radius: 12px !important;
-      min-height: 38px !important;
+      min-height: 44px !important;
       padding: 0.22rem 0.62rem !important;
       font-size: 0.81rem !important;
       max-width: 100% !important;
@@ -503,18 +517,14 @@ st.markdown(
 
     /* Allow our wrapped sections to reflow instead of cramming columns */
     .how-grid [data-testid="stHorizontalBlock"],
-    .cap-grid [data-testid="stHorizontalBlock"],
-    .demo-header [data-testid="stHorizontalBlock"],
-    .ticker-row [data-testid="stHorizontalBlock"] {
+    .cap-grid [data-testid="stHorizontalBlock"] {
       flex-wrap: wrap !important;
       gap: 12px !important;
     }
 
     /* Give Streamlit columns a sane min width so they wrap to 2-up / 1-up naturally */
     .how-grid [data-testid="column"],
-    .cap-grid [data-testid="column"],
-    .demo-header [data-testid="column"],
-    .ticker-row [data-testid="column"] {
+    .cap-grid [data-testid="column"] {
       flex: 1 1 260px !important;
       min-width: 260px !important;
     }
@@ -526,9 +536,7 @@ st.markdown(
       }
 
       .how-grid [data-testid="column"],
-      .cap-grid [data-testid="column"],
-      .demo-header [data-testid="column"],
-      .ticker-row [data-testid="column"] {
+      .cap-grid [data-testid="column"] {
         flex: 1 1 100% !important;
         min-width: 100% !important;
       }
@@ -540,6 +548,90 @@ st.markdown(
         padding: 0.5rem 0.9rem !important;
         font-size: 0.95rem !important;
       }
+    }
+
+    /* Release B: compact landing narrative and product walkthrough. */
+    .hero { margin: 0 0 1.15rem !important; }
+    .hero-title {
+      font-size: clamp(2.35rem, 4.6vw, 3.25rem);
+      max-width: 820px;
+    }
+    .ss-proof-strip {
+      display:flex;flex-wrap:wrap;gap:7px;margin-bottom:13px;
+    }
+    .ss-proof-item {
+      display:inline-flex;align-items:center;min-height:30px;
+      padding:3px 10px;border:1px solid rgba(56,189,248,.18);
+      border-radius:999px;background:rgba(56,189,248,.045);
+      color:#b9c6d8;font-size:.76rem;font-weight:650;
+    }
+    .st-key-home_cap_grid [data-testid="stHorizontalBlock"] {
+      gap:14px !important;
+    }
+    .st-key-home_card_scan,
+    .st-key-home_card_analyze {
+      min-height:168px;height:auto;box-shadow:0 8px 24px rgba(0,0,0,.24);
+    }
+    .section-title { margin: 1.45rem 0 .28rem; }
+    .demo-note { margin:.05rem 0 .85rem;max-width:780px;line-height:1.5; }
+    .ss-demo-table-shell {
+      border:1px solid rgba(148,163,184,.16);border-radius:14px;
+      background:rgba(8,15,30,.72);overflow:hidden;margin:.75rem 0 .8rem;
+    }
+    .ss-demo-table-head {
+      display:flex;justify-content:space-between;gap:16px;align-items:center;
+      flex-wrap:wrap;
+      padding:12px 16px;border-bottom:1px solid rgba(148,163,184,.14);
+    }
+    .ss-demo-table-head strong {font-size:.94rem;}
+    .ss-demo-table-head span {color:#8192aa;font-size:.76rem;}
+    .ss-demo-table {width:100%;border-collapse:collapse;table-layout:fixed;}
+    .ss-demo-table th {
+      padding:9px 16px;text-align:left;color:#8192aa;font-size:.67rem;
+      font-weight:750;letter-spacing:.065em;text-transform:uppercase;
+      border-bottom:1px solid rgba(148,163,184,.12);
+    }
+    .ss-demo-table td {
+      padding:11px 16px;border-bottom:1px solid rgba(148,163,184,.09);
+      color:#dbe3ee;font-size:.86rem;line-height:1.35;vertical-align:middle;
+    }
+    .ss-demo-table tr:last-child td {border-bottom:0;}
+    .ss-demo-table tr.selected {background:rgba(56,189,248,.055);}
+    .ss-demo-table .ticker {font-weight:800;color:#f1f5f9;}
+    .ss-demo-table .company {overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+    .ss-sentiment {
+      display:inline-flex;padding:3px 8px;border-radius:999px;border:1px solid;
+      font-size:.72rem;font-weight:750;
+    }
+    .ss-sentiment.bullish {color:var(--ss-color-sentiment-bullish);border-color:rgba(56,189,248,.32);background:rgba(56,189,248,.11);}
+    .ss-sentiment.bearish {color:var(--ss-color-sentiment-bearish);border-color:rgba(248,113,113,.30);background:rgba(248,113,113,.10);}
+    .ss-sentiment.neutral {color:var(--ss-color-sentiment-neutral);border-color:rgba(148,163,184,.28);background:rgba(148,163,184,.10);}
+    .ss-demo-selected {
+      display:inline-flex;margin-left:7px;padding:2px 6px;border-radius:999px;
+      background:rgba(56,189,248,.13);color:var(--ss-color-sentiment-bullish);
+      font-size:.61rem;font-weight:750;letter-spacing:.035em;text-transform:uppercase;
+    }
+    .ss-demo-rule {
+      margin:.45rem 0 1rem;padding-left:11px;border-left:2px solid rgba(56,189,248,.46);
+      color:#94a3b8;font-size:.8rem;line-height:1.45;
+    }
+    .st-key-home_signup_cta {
+      margin:1.2rem 0 .25rem;padding:16px 18px;border:1px solid rgba(56,189,248,.20);
+      border-radius:14px;background:rgba(56,189,248,.045);
+    }
+    .ss-home-cta {margin-bottom:10px;}
+    .ss-home-cta h2 {margin:0;font-size:1.02rem;}
+    .ss-home-cta p {margin:4px 0 0;color:#94a3b8;font-size:.84rem;}
+    @media (max-width:700px) {
+      .hero-title {font-size:clamp(2rem,10vw,2.65rem);}
+      .st-key-home_cap_grid [data-testid="stHorizontalBlock"] {flex-wrap:wrap !important;}
+      .st-key-home_cap_grid [data-testid="column"] {
+        flex:1 1 100% !important;min-width:100% !important;
+      }
+      .ss-demo-table-head {display:block;}
+      .ss-demo-table-head span {display:block;margin-top:3px;}
+      .ss-demo-table th:nth-child(2),.ss-demo-table td:nth-child(2) {display:none;}
+      .ss-demo-table th,.ss-demo-table td {padding-left:11px;padding-right:11px;}
     }
     </style>
     """,
@@ -592,10 +684,10 @@ else:
     st.markdown(
         """
         <div class="hero">
-          <div style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:14px;">
-            <span style="display:inline-flex;align-items:center;gap:6px;background:rgba(56,189,248,.06);border:1px solid rgba(56,189,248,.18);border-radius:999px;padding:5px 12px;font-size:0.80rem;font-weight:600;color:rgba(229,231,235,.80);">📡 Real-time social sentiment</span>
-            <span style="display:inline-flex;align-items:center;gap:6px;background:rgba(56,189,248,.06);border:1px solid rgba(56,189,248,.18);border-radius:999px;padding:5px 12px;font-size:0.80rem;font-weight:600;color:rgba(229,231,235,.80);">🏦 Thousands of US stocks</span>
-            <span style="display:inline-flex;align-items:center;gap:6px;background:rgba(56,189,248,.06);border:1px solid rgba(56,189,248,.18);border-radius:999px;padding:5px 12px;font-size:0.80rem;font-weight:600;color:rgba(229,231,235,.80);">⚡ Signal in under 60 seconds</span>
+          <div class="ss-proof-strip" aria-label="Product capabilities">
+            <span class="ss-proof-item">Recent social sentiment</span>
+            <span class="ss-proof-item">Broad US stock coverage</span>
+            <span class="ss-proof-item">Evidence context shown</span>
           </div>
           <h1 class="hero-title">Finding short-term opportunities shouldn't feel like a full-time job.</h1>
           <div class="hero-subtitle">We turn noise into signals by analyzing social media sentiment and using market data to validate real momentum.</div>
@@ -605,7 +697,7 @@ else:
     )
 
 with st.container(key="home_cap_grid"):
-    cap1, cap_gap, cap2, _cap_spacer = st.columns([1.0, 0.045, 1.0, 0.85])
+    cap1, cap2 = st.columns(2)
 
     with cap1:
         with st.container(key="home_card_scan"):
@@ -774,68 +866,110 @@ if is_logged_in():
 else:
     # ── LOGGED-OUT: Marketing view ─────────────────────────────────────────────
 
-    # Demo scan table
-    st.markdown('<div id="demo-scan" style="margin-top:-1.12rem;"></div>', unsafe_allow_html=True)
-
-    if st.session_state.pop("_scroll_demo", False):
-        components.html(
-            """<script>
-              const el = window.parent.document.getElementById('demo-scan');
-              if (el) el.scrollIntoView({behavior: 'smooth', block: 'start'});
-            </script>""",
-            height=0,
-        )
-
     df_demo = _load_demo_scan()
-    if not df_demo.empty:
-        st.markdown('<div class="section-title">Sample scan results <span style="color: rgba(229,231,235,.65); font-weight: 700;">(demo)</span></div>', unsafe_allow_html=True)
-        st.markdown('<div class="demo-note">Shortlist for action: This table ranks candidates worth a closer look. If a ticker stands out, click Deep Analyze to see catalysts, red flags, and guidance.</div>', unsafe_allow_html=True)
-
-        st.markdown('<div class="demo-header">', unsafe_allow_html=True)
-        header_cols = st.columns([1.1, 1.8, 1.2, 1.1, 1.0])
-        for col, label in zip(header_cols, ["Ticker", "Company", "Last Close", "Overall", "Deep Analyze"]):
-            col.markdown(f"**{label}**")
-        st.markdown('</div>', unsafe_allow_html=True)
-
-        for _, row in df_demo.iterrows():
-            ticker_symbol = row.get("Ticker", "")
-            last_close = row.get("Current Price ($)", None)
+    available_demo_tickers = {
+        str(row.get("Ticker", "")).strip().upper()
+        for row in df_demo.to_dict("records")
+        if (
+            str(row.get("Ticker", "")).strip()
+            and str(row.get("Overall Sentiment", "")).strip().lower()
+            in _ASSERTED
+        )
+    }
+    demo_ticker, demo_sector, demo_results = _load_demo_deep(
+        preferred_tickers=available_demo_tickers,
+    )
+    demo_rows = _select_demo_rows(
+        df_demo,
+        selected_ticker=demo_ticker,
+    )
+    if demo_rows:
+        table_rows = []
+        for row in demo_rows:
+            raw_ticker = str(row.get("Ticker", "—"))
+            ticker_symbol = html.escape(raw_ticker)
+            company_name = html.escape(str(row.get("Company Name", "Unavailable")))
+            sentiment = str(row.get("Overall Sentiment", "Neutral")).strip().lower()
+            sentiment_label = sentiment.title()
+            is_selected = bool(
+                demo_ticker
+                and raw_ticker.strip().upper() == demo_ticker.strip().upper()
+            )
+            selected_badge = (
+                '<span class="ss-demo-selected">Selected</span>'
+                if is_selected else ""
+            )
+            row_class = ' class="selected"' if is_selected else ""
             try:
-                last_close_display = f"${float(last_close):.2f}"
+                last_close_display = f"${float(row.get('Current Price ($)')):,.2f}"
             except (TypeError, ValueError):
-                last_close_display = "N/A"
-            st.markdown("<div class='ticker-row'>", unsafe_allow_html=True)
-            col1, col2, col3, col4, col5 = st.columns([1.1, 1.8, 1.2, 1.1, 1.0])
-            with col1: st.markdown(f"**{ticker_symbol}**")
-            with col2: st.markdown(row.get("Company Name", ""))
-            with col3: st.markdown(last_close_display)
-            with col4: st.markdown(_sentiment_pill(row.get("Overall Sentiment", "")), unsafe_allow_html=True)
-            with col5: st.button("Deep Analyze", key=f"home_deep_{ticker_symbol}", disabled=True)
-            st.markdown("</div>", unsafe_allow_html=True)
+                last_close_display = "Unavailable"
+            table_rows.append(
+                f"<tr{row_class}>"
+                f'<td class="ticker">{ticker_symbol}{selected_badge}</td>'
+                f'<td class="company" title="{company_name}">{company_name}</td>'
+                f"<td>{html.escape(last_close_display)}</td>"
+                f'<td><span class="ss-sentiment {sentiment}">{html.escape(sentiment_label)}</span></td>'
+                "</tr>"
+            )
 
-    st.markdown("<div style='height: 0.45rem;'></div>", unsafe_allow_html=True)
+        st.html(
+            f"""
+            <section aria-labelledby="demo-flow-heading">
+              <h2 class="section-title" id="demo-flow-heading">See the workflow before you sign up</h2>
+              <p class="demo-note">A scan narrows the market to stocks worth investigating. Deep Analyze then evaluates one selected ticker and produces the separate action recommendation.</p>
+              <div class="ss-demo-table-shell">
+                <div class="ss-demo-table-head">
+                  <strong>Market Scan preview</strong>
+                  <span>{html.escape(str(df_demo.attrs.get("sector") or "Sample").title())} sector · {len(demo_rows)} representative stocks</span>
+                </div>
+                <table class="ss-demo-table">
+                  <caption class="ss-sr-only">Illustrative Market Scan preview; prices are not live</caption>
+                  <thead><tr><th style="width:14%">Ticker</th><th>Company</th><th style="width:19%">Last close</th><th style="width:19%">Sentiment</th></tr></thead>
+                  <tbody>{''.join(table_rows)}</tbody>
+                </table>
+              </div>
+              <p class="ss-demo-rule"><strong>Illustrative snapshot · prices are not live.</strong> Market Scan reports social sentiment only: Bullish, Bearish, or Neutral. Buy, Watch, or Avoid appears only after Deep Analyze evaluates the selected ticker.</p>
+            </section>
+            """
+        )
 
     # Demo deep analyze
-    demo_ticker, demo_sector, demo_results = _load_demo_deep()
     if demo_results:
         ai_summary = generate_ai_summary(demo_results)
-        st.markdown('<div class="section-title">Deep Analyze <span style="color:rgba(229,231,235,.65);font-weight:700;">(demo)</span></div>', unsafe_allow_html=True)
-        st.markdown(
-            '<div style="color:rgba(229,231,235,.70);font-size:0.92rem;line-height:1.42;margin:-0.4rem 0 0.6rem 0;max-width:820px;">'
-            'Deep Analyze turns the data into a clear recommendation (Buy / Watch / Avoid), confidence, and the key reasons.'
-            '</div>', unsafe_allow_html=True,
+        demo_mentions = max(
+            (int(result.get("mention_count", 0) or 0)
+             for result in demo_results.values()),
+            default=0,
         )
-        render_recommendation_panel(ticker=demo_ticker or "NVDA", sector=demo_sector or "tech", ai_summary=ai_summary)
-
-    st.markdown("<div style='height: 1.25rem;'></div>", unsafe_allow_html=True)
+        st.markdown('<h2 class="section-title">Selected example: Deep Analyze</h2>', unsafe_allow_html=True)
+        st.markdown(
+            '<p class="demo-note">This illustrative snapshot shows the decision summary a completed one-credit analysis produces.</p>',
+            unsafe_allow_html=True,
+        )
+        render_recommendation_panel(
+            ticker=demo_ticker or "NVDA",
+            sector=demo_sector or "tech",
+            ai_summary=ai_summary,
+            mentions=demo_mentions,
+            evidence_label=f"{demo_mentions} public posts" if demo_mentions else "Illustrative evidence",
+            freshness="Illustrative demo snapshot",
+        )
 
     # CTA
-    if st.button("Run your scan", type="primary", use_container_width=False):
-        st.switch_page("pages/Auth.py")
-    # True again, and only by arithmetic: a new account starts with 2 credits
-    # and a pack is 2 credits for $5. It was FALSE for the length of time the
-    # pack was going to be 10-for-$5 -- the same two free credits would have
-    # been $1 of value. Restate it in credits if the pack size ever moves.
-    st.caption("Includes 2 free credits ($5.00 value) to get started.")
+    with st.container(key="home_signup_cta"):
+        st.markdown(
+            '<div class="ss-home-cta"><h2>Ready to investigate your own ticker?</h2>'
+            '<p>Create an account, receive two free credits, and choose a market scan or deep analysis.</p></div>',
+            unsafe_allow_html=True,
+        )
+        if st.button("Create free account", type="primary", use_container_width=False):
+            st.session_state["auth_initial_mode"] = "Create Account"
+            st.switch_page("pages/Auth.py")
+        # True again, and only by arithmetic: a new account starts with 2 credits
+        # and a pack is 2 credits for $5. It was FALSE for the length of time the
+        # pack was going to be 10-for-$5 -- the same two free credits would have
+        # been $1 of value. Restate it in credits if the pack size ever moves.
+        st.caption("No card required · Includes 2 free credits ($5.00 value)")
 
 close_page()

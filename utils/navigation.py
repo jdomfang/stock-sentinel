@@ -89,7 +89,7 @@ def render_top_nav(*, active: str = "", credits: int | None = None) -> None:
         .st-key-ss_top_nav {
           border-bottom:1px solid rgba(148,163,184,.18);
           background:rgba(6,13,27,.94);padding:.62rem 0 .58rem;
-          margin:0 0 1.7rem;
+          margin:0 0 1.05rem;
         }
         .st-key-ss_top_nav [data-testid="stHorizontalBlock"] {
           align-items:center!important;gap:.6rem!important;
@@ -102,21 +102,23 @@ def render_top_nav(*, active: str = "", credits: int | None = None) -> None:
           min-height:44px;justify-content:center;border-radius:8px;
           padding:.45rem .55rem;color:rgba(203,213,225,.88)!important;
           font-size:.86rem;font-weight:680;text-decoration:none!important;
-          white-space:nowrap;
+          white-space:nowrap;background:transparent!important;
+          box-shadow:none!important;border:0!important;
         }
         [class*="st-key-nav_desktop_brand"] [data-testid="stPageLink"] a,
         [class*="st-key-nav_mobile_brand"] [data-testid="stPageLink"] a {
           justify-content:flex-start;padding:0;color:var(--accent)!important;
           font-size:.88rem;font-weight:800;letter-spacing:.07em;
+          background:transparent!important;
         }
         [class*="st-key-nav_desktop_"] [data-testid="stPageLink"] a:hover,
         [class*="st-key-nav_mobile_"] [data-testid="stPageLink"] a:hover {
-          background:rgba(56,189,248,.07);
+          background:rgba(56,189,248,.07)!important;
           color:rgba(248,250,252,.98)!important;
         }
         [class*="st-key-nav_desktop_admin"] [data-testid="stPageLink"] a,
         [class*="st-key-nav_mobile_admin"] [data-testid="stPageLink"] a {
-          border:1px solid rgba(148,163,184,.24);
+          border:1px solid rgba(148,163,184,.24)!important;
         }
         .ss-nav-current {
           position:absolute;left:18%;right:18%;bottom:-9px;height:2px;

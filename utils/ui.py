@@ -6,7 +6,9 @@ our shared CSS + wrapper layout so all pages stay consistent.
 
 from __future__ import annotations
 
+import html
 import logging
+import math
 from pathlib import Path
 
 import streamlit as st
@@ -15,10 +17,10 @@ import streamlit as st
 LOG = logging.getLogger(__name__)
 
 GENERIC_ERROR_TEXT = "Something went wrong. Please try again later."
-_TOKEN_CSS = (
+_TOKEN_CSS_PATH = (
     Path(__file__).resolve().parents[1]
     / "assets" / "styles" / "stock-sentinel-tokens.css"
-).read_text(encoding="utf-8")
+)
 
 
 def apply_theme() -> None:
@@ -29,7 +31,8 @@ def apply_theme() -> None:
     # Adapter boundary: load portable product tokens first, then map them onto
     # the current Streamlit renderer below. Future frontends import the CSS
     # asset directly and replace only this adapter layer.
-    st.markdown(f"<style>{_TOKEN_CSS}</style>", unsafe_allow_html=True)
+    token_css = _TOKEN_CSS_PATH.read_text(encoding="utf-8")
+    st.markdown(f"<style>{token_css}</style>", unsafe_allow_html=True)
     st.markdown(
         """
         <style>
@@ -237,188 +240,186 @@ def render_recommendation_panel(
     drawdown_first: str = "Unavailable",
     mentions: int = 0,
     price_points: int = 0,
+    horizon: str = "Short-term horizon",
+    freshness: str = "Generated for this request",
+    evidence_label: str = "",
+    source_context: str = "Public social discussion and market-price data",
 ) -> None:
-    """Render the premium deep-analysis recommendation panel.
+    """Render one self-contained, portable decision-summary component.
 
-    Identical layout used on Discovery inline panel, Deep_Analysis page,
-    and Home demo — single source of truth.
+    The fields and hierarchy are the product contract. ``st.html`` is only the
+    current adapter; a future frontend can render the same model without
+    inheriting Streamlit containers or CSS selectors.
     """
-    rec = ai_summary.get("recommendation") or "—"
-    conf = ai_summary.get("confidence") or "—"
-    # None means the adjudicator reported NO score, which is not the same as a
-    # score of zero. float(None) raised here; float(0.0) is worse -- it prints
-    # "Neutral (+0.00)", stating a finding nobody made. card() returns None on
-    # purpose and Discovery already honours it.
-    _raw_sent = ai_summary.get("avg_sentiment")
-    _scored = _raw_sent is not None
-    avg_sent = float(_raw_sent) if _scored else 0.0
-    rationale = ai_summary.get("rationale", [])
+    rec = str(ai_summary.get("recommendation") or "—").strip()
+    conf = str(ai_summary.get("confidence") or "—").strip()
+    raw_sentiment = ai_summary.get("avg_sentiment")
+    scored = raw_sentiment is not None
+    try:
+        avg_sentiment = float(raw_sentiment) if scored else 0.0
+    except (TypeError, ValueError):
+        scored = False
+        avg_sentiment = 0.0
+    if scored and not math.isfinite(avg_sentiment):
+        scored = False
+        avg_sentiment = 0.0
 
-    # Colors
-    rec_color = (
-        "rgba(56,189,248,.95)" if "buy" in rec.lower()
-        else "rgba(239,68,68,.90)" if "avoid" in rec.lower()
-        else "rgba(245,158,11,.90)"
+    rec_key = rec.lower()
+    rec_class = (
+        "buy" if rec_key == "buy"
+        else "avoid" if rec_key == "avoid"
+        else "watch" if rec_key == "watch"
+        else "neutral"
     )
-    sent_color = (
-        "rgba(56,189,248,.95)" if avg_sent >= 0.10
-        else "rgba(239,68,68,.88)" if avg_sent <= -0.10
-        else "rgba(148,163,184,.85)"
+    rec_explanation = {
+        "buy": "Evidence currently supports a closer look",
+        "watch": "Hold — monitor for a clearer setup",
+        "avoid": "Current risks outweigh the setup",
+    }.get(rec_key, "No directional recommendation")
+    sentiment_label = (
+        "Unscored" if not scored
+        else "Bullish" if avg_sentiment >= 0.10
+        else "Bearish" if avg_sentiment <= -0.10
+        else "Neutral"
     )
-    sent_label = (
-        "Unscored" if not _scored
-        else f"Bullish ({avg_sent:+.2f})" if avg_sent >= 0.10
-        else f"Bearish ({avg_sent:+.2f})" if avg_sent <= -0.10
-        else f"Neutral ({avg_sent:+.2f})"
-    )
-    conf_color = (
-        "rgba(56,189,248,.90)" if conf.lower() == "high"
-        else "rgba(245,158,11,.90)" if conf.lower() == "moderate"
-        else "rgba(148,163,184,.80)"
+    sentiment_detail = "No score" if not scored else f"Score {avg_sentiment:+.3f}"
+    confidence_note = {
+        "high": "Broad, consistent evidence",
+        "moderate": "Useful evidence with unresolved uncertainty",
+        "low": "Thin or conflicting evidence",
+    }.get(conf.lower(), "Confidence not available")
+
+    if not evidence_label:
+        evidence_suffix = "s" if int(mentions) != 1 else ""
+        evidence_label = (
+            f"{int(mentions)} evidence item{evidence_suffix}"
+            if mentions else "Evidence count unavailable"
+        )
+    if price_points:
+        source_context = f"{source_context} · {int(price_points)} price observations"
+
+    ticker_safe = html.escape(str(ticker or "—"))
+    sector_safe = html.escape(str(sector or "Unknown").title())
+    rec_safe = html.escape(rec)
+    conf_safe = html.escape(conf)
+    confidence_note_safe = html.escape(confidence_note)
+    horizon_safe = html.escape(str(horizon))
+    freshness_safe = html.escape(str(freshness))
+    evidence_safe = html.escape(str(evidence_label))
+    sources_safe = html.escape(str(source_context))
+
+    rationale = [str(item).strip() for item in (ai_summary.get("rationale") or []) if str(item).strip()]
+    reasons_html = "".join(
+        f"<li>{html.escape(reason)}</li>" for reason in rationale[:3]
+    ) or "<li>No supporting explanation was returned for this analysis.</li>"
+
+    financial_tiles = []
+    for label, value in (
+        ("Last price", current_price),
+        ("30d range (volatility)", projected_gain),
+        ("Drawdown before +5%", drawdown_first),
+    ):
+        if value != "Unavailable":
+            financial_tiles.append(
+                '<div class="ss-decision-financial">'
+                f'<span>{html.escape(label)}</span>'
+                f'<strong>{html.escape(str(value))}</strong>'
+                '</div>'
+            )
+    financial_html = (
+        '<div class="ss-decision-financials">'
+        + "".join(financial_tiles)
+        + "</div>"
+        if financial_tiles else ""
     )
 
-    # Signal strength bar (0–100 based on sentiment magnitude + confidence)
-    _bar_pct = min(100, int(abs(avg_sent) * 250 + ({"high": 30, "moderate": 15, "low": 0}.get(conf.lower(), 0))))
-    _bar_color = rec_color
-
-    # ── Contracted panel: natural content width, no dead space ──
-    _sector_label = (' · ' + sector.title()) if sector and sector.lower() not in ('unknown', '') else ''
-    st.markdown(
+    st.html(
         f"""
-        <div style="
-          display:inline-block;
-          min-width:320px;
-          max-width:520px;
-          margin-top:0.75rem;
-          margin-bottom:1.2rem;
-          border:1px solid rgba(56,189,248,.28);
-          border-radius:16px;
-          background:linear-gradient(180deg,rgba(56,189,248,.06) 0%,rgba(15,23,42,.96) 60px);
-          overflow:hidden;
-        ">
-          <!-- Header row: ticker left, signal right, naturally close -->
-          <div style="
-            padding:14px 20px 12px 20px;
-            display:flex;align-items:center;justify-content:space-between;gap:32px;
-            border-bottom:1px solid rgba(56,189,248,.12);
-          ">
+        <style>
+          .ss-decision-card {{
+            width:100%;box-sizing:border-box;margin:.7rem 0 1.2rem;
+            border:1px solid rgba(56,189,248,.24);border-radius:16px;
+            background:linear-gradient(145deg,rgba(8,20,39,.98),rgba(8,15,30,.98));
+            overflow:hidden;color:var(--ss-color-text,#e5e7eb);
+          }}
+          .ss-decision-head {{
+            display:flex;justify-content:space-between;align-items:flex-start;
+            gap:24px;padding:18px 20px;border-bottom:1px solid rgba(148,163,184,.14);
+          }}
+          .ss-decision-eyebrow,.ss-decision-label {{
+            color:var(--ss-color-text-muted,#94a3b8);font-size:.69rem;font-weight:750;
+            letter-spacing:.075em;text-transform:uppercase;
+          }}
+          .ss-decision-ticker {{font-size:1.55rem;font-weight:850;line-height:1.1;margin-top:4px;}}
+          .ss-decision-signal {{text-align:right;}}
+          .ss-decision-value {{font-size:1.5rem;font-weight:850;line-height:1.1;margin:4px 0;}}
+          .ss-decision-value.buy {{color:var(--ss-color-recommendation-buy,#38bdf8);}}
+          .ss-decision-value.watch {{color:var(--ss-color-recommendation-watch,#f59e0b);}}
+          .ss-decision-value.avoid {{color:var(--ss-color-recommendation-avoid,#f87171);}}
+          .ss-decision-value.neutral {{color:var(--ss-color-sentiment-neutral,#cbd5e1);}}
+          .ss-decision-signal p {{margin:0;color:#94a3b8;font-size:.78rem;}}
+          .ss-decision-body {{padding:18px 20px 20px;}}
+          .ss-decision-context {{
+            display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px;
+            margin-bottom:16px;
+          }}
+          .ss-decision-context > div,.ss-decision-financial {{
+            border:1px solid rgba(148,163,184,.14);border-radius:10px;
+            background:rgba(15,23,42,.62);padding:11px 12px;min-width:0;
+          }}
+          .ss-decision-context strong,.ss-decision-financial strong {{
+            display:block;margin-top:4px;color:#e5e7eb;font-size:.9rem;line-height:1.3;
+          }}
+          .ss-decision-context small {{display:block;margin-top:3px;color:#8192aa;font-size:.69rem;line-height:1.3;}}
+          .ss-decision-context span,.ss-decision-financial span {{
+            color:#8192aa;font-size:.68rem;font-weight:720;letter-spacing:.045em;
+            text-transform:uppercase;
+          }}
+          .ss-decision-financials {{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin-bottom:16px;}}
+          .ss-decision-reasons h3 {{margin:0 0 7px;font-size:.78rem;letter-spacing:.06em;text-transform:uppercase;color:#8192aa;}}
+          .ss-decision-reasons ul {{margin:0;padding-left:1.15rem;}}
+          .ss-decision-reasons li {{margin:.4rem 0;color:#dbe3ee;font-size:.91rem;line-height:1.45;}}
+          .ss-decision-source {{margin:15px 0 0;color:#8192aa;font-size:.73rem;line-height:1.4;}}
+          @media (max-width:720px) {{
+            .ss-decision-head {{padding:15px 16px;}}
+            .ss-decision-body {{padding:15px 16px 17px;}}
+            .ss-decision-context {{grid-template-columns:repeat(2,minmax(0,1fr));}}
+            .ss-decision-financials {{grid-template-columns:1fr;}}
+          }}
+          @media (max-width:420px) {{
+            .ss-decision-head {{display:block;}}
+            .ss-decision-signal {{text-align:left;margin-top:14px;}}
+          }}
+        </style>
+        <article class="ss-decision-card" aria-label="Deep analysis summary for {ticker_safe}">
+          <header class="ss-decision-head">
             <div>
-              <div style="font-size:0.68rem;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:rgba(56,189,248,.75);">Deep Analysis{_sector_label}</div>
-              <div style="font-size:1.45rem;font-weight:850;letter-spacing:-0.02em;color:rgba(248,250,252,.98);line-height:1.15;">{ticker}</div>
+              <div class="ss-decision-eyebrow">Deep analysis · {sector_safe}</div>
+              <div class="ss-decision-ticker">{ticker_safe}</div>
             </div>
-            <div style="text-align:right;">
-              <div style="font-size:0.68rem;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:rgba(148,163,184,.50);margin-bottom:2px;">Signal</div>
-              <div style="font-size:1.45rem;font-weight:850;color:{rec_color};line-height:1.15;">{rec}</div>
-              <div style="font-size:0.76rem;color:rgba(148,163,184,.60);margin-top:1px;">Confidence: {conf}</div>
+            <div class="ss-decision-signal">
+              <div class="ss-decision-label">Recommendation</div>
+              <div class="ss-decision-value {rec_class}">{rec_safe}</div>
+              <p>{html.escape(rec_explanation)}</p>
             </div>
+          </header>
+          <div class="ss-decision-body">
+            <div class="ss-decision-context">
+              <div><span>Confidence</span><strong>{conf_safe}</strong><small>{confidence_note_safe}</small></div>
+              <div><span>Social sentiment</span><strong>{html.escape(sentiment_label)} · {html.escape(sentiment_detail)}</strong></div>
+              <div><span>Signal horizon</span><strong>{horizon_safe}</strong></div>
+              <div><span>Evidence</span><strong>{evidence_safe}</strong></div>
+            </div>
+            {financial_html}
+            <div class="ss-decision-reasons">
+              <h3>Why this recommendation</h3>
+              <ul>{reasons_html}</ul>
+            </div>
+            <p class="ss-decision-source">{freshness_safe} · {sources_safe}</p>
           </div>
-          <!-- Body -->
-          <div style="padding:14px 20px 18px 20px;">
-        """,
-        unsafe_allow_html=True,
+        </article>
+        """
     )
-
-    # ── 3 premium metric cards with signal bar + sublabel ──
-    _mc_base = (
-        "border-radius:12px;padding:14px 16px 12px 16px;"
-        "background:rgba(15,23,42,.70);"
-        "flex:1;min-width:0;display:flex;flex-direction:column;gap:6px;"
-    )
-
-    def _bar_html(pct, color):
-        return (
-            f'<div style="width:100%;height:4px;background:rgba(148,163,184,.12);border-radius:999px;margin-top:6px;">'
-            f'<div style="width:{pct}%;height:4px;background:{color};border-radius:999px;transition:width 0.6s ease;"></div>'
-            f'</div>'
-        )
-
-    # "Strong upside signal" and "Strong data backing" were unconditional claims
-    # about signal strength, on a system whose own adjudicator sets
-    # ALLOW_HIGH = False because it "has not earned the word". Suppressing the
-    # word High for that reason and then rendering "Strong" in its place is
-    # worse than either alternative -- it looks like restraint was exercised.
-    # Moderate is the CEILING here, so it is named as one.
-    _rec_sublabel = {"buy": "Evidence leans upside", "watch": "Hold — monitor closely", "avoid": "Risk outweighs reward"}.get(rec.lower(), "")
-    _conf_sublabel = {"high": "Strong data backing", "moderate": "Highest we issue — unvalidated", "low": "Thin data — use caution"}.get(conf.lower(), "")
-    _conf_bar = {"high": 90, "moderate": 55, "low": 25}.get(conf.lower(), 30)
-
-    st.markdown(
-        f'<div style="display:flex;gap:10px;margin:10px 0 16px 0;flex-wrap:nowrap;">'
-
-        # Recommendation card
-        f'<div style="{_mc_base}border:1px solid {rec_color.replace(".95",",.30").replace(".90",",.28")};">'
-        f'<div style="font-size:0.70rem;font-weight:700;letter-spacing:0.06em;text-transform:uppercase;color:rgba(148,163,184,.60);">Recommendation</div>'
-        f'<div style="font-size:1.18rem;font-weight:850;color:{rec_color};letter-spacing:-0.01em;">{rec}</div>'
-        f'<div style="font-size:0.75rem;color:rgba(148,163,184,.65);margin-top:1px;">{_rec_sublabel}</div>'
-        f'{_bar_html(_bar_pct, rec_color)}'
-        f'</div>'
-
-        # Confidence card
-        f'<div style="{_mc_base}border:1px solid rgba(148,163,184,.18);">'
-        f'<div style="font-size:0.70rem;font-weight:700;letter-spacing:0.06em;text-transform:uppercase;color:rgba(148,163,184,.60);">Confidence</div>'
-        f'<div style="font-size:1.18rem;font-weight:850;color:{conf_color};letter-spacing:-0.01em;">{conf}</div>'
-        f'<div style="font-size:0.75rem;color:rgba(148,163,184,.65);margin-top:1px;">{_conf_sublabel}</div>'
-        f'{_bar_html(_conf_bar, conf_color)}'
-        f'</div>'
-
-        # Sentiment card
-        f'<div style="{_mc_base}border:1px solid rgba(148,163,184,.18);">'
-        f'<div style="font-size:0.70rem;font-weight:700;letter-spacing:0.06em;text-transform:uppercase;color:rgba(148,163,184,.60);">Market Mood</div>'
-        f'<div style="font-size:1.18rem;font-weight:850;color:{sent_color};letter-spacing:-0.01em;">{sent_label.split(" ")[0]}</div>'
-        f'<div style="font-size:0.75rem;color:rgba(148,163,184,.65);margin-top:1px;">{f"Score {avg_sent:+.3f}" if _scored else "No score"}</div>'
-        f'{_bar_html(min(100,int(abs(avg_sent)*280)), sent_color)}'
-        f'</div>'
-
-        f'</div>',
-        unsafe_allow_html=True,
-    )
-
-    # ── Price / projection / hold period row ──
-    if (current_price != "Unavailable" or projected_gain != "Unavailable"
-            or drawdown_first != "Unavailable"):
-        _fc = "border-radius:10px;padding:10px 14px;background:rgba(15,23,42,.55);border:1px solid rgba(148,163,184,.12);flex:1;"
-        _fl = "font-size:0.68rem;font-weight:700;letter-spacing:0.05em;text-transform:uppercase;color:rgba(148,163,184,.55);margin-bottom:3px;"
-        _fv = "font-size:1.00rem;font-weight:800;color:rgba(248,250,252,.92);"
-        st.markdown(
-            f'<div style="display:flex;gap:8px;margin-bottom:14px;flex-wrap:nowrap;">'
-            f'<div style="{_fc}"><div style="{_fl}">Last Price</div><div style="{_fv}">{current_price}</div></div>'
-            # "Proj. Gain 30d" promised a forecast. The value beneath it is a
-            # symmetric volatility range centred on zero -- the model makes no
-            # directional claim at all -- so the label was the last place the
-            # old promise survived.
-            f'<div style="{_fc}"><div style="{_fl}">30d range (vol)</div><div style="{_fv}">{projected_gain}</div></div>'
-            # This tile has now held two numbers that meant nothing. "Hold
-            # Period" was the median day the WINNING simulations first touched
-            # +5%, with the paths that never got there dropped -- it invited
-            # "hold this long and you are up". Its replacement, "Review window",
-            # was the constant (14, 28) printed for every ticker on every run.
-            # It now carries a measured figure: of the simulated paths that DID
-            # reach +5%, the median worst drawdown suffered first. That is the
-            # number a stop is placed from, and it is the only one of the three
-            # that changes with the stock.
-            f'<div style="{_fc}"><div style="{_fl}">Drawdown first</div><div style="{_fv}">{drawdown_first}</div></div>'
-            f'</div>',
-            unsafe_allow_html=True,
-        )
-
-    # Data quality
-    if mentions or price_points:
-        st.markdown(
-            f'<div style="color:rgba(148,163,184,.48);font-size:0.73rem;margin-bottom:12px;">'
-            f'{mentions} posts analysed · {price_points} price points</div>',
-            unsafe_allow_html=True,
-        )
-
-    # Rationale
-    st.markdown(
-        '<div style="font-size:0.80rem;font-weight:700;color:rgba(148,163,184,.65);letter-spacing:0.05em;text-transform:uppercase;margin-bottom:7px;">Why this signal</div>',
-        unsafe_allow_html=True,
-    )
-    for bullet in rationale:
-        st.markdown(f"- {bullet}")
-
-    # Close body div + outer card div
-    st.markdown('</div></div>', unsafe_allow_html=True)
 
 
 def render_full_analysis_expander(analysis_results: dict, key_suffix: str = "") -> None:
@@ -431,12 +432,21 @@ def render_full_analysis_expander(analysis_results: dict, key_suffix: str = "") 
         <style>
         details > summary { list-style: none; }
         details > summary::-webkit-details-marker { display: none; }
+        .ss-breakdown-scroll {
+          width:100%;overflow-x:auto;-webkit-overflow-scrolling:touch;
+          border-radius:10px;
+        }
+        .ss-breakdown-scroll table { min-width:620px; }
+        .ss-breakdown-scroll:focus-visible {
+          outline:3px solid var(--focus-ring);outline-offset:3px;
+        }
+        .ss-sample-post {overflow-wrap:anywhere;word-break:break-word;}
         </style>
         """,
         unsafe_allow_html=True,
     )
 
-    with st.expander("📋  Full breakdown  ↓  click to expand", expanded=False):
+    with st.expander("Full breakdown", expanded=False):
         coverage_rows = []
         for prompt_name, result in (analysis_results or {}).items():
             timeframe = (ANALYSIS_PROMPTS.get(prompt_name, {}) or {}).get("timeframe", "")
@@ -459,22 +469,23 @@ def render_full_analysis_expander(analysis_results: dict, key_suffix: str = "") 
             }
             rows_html = "".join(
                 f'<tr style="border-bottom:1px solid rgba(148,163,184,.10);">'
-                f'<td style="padding:9px 10px;color:rgba(229,231,235,.90);font-size:0.82rem;">{pn}</td>'
-                f'<td style="padding:9px 10px;color:rgba(148,163,184,.70);font-size:0.82rem;">{tf}</td>'
+                f'<td style="padding:9px 10px;color:rgba(229,231,235,.90);font-size:0.82rem;">{html.escape(str(pn))}</td>'
+                f'<td style="padding:9px 10px;color:rgba(148,163,184,.70);font-size:0.82rem;">{html.escape(str(tf))}</td>'
                 f'<td style="padding:9px 10px;color:rgba(148,163,184,.80);font-size:0.82rem;text-align:center;">{ev}</td>'
-                f'<td style="padding:9px 10px;color:rgba(148,163,184,.80);font-size:0.82rem;">{st_}</td>'
-                f'<td style="padding:9px 10px;font-size:0.82rem;font-weight:700;color:{tilt_color.get(tl,"rgba(148,163,184,.80)")};">{tl}</td>'
+                f'<td style="padding:9px 10px;color:rgba(148,163,184,.80);font-size:0.82rem;">{html.escape(str(st_))}</td>'
+                f'<td style="padding:9px 10px;font-size:0.82rem;font-weight:700;color:{tilt_color.get(tl,"rgba(148,163,184,.80)")};">{html.escape(str(tl))}</td>'
                 f'</tr>'
                 for pn, tf, ev, st_, tl in coverage_rows
             )
             st.markdown(
+                f'<div class="ss-breakdown-scroll" role="region" aria-label="Signal coverage table" tabindex="0">'
                 f'<table style="width:100%;border-collapse:collapse;background:rgba(15,23,42,.60);border-radius:10px;overflow:hidden;">'
                 f'<thead><tr style="border-bottom:1px solid rgba(148,163,184,.20);">'
                 + "".join(
                     f'<th style="padding:8px 10px;text-align:{"center" if h=="Evidence" else "left"};font-size:0.70rem;font-weight:700;letter-spacing:0.05em;text-transform:uppercase;color:rgba(148,163,184,.55);">{h}</th>'
                     for h in ["Signal Type", "Timeframe", "Evidence", "Strength", "Tilt"]
                 )
-                + f'</tr></thead><tbody>{rows_html}</tbody></table>',
+                + f'</tr></thead><tbody>{rows_html}</tbody></table></div>',
                 unsafe_allow_html=True,
             )
         else:
@@ -499,7 +510,11 @@ def render_full_analysis_expander(analysis_results: dict, key_suffix: str = "") 
                 if result.get("sample_tweets"):
                     st.markdown("**Sample posts:**")
                     for i, tw in enumerate(result["sample_tweets"], 1):
-                        st.text(f"{i}. {tw}")
+                        st.markdown(
+                            f'<p class="ss-sample-post">{i}. '
+                            f'{html.escape(str(tw))}</p>',
+                            unsafe_allow_html=True,
+                        )
             else:
                 st.caption("Unavailable.")
             st.markdown("<hr style='border:none;border-top:1px solid rgba(148,163,184,.10);margin:8px 0;'>", unsafe_allow_html=True)
