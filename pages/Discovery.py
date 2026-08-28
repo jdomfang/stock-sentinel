@@ -65,9 +65,8 @@ from utils.obs import install as _install_logging, new_request_id, set_request_i
 _install_logging()
 logger = logging.getLogger(__name__)
 
-# Sidebar navigation
-render_sidebar_navigation()
 apply_theme()
+render_sidebar_navigation()
 
 # Preserve a validated sector deep-link before the login guard stops this run.
 # Autostart consumption and every paid action remain below the guard.
@@ -88,8 +87,8 @@ if (
 from utils.guard import require_active_account
 from utils.auth import refresh_session_if_needed, flush_pending_rt_save
 flush_pending_rt_save()
-_profile = require_active_account(after_auth_page="Discovery")
 render_top_nav(active="market_scan")
+_profile = require_active_account(after_auth_page="Discovery")
 
 
 # Compact task header. The public Home page carries the marketing narrative;
@@ -489,14 +488,17 @@ st.markdown(
     }
     .st-key-selected_analysis_panel .selected-analysis-heading {margin:0 0 .7rem;}
     .st-key-selected_analysis_panel .stButton > button {width:100%;}
-    .st-key-selected_analysis_panel [data-testid="stPageLink"] a {
-      min-height:44px;display:flex;align-items:center;justify-content:center;
-      border:1px solid rgba(56,189,248,.48);border-radius:var(--radius-control);
-      color:var(--accent)!important;font-size:.86rem;font-weight:720;
-      text-decoration:none!important;background:rgba(56,189,248,.04);
+    .st-key-selected_analysis_breakdown {
+      clear:both;margin-top:1rem;padding-top:.15rem;
     }
-    .st-key-selected_analysis_panel [data-testid="stPageLink"] a:hover {
-      background:rgba(56,189,248,.11);
+    .st-key-selected_analysis_breakdown [data-testid="stExpander"] {
+      border:1px solid rgba(56,189,248,.28)!important;
+      border-radius:var(--radius-control)!important;
+      background:rgba(8,15,30,.58)!important;
+    }
+    .st-key-selected_analysis_breakdown details > summary {
+      min-height:var(--ss-control-min-height);color:var(--accent)!important;
+      font-weight:720!important;
     }
     .scan-view-result {
       box-sizing:border-box;
@@ -1251,15 +1253,7 @@ def _render_deep_panel(ticker, sector, deep_results, *, compact=False):
         would_change=card.get("would_change") or [],
         compact=compact,
     )
-    if compact:
-        st.session_state["analysis_result_origin"] = "market_scan"
-        st.page_link(
-            "pages/Analysis_Result.py",
-            label="View full breakdown",
-            use_container_width=True,
-        )
-        st.caption("Already analyzed · no additional credit")
-    else:
+    if not compact:
         render_full_analysis_expander(
             deep_results or {},
             key_suffix=f"_discovery_{ticker}",
@@ -1335,11 +1329,10 @@ if st.session_state.df_valid is not None:
             f'</div>',
             unsafe_allow_html=True,
         )
-        if st.session_state.pop("_scroll_to_deep_panel", False):
-            st.success(
-                f"Analysis ready for {st.session_state.get('selected_ticker')}. "
-                "The completed result is open beside the shortlist."
-            )
+        # Consume the one-shot flag without adding a second completion banner.
+        # The selected row and adjacent result panel already communicate that
+        # the paid analysis finished; another alert only shifts the workspace.
+        st.session_state.pop("_scroll_to_deep_panel", False)
 
         # Load last close prices with a progress indicator so the user sees activity
         tickers_for_prices = [str(t) for t in df_valid_display["Ticker"].tolist()]
@@ -1751,6 +1744,24 @@ if st.session_state.df_valid is not None:
                         _result_sector,
                         st.session_state.deep_analysis_results,
                         compact=True,
+                    )
+
+            # Keep the detailed evidence on this page. A route transition was
+            # unnecessary for data already delivered into session state and
+            # could discard the shortlist/scroll context on mobile. This
+            # disclosure performs no analysis and consumes no credit.
+            with _workspace.container(key="selected_analysis_breakdown"):
+                if st.session_state.deep_analysis_results:
+                    render_full_analysis_expander(
+                        st.session_state.deep_analysis_results,
+                        key_suffix=f"_discovery_{_selected_ticker}",
+                        label="View full breakdown",
+                    )
+                    st.caption("Already analyzed · no additional credit")
+                else:
+                    st.caption(
+                        "Detailed signal excerpts are unavailable for this "
+                        "earlier result."
                     )
     else:
         st.markdown(

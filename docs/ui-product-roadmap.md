@@ -72,8 +72,9 @@ Suggested future component mapping:
   the approved `stock-sentinel-premium-flow-v4` composition: a two-column
   public hero with an honest product preview, a three-step workflow and trust
   strip, compact attention-led scan results, a selected analysis workspace,
-  and a nonpaying dedicated full-breakdown route. Delivered results must never
-  expose a second paid action for the same result.
+  and a nonpaying in-page full-breakdown disclosure that preserves the scan,
+  selection, URL, and scroll context. Delivered results must never expose a
+  second paid action for the same result.
 - **Release E — Responsive production polish:** complete mobile navigation and
   card composition, loading/failure/zero-credit states, cross-browser spacing,
   keyboard and assistive-technology verification, and visual regression

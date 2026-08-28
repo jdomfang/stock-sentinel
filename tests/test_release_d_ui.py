@@ -95,9 +95,12 @@ def main() -> int:
         and "would_change=card.get" in discovery,
     )
     check(
-        "selected result links to a dedicated full breakdown",
-        discovery.count('"pages/Analysis_Result.py"') >= 1
-        and deep.count('"pages/Analysis_Result.py"') >= 1,
+        "selected result opens its full breakdown without leaving context",
+        'key="selected_analysis_breakdown"' in discovery
+        and 'label="View full breakdown"' in discovery
+        and 'label="View full breakdown"' in deep
+        and '"pages/Analysis_Result.py"' not in discovery
+        and '"pages/Analysis_Result.py"' not in deep,
     )
     check(
         "full breakdown consumes no credit and runs no analysis",

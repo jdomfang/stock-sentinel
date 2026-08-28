@@ -18,6 +18,24 @@
   color: var(--ss-color-text) !important;
 }
 
+/* BaseWeb applies host text color to the actual input element separately from
+   its wrapper. Set both color mechanisms so a prefilled ticker remains legible
+   in Chromium/WebKit as well as Firefox, including after autofill. */
+[data-baseweb="input"] input,
+[data-testid="stTextInput"] input {
+  color: var(--ss-color-text) !important;
+  -webkit-text-fill-color: var(--ss-color-text) !important;
+  caret-color: var(--ss-color-action) !important;
+  opacity: 1 !important;
+}
+
+[data-baseweb="input"] input::placeholder,
+[data-testid="stTextInput"] input::placeholder {
+  color: var(--ss-color-text-subtle) !important;
+  -webkit-text-fill-color: var(--ss-color-text-subtle) !important;
+  opacity: 1 !important;
+}
+
 [data-baseweb="popover"] [role="listbox"],
 ul[data-testid="stSelectboxVirtualDropdown"] {
   background: var(--ss-color-panel) !important;

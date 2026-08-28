@@ -34,15 +34,14 @@ st.set_page_config(
     initial_sidebar_state="collapsed",
 )
 
-render_sidebar_navigation()
 apply_theme()
+render_sidebar_navigation()
 
 from utils.auth import flush_pending_rt_save
 
 flush_pending_rt_save()
+render_top_nav(active="deep_analyze")
 profile = require_active_account(after_auth_page="Analysis_Result")
-credits = int((profile or {}).get("credits") or 0)
-render_top_nav(active="deep_analyze", credits=credits)
 
 st.markdown(
     """

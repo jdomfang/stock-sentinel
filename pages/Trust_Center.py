@@ -19,9 +19,9 @@ st.set_page_config(
     layout="wide",
     initial_sidebar_state="collapsed",
 )
+apply_theme()
 render_sidebar_navigation()
 render_top_nav()
-apply_theme()
 
 st.markdown(
     """

@@ -431,6 +431,7 @@ def render_recommendation_panel(
           .ss-decision-card.compact .ss-decision-body {{padding:15px 16px 17px;}}
           .ss-decision-card.compact .ss-decision-context {{grid-template-columns:repeat(2,minmax(0,1fr));}}
           .ss-decision-card.compact .ss-decision-financials {{grid-template-columns:repeat(2,minmax(0,1fr));}}
+          .ss-decision-card.compact .ss-decision-financials > :last-child:nth-child(odd) {{grid-column:1 / -1;}}
           @media (max-width:720px) {{
             .ss-decision-head {{padding:15px 16px;}}
             .ss-decision-body {{padding:15px 16px 17px;}}

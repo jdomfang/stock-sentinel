@@ -29,12 +29,12 @@ st.set_page_config(
     initial_sidebar_state="collapsed",
 )
 
-render_sidebar_navigation()
 apply_theme()
+render_sidebar_navigation()
+render_top_nav(active="account")
 flush_pending_rt_save()
 profile = require_active_account(after_auth_page="Account")
 credits = int((profile or {}).get("credits") or 0)
-render_top_nav(active="account", credits=credits)
 
 user = get_user() or {}
 email = (

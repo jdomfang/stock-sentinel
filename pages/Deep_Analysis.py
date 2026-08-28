@@ -30,6 +30,7 @@ from utils.ui import (
     close_page,
     processing_state_html,
     render_evidence_check,
+    render_full_analysis_expander,
     render_recommendation_panel,
     render_system_state,
     render_workflow_hint,
@@ -49,17 +50,15 @@ st.set_page_config(
     initial_sidebar_state="collapsed",
 )
 
-# Sidebar navigation
-render_sidebar_navigation()
-
 # Apply the shared theme before the authenticated workspace shell.
 from utils.ui import apply_theme
 from utils.auth import flush_pending_rt_save
 apply_theme()
+render_sidebar_navigation()
 flush_pending_rt_save()
 from utils.guard import require_active_account
-_profile = require_active_account(after_auth_page="Deep_Analysis")
 render_top_nav(active="deep_analyze")
+_profile = require_active_account(after_auth_page="Deep_Analysis")
 
 st.markdown(
     """
@@ -123,14 +122,17 @@ st.markdown(
       color: var(--muted); font-size: .86rem; white-space: nowrap;
     }
     .da-balance strong { color: var(--text); font-weight: 720; }
-    .st-key-deep_full_result_link [data-testid="stPageLink"] a {
-      min-height:44px;display:flex;align-items:center;justify-content:center;
-      border:1px solid rgba(56,189,248,.46);border-radius:var(--radius-control);
-      color:var(--accent)!important;font-size:.9rem;font-weight:720;
-      text-decoration:none!important;background:rgba(56,189,248,.04);
+    .st-key-deep_full_result_link [data-testid="stExpander"] {
+      border:1px solid rgba(56,189,248,.36)!important;
+      border-radius:var(--radius-control)!important;
+      background:rgba(8,15,30,.58)!important;
     }
-    .st-key-deep_full_result_link [data-testid="stPageLink"] a:hover {
-      background:rgba(56,189,248,.11);
+    .st-key-deep_full_result_link details > summary {
+      min-height:var(--ss-control-min-height);color:var(--accent)!important;
+      font-size:.9rem;font-weight:720!important;
+    }
+    .st-key-deep_full_result_link [data-testid="stExpander"]:hover {
+      background:rgba(56,189,248,.07)!important;
     }
     @media (max-width: 720px) {
       .st-key-da_scan_card [data-testid="stHorizontalBlock"] { flex-wrap: wrap; }
@@ -628,10 +630,10 @@ if _run_clicked or (_autorun and _prefill):
             # catches it) and the user is charged for an analysis they never
             # fully saw.
             with st.container(key="deep_full_result_link"):
-                st.page_link(
-                    "pages/Analysis_Result.py",
+                render_full_analysis_expander(
+                    analysis_results,
+                    key_suffix=f"_deep_{_run_ticker}",
                     label="View full breakdown",
-                    use_container_width=True,
                 )
                 st.caption("Already analyzed · no additional credit")
 

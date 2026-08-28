@@ -215,9 +215,9 @@ st.set_page_config(
     initial_sidebar_state="collapsed",
 )
 
+apply_theme()
 render_sidebar_navigation()
 render_top_nav(active="home")
-apply_theme()
 from utils.auth import flush_pending_rt_save; flush_pending_rt_save()
 
 # --- Home-specific styling (global theme comes from utils.ui.apply_theme) ---

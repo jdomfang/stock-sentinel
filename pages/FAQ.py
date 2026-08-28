@@ -28,9 +28,9 @@ st.set_page_config(
     initial_sidebar_state="collapsed",
 )
 
+apply_theme()
 render_sidebar_navigation()
 render_top_nav(active="faq")
-apply_theme()
 
 st.markdown('<div class="clawd-app-wrapper">', unsafe_allow_html=True)
 

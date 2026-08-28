@@ -28,8 +28,8 @@ st.set_page_config(
     initial_sidebar_state="collapsed",
 )
 
-render_sidebar_navigation()
 apply_theme()
+render_sidebar_navigation()
 
 # --- Auth-specific presentation. Authentication behavior stays below. ---
 st.markdown(

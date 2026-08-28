@@ -26,9 +26,9 @@ from utils.auth import is_logged_in, get_user
 from utils.supabase_client import get_admin_client
 
 st.set_page_config(page_title="Admin - Stock Sentinel", page_icon="🛠️", layout="wide", initial_sidebar_state="collapsed")
+apply_theme()
 render_sidebar_navigation()
 render_top_nav(after_auth_page="Admin")
-apply_theme()
 
 st.markdown('<div class="clawd-app-wrapper">', unsafe_allow_html=True)
 
