@@ -164,6 +164,308 @@ button:disabled,
 
 [data-testid="stSpinner"] svg { color: var(--ss-color-action) !important; }
 
+/* Compact authenticated task toolbars. Product dimensions are shared by
+   Market Scan and Deep Analyze; only this adapter knows Streamlit's generated
+   columns and widget wrappers. */
+.st-key-discovery_scan_card,
+.st-key-da_scan_card {
+  width: 100%;
+  max-width: 780px;
+  box-sizing: border-box !important;
+  padding: .85rem 1rem !important;
+  margin-bottom: 0 !important;
+  border: 1px solid var(--ss-color-border) !important;
+  border-radius: 14px !important;
+  background: rgba(15, 23, 42, .68) !important;
+  box-shadow: none !important;
+}
+
+.st-key-discovery_control_row [data-testid="stHorizontalBlock"],
+.st-key-deep_control_row [data-testid="stHorizontalBlock"] {
+  align-items: flex-end !important;
+  gap: 12px !important;
+}
+
+.st-key-discovery_control_row [data-testid="stColumn"],
+.st-key-discovery_control_row [data-testid="stVerticalBlockBorderWrapper"],
+.st-key-discovery_control_row [data-testid="stVerticalBlock"],
+.st-key-discovery_control_row [data-testid="stElementContainer"],
+.st-key-discovery_control_row [data-testid="stSelectbox"],
+.st-key-discovery_control_row [data-testid="stButton"],
+.st-key-deep_control_row [data-testid="stColumn"],
+.st-key-deep_control_row [data-testid="stVerticalBlockBorderWrapper"],
+.st-key-deep_control_row [data-testid="stVerticalBlock"],
+.st-key-deep_control_row [data-testid="stElementContainer"],
+.st-key-deep_control_row [data-testid="stTextInput"],
+.st-key-deep_control_row [data-testid="stButton"] {
+  min-width: 0 !important;
+  max-width: 100% !important;
+  box-sizing: border-box !important;
+}
+
+.st-key-discovery_control_row [data-baseweb="select"] > div,
+.st-key-discovery_control_row .stButton > button,
+.st-key-deep_control_row [data-baseweb="input"] > div,
+.st-key-deep_control_row .stButton > button {
+  width: 100% !important;
+  height: 44px !important;
+  min-height: 44px !important;
+  box-sizing: border-box !important;
+  border-radius: 10px !important;
+  padding-top: 0 !important;
+  padding-bottom: 0 !important;
+}
+
+.st-key-credit_meter_discovery > div > [data-testid="stVerticalBlock"],
+.st-key-credit_meter_deep > div > [data-testid="stVerticalBlock"] {
+  min-height: 44px;
+  display: flex !important;
+  flex-direction: row !important;
+  align-items: center !important;
+  gap: .55rem !important;
+}
+
+.st-key-credit_meter_discovery [data-testid="stElementContainer"],
+.st-key-credit_meter_discovery [data-testid="stPageLink"],
+.st-key-credit_meter_deep [data-testid="stElementContainer"],
+.st-key-credit_meter_deep [data-testid="stPageLink"] {
+  flex: 0 1 auto !important;
+  width: auto !important;
+  min-width: 0 !important;
+  max-width: 100% !important;
+  box-sizing: border-box !important;
+}
+
+.st-key-credit_meter_discovery .ss-credit-meter-status,
+.st-key-credit_meter_deep .ss-credit-meter-status {
+  margin: 0 !important;
+  white-space: nowrap;
+}
+
+.st-key-credit_meter_discovery [data-testid="stPageLink"] a,
+.st-key-credit_meter_deep [data-testid="stPageLink"] a {
+  width: auto !important;
+  min-height: 44px !important;
+  padding: 0 .45rem !important;
+  border-color: transparent !important;
+  background: transparent !important;
+  color: var(--ss-color-text-muted) !important;
+  text-decoration: underline !important;
+  text-underline-offset: 3px;
+  box-shadow: none !important;
+  white-space: nowrap;
+}
+
+/* The complete zero-credit offer is intentionally explicit. Stack only this
+   state so its accessible label never competes with the status in a narrow
+   desktop toolbar column. */
+.st-key-credit_meter_discovery:has(.ss-credit-meter-status--empty)
+  > div > [data-testid="stVerticalBlock"],
+.st-key-credit_meter_deep:has(.ss-credit-meter-status--empty)
+  > div > [data-testid="stVerticalBlock"] {
+  align-items: stretch !important;
+  flex-direction: column !important;
+  gap: .2rem !important;
+}
+
+.st-key-credit_meter_discovery:has(.ss-credit-meter-status--empty)
+  [data-testid="stPageLink"],
+.st-key-credit_meter_discovery:has(.ss-credit-meter-status--empty)
+  [data-testid="stPageLink"] a,
+.st-key-credit_meter_deep:has(.ss-credit-meter-status--empty)
+  [data-testid="stPageLink"],
+.st-key-credit_meter_deep:has(.ss-credit-meter-status--empty)
+  [data-testid="stPageLink"] a {
+  width: 100% !important;
+  max-width: 100% !important;
+}
+
+/* Account layout containment, including the pending Stripe link-button state. */
+.st-key-account_purchase {
+  border: 1px solid var(--ss-color-border);
+  border-radius: var(--ss-radius-panel);
+  background: rgba(15, 23, 42, .72);
+  padding: 1.1rem;
+  box-sizing: border-box;
+  width: 100%;
+  height: 100%;
+}
+
+.st-key-account_purchase h2 { font-size: 1rem; margin: 0 0 .3rem; }
+.st-key-account_purchase p {
+  color: var(--ss-color-text-muted);
+  font-size: .86rem;
+  margin: 0 0 .8rem;
+}
+
+.st-key-account_grid > div > [data-testid="stHorizontalBlock"] {
+  align-items: stretch !important;
+}
+
+.st-key-account_grid [data-testid="stHorizontalBlock"] > [data-testid="stColumn"] {
+  display: flex !important;
+  min-width: 0 !important;
+  max-width: 100% !important;
+  box-sizing: border-box !important;
+}
+
+.st-key-account_grid [data-testid="stHorizontalBlock"] > [data-testid="stColumn"]
+  > [data-testid="stVerticalBlockBorderWrapper"],
+.st-key-account_grid [data-testid="stHorizontalBlock"] > [data-testid="stColumn"]
+  > [data-testid="stVerticalBlock"],
+.st-key-account_grid [data-testid="stVerticalBlockBorderWrapper"]
+  [data-testid="stVerticalBlock"] {
+  width: 100% !important;
+  height: 100% !important;
+  min-width: 0 !important;
+  max-width: 100% !important;
+  box-sizing: border-box !important;
+}
+
+.st-key-account_grid [data-testid="stElementContainer"]:has(.ss-account-card),
+.st-key-account_grid [data-testid="stHtml"]:has(.ss-account-card) {
+  width: 100% !important;
+  height: 100% !important;
+}
+
+.st-key-account_grid [data-testid="stElementContainer"]:has(.ss-account-card) {
+  flex: 1 1 auto !important;
+}
+
+.st-key-account_purchase [data-testid="stVerticalBlockBorderWrapper"],
+.st-key-account_purchase [data-testid="stVerticalBlock"],
+.st-key-account_purchase [data-testid="stElementContainer"],
+.st-key-account_purchase [data-testid="stButton"],
+.st-key-account_purchase .stButton > button,
+.st-key-account_purchase [data-testid="stLinkButton"],
+.st-key-account_purchase .stLinkButton,
+.st-key-account_purchase [data-testid="stLinkButton"] > a,
+.st-key-account_purchase .stLinkButton > a {
+  min-width: 0 !important;
+  max-width: 100% !important;
+  width: 100% !important;
+  box-sizing: border-box !important;
+}
+
+.st-key-account_purchase .stButton > button,
+.st-key-account_purchase [data-testid="stLinkButton"] > a,
+.st-key-account_purchase .stLinkButton > a {
+  min-height: 44px !important;
+}
+
+.st-key-account_session {
+  margin-top: .75rem;
+  padding: .8rem 0 0;
+  border-top: 1px solid var(--ss-color-border);
+  background: transparent !important;
+}
+
+.st-key-account_session [data-testid="stHorizontalBlock"] {
+  align-items: center !important;
+}
+
+.st-key-account_logout {
+  margin-left: auto;
+  max-width: 140px;
+  width: 100%;
+}
+
+.st-key-account_logout [data-testid="stButton"],
+.st-key-account_logout button {
+  width: 100% !important;
+  min-width: 0 !important;
+  max-width: 100% !important;
+  min-height: 44px !important;
+  box-sizing: border-box !important;
+}
+
+@media (max-width: 900px) {
+  .st-key-discovery_scan_card,
+  .st-key-da_scan_card { max-width: 100%; }
+
+  .st-key-discovery_control_row [data-testid="stHorizontalBlock"],
+  .st-key-deep_control_row [data-testid="stHorizontalBlock"] {
+    flex-wrap: wrap !important;
+    row-gap: 12px !important;
+  }
+
+  .st-key-discovery_control_row [data-testid="stColumn"]:first-child,
+  .st-key-deep_control_row [data-testid="stColumn"]:first-child {
+    flex: 1 1 calc(100% - 222px) !important;
+    width: auto !important;
+  }
+
+  .st-key-discovery_control_row [data-testid="stColumn"]:nth-child(2),
+  .st-key-deep_control_row [data-testid="stColumn"]:nth-child(2) {
+    flex: 0 0 210px !important;
+    width: 210px !important;
+  }
+
+  .st-key-discovery_control_row [data-testid="stColumn"]:last-child,
+  .st-key-deep_control_row [data-testid="stColumn"]:last-child {
+    flex: 1 1 100% !important;
+    width: 100% !important;
+  }
+}
+
+@media (max-width: 720px) {
+  .st-key-discovery_scan_card,
+  .st-key-da_scan_card { padding: 1rem !important; }
+
+  .st-key-discovery_control_row [data-testid="stColumn"],
+  .st-key-deep_control_row [data-testid="stColumn"] {
+    flex: 1 1 100% !important;
+    width: 100% !important;
+    min-width: 0 !important;
+    max-width: 100% !important;
+  }
+
+  .st-key-discovery_control_row [data-baseweb="select"] > div,
+  .st-key-discovery_control_row .stButton > button,
+  .st-key-deep_control_row [data-baseweb="input"] > div,
+  .st-key-deep_control_row .stButton > button {
+    height: 48px !important;
+    min-height: 48px !important;
+  }
+
+  .st-key-credit_meter_discovery > div > [data-testid="stVerticalBlock"],
+  .st-key-credit_meter_deep > div > [data-testid="stVerticalBlock"] {
+    align-items: stretch !important;
+    flex-direction: column !important;
+    gap: .2rem !important;
+  }
+
+  .st-key-credit_meter_discovery [data-testid="stElementContainer"],
+  .st-key-credit_meter_discovery [data-testid="stPageLink"],
+  .st-key-credit_meter_discovery [data-testid="stPageLink"] a,
+  .st-key-credit_meter_deep [data-testid="stElementContainer"],
+  .st-key-credit_meter_deep [data-testid="stPageLink"],
+  .st-key-credit_meter_deep [data-testid="stPageLink"] a {
+    width: 100% !important;
+    max-width: 100% !important;
+  }
+
+  .st-key-account_grid [data-testid="stHorizontalBlock"],
+  .st-key-account_session [data-testid="stHorizontalBlock"] {
+    flex-wrap: wrap !important;
+  }
+
+  .st-key-account_grid [data-testid="stColumn"],
+  .st-key-account_session [data-testid="stColumn"] {
+    flex: 1 1 100% !important;
+    min-width: 100% !important;
+  }
+
+  .st-key-account_session [data-testid="stHorizontalBlock"] {
+    row-gap: .65rem !important;
+  }
+
+  .st-key-account_logout {
+    margin-left: 0;
+    max-width: 100%;
+  }
+}
+
 /* Framework alerts inherit the same restrained state palette. */
 [data-testid="stAlert"] {
   border-radius: var(--ss-radius-control) !important;

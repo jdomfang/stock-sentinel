@@ -194,7 +194,10 @@ def main() -> int:
         and '[data-testid="stLinkButton"] a' in adapter
         and '[data-testid="stCheckbox"] label' in adapter
         and "color: var(--ss-color-action) !important" in adapter
-        and "min-height: var(--ss-control-min-height)" in discovery
+        and ".st-key-discovery_control_row" in adapter
+        and ".st-key-deep_control_row" in adapter
+        and "min-height: 44px !important" in adapter
+        and "min-height: 48px !important" in adapter
         and "min-height:var(--ss-control-min-height)" in auth
         and ".st-key-how_trust_link" in read("pages/How_It_Works.py"),
     )

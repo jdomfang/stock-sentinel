@@ -58,13 +58,15 @@ def fresh(secrets=None):
     st.query_params = _Secrets()
     st.query_params.clear = lambda: dict.clear(st.query_params)
     calls: dict = {"error": [], "success": [], "info": [], "markdown": 0,
-                   "link_button": [], "button": [], "rerun": 0, "caption": 0}
+                   "link_button": [], "page_link": [], "button": [],
+                   "rerun": 0, "caption": 0}
     st.error = lambda m, **k: calls["error"].append(m)
     st.success = lambda m, **k: calls["success"].append(m)
     st.info = lambda m, **k: calls["info"].append(m)
     st.caption = lambda *a, **k: calls.__setitem__("caption", calls["caption"] + 1)
     st.markdown = lambda *a, **k: calls.__setitem__("markdown", calls["markdown"] + 1)
     st.link_button = lambda label, url, **k: calls["link_button"].append((label, url))
+    st.page_link = lambda page, label, **k: calls["page_link"].append((page, label))
     st.rerun = lambda: calls.__setitem__("rerun", calls["rerun"] + 1)
 
     class _Ctx:
@@ -274,18 +276,22 @@ def test_the_meter_escalates_only_when_blocked():
     calls["_click"] = False
     B.render_credit_meter(profile={"credits": 8}, key="k")
     check("a healthy balance draws no primary button",
-          calls["button"] == [f"Buy {B.PACK_CREDITS} credits · {B.PACK_PRICE}"],
-          str(calls["button"]))
+          calls["button"] == []
+          and calls["page_link"] == [("pages/Account.py", "Add credits")],
+          str(calls))
 
     B, st, calls = fresh(); calls["_click"] = False
     B.render_credit_meter(profile={"credits": 0}, key="k")
-    check("at zero the control becomes the buy action",
-          calls["button"] == ["Buy credits →"], str(calls["button"]))
+    check("at zero the Account link names the complete offer",
+          calls["button"] == []
+          and calls["page_link"] == [("pages/Account.py", "Buy 2 credits · $5")],
+          str(calls))
 
     B, st, calls = fresh(); calls["_click"] = False
     B.render_credit_meter(profile=None, key="k")
     check("a missing profile reads as zero, not a crash",
-          calls["button"] == ["Buy credits →"], str(calls["button"]))
+          calls["page_link"] == [("pages/Account.py", "Buy 2 credits · $5")],
+          str(calls["page_link"]))
 
 
 def test_the_meter_shows_the_same_number_everywhere():
@@ -303,7 +309,7 @@ def test_the_meter_shows_the_same_number_everywhere():
     for key in ("discovery", "deep", "home"):
         B, st, calls = fresh(); calls["_click"] = False
         B.render_credit_meter(profile={"credits": 7}, key=key)
-        out.append(calls["button"])
+        out.append(calls["page_link"])
     check("every page renders the identical control",
           len(set(map(tuple, out))) == 1, str(out))
 
@@ -313,7 +319,7 @@ def test_the_meter_shows_the_same_number_everywhere():
     B, st, calls = fresh(); calls["_click"] = False
     B.render_credit_meter(profile={"scan_credits": 9, "deep_credits": 9}, key="k")
     check("the frozen columns are not a balance",
-          calls["button"] == ["Buy credits →"],
+          calls["page_link"] == [("pages/Account.py", "Buy 2 credits · $5")],
           "the meter read a pre-merge snapshot instead of `credits`")
 
 
@@ -335,17 +341,17 @@ def test_the_low_warning_is_scaled_to_the_pack():
         B.render_credit_meter(profile={"credits": n}, key="k")
         seen[n] = "".join(blobs)
     B, st, calls = fresh()   # for B.PACK_CREDITS below
-    amber = "245,158,11"
-    check("a full pack is quiet", amber not in seen[B.PACK_CREDITS],
+    low_accent = "125,211,252"
+    check("a full pack is quiet", low_accent not in seen[B.PACK_CREDITS],
           seen[B.PACK_CREDITS][:120])
-    check("3 credits is quiet", amber not in seen[3], seen[3][:120])
-    check("1 credit warns", amber in seen[1], seen[1][:120])
+    check("3 credits is quiet", low_accent not in seen[3], seen[3][:120])
+    check("1 credit gets a restrained accent", low_accent in seen[1], seen[1][:120])
     # Tags stripped first: the count sits inside a <b>, so "1 credit left" is
     # never a contiguous substring of the markup even when it renders correctly.
     text = {n: _re.sub(r"<[^>]+>", "", v) for n, v in seen.items()}
     check("1 credit is singular", "1 credit left" in text[1], text[1][:160])
     check("3 credits is plural", "3 credits left" in text[3], text[3][:160])
-    check("0 is not amber but red", amber not in seen[0] and "248,113,113" in seen[0],
+    check("0 is not cyan but red", low_accent not in seen[0] and "248,113,113" in seen[0],
           seen[0][:160])
 
 

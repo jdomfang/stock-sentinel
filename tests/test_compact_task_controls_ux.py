@@ -1,0 +1,136 @@
+"""Source contracts for the compact authenticated task controls.
+
+These checks protect the alignment and responsive rules that are difficult to
+exercise reliably through Streamlit's generated DOM in unit tests.
+"""
+
+from pathlib import Path
+import sys
+
+
+ROOT = Path(__file__).resolve().parents[1]
+
+
+def _read(relative: str) -> str:
+    return (ROOT / relative).read_text(encoding="utf-8")
+
+
+def test_market_scan_uses_one_compact_scoped_control_row():
+    discovery = _read("pages/Discovery.py")
+    adapter = _read("assets/styles/stock-sentinel-streamlit-adapter.css")
+
+    assert 'key="discovery_control_row"' in discovery
+    assert ".st-key-discovery_scan_card" in adapter
+    assert "max-width: 780px" in adapter
+    assert "align-items: flex-end !important" in adapter
+    assert "height: 44px !important" in adapter
+    assert "height: 48px !important" in adapter
+    assert "<div style='height:1.68rem'>" not in discovery
+    assert "disabled=_credits <= 0" in discovery
+    assert 'title="No scan yet"' in discovery
+    assert "Bullish, Bearish, or Neutral results appear here" in discovery
+
+
+def test_deep_analyze_uses_one_compact_scoped_control_row():
+    deep = _read("pages/Deep_Analysis.py")
+    adapter = _read("assets/styles/stock-sentinel-streamlit-adapter.css")
+
+    assert 'key="deep_control_row"' in deep
+    assert ".st-key-da_scan_card" in adapter
+    assert "max-width: 780px" in adapter
+    assert "align-items: flex-end !important" in adapter
+    assert "height: 44px !important" in adapter
+    assert "height: 48px !important" in adapter
+    assert '[data-testid="stTextInput"] input::placeholder' in adapter
+    assert "<div style='height:1.68rem'>" not in deep
+    assert deep.count("billing.render_credit_meter(profile=_profile, key=\"deep\")") == 1
+    assert "disabled=_credits <= 0" in deep
+    assert 'title="No analysis yet"' in deep
+
+
+def test_task_controls_contain_columns_and_stack_at_mobile_widths():
+    adapter = _read("assets/styles/stock-sentinel-streamlit-adapter.css")
+
+    assert "@media (max-width: 900px)" in adapter
+    assert "@media (max-width: 720px)" in adapter
+    assert "min-width: 0 !important" in adapter
+    assert "max-width: 100% !important" in adapter
+    assert "flex: 1 1 100% !important" in adapter
+
+
+def test_task_credit_links_route_to_account_without_starting_checkout():
+    billing = _read("utils/billing.py")
+    meter = billing[billing.index("def render_credit_meter"):billing.index("_BUYABLE_REASONS")]
+
+    assert meter.count('st.page_link(') == 2
+    assert meter.count('"pages/Account.py"') == 2
+    assert "render_buy_credits(" not in meter
+    assert 'label=f"Buy {PACK_CREDITS} credits · {PACK_PRICE}"' in meter
+    assert "color:#94a3b8" in meter
+
+    adapter = _read("assets/styles/stock-sentinel-streamlit-adapter.css")
+    assert ":has(.ss-credit-meter-status--empty)" in adapter
+    assert "flex-direction: column !important" in adapter
+
+
+def test_every_paid_task_action_disables_at_zero_credits():
+    discovery = _read("pages/Discovery.py")
+    deep = _read("pages/Deep_Analysis.py")
+
+    assert discovery.count("disabled=_credits <= 0") == 2
+    assert deep.count("disabled=_credits <= 0") == 1
+
+
+def test_account_purchase_and_logout_controls_are_contained():
+    account = _read("pages/Account.py")
+    adapter = _read("assets/styles/stock-sentinel-streamlit-adapter.css")
+
+    assert '[data-testid="stVerticalBlockBorderWrapper"] > div' not in account
+    assert ".st-key-account_purchase .stButton > button" in adapter
+    assert '.st-key-account_purchase [data-testid="stLinkButton"] > a' in adapter
+    assert "max-width: 100% !important" in adapter
+    assert ".st-key-account_logout" in adapter
+    assert "max-width: 140px" in adapter
+    assert "border-top: 1px solid var(--ss-color-border)" in adapter
+    assert "background: transparent !important" in adapter
+
+
+def test_compact_hint_is_semantic_and_not_a_second_large_card():
+    ui = _read("utils/ui.py")
+    helper = ui[
+        ui.index("def render_compact_task_hint"):
+        ui.index("def render_footer")
+    ]
+
+    assert '<section class="ss-task-hint"' in helper
+    assert "aria-labelledby" in helper
+    assert "max-width:780px" in helper
+    assert "min-height:56px" in helper
+    assert "grid-template-columns" not in helper
+
+
+def main() -> int:
+    tests = [
+        value for name, value in sorted(globals().items())
+        if name.startswith("test_") and callable(value)
+    ]
+    failed: list[tuple[str, str]] = []
+    print("=" * 72)
+    print("  Compact task controls and alignment")
+    print("=" * 72)
+    for test in tests:
+        try:
+            test()
+        except Exception as exc:
+            failed.append((test.__name__, str(exc) or type(exc).__name__))
+            print(f"  FAIL  {test.__name__}: {failed[-1][1]}")
+        else:
+            print(f"  PASS  {test.__name__}")
+    print("\n" + "=" * 72)
+    print(f"  {len(tests) - len(failed)} passed, {len(failed)} failed")
+    print("=" * 72)
+    return 1 if failed else 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())

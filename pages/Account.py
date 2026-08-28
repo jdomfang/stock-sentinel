@@ -75,57 +75,8 @@ st.markdown(
         padding:.62rem 0;border-top:1px solid rgba(148,163,184,.11);
         color:#cbd5e1;font-size:.88rem;line-height:1.4;
       }
-      .st-key-account_purchase {
-        border:1px solid var(--border);border-radius:var(--radius-panel);
-        background:rgba(15,23,42,.72);padding:1.1rem;
-        box-sizing:border-box;width:100%;height:100%;
-      }
-      .st-key-account_purchase h2 {font-size:1rem;margin:0 0 .3rem;}
-      .st-key-account_purchase p {color:var(--muted);font-size:.86rem;margin:0 0 .8rem;}
-      .st-key-account_grid > div > [data-testid="stHorizontalBlock"] {
-        align-items:stretch!important;
-      }
-      .st-key-account_grid [data-testid="stHorizontalBlock"] > [data-testid="stColumn"] {
-        display:flex!important;
-      }
-      .st-key-account_grid [data-testid="stHorizontalBlock"] > [data-testid="stColumn"]
-        > [data-testid="stVerticalBlockBorderWrapper"],
-      .st-key-account_grid [data-testid="stHorizontalBlock"] > [data-testid="stColumn"]
-        > [data-testid="stVerticalBlock"],
-      .st-key-account_grid [data-testid="stVerticalBlockBorderWrapper"] > div,
-      .st-key-account_grid [data-testid="stVerticalBlockBorderWrapper"]
-        [data-testid="stVerticalBlock"] {
-        width:100%!important;height:100%!important;
-      }
-      .st-key-account_grid [data-testid="stElementContainer"]:has(.ss-account-card) {
-        flex:1 1 auto!important;width:100%!important;height:100%!important;
-      }
-      .st-key-account_grid [data-testid="stHtml"]:has(.ss-account-card) {
-        width:100%!important;height:100%!important;
-      }
-      .st-key-account_session {
-        margin-top:.85rem;border:1px solid var(--border);
-        border-radius:var(--radius-panel);background:rgba(15,23,42,.5);
-        padding:.8rem 1rem;
-      }
-      .st-key-account_session [data-testid="stHorizontalBlock"] {
-        align-items:center!important;
-      }
       .ss-account-session-title {font-weight:750;color:var(--text);}
       .ss-account-session-copy {font-size:.82rem;color:var(--muted);margin-top:.15rem;}
-      .st-key-account_logout button {min-height:44px!important;}
-      @media (max-width:720px) {
-        .st-key-account_grid [data-testid="stHorizontalBlock"] {flex-wrap:wrap!important;}
-        .st-key-account_grid [data-testid="stColumn"] {
-          flex:1 1 100%!important;min-width:100%!important;
-        }
-        .st-key-account_session [data-testid="stHorizontalBlock"] {
-          flex-wrap:wrap!important;row-gap:.65rem!important;
-        }
-        .st-key-account_session [data-testid="stColumn"] {
-          flex:1 1 100%!important;min-width:100%!important;
-        }
-      }
     </style>
     """,
     unsafe_allow_html=True,

@@ -63,20 +63,23 @@ def test_default_and_explicit_post_auth_destinations_are_preserved() -> None:
 
 def test_account_owns_logout_and_alignment_contracts() -> None:
     account = _read("pages/Account.py")
+    adapter = _read("assets/styles/stock-sentinel-streamlit-adapter.css")
 
     assert 'from utils.auth import flush_pending_rt_save, get_user, sign_out' in account
     assert 'key="account_session"' in account
     assert 'st.button("Log out"' in account
     assert 'st.switch_page("pages/Home.py")' in account
-    assert 'align-items:stretch!important' in account
-    assert 'height:100%!important' in account
+    assert 'align-items: stretch !important' in adapter
+    assert 'height: 100% !important' in adapter
     assert 'box-sizing:border-box;width:100%;height:100%;' in account
-    assert '[data-testid="stVerticalBlockBorderWrapper"]' in account
-    assert '[data-testid="stElementContainer"]:has(.ss-account-card)' in account
-    assert '[data-testid="stHtml"]:has(.ss-account-card)' in account
+    assert '[data-testid="stVerticalBlockBorderWrapper"]' in adapter
+    assert '[data-testid="stElementContainer"]:has(.ss-account-card)' in adapter
+    assert '[data-testid="stHtml"]:has(.ss-account-card)' in adapter
     assert account.count('class="ss-account-kicker"') >= 2
-    assert '.st-key-account_logout button {min-height:44px!important;}' in account
-    assert 'flex:1 1 100%!important;min-width:100%!important;' in account
+    assert '.st-key-account_logout button' in adapter
+    assert 'min-height: 44px !important' in adapter
+    assert 'flex: 1 1 100% !important' in adapter
+    assert 'min-width: 100% !important' in adapter
 
 
 def test_navigation_controls_share_alignment_and_touch_targets() -> None:
@@ -105,12 +108,12 @@ def test_authenticated_marketing_actions_do_not_restart_signup() -> None:
 
 def test_responsive_panels_and_actions_stack_before_they_cramp() -> None:
     home = _read("pages/Home.py")
-    account = _read("pages/Account.py")
+    adapter = _read("assets/styles/stock-sentinel-streamlit-adapter.css")
 
     assert '@media (max-width:900px)' in home
     assert '@media (max-width:520px)' in home
     assert '.st-key-home_public_ctas [data-testid="stColumn"]' in home
-    assert 'row-gap:.65rem!important' in account
+    assert 'row-gap: .65rem !important' in adapter
 
 
 def main() -> int:

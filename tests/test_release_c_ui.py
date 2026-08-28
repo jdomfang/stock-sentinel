@@ -84,14 +84,14 @@ def main() -> int:
     )
     check(
         "task pages share a quiet empty-state contract",
-        "def render_workflow_hint" in ui
-        and "render_workflow_hint(" in discovery
-        and "render_workflow_hint(" in deep,
+        "def render_compact_task_hint" in ui
+        and "render_compact_task_hint(" in discovery
+        and "render_compact_task_hint(" in deep,
     )
     check(
         "market and recommendation taxonomies stay separate in empty states",
-        "reports social sentiment only" in discovery
-        and "separate Buy, Watch, or Avoid recommendation" in deep,
+        "Bullish, Bearish, or Neutral results appear here" in discovery
+        and "Buy, Watch, or Avoid appears here" in deep,
     )
     check(
         "trust center consolidates the required credibility surfaces",

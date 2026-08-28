@@ -191,6 +191,53 @@ def render_workflow_hint(*, title: str, message: str, steps: list[str]) -> None:
         """
     )
 
+
+def render_compact_task_hint(*, title: str, message: str) -> None:
+    """Render the terse pre-run state used by signed-in task pages.
+
+    Unlike ``render_workflow_hint``, this is deliberately one content row on
+    desktop.  The controls immediately above it already explain the task, so a
+    second instructional panel would repeat the interface and reserve result
+    space before any result exists.
+    """
+    safe_title = html.escape(str(title))
+    safe_message = html.escape(str(message))
+    heading_id = "task-hint-" + "-".join(
+        part for part in "".join(
+            char.lower() if char.isalnum() else " " for char in str(title)
+        ).split()[:6]
+    )
+    heading_id = heading_id or "task-hint-status"
+    st.html(
+        f"""
+        <section class="ss-task-hint" aria-labelledby="{heading_id}">
+          <h2 id="{heading_id}">{safe_title}</h2>
+          <p>{safe_message}</p>
+        </section>
+        <style>
+          .ss-task-hint {{
+            display:flex;align-items:baseline;gap:.75rem;max-width:780px;
+            min-height:56px;box-sizing:border-box;margin:1rem 0 1.25rem;
+            padding:.7rem .95rem;border:1px solid rgba(148,163,184,.14);
+            border-radius:12px;background:rgba(8,15,30,.42);
+          }}
+          .ss-task-hint h2 {{
+            flex:0 0 auto;margin:0;color:#dbe3ee;font-size:.88rem;
+            line-height:1.45;font-weight:750;
+          }}
+          .ss-task-hint p {{
+            margin:0;color:#8192aa;font-size:.82rem;line-height:1.45;
+          }}
+          @media (max-width:700px) {{
+            .ss-task-hint {{
+              align-items:flex-start;flex-direction:column;gap:.2rem;
+              min-height:0;padding:.75rem .85rem;margin:.85rem 0 1rem;
+            }}
+          }}
+        </style>
+        """
+    )
+
 def render_footer() -> None:
     """Simple footer with support + disclaimer.
 

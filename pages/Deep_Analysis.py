@@ -31,9 +31,9 @@ from utils.ui import (
     processing_state_html,
     render_evidence_check,
     render_full_analysis_expander,
+    render_compact_task_hint,
     render_recommendation_panel,
     render_system_state,
-    render_workflow_hint,
 )
 # NOT the pipeline. This page charges a credit, draws a progress bar and
 # renders a card; the analysis itself lives in core-api and is reached over
@@ -75,7 +75,7 @@ st.markdown(
     }
     section[data-testid="stMain"] > div { padding-top: 0 !important; }
 
-    .da-hero { margin: 0 0 1.25rem; padding: 0; max-width: 760px; }
+    .da-hero { margin: 0 0 1.35rem; padding: 0; max-width: 760px; }
     .da-hero-title {
       font-size: clamp(2rem, 4vw, 2.65rem); font-weight: 760;
       letter-spacing: -0.035em; line-height: 1.08; margin: 0 0 0.35rem;
@@ -90,38 +90,6 @@ st.markdown(
       .da-hero-sub { font-size: 1.00rem; }
     }
 
-    .st-key-da_scan_card {
-      background: rgba(15,23,42,.68) !important;
-      border: 1px solid var(--border) !important;
-      border-radius: var(--radius-panel) !important;
-      box-shadow: none !important;
-      padding: 1rem !important;
-      margin-bottom: 1rem;
-    }
-    /* Kill Streamlit block gap between input row and results panel */
-    .st-key-da_scan_card + div[data-testid="stVerticalBlock"],
-    .st-key-da_scan_card ~ div {
-      margin-top: 0 !important;
-    }
-    /* Tighten all vertical block gaps on this page */
-    section[data-testid="stMain"] [data-testid="stVerticalBlock"] > [data-testid="stVerticalBlock"] {
-      gap: 0.25rem !important;
-    }
-    .st-key-da_scan_card [data-testid="stHorizontalBlock"] {
-      align-items: center !important; gap: 10px !important;
-    }
-    .st-key-da_scan_card [data-baseweb="input"] > div {
-      border-radius: 10px !important; min-height: 44px !important;
-    }
-    .st-key-da_scan_card .stButton > button {
-      min-height: 44px !important; border-radius: 10px !important;
-      padding-top: 0 !important; padding-bottom: 0 !important;
-    }
-    .da-balance {
-      min-height: 44px; display: flex; align-items: center;
-      color: var(--muted); font-size: .86rem; white-space: nowrap;
-    }
-    .da-balance strong { color: var(--text); font-weight: 720; }
     .st-key-deep_full_result_link [data-testid="stExpander"] {
       border:1px solid rgba(56,189,248,.36)!important;
       border-radius:var(--radius-control)!important;
@@ -134,17 +102,11 @@ st.markdown(
     .st-key-deep_full_result_link [data-testid="stExpander"]:hover {
       background:rgba(56,189,248,.07)!important;
     }
-    @media (max-width: 720px) {
-      .st-key-da_scan_card [data-testid="stHorizontalBlock"] { flex-wrap: wrap; }
-      .st-key-da_scan_card [data-testid="stColumn"] {
-        flex: 1 1 100% !important; width: 100% !important;
-      }
-    }
     </style>
     <div class="clawd-app-wrapper">
     <div class="da-hero">
       <h1 class="da-hero-title">Analyze any US stock.</h1>
-      <div class="da-hero-sub">Enter a ticker and get a clear signal — Buy, Watch, or Avoid — built from real social sentiment and market data.</div>
+      <div class="da-hero-sub">Enter a ticker and get a clear Buy, Watch, or Avoid recommendation.</div>
     </div>
     """,
     unsafe_allow_html=True,
@@ -181,48 +143,35 @@ _prefill = (st.session_state.pop("prefill_deep_ticker", None) or "").strip().upp
 _autorun = bool(st.session_state.pop("_autorun_deep_analysis", False))
 
 # ── Compact scan card ──
+_credits = int((_profile or {}).get("credits") or 0)
 with st.container(key="da_scan_card"):
-    ticker_col, btn_col, meter_col = st.columns([1.25, 1.0, 0.8])
-    with ticker_col:
-        ticker = st.text_input(
-            "Ticker",
-            value=_prefill,
-            placeholder="e.g. RCAT",
-            key="da_ticker_input",
-            label_visibility="visible",
-            max_chars=6,
-        )
-    with btn_col:
-        st.markdown("<div style='height:1.68rem'></div>", unsafe_allow_html=True)
-        _run_clicked = st.button(
-            "Analyze · 1 credit", type="primary", use_container_width=True
-        )
-
-    with meter_col:
-        st.markdown("<div style='height:1.68rem'></div>", unsafe_allow_html=True)
-        _credits = int((_profile or {}).get("credits") or 0)
-        if _credits <= 1:
-            billing.render_credit_meter(profile=_profile, key="deep")
-        else:
-            _credit_word = "credit" if _credits == 1 else "credits"
-            st.markdown(
-                f'<div class="da-balance"><strong>{_credits}</strong>&nbsp;'
-                f'{_credit_word} available</div>',
-                unsafe_allow_html=True,
+    with st.container(key="deep_control_row"):
+        ticker_col, btn_col, meter_col = st.columns([1.45, 1.0, 1.1])
+        with ticker_col:
+            ticker = st.text_input(
+                "Ticker",
+                value=_prefill,
+                placeholder="e.g. RCAT",
+                key="da_ticker_input",
+                label_visibility="visible",
+                max_chars=6,
             )
+        with btn_col:
+            _run_clicked = st.button(
+                "Analyze · 1 credit", type="primary", use_container_width=True,
+                disabled=_credits <= 0,
+            )
+
+        with meter_col:
+            billing.render_credit_meter(profile=_profile, key="deep")
 
 # Auto-sector: Deep analysis can run without sector input. Default to unknown.
 sector = "unknown"
 
 if not (_run_clicked or (_autorun and _prefill)):
-    render_workflow_hint(
-        title="Your analysis will appear here",
-        message="Deep Analyze evaluates one ticker and produces a separate Buy, Watch, or Avoid recommendation.",
-        steps=[
-            "Enter a valid US ticker.",
-            "Review the one-credit cost and current balance.",
-            "Run the analysis to see confidence, horizon, evidence, and key reasons.",
-        ],
+    render_compact_task_hint(
+        title="No analysis yet",
+        message="Enter a ticker and run a one-credit analysis. Buy, Watch, or Avoid appears here.",
     )
 
 # Main analysis button — or auto-triggered from Home

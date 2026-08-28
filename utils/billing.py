@@ -223,7 +223,7 @@ def render_buy_credits(
 
 
 def render_credit_meter(*, profile: dict | None, key: str) -> None:
-    """Balance + buy, for the empty pad beside a spend button.
+    """Balance + Account link for the compact task toolbar.
 
     ONE NUMBER, and no `kind` argument. The old signature took kind="scan" or
     kind="deep" and showed only the matching bucket, which produced a real bug
@@ -239,14 +239,15 @@ def render_credit_meter(*, profile: dict | None, key: str) -> None:
 
     with st.container(key=f"credit_meter_{key}"):
         if n <= 0:
-            # The ONLY loud state, and it is loud because the user is blocked,
-            # not to persuade them.
             st.markdown(
-                '<div style="color:rgba(248,113,113,.95);font-size:0.82rem;'
-                'font-weight:700;margin-bottom:4px;">Out of credits</div>',
+                '<div class="ss-credit-meter-status ss-credit-meter-status--empty" '
+                'style="color:rgba(248,113,113,.95);font-size:0.82rem;'
+                'font-weight:700;">Out of credits</div>',
                 unsafe_allow_html=True)
-            render_buy_credits(
-                key=key, label="Buy credits →", primary=True, compact=True,
+            st.page_link(
+                "pages/Account.py",
+                label=f"Buy {PACK_CREDITS} credits · {PACK_PRICE}",
+                use_container_width=False,
             )
             return
 
@@ -261,14 +262,16 @@ def render_credit_meter(*, profile: dict | None, key: str) -> None:
         # Expressed against the pack so the two cannot drift: warn once a
         # balance can no longer cover a full pack's worth of work.
         low_at = max(1, PACK_CREDITS - 1)
-        colour = "rgba(245,158,11,.95)" if n <= low_at else "rgba(148,163,184,.75)"
+        colour = "rgba(125,211,252,.95)" if n <= low_at else "rgba(148,163,184,.75)"
         word = "credit" if n == 1 else "credits"
         st.markdown(
-            f'<div style="font-size:0.82rem;color:rgba(148,163,184,.60);'
-            f'margin-bottom:2px;">'
+            f'<div class="ss-credit-meter-status" style="font-size:0.82rem;'
+            f'color:#94a3b8;">'
             f'<b style="color:{colour};font-weight:800;">{n}</b> {word} left</div>',
             unsafe_allow_html=True)
-        render_buy_credits(key=key, compact=True)
+        st.page_link(
+            "pages/Account.py", label="Add credits", use_container_width=False,
+        )
 
 
 # The refusal reasons that actually mean "buy something". Every OTHER reason

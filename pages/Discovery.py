@@ -17,9 +17,9 @@ from utils.ui import (
     processing_state_html,
     render_evidence_check,
     render_full_analysis_expander,
+    render_compact_task_hint,
     render_recommendation_panel,
     render_system_state,
-    render_workflow_hint,
 )
 from utils.finance import get_last_close_prices_best_effort
 # NOT the scan. Pagination, ticker validation, sentiment attribution and the
@@ -97,7 +97,7 @@ st.markdown(
     """
     <div class="discovery-page-header">
       <h1>Market Scan</h1>
-      <p>Find stocks gaining unusual social attention, then analyze any candidate for a Buy, Watch, or Avoid recommendation.</p>
+      <p>Find unusual social attention by sector, then analyze a candidate.</p>
     </div>
     """,
     unsafe_allow_html=True,
@@ -145,42 +145,6 @@ st.markdown(
       max-width: 1100px;
       margin: 0 auto;
       padding: 0;
-    }
-
-    /* Scan controls card (aligned with Home Market Scan card) */
-    .st-key-discovery_scan_card {
-      border: 1px solid rgba(148,163,184,0.18);
-      background: linear-gradient(180deg, rgba(15,23,42,.92), rgba(15,23,42,.72));
-      border-radius: 16px;
-      padding: 16px 16px 14px 16px;
-      box-shadow: 0 10px 28px rgba(0,0,0,.35);
-      margin-bottom: 0.85rem;
-    }
-    .st-key-discovery_scan_card .cap-title {
-      font-weight: 800;
-      font-size: 1.00rem;
-      margin: 0 0 4px 0;
-      color: rgba(229,231,235,.98);
-    }
-    .st-key-discovery_scan_card .cap-desc {
-      margin: 0 0 12px 0;
-      color: rgba(229,231,235,.78);
-      font-size: 0.93rem;
-      line-height: 1.45;
-      max-width: 56ch;
-    }
-    /* Keep dropdown + button aligned on the same baseline */
-    .st-key-discovery_scan_card [data-testid="stHorizontalBlock"] {
-      align-items: flex-end !important;
-      gap: 10px !important;
-    }
-    .st-key-discovery_scan_card [data-baseweb="select"] > div {
-      border-radius: 12px !important;
-      min-height: var(--ss-control-min-height) !important;
-    }
-    .st-key-discovery_scan_card .stButton > button {
-      min-height: var(--ss-control-min-height) !important;
-      border-radius: 12px !important;
     }
 
     /* Control row */
@@ -344,7 +308,7 @@ st.markdown(
     /* Release A: task-first hierarchy and native Streamlit result rows. */
     .discovery-page-header {
       max-width: 760px;
-      margin: 0 0 1.5rem;
+      margin: 0 0 1.35rem;
     }
     .discovery-page-header h1 {
       margin: 0 0 0.35rem;
@@ -359,26 +323,6 @@ st.markdown(
       color: var(--muted);
       font-size: 1rem;
       line-height: 1.55;
-    }
-    .st-key-discovery_scan_card {
-      padding: 1.1rem 1.15rem 0.95rem;
-      border: 1px solid var(--border);
-      border-radius: var(--radius-panel);
-      background: rgba(15, 23, 42, 0.68);
-      box-shadow: none;
-      margin-bottom: 1.25rem;
-    }
-    .scan-balance {
-      min-height: 44px;
-      display: flex;
-      align-items: center;
-      color: var(--muted);
-      font-size: 0.86rem;
-      white-space: nowrap;
-    }
-    .scan-balance strong {
-      color: var(--text);
-      font-weight: 720;
     }
     .scan-results-intro {
       display: flex;
@@ -506,13 +450,6 @@ st.markdown(
 
     @media (max-width: 720px) {
       .discovery-page-header { margin-bottom: 1rem; }
-      .st-key-discovery_scan_card [data-testid="stHorizontalBlock"] {
-        flex-wrap: wrap;
-      }
-      .st-key-discovery_scan_card [data-testid="stColumn"] {
-        flex: 1 1 100% !important;
-        width: 100% !important;
-      }
       .scan-results-intro {
         align-items: flex-start;
         flex-direction: column;
@@ -596,77 +533,61 @@ if "df_unvalidated" not in st.session_state:
 if "scan_corpus_age_s" not in st.session_state:
     st.session_state.scan_corpus_age_s = 0.0
 
-# Scan controls (align with Home card styling)
+# Compact desktop task toolbar; tablet and mobile keep the stacked flow.
+_credits = int((_profile or {}).get("credits") or 0)
 with st.container(key="discovery_scan_card"):
-    st.markdown(
-        '<h2 class="cap-title">Scan a sector</h2>',
-        unsafe_allow_html=True,
-    )
+    with st.container(key="discovery_control_row"):
+        sel_col, btn_col, meter_col = st.columns([1.45, 1.0, 1.1])
 
-    sel_col, btn_col, meter_col = st.columns([1.25, 1.0, 0.8])
+        with sel_col:
+            SECTOR_OPTIONS = [
+                "tech",
+                "healthcare",
+                "energy",
+                "finance",
+                "consumer",
+                "utilities",
+                "real estate",
+                "industrials",
+                "materials",
+                "communication",
+            ]
 
-    with sel_col:
-        SECTOR_OPTIONS = [
-            "tech",
-            "healthcare",
-            "energy",
-            "finance",
-            "consumer",
-            "utilities",
-            "real estate",
-            "industrials",
-            "materials",
-            "communication",
-        ]
-
-        # Prefer query-param intent, otherwise use prior session selection.
-        _default_sector = (
-            (st.session_state.get("discovery_sector") or "").strip().lower()
-            or (st.session_state.get("selected_sector") or "").strip().lower()
-            or SECTOR_OPTIONS[0]
-        )
-        if _default_sector not in SECTOR_OPTIONS:
-            _default_sector = SECTOR_OPTIONS[0]
-
-        # Seed the key instead of passing index=. Streamlit renders a visible
-        # warning -- in the user's face, not the log -- when a keyed widget has
-        # BOTH a default and a value set through the Session State API, which is
-        # what the query-param handler above does. Session state is the single
-        # source of truth; the guard keeps a user's own selection intact on
-        # rerun and only repairs a missing or stale-invalid value.
-        if st.session_state.get("discovery_sector") not in SECTOR_OPTIONS:
-            st.session_state["discovery_sector"] = _default_sector
-
-        sector = st.selectbox(
-            "Sector",
-            options=SECTOR_OPTIONS,
-            key="discovery_sector",
-            label_visibility="visible",
-        )
-
-    with btn_col:
-        st.markdown("<div style='height:1.68rem'></div>", unsafe_allow_html=True)
-        scan_clicked = st.button(
-            "Run scan · 1 credit",
-            type="primary",
-            use_container_width=True,
-        )
-
-    with meter_col:
-        # The same 1.68rem spacer btn_col uses, so the meter sits on the
-        # button's baseline rather than floating above it.
-        st.markdown("<div style='height:1.68rem'></div>", unsafe_allow_html=True)
-        _credits = int((_profile or {}).get("credits") or 0)
-        if _credits <= 1:
-            # Purchase affordance appears only when it is useful: blocked or
-            # one action away from blocked. The checkout behavior is unchanged.
-            billing.render_credit_meter(profile=_profile, key="discovery")
-        else:
-            _credit_word = "credit" if _credits == 1 else "credits"
-            st.markdown(
-                f'<div class="scan-balance"><strong>{_credits}</strong>&nbsp;{_credit_word} available</div>',
-                unsafe_allow_html=True,
+            # Prefer query-param intent, otherwise use prior session selection.
+            _default_sector = (
+                (st.session_state.get("discovery_sector") or "").strip().lower()
+                or (st.session_state.get("selected_sector") or "").strip().lower()
+                or SECTOR_OPTIONS[0]
             )
+            if _default_sector not in SECTOR_OPTIONS:
+                _default_sector = SECTOR_OPTIONS[0]
+
+            # Seed the key instead of passing index=. Streamlit renders a visible
+            # warning -- in the user's face, not the log -- when a keyed widget has
+            # BOTH a default and a value set through the Session State API, which is
+            # what the query-param handler above does. Session state is the single
+            # source of truth; the guard keeps a user's own selection intact on
+            # rerun and only repairs a missing or stale-invalid value.
+            if st.session_state.get("discovery_sector") not in SECTOR_OPTIONS:
+                st.session_state["discovery_sector"] = _default_sector
+
+            sector = st.selectbox(
+                "Sector",
+                options=SECTOR_OPTIONS,
+                key="discovery_sector",
+                label_visibility="visible",
+            )
+
+        with btn_col:
+            scan_clicked = st.button(
+                "Run scan · 1 credit",
+                type="primary",
+                use_container_width=True,
+                disabled=_credits <= 0,
+            )
+
+        with meter_col:
+            billing.render_credit_meter(profile=_profile, key="discovery")
 
     # Last scan context line
     _last_sector = st.session_state.get("selected_sector")
@@ -694,14 +615,9 @@ with st.container(key="discovery_scan_card"):
 scan_triggered = bool(scan_clicked or _autostart_scan)
 
 if st.session_state.df_valid is None and not scan_triggered:
-    render_workflow_hint(
-        title="Your scan results will appear here",
-        message="Market Scan reports social sentiment only. It does not create a Buy, Watch, or Avoid recommendation.",
-        steps=[
-            "Choose a market sector.",
-            "Run the one-credit scan.",
-            "Select a result for Deep Analyze when you want an action recommendation.",
-        ],
+    render_compact_task_hint(
+        title="No scan yet",
+        message="Choose a sector and run a scan. Bullish, Bearish, or Neutral results appear here.",
     )
 
 # Scan button
@@ -1502,6 +1418,7 @@ if st.session_state.df_valid is not None:
                         "Analyze · 1 credit",
                         key=f"deep_analyze_{ticker_symbol}",
                         use_container_width=True,
+                        disabled=_credits <= 0,
                     )
                 if _analyze_clicked:
                     # Open a request scope BEFORE charging. Without this the
