@@ -23,6 +23,7 @@ _sys.path.insert(0, str(_Path(__file__).resolve().parents[1]))
 from utils.navigation import render_sidebar_navigation, render_top_nav
 from utils.ui import apply_theme, close_page, safe_ui, ui_error
 from utils.auth import is_logged_in, get_user
+from utils.demo_snapshots import normalize_scan_rows, snapshot_timestamp
 from utils.supabase_client import get_admin_client
 
 st.set_page_config(page_title="Admin - Stock Sentinel", page_icon="🛠️", layout="wide", initial_sidebar_state="collapsed")
@@ -217,10 +218,11 @@ with c_demo1:
                     px = price_map.get(t)
                     r["Last Close"] = (None if px is None else float(px))
                     validated_rows.append(r)
+                validated_rows = normalize_scan_rows(validated_rows)
 
                 payload = {
                     "sector": st.session_state.get("selected_sector") or "",
-                    "generated_at": "snapshot",
+                    "generated_at": snapshot_timestamp(),
                     "validated_rows": validated_rows,
                     "unvalidated_rows": (dfn.to_dict("records") if dfn is not None else []),
                 }
@@ -242,7 +244,7 @@ with c_demo2:
                 payload = {
                     "ticker": ticker,
                     "sector": sector,
-                    "generated_at": "snapshot",
+                    "generated_at": snapshot_timestamp(),
                     "analysis_results": results,
                 }
                 out = edu_dir / "deep_latest.json"

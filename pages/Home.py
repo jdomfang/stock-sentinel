@@ -25,6 +25,7 @@ _sys.path.insert(0, str(_Path(__file__).resolve().parents[1]))
 from utils.navigation import render_sidebar_navigation, render_top_nav
 from utils.ui import apply_theme, close_page
 from utils.deep_analysis import generate_ai_summary
+from utils.demo_snapshots import mention_label
 
 
 # Verdicts this page is willing to assert. Discovery's evidence floor also emits
@@ -143,27 +144,21 @@ def _marketing_preview_html(
     rows: list[dict], ticker: str, summary: dict, sector: str,
 ) -> str:
     """Render the v4 product preview from saved, nonpaying demo data."""
-    attention_fallback = (27, 16, 12)
     preview_rows = []
-    for index, row in enumerate(rows[:3]):
+    for row in rows[:3]:
         raw_ticker = str(row.get("Ticker") or "—").strip().upper()
         sentiment = str(
             row.get("Overall Sentiment") or "Neutral"
         ).strip().lower()
         if sentiment not in _ASSERTED:
             sentiment = "neutral"
-        try:
-            attention = int(row.get("Mentions") or 0)
-        except (TypeError, ValueError):
-            attention = 0
-        if attention <= 0:
-            attention = attention_fallback[index]
+        attention = mention_label(row)
         selected = " selected" if raw_ticker == ticker else ""
         preview_rows.append(
             f'<div class="ss-hero-preview-row{selected}">'
             f'<strong>{html.escape(raw_ticker)}</strong>'
             f'<span class="ss-sentiment {sentiment}">{sentiment.title()}</span>'
-            f'<span>{attention} mentions</span></div>'
+            f'<span>{html.escape(attention)}</span></div>'
         )
 
     recommendation = html.escape(

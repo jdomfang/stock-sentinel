@@ -33,6 +33,7 @@ from utils.finance import get_last_close_prices_best_effort
 # above is still local and imports what it needs directly.
 from utils import analyze_client as _client
 from utils import billing
+from utils.demo_snapshots import normalize_scan_rows, snapshot_timestamp
 
 
 # Verdicts we are willing to assert. Anything else is a statement about how
@@ -1050,12 +1051,18 @@ if ADMIN_MODE:
                     out_dir = Path(__file__).resolve().parents[1] / "data" / "education"
                     out_dir.mkdir(parents=True, exist_ok=True)
 
-                    df_out = st.session_state.df_valid.drop(columns=["Valid", "Mentions", "Sample Tweets", "Evidence"], errors="ignore")
+                    df_out = st.session_state.df_valid.drop(
+                        columns=["Valid", "Sample Tweets", "Evidence"],
+                        errors="ignore",
+                    )
+                    validated_rows = normalize_scan_rows(
+                        df_out.to_dict(orient="records")
+                    )
 
                     payload = {
                         "sector": st.session_state.get("selected_sector") or "",
-                        "generated_at": "snapshot",
-                        "validated_rows": df_out.to_dict(orient="records"),
+                        "generated_at": snapshot_timestamp(),
+                        "validated_rows": validated_rows,
                     }
                     (out_dir / "scan_latest.json").write_text(json.dumps(payload, indent=2), encoding="utf-8")
                     st.success("Saved: data/education/scan_latest.json")
@@ -1077,7 +1084,7 @@ if ADMIN_MODE:
                     payload = {
                         "ticker": st.session_state.get("selected_ticker") or "",
                         "sector": st.session_state.get("selected_sector") or "",
-                        "generated_at": "snapshot",
+                        "generated_at": snapshot_timestamp(),
                         "analysis_results": st.session_state.get("deep_analysis_results") or {},
                     }
                     (out_dir / "deep_latest.json").write_text(json.dumps(payload, indent=2), encoding="utf-8")
