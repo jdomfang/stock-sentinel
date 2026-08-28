@@ -6,7 +6,7 @@ import html
 import streamlit as st
 
 _ACTIVE_KEYS = {
-    "home", "market_scan", "deep_analyze", "account",
+    "market_scan", "deep_analyze", "account",
     "how_it_works", "faq",
 }
 
@@ -27,14 +27,21 @@ def _nav_link(column, page: str, label: str, key: str,
               active: str, surface: str) -> None:
     with column:
         with st.container(key=f"nav_{surface}_{key}"):
-            st.page_link(page, label=label, use_container_width=True)
             if active == key:
-                st.markdown(
-                    f'<span class="ss-sr-only">Current page: '
-                    f'{html.escape(label)}</span>'
+                # Streamlit's page_link does not expose aria-current. Render
+                # only the already-current destination as a normal relative
+                # anchor so keyboard and screen-reader users receive the same
+                # current-page state as sighted users. Non-current links keep
+                # Streamlit's smooth in-app navigation.
+                route = "./" + page.rsplit("/", 1)[-1].removesuffix(".py")
+                st.html(
+                    f'<a class="ss-nav-active-link" '
+                    f'href="{html.escape(route, quote=True)}" '
+                    f'aria-current="page">{html.escape(label)}</a>'
                     '<span class="ss-nav-current" aria-hidden="true"></span>',
-                    unsafe_allow_html=True,
                 )
+            else:
+                st.page_link(page, label=label, use_container_width=True)
 
 
 def _brand(column, surface: str) -> None:
@@ -53,34 +60,13 @@ def _admin_link(column, surface: str) -> None:
                          use_container_width=True)
 
 
-def _account_link(column, surface: str, active: str) -> None:
-    with column:
-        with st.container(key=f"nav_{surface}_account"):
-            st.page_link(
-                "pages/Account.py", label="Account", use_container_width=True,
-            )
-            if active == "account":
-                st.markdown(
-                    '<span class="ss-sr-only">Current page: Account</span>'
-                    '<span class="ss-nav-current" aria-hidden="true"></span>',
-                    unsafe_allow_html=True,
-                )
-
-
-def _auth_control(
-    column, *, logged_in: bool, surface: str, after_auth_page: str = "Home"
+def _login_control(
+    column, *, surface: str, after_auth_page: str = "Discovery",
 ) -> None:
-    from utils.auth import sign_out
-
     with column:
         with st.container(key=f"nav_{surface}_auth"):
-            if logged_in:
-                if st.button("Log out", use_container_width=True,
-                             key=f"nav_{surface}_logout_button"):
-                    sign_out()
-                    st.switch_page("pages/Home.py")
-            elif st.button("Log in", use_container_width=True,
-                           key=f"nav_{surface}_login_button"):
+            if st.button("Log in", use_container_width=True,
+                         key=f"nav_{surface}_login_button"):
                 st.session_state["auth_initial_mode"] = "Sign In"
                 st.session_state["_after_auth_page"] = after_auth_page
                 st.switch_page("pages/Auth.py")
@@ -95,7 +81,7 @@ def _signup_control(column, *, surface: str) -> None:
                 key=f"nav_{surface}_signup_button",
             ):
                 st.session_state["auth_initial_mode"] = "Create Account"
-                st.session_state["_after_auth_page"] = "Home"
+                st.session_state["_after_auth_page"] = "Discovery"
                 st.switch_page("pages/Auth.py")
 
 
@@ -115,7 +101,7 @@ def _marketing_links(column, surface: str, active: str) -> None:
 
 def render_top_nav(
     *, active: str = "", credits: int | None = None,
-    after_auth_page: str = "Home",
+    after_auth_page: str = "Discovery",
 ) -> None:
     """Render a shared two-layout header without extra data reads."""
     from utils.auth import get_user, is_logged_in
@@ -148,12 +134,14 @@ def render_top_nav(
         [class*="st-key-nav_desktop_"],
         [class*="st-key-nav_mobile_"] { position:relative; }
         [class*="st-key-nav_desktop_"] [data-testid="stPageLink"] a,
-        [class*="st-key-nav_mobile_"] [data-testid="stPageLink"] a {
+        [class*="st-key-nav_mobile_"] [data-testid="stPageLink"] a,
+        .ss-nav-active-link {
           min-height:44px;justify-content:center;border-radius:8px;
           padding:.45rem .55rem;color:rgba(203,213,225,.88)!important;
           font-size:.86rem;font-weight:680;text-decoration:none!important;
           white-space:nowrap;background:transparent!important;
-          box-shadow:none!important;border:0!important;
+          box-shadow:none!important;border:0!important;align-items:center;
+          display:flex;width:100%;box-sizing:border-box;
         }
         [class*="st-key-nav_desktop_brand"] [data-testid="stPageLink"] a,
         [class*="st-key-nav_mobile_brand"] [data-testid="stPageLink"] a {
@@ -162,7 +150,8 @@ def render_top_nav(
           background:transparent!important;
         }
         [class*="st-key-nav_desktop_"] [data-testid="stPageLink"] a:hover,
-        [class*="st-key-nav_mobile_"] [data-testid="stPageLink"] a:hover {
+        [class*="st-key-nav_mobile_"] [data-testid="stPageLink"] a:hover,
+        .ss-nav-active-link:hover {
           background:rgba(56,189,248,.07)!important;
           color:rgba(248,250,252,.98)!important;
         }
@@ -182,11 +171,6 @@ def render_top_nav(
         .ss-credit-badge {
           border-radius:9px;padding:0 .65rem;color:rgba(125,211,252,.98)!important;
           white-space:nowrap;
-        }
-        [class*="st-key-nav_desktop_account"] [data-testid="stPageLink"] a,
-        [class*="st-key-nav_mobile_account"] [data-testid="stPageLink"] a {
-          border:1px solid rgba(148,163,184,.24)!important;
-          color:rgba(226,232,240,.94)!important;
         }
         [class*="st-key-nav_desktop_auth"] button,
         [class*="st-key-nav_mobile_auth"] button,
@@ -236,7 +220,8 @@ def render_top_nav(
             margin-top:.2rem;padding-top:.2rem;
             border-top:1px solid rgba(148,163,184,.12);
           }
-          [class*="st-key-nav_mobile_"] [data-testid="stPageLink"] a {
+          [class*="st-key-nav_mobile_"] [data-testid="stPageLink"] a,
+          .ss-nav-active-link {
             padding-left:.2rem;padding-right:.2rem;font-size:.79rem;
           }
           [class*="st-key-nav_mobile_brand"] [data-testid="stPageLink"] a {
@@ -256,9 +241,8 @@ def render_top_nav(
                 )
                 _brand(brand, "desktop")
                 _marketing_links(marketing, "desktop", active)
-                _auth_control(
-                    login, logged_in=False, surface="desktop",
-                    after_auth_page=after_auth_page,
+                _login_control(
+                    login, surface="desktop", after_auth_page=after_auth_page,
                 )
                 _signup_control(signup, surface="desktop")
             else:
@@ -267,20 +251,18 @@ def render_top_nav(
                     widths.append(.82)
                 if is_admin:
                     widths.append(.58)
-                widths.append(.74)
-                widths.append(.82)
                 cols = iter(st.columns(widths))
 
                 _brand(next(cols), "desktop")
                 links_col = next(cols)
                 with links_col:
-                    home, scan, deep = st.columns(3)
-                    _nav_link(home, "pages/Home.py", "Home", "home",
-                              active, "desktop")
+                    scan, deep, account = st.columns(3)
                     _nav_link(scan, "pages/Discovery.py", "Market Scan",
                               "market_scan", active, "desktop")
                     _nav_link(deep, "pages/Deep_Analysis.py", "Deep Analyze",
                               "deep_analyze", active, "desktop")
+                    _nav_link(account, "pages/Account.py", "Account",
+                              "account", active, "desktop")
 
                 if show_credits:
                     with next(cols):
@@ -291,24 +273,27 @@ def render_top_nav(
                         )
                 if is_admin:
                     _admin_link(next(cols), "desktop")
-                _account_link(next(cols), "desktop", active)
-                _auth_control(next(cols), logged_in=True, surface="desktop")
 
         with st.container(key="ss_nav_mobile"):
             with st.container(key="ss_nav_mobile_primary"):
                 if logged_in:
-                    brand_col, account_col, auth_col = st.columns([1.75, .8, .8])
+                    brand_col, account_col = st.columns([2.3, .9])
+                    auth_col = None
                     signup_col = None
                 else:
                     brand_col, auth_col, signup_col = st.columns([1.65, .72, .82])
                     account_col = None
                 _brand(brand_col, "mobile")
                 if account_col is not None:
-                    _account_link(account_col, "mobile", active)
-                _auth_control(
-                    auth_col, logged_in=logged_in, surface="mobile",
-                    after_auth_page=after_auth_page,
-                )
+                    _nav_link(
+                        account_col, "pages/Account.py", "Account", "account",
+                        active, "mobile",
+                    )
+                if auth_col is not None:
+                    _login_control(
+                        auth_col, surface="mobile",
+                        after_auth_page=after_auth_page,
+                    )
                 if signup_col is not None:
                     _signup_control(signup_col, surface="mobile")
 
@@ -325,9 +310,7 @@ def render_top_nav(
 
             if logged_in:
                 with st.container(key="ss_nav_mobile_links"):
-                    home, scan, deep = st.columns(3)
-                    _nav_link(home, "pages/Home.py", "Home", "home",
-                              active, "mobile")
+                    scan, deep = st.columns(2)
                     _nav_link(scan, "pages/Discovery.py", "Market Scan",
                               "market_scan", active, "mobile")
                     _nav_link(deep, "pages/Deep_Analysis.py", "Deep Analyze",

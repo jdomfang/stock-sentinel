@@ -29,14 +29,24 @@ def test_all_literal_internal_link_targets_exist() -> None:
             if not isinstance(node, ast.Call) or not node.args:
                 continue
             func = node.func
-            if not (
+            target_arg = None
+            if (
                 isinstance(func, ast.Attribute)
                 and func.attr in {"page_link", "switch_page"}
-                and isinstance(node.args[0], ast.Constant)
-                and isinstance(node.args[0].value, str)
+            ):
+                target_arg = node.args[0]
+            elif (
+                isinstance(func, ast.Name)
+                and func.id == "_nav_link"
+                and len(node.args) > 1
+            ):
+                target_arg = node.args[1]
+            if not (
+                isinstance(target_arg, ast.Constant)
+                and isinstance(target_arg.value, str)
             ):
                 continue
-            target = node.args[0].value
+            target = target_arg.value
             if target.startswith("pages/"):
                 found_targets.add(target)
                 assert (REPO / target).is_file(), f"{path}: missing {target}"
@@ -60,7 +70,6 @@ def test_public_how_it_works_uses_a_real_route() -> None:
     home = _read("pages/Home.py")
 
     assert '"pages/How_It_Works.py", "How it works"' in nav
-    assert '"pages/How_It_Works.py"' in home
     assert 'href="#how-it-works"' not in nav
     assert 'href="#how-it-works"' not in home
     assert (REPO / "pages" / "How_It_Works.py").is_file()
@@ -152,7 +161,7 @@ def test_start_free_has_a_mode_specific_premium_auth_surface() -> None:
     assert '<h2 class="auth-value-title">' in auth
     for origin in (nav, home, how):
         assert 'st.session_state["auth_initial_mode"] = "Create Account"' in origin
-        assert 'st.session_state["_after_auth_page"] = "Home"' in origin
+        assert 'st.session_state["_after_auth_page"] = "Discovery"' in origin
 
 
 def test_every_explicit_login_origin_resets_sign_in_mode() -> None:
@@ -165,7 +174,7 @@ def test_every_explicit_login_origin_resets_sign_in_mode() -> None:
 
     nav = _read("utils/navigation.py")
     assert 'st.session_state["_after_auth_page"] = after_auth_page' in nav
-    assert 'after_auth_page: str = "Home"' in nav
+    assert 'after_auth_page: str = "Discovery"' in nav
 
     guard = _read("utils/guard.py")
     auth = _read("pages/Auth.py")
@@ -180,6 +189,19 @@ def test_every_explicit_login_origin_resets_sign_in_mode() -> None:
         assert f'st.switch_page("{target}")' in auth
 
 
+def test_shared_links_have_accessible_targets_and_current_state() -> None:
+    nav = _read("utils/navigation.py")
+    footer = _read("utils/ui.py")
+    billing = _read("utils/billing.py")
+
+    assert 'aria-current="page"' in nav
+    assert 'class="ss-nav-active-link"' in nav
+    assert 'min-height: 44px;' in footer
+    assert 'with st.container(key="footer_links"):' in footer
+    assert '.st-key-footer_links [data-testid="stPageLink"] a' in footer
+    assert 'label = label or f"Buy {PACK_CREDITS} credits · {PACK_PRICE}"' in billing
+
+
 def main() -> int:
     tests = [
         test_all_literal_internal_link_targets_exist,
@@ -190,6 +212,7 @@ def main() -> int:
         test_faq_has_a_real_contact_destination,
         test_start_free_has_a_mode_specific_premium_auth_surface,
         test_every_explicit_login_origin_resets_sign_in_mode,
+        test_shared_links_have_accessible_targets_and_current_state,
     ]
     failed: list[tuple[str, str]] = []
 

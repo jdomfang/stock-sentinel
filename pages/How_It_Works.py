@@ -9,6 +9,7 @@ import streamlit as st
 
 _sys.path.insert(0, str(_Path(__file__).resolve().parents[1]))
 
+from utils.auth import is_logged_in
 from utils.navigation import render_sidebar_navigation, render_top_nav
 from utils.ui import apply_theme, render_footer
 
@@ -54,6 +55,12 @@ st.markdown(
       .st-key-how_trust_link [data-testid="stPageLink"] a:hover {text-decoration:underline!important;}
       .st-key-how_cta {border:1px solid var(--border);border-radius:15px;background:rgba(15,23,42,.55);padding:1rem;margin-bottom:.5rem;}
       .st-key-how_cta [data-testid="stHorizontalBlock"] {align-items:center!important;}
+      .st-key-how_continue [data-testid="stPageLink"] a {
+        min-height:48px;display:flex;align-items:center;justify-content:center;
+        border:1px solid rgba(56,189,248,.52);border-radius:10px;
+        color:#f8fafc!important;font-weight:760;text-decoration:none!important;
+        background:linear-gradient(180deg,#35b7e7,#0e8fb9)!important;
+      }
       .ss-how-cta-copy strong {display:block;font-size:1rem;margin-bottom:.2rem;}
       .ss-how-cta-copy span {color:#94a3b8;font-size:.83rem;}
       @media (max-width:760px) {
@@ -119,17 +126,31 @@ with st.container(key="how_trust_link"):
     )
 
 with st.container(key="how_cta"):
+    _logged_in = is_logged_in()
     copy_col, action_col = st.columns([3, 1])
     with copy_col:
-        st.markdown(
-            '<div class="ss-how-cta-copy"><strong>Ready to try the workflow?</strong>'
-            '<span>Create an account with 2 free credits. No card required.</span></div>',
-            unsafe_allow_html=True,
-        )
+        if _logged_in:
+            st.markdown(
+                '<div class="ss-how-cta-copy"><strong>Ready to continue?</strong>'
+                '<span>Open Market Scan to build your next shortlist.</span></div>',
+                unsafe_allow_html=True,
+            )
+        else:
+            st.markdown(
+                '<div class="ss-how-cta-copy"><strong>Ready to try the workflow?</strong>'
+                '<span>Create an account with 2 free credits. No card required.</span></div>',
+                unsafe_allow_html=True,
+            )
     with action_col:
-        if st.button("Start free", type="primary", use_container_width=True):
+        if _logged_in:
+            with st.container(key="how_continue"):
+                st.page_link(
+                    "pages/Discovery.py", label="Continue to Market Scan",
+                    use_container_width=True,
+                )
+        elif st.button("Start free", type="primary", use_container_width=True):
             st.session_state["auth_initial_mode"] = "Create Account"
-            st.session_state["_after_auth_page"] = "Home"
+            st.session_state["_after_auth_page"] = "Discovery"
             st.switch_page("pages/Auth.py")
 
 render_footer()

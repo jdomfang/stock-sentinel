@@ -146,9 +146,10 @@ def render_buy_credits(
     duplicate ids) and names the container for CSS.
     """
     import time
-    # The default label states the whole offer, so nothing needs a legend:
-    # "+ 2 credits · $5". A bare "Buy credits" leaves the user to guess how many.
-    label = label or f"+ {PACK_CREDITS} credits · {PACK_PRICE}"
+    # The default label states both the action and the complete offer. A bare
+    # "Buy credits" leaves the user to guess how many; a leading plus sign does
+    # not clearly communicate that this starts a purchase.
+    label = label or f"Buy {PACK_CREDITS} credits · {PACK_PRICE}"
     uid = _uid()
     url = _pending_url(uid)
 

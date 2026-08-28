@@ -16,7 +16,7 @@ import streamlit as st
 _sys.path.insert(0, str(_Path(__file__).resolve().parents[1]))
 
 from utils import billing
-from utils.auth import flush_pending_rt_save, get_user
+from utils.auth import flush_pending_rt_save, get_user, sign_out
 from utils.guard import require_active_account
 from utils.navigation import render_sidebar_navigation, render_top_nav
 from utils.ui import apply_theme, render_footer
@@ -58,6 +58,7 @@ st.markdown(
       .ss-account-card {
         border:1px solid var(--border);border-radius:var(--radius-panel);
         background:rgba(15,23,42,.72);padding:1.1rem;
+        box-sizing:border-box;width:100%;height:100%;
       }
       .ss-account-kicker {
         color:#8192aa;font-size:.7rem;font-weight:800;letter-spacing:.07em;
@@ -76,13 +77,52 @@ st.markdown(
       }
       .st-key-account_purchase {
         border:1px solid var(--border);border-radius:var(--radius-panel);
-        background:rgba(15,23,42,.72);padding:1.1rem;height:100%;
+        background:rgba(15,23,42,.72);padding:1.1rem;
+        box-sizing:border-box;width:100%;height:100%;
       }
       .st-key-account_purchase h2 {font-size:1rem;margin:0 0 .3rem;}
       .st-key-account_purchase p {color:var(--muted);font-size:.86rem;margin:0 0 .8rem;}
+      .st-key-account_grid > div > [data-testid="stHorizontalBlock"] {
+        align-items:stretch!important;
+      }
+      .st-key-account_grid [data-testid="stHorizontalBlock"] > [data-testid="stColumn"] {
+        display:flex!important;
+      }
+      .st-key-account_grid [data-testid="stHorizontalBlock"] > [data-testid="stColumn"]
+        > [data-testid="stVerticalBlockBorderWrapper"],
+      .st-key-account_grid [data-testid="stHorizontalBlock"] > [data-testid="stColumn"]
+        > [data-testid="stVerticalBlock"],
+      .st-key-account_grid [data-testid="stVerticalBlockBorderWrapper"] > div,
+      .st-key-account_grid [data-testid="stVerticalBlockBorderWrapper"]
+        [data-testid="stVerticalBlock"] {
+        width:100%!important;height:100%!important;
+      }
+      .st-key-account_grid [data-testid="stElementContainer"]:has(.ss-account-card) {
+        flex:1 1 auto!important;width:100%!important;height:100%!important;
+      }
+      .st-key-account_grid [data-testid="stHtml"]:has(.ss-account-card) {
+        width:100%!important;height:100%!important;
+      }
+      .st-key-account_session {
+        margin-top:.85rem;border:1px solid var(--border);
+        border-radius:var(--radius-panel);background:rgba(15,23,42,.5);
+        padding:.8rem 1rem;
+      }
+      .st-key-account_session [data-testid="stHorizontalBlock"] {
+        align-items:center!important;
+      }
+      .ss-account-session-title {font-weight:750;color:var(--text);}
+      .ss-account-session-copy {font-size:.82rem;color:var(--muted);margin-top:.15rem;}
+      .st-key-account_logout button {min-height:44px!important;}
       @media (max-width:720px) {
         .st-key-account_grid [data-testid="stHorizontalBlock"] {flex-wrap:wrap!important;}
         .st-key-account_grid [data-testid="stColumn"] {
+          flex:1 1 100%!important;min-width:100%!important;
+        }
+        .st-key-account_session [data-testid="stHorizontalBlock"] {
+          flex-wrap:wrap!important;row-gap:.65rem!important;
+        }
+        .st-key-account_session [data-testid="stColumn"] {
           flex:1 1 100%!important;min-width:100%!important;
         }
       }
@@ -126,6 +166,7 @@ with st.container(key="account_grid"):
     with purchase_col:
         with st.container(key="account_purchase"):
             st.markdown(
+                '<div class="ss-account-kicker">Credits</div>'
                 "<h2>Add credits</h2>"
                 "<p>One-time purchase. No subscription and nothing to cancel.</p>",
                 unsafe_allow_html=True,
@@ -136,4 +177,19 @@ st.caption(
     "Payments are completed on Stripe. Stock Sentinel does not collect or "
     "display your card number."
 )
+
+with st.container(key="account_session"):
+    session_copy, session_action = st.columns([3.3, .7])
+    with session_copy:
+        st.markdown(
+            '<div class="ss-account-session-title">Signed-in session</div>'
+            '<div class="ss-account-session-copy">Log out on shared or public devices.</div>',
+            unsafe_allow_html=True,
+        )
+    with session_action:
+        with st.container(key="account_logout"):
+            if st.button("Log out", use_container_width=True):
+                sign_out()
+                st.switch_page("pages/Home.py")
+
 render_footer()

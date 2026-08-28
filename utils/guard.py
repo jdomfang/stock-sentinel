@@ -6,7 +6,7 @@ from utils.auth import is_logged_in
 from utils.profile import get_my_profile
 
 
-def require_login(*, after_auth_page: str = "Home") -> None:
+def require_login(*, after_auth_page: str = "Discovery") -> None:
     if not is_logged_in():
         st.markdown(
             """
@@ -37,7 +37,7 @@ def require_login(*, after_auth_page: str = "Home") -> None:
         st.stop()
 
 
-def require_active_account(*, after_auth_page: str = "Home") -> dict:
+def require_active_account(*, after_auth_page: str = "Discovery") -> dict:
     """Ensure the user is logged in and not disabled; returns profile."""
     require_login(after_auth_page=after_auth_page)
     prof = get_my_profile()

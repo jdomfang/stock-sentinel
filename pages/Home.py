@@ -217,7 +217,7 @@ st.set_page_config(
 
 apply_theme()
 render_sidebar_navigation()
-render_top_nav(active="home")
+render_top_nav()
 from utils.auth import flush_pending_rt_save; flush_pending_rt_save()
 
 # --- Home-specific styling (global theme comes from utils.ui.apply_theme) ---
@@ -392,103 +392,6 @@ st.markdown(
       padding: 16px;
     }
 
-    /* Capability cards: controlled-width row like the mock, but with live copy unchanged */
-    .st-key-home_cap_grid [data-testid="stHorizontalBlock"] {
-      gap: 0 !important;
-      align-items: stretch !important;
-    }
-
-    .st-key-home_cap_grid [data-testid="stColumn"] {
-      min-width: 0 !important;
-      display: flex !important;
-      align-self: stretch !important;
-    }
-
-    .st-key-home_cap_grid [data-testid="stColumn"] > div {
-      width: 100% !important;
-    }
-
-    .st-key-home_card_scan,
-    .st-key-home_card_analyze {
-      border: 1px solid rgba(148,163,184,0.18);
-      background: linear-gradient(180deg, rgba(15,23,42,.92), rgba(15,23,42,.72));
-      border-radius: 16px;
-      padding: 15px 15px 12px 15px;
-      box-shadow: 0 10px 28px rgba(0,0,0,.35);
-      min-height: 174px;
-      width: 100%;
-      height: 174px;
-      display: grid;
-      grid-template-rows: 1fr auto;
-    }
-
-    .st-key-home_card_scan_actions,
-    .st-key-home_card_analyze_actions {
-      margin-top: 0;
-      padding-top: 10px;
-      align-self: stretch;
-      justify-self: stretch;
-      /* Constrain to card inner width (card has 15px padding each side = 30px total) */
-      width: calc(100% - 30px) !important;
-      max-width: calc(100% - 30px) !important;
-      overflow: hidden !important;
-    }
-
-    .cap-title {
-      font-weight: 800;
-      font-size: 1.00rem;
-      margin: 0;
-      color: rgba(229,231,235,.98);
-    }
-    .cap-desc {
-      margin: 6px 0 0 0;
-      color: rgba(229,231,235,.78);
-      font-size: 0.94rem;
-      line-height: 1.45;
-      max-width: 40ch;
-    }
-
-    .st-key-home_card_scan_actions [data-testid="stHorizontalBlock"],
-    .st-key-home_card_analyze_actions [data-testid="stHorizontalBlock"] {
-      gap: 8px !important;
-      align-items: center !important;
-      flex-wrap: nowrap !important;
-      width: 100% !important;
-      max-width: 100% !important;
-      box-sizing: border-box !important;
-    }
-
-    /* Mobile: let the select/input + button stack so they don't overflow the card */
-    @media (max-width: 640px) {
-      .st-key-home_card_scan_actions [data-testid="stHorizontalBlock"],
-      .st-key-home_card_analyze_actions [data-testid="stHorizontalBlock"] {
-        flex-wrap: wrap !important;
-        align-items: stretch !important;
-      }
-
-      .st-key-home_card_scan_actions [data-testid="stColumn"],
-      .st-key-home_card_analyze_actions [data-testid="stColumn"] {
-        flex: 1 1 100% !important;
-        min-width: 100% !important;
-      }
-
-      .st-key-home_card_scan [data-baseweb="select"],
-      .st-key-home_card_analyze [data-baseweb="input"] {
-        width: 100% !important;
-        max-width: 100% !important;
-      }
-
-      .st-key-home_card_scan .stButton > button,
-      .st-key-home_card_analyze .stButton > button {
-        width: 100% !important;
-      }
-    }
-
-    .st-key-home_card_scan_actions [data-testid="stColumn"],
-    .st-key-home_card_analyze_actions [data-testid="stColumn"] {
-      min-width: 0 !important;
-    }
-
     /* Metrics row tweaks */
     [data-testid="stMetric"] {
       border: 1px solid var(--border);
@@ -506,15 +409,6 @@ st.markdown(
       background-color: rgba(2,6,23,.55) !important;
       border-color: var(--border) !important;
       color: var(--text) !important;
-    }
-
-    .st-key-home_card_scan [data-baseweb="select"] > div,
-    .st-key-home_card_analyze [data-baseweb="input"] > div {
-      border-radius: 12px !important;
-      min-height: 44px !important;
-      padding-left: 11px !important;
-      padding-right: 11px !important;
-      box-shadow: inset 0 1px 0 rgba(255,255,255,.02) !important;
     }
 
     /* Sector dropdown menu readability */
@@ -565,16 +459,6 @@ st.markdown(
       padding: 0.25rem 0.65rem !important;
       font-size: 0.85rem !important;
       min-height: 44px !important;
-    }
-
-    .st-key-home_card_scan .stButton > button,
-    .st-key-home_card_analyze .stButton > button {
-      border-radius: 12px !important;
-      min-height: 44px !important;
-      padding: 0.22rem 0.62rem !important;
-      font-size: 0.81rem !important;
-      max-width: 100% !important;
-      box-shadow: 0 8px 20px rgba(14,116,144,.22) !important;
     }
 
     /* Hide Streamlit "Made with" footer */
@@ -634,13 +518,6 @@ st.markdown(
       padding:3px 10px;border:1px solid rgba(56,189,248,.18);
       border-radius:999px;background:rgba(56,189,248,.045);
       color:#b9c6d8;font-size:.76rem;font-weight:650;
-    }
-    .st-key-home_cap_grid [data-testid="stHorizontalBlock"] {
-      gap:14px !important;
-    }
-    .st-key-home_card_scan,
-    .st-key-home_card_analyze {
-      min-height:168px;height:auto;box-shadow:0 8px 24px rgba(0,0,0,.24);
     }
     .section-title { margin: 1.45rem 0 .28rem; }
     .demo-note { margin:.05rem 0 .85rem;max-width:780px;line-height:1.5; }
@@ -726,13 +603,19 @@ st.markdown(
     .st-key-home_public_ctas {margin-top:1.35rem;max-width:520px;}
     .st-key-home_public_ctas [data-testid="stHorizontalBlock"] {gap:12px!important;}
     .st-key-home_public_ctas .stButton > button {min-height:50px!important;}
-    .st-key-home_how_link [data-testid="stPageLink"] a {
-      min-height:50px;justify-content:center;border:1px solid rgba(148,163,184,.24);
-      border-radius:10px;color:#dbe3ee!important;font-weight:720;text-decoration:none!important;
-      background:rgba(15,23,42,.46)!important;
+    .st-key-home_open_scan_link [data-testid="stPageLink"] a,
+    .st-key-home_open_deep_link [data-testid="stPageLink"] a {
+      min-height:50px;display:flex;align-items:center;justify-content:center;
+      border-radius:10px;font-weight:740;text-decoration:none!important;
+      width:100%;box-sizing:border-box;
     }
-    .st-key-home_how_link [data-testid="stPageLink"] a:hover {
-      border-color:rgba(56,189,248,.48);background:rgba(56,189,248,.07)!important;
+    .st-key-home_open_scan_link [data-testid="stPageLink"] a {
+      color:#f8fafc!important;border:1px solid rgba(56,189,248,.55);
+      background:linear-gradient(180deg,#35b7e7,#0e8fb9)!important;
+    }
+    .st-key-home_open_deep_link [data-testid="stPageLink"] a {
+      color:#dbe3ee!important;border:1px solid rgba(148,163,184,.26);
+      background:rgba(15,23,42,.46)!important;
     }
     .ss-public-caveat {margin-top:.65rem;color:#8192aa;font-size:.78rem;}
     .ss-hero-preview {
@@ -800,28 +683,7 @@ st.markdown(
       background:rgba(8,15,30,.54);
     }
     .ss-trust-strip span {text-align:center;color:#a8b5c7;font-size:.78rem;}
-    .st-key-home_credit_hub {
-      margin:.45rem 0 .7rem;padding:10px 12px;border:1px solid rgba(148,163,184,.16);
-      border-radius:12px;background:rgba(8,15,30,.62);
-    }
-    .st-key-home_credit_hub [data-testid="stHorizontalBlock"] {align-items:center!important;}
-    .ss-credit-hub-copy {display:flex;align-items:baseline;gap:8px;flex-wrap:wrap;}
-    .ss-credit-hub-copy strong {font-size:1.2rem;color:var(--accent);}
-    .ss-credit-hub-copy span {color:#94a3b8;font-size:.8rem;}
-    @media (max-width:700px) {
-      .hero-title {font-size:clamp(2rem,10vw,2.65rem);}
-      .st-key-home_cap_grid [data-testid="stHorizontalBlock"] {flex-wrap:wrap !important;}
-      .st-key-home_cap_grid [data-testid="stColumn"] {
-        flex:1 1 100% !important;min-width:100% !important;
-      }
-      .ss-demo-table-head {display:block;}
-      .ss-demo-table-head span {display:block;margin-top:3px;}
-      .ss-demo-table th:nth-child(2),.ss-demo-table td:nth-child(2) {display:none;}
-      .ss-demo-table th,.ss-demo-table td {padding-left:11px;padding-right:11px;}
-      .st-key-home_credit_hub [data-testid="stHorizontalBlock"] {flex-wrap:wrap!important;}
-      .st-key-home_credit_hub [data-testid="stColumn"] {
-        flex:1 1 100%!important;min-width:100%!important;
-      }
+    @media (max-width:900px) {
       .st-key-home_public_hero [data-testid="stHorizontalBlock"]:has(
         .st-key-home_public_story
       ):has(.st-key-home_public_preview) {flex-wrap:wrap!important;}
@@ -830,9 +692,27 @@ st.markdown(
       ):has(.st-key-home_public_preview) > [data-testid="stColumn"] {
         flex:1 1 100%!important;min-width:100%!important;width:100%!important;
       }
+      .ss-hero-preview {min-height:0;margin-top:.6rem;}
+    }
+    @media (max-width:520px) {
+      .st-key-home_public_ctas [data-testid="stHorizontalBlock"] {
+        flex-wrap:wrap!important;
+      }
+      .st-key-home_public_ctas [data-testid="stColumn"] {
+        flex:1 1 100%!important;min-width:100%!important;width:100%!important;
+      }
+      .st-key-home_public_ctas button {
+        width:100%!important;min-height:50px!important;
+      }
+    }
+    @media (max-width:700px) {
+      .hero-title {font-size:clamp(2rem,10vw,2.65rem);}
+      .ss-demo-table-head {display:block;}
+      .ss-demo-table-head span {display:block;margin-top:3px;}
+      .ss-demo-table th:nth-child(2),.ss-demo-table td:nth-child(2) {display:none;}
+      .ss-demo-table th,.ss-demo-table td {padding-left:11px;padding-right:11px;}
       .ss-public-hero-copy {padding:.5rem 0;}
       .ss-public-hero-copy h1 {font-size:clamp(2.45rem,12vw,3.35rem);}
-      .ss-hero-preview {min-height:0;margin-top:.6rem;}
       .ss-workflow-grid,.ss-trust-strip {grid-template-columns:1fr;}
       .ss-workflow-step {padding:14px 4px;}
       .ss-workflow-step + .ss-workflow-step {border-left:0;border-top:1px solid rgba(148,163,184,.14);}
@@ -843,275 +723,121 @@ st.markdown(
     unsafe_allow_html=True,
 )
 
-# --- Hero: signed-in workspace or public product story. ---
+# --- Public product story. Authentication only changes the primary action. ---
 from utils.auth import is_logged_in
 
 _logged_in = is_logged_in()
-if _logged_in:
-    from utils.auth import get_user
-    _user = get_user() or {}
-    _meta = (_user.get("user_metadata") if isinstance(_user, dict) else getattr(_user, "user_metadata", None)) or {}
-    _email = (_user.get("email") if isinstance(_user, dict) else getattr(_user, "email", None)) or ""
-    _prefix = _email.split("@")[0] if _email else ""
-    _first = _prefix.replace(".", " ").replace("_", " ").split()[0].title() if _prefix else ""
-    _display = (
-        _meta.get("full_name") or _meta.get("name") or _meta.get("first_name") or _first
-    )
-    _greeting = f"Welcome back, {_display}." if _display else "Welcome back."
+_demo_frame = _load_demo_scan()
+_demo_available = {
+    str(row.get("Ticker") or "").strip().upper()
+    for row in _demo_frame.to_dict("records")
+    if str(row.get("Overall Sentiment") or "").strip().lower() in _ASSERTED
+}
+_demo_ticker, _demo_sector, _demo_results = _load_demo_deep(
+    preferred_tickers=_demo_available,
+)
+_demo_rows = _select_demo_rows(
+    _demo_frame, limit=3, selected_ticker=_demo_ticker,
+)
+_demo_summary = generate_ai_summary(_demo_results) if _demo_results else {}
 
-    st.markdown(
-        """
-        <style>
-        .clawd-dashboard-hero,
-        .st-key-home_cap_grid,
-        .st-key-home_credit_hub {
-          max-width:var(--ss-workspace-max-width);
-          margin-left:auto!important;
-          margin-right:auto!important;
-        }
-        .clawd-dashboard-hero {
-          margin: 0 0 1rem;
-        }
-        [data-testid="stVerticalBlock"] > [data-testid="stElementContainer"],
-        [data-testid="stVerticalBlock"] > [data-testid="stVerticalBlockBorderWrapper"] {
-          margin-bottom: 0 !important;
-          padding-bottom: 0 !important;
-          gap: 0 !important;
-        }
-        [data-testid="stVerticalBlock"] { gap: 0.55rem !important; }
-        .st-key-home_cap_grid { margin-top: 0 !important; }
-        @media (max-width: 640px) {
-          .clawd-credits-row { flex-direction: column !important; align-items: flex-start !important; }
-          .clawd-credits-row > div { width: 100% !important; justify-content: space-between !important; }
-        }
-        </style>
-        """ + f"""
-        <div class="clawd-dashboard-hero">
-          <h1 style="margin:0;font-size:clamp(32px,3.8vw,2.8rem);font-weight:850;letter-spacing:-0.035em;line-height:1.08;color:rgba(229,231,235,.98);">{_greeting}</h1>
-          <div style="color:rgba(148,163,184,.78);font-size:clamp(15px,1.35vw,1.05rem);line-height:1.45;margin-top:5px;">What are you trading today?</div>
-        </div>
-        """,
-        unsafe_allow_html=True,
-    )
-    with st.container(key="home_cap_grid"):
-        cap1, cap2 = st.columns(2)
-
-        with cap1:
-            with st.container(key="home_card_scan"):
-                st.markdown(
-                    '<h2 class="cap-title">Market Scan</h2>'
-                    '<p class="cap-desc">Pick a sector and identify US stocks '
-                    'gaining unusual social attention.</p>',
-                    unsafe_allow_html=True,
-                )
-                with st.container(key="home_card_scan_actions"):
-                    sel_col, btn_col = st.columns([1.22, 0.98])
-                    with sel_col:
-                        home_sector = st.selectbox(
-                            "Sector",
-                            options=[
-                                "tech", "healthcare", "energy", "finance",
-                                "consumer", "utilities", "real estate",
-                                "industrials", "materials", "communication",
-                            ],
-                            index=0,
-                            key="home_sector",
-                            label_visibility="collapsed",
-                        )
-                    with btn_col:
-                        if st.button(
-                            "Run scan · 1 credit", type="primary",
-                            key="home_cap_scan", use_container_width=True,
-                        ):
-                            st.session_state["discovery_sector"] = home_sector
-                            st.session_state["_autostart_discovery_scan"] = True
-                            st.session_state["_after_auth_page"] = "Discovery"
-                            st.switch_page("pages/Discovery.py")
-
-        with cap2:
-            with st.container(key="home_card_analyze"):
-                st.markdown(
-                    '<h2 class="cap-title">Analyze a Stock</h2>'
-                    '<p class="cap-desc">Enter a ticker for a separate '
-                    'Buy, Watch, or Avoid recommendation.</p>',
-                    unsafe_allow_html=True,
-                )
-                with st.container(key="home_card_analyze_actions"):
-                    in_col, btn_col = st.columns([1.08, 1.02])
-                    with in_col:
-                        analyze_ticker = st.text_input(
-                            "Ticker",
-                            value=st.session_state.get(
-                                "home_analyze_ticker", ""
-                            ),
-                            placeholder="Ticker — e.g. TSLA",
-                            key="home_analyze_ticker",
-                            label_visibility="collapsed",
-                        )
-                    with btn_col:
-                        if st.button(
-                            "Analyze · 1 credit", type="primary",
-                            key="home_cap_analyze", use_container_width=True,
-                        ):
-                            ticker = (analyze_ticker or "").strip().upper()
-                            if ticker:
-                                st.session_state["prefill_deep_ticker"] = ticker
-                                st.session_state["_autorun_deep_analysis"] = True
-                            st.session_state["_after_auth_page"] = "Deep_Analysis"
-                            st.switch_page("pages/Deep_Analysis.py")
-else:
-    _demo_frame = _load_demo_scan()
-    _demo_available = {
-        str(row.get("Ticker") or "").strip().upper()
-        for row in _demo_frame.to_dict("records")
-        if str(row.get("Overall Sentiment") or "").strip().lower()
-        in _ASSERTED
-    }
-    _demo_ticker, _demo_sector, _demo_results = _load_demo_deep(
-        preferred_tickers=_demo_available,
-    )
-    _demo_rows = _select_demo_rows(
-        _demo_frame, limit=3, selected_ticker=_demo_ticker,
-    )
-    _demo_summary = (
-        generate_ai_summary(_demo_results) if _demo_results else {}
-    )
-
-    with st.container(key="home_public_hero"):
-        story_col, preview_col = st.columns([1.04, .96])
-        with story_col.container(key="home_public_story"):
-            st.html(
-                """
-                <div class="ss-public-hero-copy">
-                  <div class="ss-proof-strip" aria-label="Product capabilities">
-                    <span class="ss-proof-item">4,000+ US stocks</span>
-                    <span class="ss-proof-item">Freshness shown</span>
-                    <span class="ss-proof-item">Evidence explained</span>
-                  </div>
-                  <h1>Finding short-term opportunities shouldn't feel like a full-time job.</h1>
-                  <p>Stock Sentinel turns social chatter into a ranked sentiment shortlist, then validates a selected ticker with market data.</p>
-                </div>
-                """
-            )
-            with st.container(key="home_public_ctas"):
-                start_col, explain_col = st.columns([1.18, .82])
-                with start_col:
-                    if st.button(
-                        "Start with 2 free credits", type="primary",
-                        key="home_start_free", use_container_width=True,
-                    ):
-                        st.session_state["auth_initial_mode"] = "Create Account"
-                        st.session_state["_after_auth_page"] = "Home"
-                        st.switch_page("pages/Auth.py")
-                with explain_col:
-                    with st.container(key="home_how_link"):
+with st.container(key="home_public_hero"):
+    story_col, preview_col = st.columns([1.04, .96])
+    with story_col.container(key="home_public_story"):
+        st.html(
+            """
+            <div class="ss-public-hero-copy">
+              <div class="ss-proof-strip" aria-label="Product capabilities">
+                <span class="ss-proof-item">4,000+ US stocks</span>
+                <span class="ss-proof-item">Freshness shown</span>
+                <span class="ss-proof-item">Evidence explained</span>
+              </div>
+              <h1>Finding short-term opportunities shouldn't feel like a full-time job.</h1>
+              <p>Stock Sentinel turns social chatter into a ranked sentiment shortlist, then validates a selected ticker with market data.</p>
+            </div>
+            """
+        )
+        with st.container(key="home_public_ctas"):
+            start_col, explain_col = st.columns([1.18, .82])
+            with start_col:
+                if _logged_in:
+                    with st.container(key="home_open_scan_link"):
                         st.page_link(
-                            "pages/How_It_Works.py",
-                            label="See how it works",
+                            "pages/Discovery.py", label="Open Market Scan",
                             use_container_width=True,
                         )
-            st.markdown(
-                '<div class="ss-public-caveat">No card required · '
-                '1 credit per scan or analysis<br>Research support, not '
-                'financial advice.</div>',
-                unsafe_allow_html=True,
+                elif st.button(
+                    "Start with 2 free credits", type="primary",
+                    key="home_start_free", use_container_width=True,
+                ):
+                    st.session_state["auth_initial_mode"] = "Create Account"
+                    st.session_state["_after_auth_page"] = "Discovery"
+                    st.switch_page("pages/Auth.py")
+            with explain_col:
+                with st.container(key="home_analyze_link"):
+                    if _logged_in:
+                        with st.container(key="home_open_deep_link"):
+                            st.page_link(
+                                "pages/Deep_Analysis.py",
+                                label="Open Deep Analyze",
+                                use_container_width=True,
+                            )
+                    elif st.button(
+                        "Analyze a ticker", key="home_start_deep",
+                        use_container_width=True,
+                    ):
+                        st.session_state["auth_initial_mode"] = "Sign In"
+                        st.session_state["_after_auth_page"] = "Deep_Analysis"
+                        st.switch_page("pages/Auth.py")
+        caveat = (
+            "Signed in · Open the workspace when you are ready."
+            if _logged_in else
+            "No card required · 1 credit per scan or analysis<br>"
+            "Research support, not financial advice."
+        )
+        st.markdown(
+            f'<div class="ss-public-caveat">{caveat}</div>',
+            unsafe_allow_html=True,
+        )
+    with preview_col.container(key="home_public_preview"):
+        st.html(
+            _marketing_preview_html(
+                _demo_rows,
+                _demo_ticker or "NVDA",
+                _demo_summary,
+                _demo_sector or _demo_frame.attrs.get("sector") or "tech",
             )
-        with preview_col.container(key="home_public_preview"):
-            st.html(
-                _marketing_preview_html(
-                    _demo_rows,
-                    _demo_ticker or "NVDA",
-                    _demo_summary,
-                    _demo_sector or _demo_frame.attrs.get("sector") or "tech",
-                )
-            )
+        )
 
 st.markdown("<div style='height:.1rem'></div>", unsafe_allow_html=True)
 
-# ─── TWO-MODE SPLIT ────────────────────────────────────────────────────────────
-if _logged_in:
-    # ── LOGGED-IN: Dashboard view ──────────────────────────────────────────────
-    from utils.auth import get_user
-    from utils.supabase_client import get_client
-
-    @st.cache_data(ttl=10, show_spinner=False)
-    def _get_credits(uid: str):
-        """The merged balance, or None if it genuinely cannot be read.
-
-        Delegates. Home used to carry its own copy of this query, which is
-        exactly why the deploy-order fallback in utils/profile.py did nothing
-        for the landing page -- and why this page showed no balance and no Buy
-        button before the migration was applied.
-        """
-        from utils.profile import fetch_credits
-        try:
-            return fetch_credits(uid)
-        except Exception:
-            # A genuine failure. Return None so the pill is hidden -- but the
-            # Buy control below renders regardless, because not knowing the
-            # number is a reason to offer a purchase, not to withhold one.
-            return None
-
-    user = get_user() or {}
-    uid = (user.get("id") if isinstance(user, dict) else getattr(user, "id", None)) or ""
-
-    # BEFORE the balance is read, and above where it renders. app.py captured
-    # the ?payment= Stripe redirects back to -- it cannot be read here, because
-    # st.switch_page clears query params on the way. The message deliberately
-    # does not claim credits have arrived: the webhook that grants them is
-    # asynchronous, so the number below may still be the old one.
-    from utils import billing
-    if st.session_state.get("billing.return"):
-        _get_credits.clear()
-    billing.render_payment_return()
-
-    credits_c = _get_credits(uid)
-
-
-    # One compact wallet band replaces the detached balance, legend, and buy
-    # control. The purchase implementation is still delegated to billing.
-    with st.container(key="home_credit_hub"):
-        balance_col, buy_col = st.columns([3.15, .85])
-        with balance_col:
-            shown_balance = str(credits_c) if credits_c is not None else "—"
-            balance_label = "credits available" if credits_c is not None else "balance unavailable"
-            st.markdown(
-                f'<div class="ss-credit-hub-copy"><strong>{shown_balance}</strong>'
-                f'<span>{balance_label} · 1 credit runs one scan or analysis</span></div>',
-                unsafe_allow_html=True,
-            )
-        with buy_col:
-            billing.render_buy_credits(key="home", compact=True)
-
-
-else:
-    # The preview already proves the product. The remaining landing content is
-    # intentionally a short process explanation and transaction-trust strip.
-    st.html(
-        """
-        <section class="ss-workflow-section" id="how-it-works" aria-labelledby="how-heading">
-          <h2 id="how-heading">From market noise to a clearer next step</h2>
-          <div class="ss-workflow-grid">
-            <article class="ss-workflow-step">
-              <span class="ss-workflow-number">1</span>
-              <div><h3>Scan a sector</h3><p>Find unusual social attention.</p></div>
-            </article>
-            <article class="ss-workflow-step">
-              <span class="ss-workflow-number">2</span>
-              <div><h3>Analyze a ticker</h3><p>Review catalysts, risks, and confidence.</p></div>
-            </article>
-            <article class="ss-workflow-step">
-              <span class="ss-workflow-number">3</span>
-              <div><h3>Inspect the evidence</h3><p>See what supports the result and what could change it.</p></div>
-            </article>
-          </div>
-        </section>
-        <aside class="ss-trust-strip" aria-label="Credit and purchase assurances">
-          <span>Costs shown before every action</span>
-          <span>Eligible failed runs are automatically refunded</span>
-          <span>Credits never expire</span>
-        </aside>
-        """
-    )
+# The preview already proves the product. The remaining landing content is a
+# short process explanation and transaction-trust strip for every visitor.
+st.html(
+    """
+    <section class="ss-workflow-section" id="how-it-works" aria-labelledby="how-heading">
+      <h2 id="how-heading">From market noise to a clearer next step</h2>
+      <div class="ss-workflow-grid">
+        <article class="ss-workflow-step">
+          <span class="ss-workflow-number">1</span>
+          <div><h3>Scan a sector</h3><p>Find unusual social attention.</p></div>
+        </article>
+        <article class="ss-workflow-step">
+          <span class="ss-workflow-number">2</span>
+          <div><h3>Analyze a ticker</h3><p>Review catalysts, risks, and confidence.</p></div>
+        </article>
+        <article class="ss-workflow-step">
+          <span class="ss-workflow-number">3</span>
+          <div><h3>Inspect the evidence</h3><p>See what supports the result and what could change it.</p></div>
+        </article>
+      </div>
+    </section>
+    <aside class="ss-trust-strip" aria-label="Credit and purchase assurances">
+      <span>Costs shown before every action</span>
+      <span>Eligible failed runs are automatically refunded</span>
+      <span>Credits never expire</span>
+    </aside>
+    """
+)
 
 close_page()

@@ -36,7 +36,7 @@ def main() -> int:
         "account is a persistent signed-in destination",
         '"account"' in nav
         and '"pages/Account.py"' in nav
-        and 'label="Account"' in nav
+        and '"pages/Account.py", "Account"' in nav
         and 'active="account"' in account,
     )
     check(
@@ -106,9 +106,11 @@ def main() -> int:
         'st.page_link("pages/Trust_Center.py", label="Trust Center")' in ui,
     )
     check(
-        "authenticated home uses one compact wallet band",
-        'key="home_credit_hub"' in home
-        and "1 credit runs one scan or analysis" in home,
+        "account is the single credit and session-management destination",
+        'key="account_purchase"' in account
+        and 'key="account_session"' in account
+        and 'st.button("Log out"' in account
+        and 'key="home_credit_hub"' not in home,
     )
     check(
         "spending task headers avoid stale balance claims",

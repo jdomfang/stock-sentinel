@@ -39,7 +39,7 @@ def main() -> int:
           all("setInterval" not in src for src in (home, discovery, nav, ui)))
 
     check("scan cost is disclosed before activation",
-          "Run scan · 1 credit" in discovery and "Run scan · 1 credit" in home)
+          "Run scan · 1 credit" in discovery)
     check("analysis cost is disclosed before activation",
           "Analyze · 1 credit" in discovery and "Analyze · 1 credit" in deep)
     check("a delivered analysis becomes a nonpaying in-page result",
@@ -69,7 +69,7 @@ def main() -> int:
     check("admin navigation remains gated and reachable",
           "ADMIN_EMAIL" in nav and "pages/Admin.py" in nav)
     check("the active page is exposed to assistive technology",
-          "Current page:" in nav)
+          'aria-current="page"' in nav)
 
     print("\n" + "=" * 72)
     print(f"  {len(PASSED)} passed, {len(FAILED)} failed")

@@ -80,8 +80,10 @@ def main() -> int:
     )
     check(
         "landing controls and mobile cards use accessible sizing",
-        home.count("min-height: 44px") >= 3
-        and 'flex:1 1 100% !important' in home,
+        home.count("min-height: 44px") >= 2
+        and "min-height:50px" in home
+        and '@media (max-width:520px)' in home
+        and 'flex:1 1 100%!important' in home,
     )
     check(
         "the product preview is named for assistive technology",

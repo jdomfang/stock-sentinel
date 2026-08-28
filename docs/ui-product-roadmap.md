@@ -84,6 +84,12 @@ Suggested future component mapping:
   route-level responsive selectors remain part of their equally disposable
   current-page adapters. Host theme defaults are never a source of product
   color or financial meaning.
+- **Post-E navigation simplification:** keep Home as the public product story,
+  make Market Scan the default authenticated destination, and remove the
+  duplicate signed-in Home launcher. The authenticated shell contains only
+  Market Scan, Deep Analyze, and Account; the brand remains the natural route
+  back to the public landing page. Account owns purchases and logout. Explicit
+  pre-auth task intent still overrides the Market Scan default.
 - **Release F — Optional frontend migration:** incremental route-level frontend
   migration when the replacement host is selected, followed by optional
   research-history/watchlist surfaces after their product and data contracts
@@ -99,7 +105,7 @@ Suggested future component mapping:
 | 4 | Simplify analysis hierarchy; add horizon, freshness, evidence size, and source context; remove unexplained bars | Current | High | Medium | Low | P0 |
 | 5 | Restyle and restructure Auth for consistent fields, autofill, errors, brand navigation, and trust copy | Current | High | Medium | Low | P0 |
 | 6 | Restore focus visibility, contrast, semantic headings, reduced motion, and accessible menu behavior | Current | High | Medium | Low | P0 |
-| 7 | Render persistent Scan, Analyze, credits, and account navigation | Current | High | Medium | Medium | P1 |
+| 7 | Render persistent Market Scan, Deep Analyze, and Account navigation without a duplicate signed-in Home launcher | Current | High | Medium | Medium | P1 |
 | 8 | Resolve the disabled-demo contradiction and reduce the demo to four or five representative rows | Current | High | Low | Low | P1 |
 | 9 | Put “1 credit” and remaining balance at every spend decision | Current | High | Low | Low | P1 |
 | 10 | Present checkout as an explicit purchase-review state with total, quantity, expiration, and Stripe handoff | Current | High | Medium | Low | P1 |
@@ -114,7 +120,7 @@ Risk in this table means implementation/regression risk, not the risk of leaving
 ## Target product direction
 
 - A restrained premium fintech aesthetic: midnight navy surfaces, cyan reserved for interaction, green/red/amber/slate reserved for financial meaning.
-- Persistent application navigation with Home, Scan, Analyze, compact credit balance, and Account.
+- Public Home for product information; authenticated navigation contains Market Scan, Deep Analyze, and Account.
 - Compact, genuinely contained result rows on desktop and labelled result cards on mobile.
 - Market Scan sentiment is strictly Bullish, Bearish, or Neutral. Watch appears only as a Deep Analyze action signal after a user runs an analysis.
 - Scan results render directly below the scan controls: a compact desktop results table and labelled mobile result cards. The scan results are not the right-side Deep Analyze panel.

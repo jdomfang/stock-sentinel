@@ -43,7 +43,6 @@ def main() -> int:
         {"route": "Auth", "marker": "Welcome back"},
     ]
     expected_authenticated_surfaces = [
-        "Home",
         "Market Scan empty, loading, failure, sparse-evidence and results",
         "Deep Analyze empty, loading, failure and delivered result",
         "Analysis Result",

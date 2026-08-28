@@ -212,19 +212,20 @@ def render_footer() -> None:
             line-height: 1.45;
             margin-top: 10px;
           }
-          .clawd-footer-links [data-testid="stPageLink"] a {
+          .st-key-footer_links [data-testid="stPageLink"] a {
             color: rgba(229,231,235,.88) !important;
             text-decoration: none !important;
             font-weight: 650;
+            min-height: 44px;
+            display: flex;
+            align-items: center;
+            padding: .35rem .25rem;
           }
-          .clawd-footer-links [data-testid="stPageLink"] a:hover {
+          .st-key-footer_links [data-testid="stPageLink"] a:hover {
             text-decoration: underline !important;
           }
-          .clawd-footer-links {
-            display: flex;
-            gap: 14px;
-            flex-wrap: wrap;
-            align-items: center;
+          .st-key-footer_links [data-testid="stHorizontalBlock"] {
+            align-items:center!important;
           }
         </style>
         <div class="clawd-footer">
@@ -236,13 +237,14 @@ def render_footer() -> None:
     # Small, stable support/trust set. The trust center keeps methodology,
     # sources, privacy, and terms together instead of adding four nav items.
     try:
-        c1, c2, c3, _sp = st.columns([0.25, 0.35, 0.7, 4.3])
-        with c1:
-            st.page_link("pages/FAQ.py", label="FAQ")
-        with c2:
-            st.page_link("pages/Contact.py", label="Contact")
-        with c3:
-            st.page_link("pages/Trust_Center.py", label="Trust Center")
+        with st.container(key="footer_links"):
+            c1, c2, c3, _sp = st.columns([0.25, 0.35, 0.7, 4.3])
+            with c1:
+                st.page_link("pages/FAQ.py", label="FAQ")
+            with c2:
+                st.page_link("pages/Contact.py", label="Contact")
+            with c3:
+                st.page_link("pages/Trust_Center.py", label="Trust Center")
     except Exception:
         # Older Streamlit builds: fail silently
         pass

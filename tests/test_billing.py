@@ -274,7 +274,7 @@ def test_the_meter_escalates_only_when_blocked():
     calls["_click"] = False
     B.render_credit_meter(profile={"credits": 8}, key="k")
     check("a healthy balance draws no primary button",
-          calls["button"] == [f"+ {B.PACK_CREDITS} credits · {B.PACK_PRICE}"],
+          calls["button"] == [f"Buy {B.PACK_CREDITS} credits · {B.PACK_PRICE}"],
           str(calls["button"]))
 
     B, st, calls = fresh(); calls["_click"] = False
@@ -359,7 +359,7 @@ def test_the_advertised_pack_matches_what_stripe_grants():
     pack-size drift in test_payments until it was pinned to a literal there.
 
     What that permits is the worst kind of billing bug: the button says
-    "+ 10 credits · $19", Stripe charges $5, and the balance moves by 2. The
+    "Buy 10 credits · $19", Stripe charges $5, and the balance moves by 2. The
     portal advertises a price and a quantity it does not control -- payments_api
     derives the grant from the amount Stripe reports -- so the portal can only
     ever be right or lying.
@@ -392,7 +392,7 @@ def test_the_advertised_pack_matches_what_stripe_grants():
     calls["_click"] = False
     B.render_buy_credits(key="k")
     check("the button states the real offer",
-          calls["button"] == [f"+ {B.PACK_CREDITS} credits · {B.PACK_PRICE}"],
+          calls["button"] == [f"Buy {B.PACK_CREDITS} credits · {B.PACK_PRICE}"],
           str(calls["button"]))
 
 
@@ -498,20 +498,16 @@ def test_a_refusal_only_offers_a_purchase_when_buying_would_help():
 def test_the_buy_button_does_not_depend_on_reading_the_balance():
     """Not knowing the number is a reason to SHOW the button, not to hide it.
 
-    Home carries its own credits query, separate from utils.profile, and both
-    the balance pill and the Buy control lived inside `if credits_c is not
-    None`. So when the read failed -- which it does for every user until the
-    merge migration is applied by hand -- the page rendered no balance AND no
-    way to buy. The control had been an inert <span> reading "Coming soon" for
-    months; gating it on a failed read reproduced that dead end by another
-    route, and the owner saw exactly that on the live site.
+    Account is the single purchase destination. Its buy control must remain an
+    unconditional presentation element rather than being nested under a local
+    balance-value check.
 
     AST, not a grep: the question is whether the call is NESTED inside that
     conditional, and a substring search cannot see nesting.
     """
     print("\nthe Buy control survives a balance we cannot read")
     import ast
-    tree = ast.parse((REPO / "pages" / "Home.py").read_text())
+    tree = ast.parse((REPO / "pages" / "Account.py").read_text())
 
     def calls_buy(node):
         return any(isinstance(n, ast.Attribute) and n.attr == "render_buy_credits"
@@ -522,19 +518,19 @@ def test_the_buy_button_does_not_depend_on_reading_the_balance():
         if not isinstance(node, ast.If):
             continue
         test_src = ast.dump(node.test)
-        if "credits_c" not in test_src:
+        if "credits" not in test_src:
             continue
         for stmt in node.body:
             if calls_buy(stmt):
                 gated.append(node.lineno)
     check("Buy is not nested inside the balance-read conditional", not gated,
           f"render_buy_credits is inside `if credits_c ...` at line(s) {gated}")
-    check("...and Home still renders it at all", calls_buy(tree),
-          "the buy control disappeared from Home entirely")
+    check("...and Account still renders it at all", calls_buy(tree),
+          "the buy control disappeared from Account entirely")
 
 
 def test_home_reads_survive_the_deploy_window():
-    """Home must not carry its OWN copy of the balance query.
+    """Account must use the shared active-profile read.
 
     It did, which is precisely why making utils/profile.py tolerant of the
     pre-migration window did nothing for the landing page: Home queried
@@ -542,24 +538,17 @@ def test_home_reads_survive_the_deploy_window():
     balance nor the Buy button. Duplicating a fallback is how one copy silently
     goes stale.
 
-    The behaviour of the shared helper is asserted in tests/test_profile_fallback.py,
-    by running it. This only checks that Home routes through it.
+    The behaviour of the shared helper is asserted in tests/test_profile_fallback.py.
+    This only checks that Account routes through the shared guard and that the
+    public Home no longer owns a second balance implementation.
     """
-    print("\nHome delegates the balance read instead of duplicating it")
-    import ast
-    src = (REPO / "pages" / "Home.py").read_text()
-    tree = ast.parse(src)
-    fn = next((n for n in ast.walk(tree)
-               if isinstance(n, ast.FunctionDef) and n.name == "_get_credits"), None)
-    check("Home has a _get_credits", fn is not None)
-    if fn is None:
-        return
-    body = ast.dump(fn)
-    check("it calls the shared fetch_credits", "fetch_credits" in body,
-          "Home is querying profiles itself again")
-    check("...and does not query the table directly",
-          '"profiles"' not in ast.get_source_segment(src, fn),
-          "a second copy of the query is a second copy of the fallback to forget")
+    print("\nAccount delegates the balance read; public Home owns no balance")
+    account = (REPO / "pages" / "Account.py").read_text()
+    home = (REPO / "pages" / "Home.py").read_text()
+    check("Account uses require_active_account",
+          'require_active_account(after_auth_page="Account")' in account)
+    check("public Home has no private balance query",
+          "_get_credits" not in home and 'table("profiles")' not in home)
 
 
 def test_every_page_uses_one_implementation():
@@ -582,13 +571,14 @@ def test_every_page_uses_one_implementation():
 
     disc = code_only(REPO / "pages" / "Discovery.py")
     deep = code_only(REPO / "pages" / "Deep_Analysis.py")
+    account = code_only(REPO / "pages" / "Account.py")
     home = code_only(REPO / "pages" / "Home.py")
     app = code_only(REPO / "app.py")
 
     check("Discovery defines no private checkout helper",
           "def _get_checkout_url" not in disc and "def _upgrade_modal" not in disc,
           "the copy that blocked Deep_Analysis came back")
-    for name, src in (("Discovery", disc), ("Deep_Analysis", deep), ("Home", home)):
+    for name, src in (("Discovery", disc), ("Deep_Analysis", deep), ("Account", account)):
         check(f"{name} uses utils.billing", "billing." in src, name)
     # Either entry point counts: render_credit_refusal is the one a spend page
     # should use (it decides whether buying would help), and it calls the modal.
@@ -598,7 +588,7 @@ def test_every_page_uses_one_implementation():
     check("both spend pages route refusals through the dispatcher",
           "render_credit_refusal" in deep and "render_credit_refusal" in disc,
           "a raw upgrade modal shows 'out of credits' for a Supabase outage")
-    check("Home's inert placeholder is gone",
+    check("public Home has no purchase placeholder",
           "Coming soon" not in home and "cursor:not-allowed" not in home,
           "the disabled span is back")
     check("the payment return is consumed in app.py, before the page switch",
