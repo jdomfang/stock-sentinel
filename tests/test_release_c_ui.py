@@ -90,8 +90,9 @@ def main() -> int:
     )
     check(
         "market and recommendation taxonomies stay separate in empty states",
-        "Bullish, Bearish, or Neutral results appear here" in discovery
-        and "Buy, Watch, or Avoid appears here" in deep,
+        "Bullish, Bearish, or Neutral results appear below" in discovery
+        and "Get a Buy, Watch, or Avoid recommendation" in deep
+        and "Your recommendation will appear below" in deep,
     )
     check(
         "trust center consolidates the required credibility surfaces",

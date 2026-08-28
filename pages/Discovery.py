@@ -91,18 +91,6 @@ render_top_nav(active="market_scan")
 _profile = require_active_account(after_auth_page="Discovery")
 
 
-# Compact task header. The public Home page carries the marketing narrative;
-# authenticated users arrive here to scan.
-st.markdown(
-    """
-    <div class="discovery-page-header">
-      <h1>Market Scan</h1>
-      <p>Find unusual social attention by sector, then analyze a candidate.</p>
-    </div>
-    """,
-    unsafe_allow_html=True,
-)
-
 # ---- Intent prefill (optional, for direct links) ----
 _intent_autostart = (_qp.get("autostart") or "").strip().lower() in {"1", "true", "yes", "y", "on"}
 
@@ -306,24 +294,6 @@ st.markdown(
     }
 
     /* Release A: task-first hierarchy and native Streamlit result rows. */
-    .discovery-page-header {
-      max-width: 760px;
-      margin: 0 0 1.35rem;
-    }
-    .discovery-page-header h1 {
-      margin: 0 0 0.35rem;
-      color: var(--text);
-      font-size: clamp(2rem, 4vw, 2.65rem);
-      line-height: 1.08;
-      letter-spacing: -0.035em;
-      font-weight: 760;
-    }
-    .discovery-page-header p {
-      margin: 0;
-      color: var(--muted);
-      font-size: 1rem;
-      line-height: 1.55;
-    }
     .scan-results-intro {
       display: flex;
       align-items: flex-end;
@@ -449,7 +419,6 @@ st.markdown(
     }
 
     @media (max-width: 720px) {
-      .discovery-page-header { margin-bottom: 1rem; }
       .scan-results-intro {
         align-items: flex-start;
         flex-direction: column;
@@ -533,71 +502,88 @@ if "df_unvalidated" not in st.session_state:
 if "scan_corpus_age_s" not in st.session_state:
     st.session_state.scan_corpus_age_s = 0.0
 
-# Compact desktop task toolbar; tablet and mobile keep the stacked flow.
+# One task command: desktop uses the approved split panel; narrower viewports
+# retain the established stacked introduction and compact toolbar.
 _credits = int((_profile or {}).get("credits") or 0)
-with st.container(key="discovery_scan_card"):
-    with st.container(key="discovery_control_row"):
-        sel_col, btn_col, meter_col = st.columns([1.45, 1.0, 1.1])
-
-        with sel_col:
-            SECTOR_OPTIONS = [
-                "tech",
-                "healthcare",
-                "energy",
-                "finance",
-                "consumer",
-                "utilities",
-                "real estate",
-                "industrials",
-                "materials",
-                "communication",
-            ]
-
-            # Prefer query-param intent, otherwise use prior session selection.
-            _default_sector = (
-                (st.session_state.get("discovery_sector") or "").strip().lower()
-                or (st.session_state.get("selected_sector") or "").strip().lower()
-                or SECTOR_OPTIONS[0]
-            )
-            if _default_sector not in SECTOR_OPTIONS:
-                _default_sector = SECTOR_OPTIONS[0]
-
-            # Seed the key instead of passing index=. Streamlit renders a visible
-            # warning -- in the user's face, not the log -- when a keyed widget has
-            # BOTH a default and a value set through the Session State API, which is
-            # what the query-param handler above does. Session state is the single
-            # source of truth; the guard keeps a user's own selection intact on
-            # rerun and only repairs a missing or stale-invalid value.
-            if st.session_state.get("discovery_sector") not in SECTOR_OPTIONS:
-                st.session_state["discovery_sector"] = _default_sector
-
-            sector = st.selectbox(
-                "Sector",
-                options=SECTOR_OPTIONS,
-                key="discovery_sector",
-                label_visibility="visible",
-            )
-
-        with btn_col:
-            scan_clicked = st.button(
-                "Run scan · 1 credit",
-                type="primary",
-                use_container_width=True,
-                disabled=_credits <= 0,
-            )
-
-        with meter_col:
-            billing.render_credit_meter(profile=_profile, key="discovery")
-
-    # Last scan context line
-    _last_sector = st.session_state.get("selected_sector")
-    _last_count = len(st.session_state.df_valid) if st.session_state.get("df_valid") is not None else None
-    if _last_sector and _last_count is not None:
-        st.markdown(
-            f'<div style="color:var(--muted);font-size:0.78rem;margin-top:0.35rem;">'
-            f'Last scan: <b style="color:rgba(148,163,184,.80);">{_last_sector}</b> · {_last_count} stocks found</div>',
-            unsafe_allow_html=True,
+with st.container(key="discovery_command_shell"):
+    intro_col, task_col = st.columns([0.72, 1.28], gap="large")
+    with intro_col:
+        st.html(
+            """
+            <header class="ss-task-command-intro">
+              <h1>Market Scan</h1>
+              <p>Find unusual social attention by sector.</p>
+            </header>
+            """
         )
+
+    with task_col:
+        with st.container(key="discovery_scan_card"):
+            with st.container(key="discovery_control_row"):
+                sel_col, btn_col, meter_col = st.columns([1.45, 1.0, 1.1])
+
+                with sel_col:
+                    SECTOR_OPTIONS = [
+                        "tech",
+                        "healthcare",
+                        "energy",
+                        "finance",
+                        "consumer",
+                        "utilities",
+                        "real estate",
+                        "industrials",
+                        "materials",
+                        "communication",
+                    ]
+
+                    # Prefer query-param intent, otherwise use prior session selection.
+                    _default_sector = (
+                        (st.session_state.get("discovery_sector") or "").strip().lower()
+                        or (st.session_state.get("selected_sector") or "").strip().lower()
+                        or SECTOR_OPTIONS[0]
+                    )
+                    if _default_sector not in SECTOR_OPTIONS:
+                        _default_sector = SECTOR_OPTIONS[0]
+
+                    # Seed the key instead of passing index=. Streamlit renders a visible
+                    # warning -- in the user's face, not the log -- when a keyed widget has
+                    # BOTH a default and a value set through the Session State API, which is
+                    # what the query-param handler above does. Session state is the single
+                    # source of truth; the guard keeps a user's own selection intact on
+                    # rerun and only repairs a missing or stale-invalid value.
+                    if st.session_state.get("discovery_sector") not in SECTOR_OPTIONS:
+                        st.session_state["discovery_sector"] = _default_sector
+
+                    sector = st.selectbox(
+                        "Sector",
+                        options=SECTOR_OPTIONS,
+                        key="discovery_sector",
+                        label_visibility="visible",
+                    )
+
+                with btn_col:
+                    scan_clicked = st.button(
+                        "Run scan · 1 credit",
+                        type="primary",
+                        use_container_width=True,
+                        disabled=_credits <= 0,
+                    )
+
+                with meter_col:
+                    billing.render_credit_meter(profile=_profile, key="discovery")
+
+            # Last scan context line
+            _last_sector = st.session_state.get("selected_sector")
+            _last_count = (
+                len(st.session_state.df_valid)
+                if st.session_state.get("df_valid") is not None else None
+            )
+            if _last_sector and _last_count is not None:
+                st.markdown(
+                    f'<div style="color:var(--muted);font-size:0.78rem;margin-top:0.35rem;">'
+                    f'Last scan: <b style="color:rgba(148,163,184,.80);">{_last_sector}</b> · {_last_count} stocks found</div>',
+                    unsafe_allow_html=True,
+                )
 
 # Basket retrieval is the only path. The hand-written topic queries it
 # replaced were measured head-to-head on two sectors, same hour, equal spend:
@@ -616,8 +602,8 @@ scan_triggered = bool(scan_clicked or _autostart_scan)
 
 if st.session_state.df_valid is None and not scan_triggered:
     render_compact_task_hint(
-        title="No scan yet",
-        message="Choose a sector and run a scan. Bullish, Bearish, or Neutral results appear here.",
+        title="No scan run yet",
+        message="Bullish, Bearish, or Neutral results appear below.",
     )
 
 # Scan button

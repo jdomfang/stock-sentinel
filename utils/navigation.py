@@ -197,6 +197,12 @@ def render_top_nav(
           outline:3px solid rgba(56,189,248,.78)!important;
           outline-offset:3px!important;box-shadow:none!important;
         }
+        @media (min-width:1100px) and (hover:hover) and (pointer:fine) {
+          .st-key-ss_top_nav {
+            padding:.45rem 0 .4rem;
+            margin-bottom:.65rem;
+          }
+        }
         @media (max-width:760px) {
           .st-key-ss_top_nav {padding:.45rem 0 .4rem;margin-bottom:1.15rem;}
           .st-key-ss_nav_desktop {display:none!important;}

@@ -78,18 +78,7 @@ st.markdown(
     unsafe_allow_html=True,
 )
 
-query = st.text_input("Search FAQs", placeholder="Try: credits, confidence, alerts, data source…")
-
-with st.container(key="faq_contact_support"):
-    st.caption("Still have questions? We’ll help.")
-    st.page_link("pages/Contact.py", label="Contact support")
-
-
-def show(q: str, a: str, *, tags: list[str]):
-    if query:
-        hay = (q + " " + a + " " + " ".join(tags)).lower()
-        if query.lower() not in hay:
-            return
+def show(q: str, a: str):
     with st.expander(q):
         st.markdown(a)
 
@@ -105,14 +94,12 @@ Stock Sentinel helps you find **short-term opportunities** by:
 
 It’s designed to speed up your **idea generation + triage**, not replace your trading plan.
     """.strip(),
-    tags=["basics", "scan", "deep analyze"],
 )
 show(
     "Is this financial advice?",
     """
 No. Stock Sentinel is **educational/informational** and is **not financial advice**. Markets move fast; always do your own research and manage risk.
     """.strip(),
-    tags=["disclaimer", "advice"],
 )
 
 st.subheader("Scan")
@@ -123,14 +110,12 @@ One credit runs **one sector scan or one deep analysis** — they come from the 
 balance, so you choose how to spend them. $5 buys 2 credits. Credits never expire,
 and a run that fails returns its credit automatically.
     """.strip(),
-    tags=["credits", "scan", "billing"],
 )
 show(
     "Why do some rows show N/A for price?",
     """
 Some tickers may be missing a clean recent close due to data gaps, symbol issues, or temporary provider limitations. When that happens, we display **N/A** rather than guessing.
     """.strip(),
-    tags=["price", "N/A", "data"],
 )
 
 st.subheader("Deep Analyze")
@@ -144,14 +129,12 @@ They’re shorthand outputs meant for **short-term trade triage**:
 
 They’re not a guarantee—think of them as a structured second opinion.
     """.strip(),
-    tags=["recommendation", "signals"],
 )
 show(
     "What does Confidence mean?",
     """
 Confidence is an internal summary of how consistent the available signals are with the recommendation. It can be lowered by conflicting indicators, weak data quality, or high uncertainty.
     """.strip(),
-    tags=["confidence", "method"],
 )
 
 st.subheader("Account & billing")
@@ -162,14 +145,12 @@ No. There is nothing to cancel — credits are bought one pack at a time, and yo
 are only charged when you choose to buy. Credits never expire, so an unused
 balance keeps until you use it.
     """.strip(),
-    tags=["billing", "cancel", "subscription"],
 )
 show(
     "Do you offer refunds?",
     """
 If something went wrong (billing issue, duplicate charge, etc.), contact us and we’ll make it right. See the Refund Policy in the footer if you’ve published one.
     """.strip(),
-    tags=["refund"],
 )
 
 st.subheader("Data & reliability")
@@ -178,14 +159,16 @@ show(
     """
 We use third-party market data providers and public social sources. Specific providers may change over time as we improve reliability.
     """.strip(),
-    tags=["data", "providers"],
 )
 show(
     "Can the site be wrong?",
     """
 Yes. Short-term trading is noisy. Social sentiment can reverse quickly, and market data can lag or be impacted by news/halts. Use Stock Sentinel as a **signal**, then confirm with your own checklist.
     """.strip(),
-    tags=["limitations", "risk"],
 )
+
+with st.container(key="faq_contact_support"):
+    st.caption("Still have questions? We’ll help.")
+    st.page_link("pages/Contact.py", label="Contact support")
 
 close_page()

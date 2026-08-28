@@ -280,6 +280,112 @@ button:disabled,
   max-width: 100% !important;
 }
 
+/* Approved compact desktop command panel. The portable introduction and
+   status components live in stock-sentinel-components.css; this block only
+   maps Streamlit's container/column DOM onto that product composition. */
+@media (min-width: 1100px) and (hover: hover) and (pointer: fine) {
+  .st-key-discovery_command_shell,
+  .st-key-deep_command_shell {
+    width: 100%;
+    max-width: 1100px;
+    box-sizing: border-box !important;
+    padding: 1.15rem 1.35rem !important;
+    border: 1px solid var(--ss-color-border) !important;
+    border-radius: var(--ss-radius-panel) !important;
+    background: rgba(15, 23, 42, 0.68) !important;
+    box-shadow: none !important;
+  }
+
+  .st-key-discovery_command_shell
+    [data-testid="stHorizontalBlock"]:has(.ss-task-command-intro):has(
+      .st-key-discovery_scan_card
+    ),
+  .st-key-deep_command_shell
+    [data-testid="stHorizontalBlock"]:has(.ss-task-command-intro):has(
+      .st-key-da_scan_card
+    ) {
+    align-items: center !important;
+    gap: 36px !important;
+  }
+
+  .st-key-discovery_command_shell .st-key-discovery_scan_card,
+  .st-key-deep_command_shell .st-key-da_scan_card {
+    width: 100%;
+    max-width: none;
+    padding: 0 !important;
+    border: 0 !important;
+    border-radius: 0 !important;
+    background: transparent !important;
+  }
+
+  .st-key-discovery_command_shell
+    .st-key-discovery_control_row [data-testid="stHorizontalBlock"],
+  .st-key-deep_command_shell
+    .st-key-deep_control_row [data-testid="stHorizontalBlock"] {
+    flex-wrap: wrap !important;
+    align-items: flex-end !important;
+    column-gap: 12px !important;
+    row-gap: 0.25rem !important;
+  }
+
+  .st-key-discovery_command_shell
+    .st-key-discovery_control_row [data-testid="stColumn"]:first-child,
+  .st-key-deep_command_shell
+    .st-key-deep_control_row [data-testid="stColumn"]:first-child {
+    flex: 1 1 calc(100% - 232px) !important;
+    width: auto !important;
+  }
+
+  .st-key-discovery_command_shell
+    .st-key-discovery_control_row [data-testid="stColumn"]:nth-child(2),
+  .st-key-deep_command_shell
+    .st-key-deep_control_row [data-testid="stColumn"]:nth-child(2) {
+    flex: 0 0 220px !important;
+    width: 220px !important;
+  }
+
+  .st-key-discovery_command_shell
+    .st-key-discovery_control_row [data-testid="stColumn"]:last-child,
+  .st-key-deep_command_shell
+    .st-key-deep_control_row [data-testid="stColumn"]:last-child {
+    flex: 1 1 100% !important;
+    width: 100% !important;
+  }
+
+  .st-key-credit_meter_discovery > div > [data-testid="stVerticalBlock"],
+  .st-key-credit_meter_deep > div > [data-testid="stVerticalBlock"] {
+    min-height: 44px;
+    justify-content: flex-start !important;
+  }
+}
+
+/* Keep the approved tablet and phone composition: introduction first, then
+   the existing compact control card. */
+@media (max-width: 1099px) {
+  .st-key-discovery_command_shell
+    [data-testid="stHorizontalBlock"]:has(.ss-task-command-intro):has(
+      .st-key-discovery_scan_card
+    ),
+  .st-key-deep_command_shell
+    [data-testid="stHorizontalBlock"]:has(.ss-task-command-intro):has(
+      .st-key-da_scan_card
+    ) {
+    flex-wrap: wrap !important;
+    row-gap: 0 !important;
+  }
+
+  .st-key-discovery_command_shell
+    [data-testid="stHorizontalBlock"]:has(.ss-task-command-intro)
+    > [data-testid="stColumn"],
+  .st-key-deep_command_shell
+    [data-testid="stHorizontalBlock"]:has(.ss-task-command-intro)
+    > [data-testid="stColumn"] {
+    flex: 1 1 100% !important;
+    width: 100% !important;
+    min-width: 0 !important;
+  }
+}
+
 /* Account layout containment, including the pending Stripe link-button state. */
 .st-key-account_purchase {
   border: 1px solid var(--ss-color-border);

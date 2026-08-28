@@ -75,21 +75,6 @@ st.markdown(
     }
     section[data-testid="stMain"] > div { padding-top: 0 !important; }
 
-    .da-hero { margin: 0 0 1.35rem; padding: 0; max-width: 760px; }
-    .da-hero-title {
-      font-size: clamp(2rem, 4vw, 2.65rem); font-weight: 760;
-      letter-spacing: -0.035em; line-height: 1.08; margin: 0 0 0.35rem;
-    }
-    .da-hero-sub {
-      color: var(--muted); font-size: clamp(15px, 1.35vw, 1.05rem);
-      line-height: 1.45; margin: 0 0 0.85rem 0; max-width: 680px;
-    }
-    @media (max-width: 640px) {
-      .da-hero { margin-bottom: 1rem; }
-      .da-hero-title { font-size: clamp(2rem, 9vw, 2.5rem); }
-      .da-hero-sub { font-size: 1.00rem; }
-    }
-
     .st-key-deep_full_result_link [data-testid="stExpander"] {
       border:1px solid rgba(56,189,248,.36)!important;
       border-radius:var(--radius-control)!important;
@@ -104,10 +89,6 @@ st.markdown(
     }
     </style>
     <div class="clawd-app-wrapper">
-    <div class="da-hero">
-      <h1 class="da-hero-title">Analyze any US stock.</h1>
-      <div class="da-hero-sub">Enter a ticker and get a clear Buy, Watch, or Avoid recommendation.</div>
-    </div>
     """,
     unsafe_allow_html=True,
 )
@@ -142,36 +123,51 @@ if _qp_ticker and not st.session_state.get("prefill_deep_ticker"):
 _prefill = (st.session_state.pop("prefill_deep_ticker", None) or "").strip().upper()
 _autorun = bool(st.session_state.pop("_autorun_deep_analysis", False))
 
-# ── Compact scan card ──
+# One task command: desktop uses the approved split panel; narrower viewports
+# retain the established stacked introduction and compact toolbar.
 _credits = int((_profile or {}).get("credits") or 0)
-with st.container(key="da_scan_card"):
-    with st.container(key="deep_control_row"):
-        ticker_col, btn_col, meter_col = st.columns([1.45, 1.0, 1.1])
-        with ticker_col:
-            ticker = st.text_input(
-                "Ticker",
-                value=_prefill,
-                placeholder="e.g. RCAT",
-                key="da_ticker_input",
-                label_visibility="visible",
-                max_chars=6,
-            )
-        with btn_col:
-            _run_clicked = st.button(
-                "Analyze · 1 credit", type="primary", use_container_width=True,
-                disabled=_credits <= 0,
-            )
+with st.container(key="deep_command_shell"):
+    intro_col, task_col = st.columns([0.72, 1.28], gap="large")
+    with intro_col:
+        st.html(
+            """
+            <header class="ss-task-command-intro">
+              <h1>Deep Analyze</h1>
+              <p>Get a Buy, Watch, or Avoid recommendation for one ticker.</p>
+            </header>
+            """
+        )
 
-        with meter_col:
-            billing.render_credit_meter(profile=_profile, key="deep")
+    with task_col:
+        with st.container(key="da_scan_card"):
+            with st.container(key="deep_control_row"):
+                ticker_col, btn_col, meter_col = st.columns([1.45, 1.0, 1.1])
+                with ticker_col:
+                    ticker = st.text_input(
+                        "Ticker",
+                        value=_prefill,
+                        placeholder="e.g. TSLA",
+                        key="da_ticker_input",
+                        label_visibility="visible",
+                        max_chars=6,
+                    )
+                with btn_col:
+                    _run_clicked = st.button(
+                        "Analyze · 1 credit", type="primary",
+                        use_container_width=True,
+                        disabled=_credits <= 0,
+                    )
+
+                with meter_col:
+                    billing.render_credit_meter(profile=_profile, key="deep")
 
 # Auto-sector: Deep analysis can run without sector input. Default to unknown.
 sector = "unknown"
 
 if not (_run_clicked or (_autorun and _prefill)):
     render_compact_task_hint(
-        title="No analysis yet",
-        message="Enter a ticker and run a one-credit analysis. Buy, Watch, or Avoid appears here.",
+        title="No analysis run yet",
+        message="Your recommendation will appear below.",
     )
 
 # Main analysis button — or auto-triggered from Home

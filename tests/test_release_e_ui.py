@@ -37,7 +37,7 @@ def main() -> int:
     expected_public_routes = [
         {"route": "Home", "marker": "Finding short-term opportunities"},
         {"route": "How_It_Works", "marker": "How Stock Sentinel works"},
-        {"route": "FAQ", "marker": "Search FAQs"},
+        {"route": "FAQ", "marker": "Getting started"},
         {"route": "Contact", "marker": "Send a message"},
         {"route": "Trust_Center", "marker": "Data sources and freshness"},
         {"route": "Auth", "marker": "Welcome back"},

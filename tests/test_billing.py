@@ -394,6 +394,26 @@ def test_the_advertised_pack_matches_what_stripe_grants():
               B.PACK_PRICE == f"${int(amt.group(1)) // 100}",
               f"portal says {B.PACK_PRICE}, Stripe charges {amt.group(1)} cents")
 
+    # THE FAQ IS PROSE, and prose does not import a constant.
+    #
+    # Every control derives its label from PACK_CREDITS, so the buttons cannot
+    # drift. The FAQ answers "What is a credit?" in a hand-written sentence --
+    # the only place a customer is TOLD the price rather than shown it on a
+    # button, and the one place that keeps saying "$5 buys 2 credits" after
+    # somebody changes the pack to 5-for-$15. A wrong price in the help text is
+    # not a cosmetic bug; it is what a chargeback argument gets built on.
+    faq = (REPO / "pages" / "FAQ.py").read_text()
+    entry = faq[faq.index('"What is a credit?"'):][:600] if '"What is a credit?"' in faq else ""
+    check("the FAQ still explains what a credit is", bool(entry),
+          "the entry was removed; nothing tells a customer what they are buying")
+    if entry:
+        check(f"...and quotes the real price ({B.PACK_PRICE})",
+              B.PACK_PRICE in entry,
+              f"FAQ prose disagrees with PACK_PRICE={B.PACK_PRICE}")
+        check(f"...and the real pack size ({B.PACK_CREDITS})",
+              f"{B.PACK_CREDITS} credits" in entry,
+              f"FAQ prose disagrees with PACK_CREDITS={B.PACK_CREDITS}")
+
     # And the copy actually renders those, rather than a hardcoded duplicate.
     calls["_click"] = False
     B.render_buy_credits(key="k")

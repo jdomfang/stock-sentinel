@@ -142,6 +142,8 @@ def test_faq_has_a_real_contact_destination() -> None:
     assert 'st.page_link("pages/Contact.py", label="Contact support")' in faq
     assert "Services → Contact" not in faq
     assert 'render_top_nav(active="faq")' in faq
+    assert "Search FAQs" not in faq
+    assert "query = st.text_input" not in faq
 
 
 def test_start_free_has_a_mode_specific_premium_auth_surface() -> None:

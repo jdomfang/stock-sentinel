@@ -19,25 +19,31 @@ def test_market_scan_uses_one_compact_scoped_control_row():
     discovery = _read("pages/Discovery.py")
     adapter = _read("assets/styles/stock-sentinel-streamlit-adapter.css")
 
+    assert 'key="discovery_command_shell"' in discovery
+    assert '<h1>Market Scan</h1>' in discovery
     assert 'key="discovery_control_row"' in discovery
     assert ".st-key-discovery_scan_card" in adapter
-    assert "max-width: 780px" in adapter
+    assert ".st-key-discovery_command_shell" in adapter
+    assert "max-width: 1100px" in adapter
     assert "align-items: flex-end !important" in adapter
     assert "height: 44px !important" in adapter
     assert "height: 48px !important" in adapter
     assert "<div style='height:1.68rem'>" not in discovery
     assert "disabled=_credits <= 0" in discovery
-    assert 'title="No scan yet"' in discovery
-    assert "Bullish, Bearish, or Neutral results appear here" in discovery
+    assert 'title="No scan run yet"' in discovery
+    assert "Bullish, Bearish, or Neutral results appear below" in discovery
 
 
 def test_deep_analyze_uses_one_compact_scoped_control_row():
     deep = _read("pages/Deep_Analysis.py")
     adapter = _read("assets/styles/stock-sentinel-streamlit-adapter.css")
 
+    assert 'key="deep_command_shell"' in deep
+    assert '<h1>Deep Analyze</h1>' in deep
     assert 'key="deep_control_row"' in deep
     assert ".st-key-da_scan_card" in adapter
-    assert "max-width: 780px" in adapter
+    assert ".st-key-deep_command_shell" in adapter
+    assert "max-width: 1100px" in adapter
     assert "align-items: flex-end !important" in adapter
     assert "height: 44px !important" in adapter
     assert "height: 48px !important" in adapter
@@ -45,12 +51,14 @@ def test_deep_analyze_uses_one_compact_scoped_control_row():
     assert "<div style='height:1.68rem'>" not in deep
     assert deep.count("billing.render_credit_meter(profile=_profile, key=\"deep\")") == 1
     assert "disabled=_credits <= 0" in deep
-    assert 'title="No analysis yet"' in deep
+    assert 'title="No analysis run yet"' in deep
+    assert "Your recommendation will appear below" in deep
 
 
 def test_task_controls_contain_columns_and_stack_at_mobile_widths():
     adapter = _read("assets/styles/stock-sentinel-streamlit-adapter.css")
 
+    assert "@media (max-width: 1099px)" in adapter
     assert "@media (max-width: 900px)" in adapter
     assert "@media (max-width: 720px)" in adapter
     assert "min-width: 0 !important" in adapter
@@ -97,6 +105,7 @@ def test_account_purchase_and_logout_controls_are_contained():
 
 def test_compact_hint_is_semantic_and_not_a_second_large_card():
     ui = _read("utils/ui.py")
+    components = _read("assets/styles/stock-sentinel-components.css")
     helper = ui[
         ui.index("def render_compact_task_hint"):
         ui.index("def render_footer")
@@ -104,9 +113,28 @@ def test_compact_hint_is_semantic_and_not_a_second_large_card():
 
     assert '<section class="ss-task-hint"' in helper
     assert "aria-labelledby" in helper
-    assert "max-width:780px" in helper
-    assert "min-height:56px" in helper
+    assert "max-width: 780px" in components
+    assert "min-height: 56px" in components
+    assert "background: transparent" in components
     assert "grid-template-columns" not in helper
+
+
+def test_desktop_command_shell_is_compact_without_changing_touch_targets():
+    adapter = _read("assets/styles/stock-sentinel-streamlit-adapter.css")
+    components = _read("assets/styles/stock-sentinel-components.css")
+    navigation = _read("utils/navigation.py")
+
+    assert (
+        "@media (min-width: 1100px) and (hover: hover) and (pointer: fine)"
+        in adapter
+    )
+    assert "padding: 1.15rem 1.35rem !important" in adapter
+    assert "flex: 0 0 220px !important" in adapter
+    assert "min-height: var(--ss-control-min-height)" in adapter
+    assert ".ss-task-command-intro" in components
+    assert "font-size: clamp(2.25rem, 3vw, 2.5rem)" in components
+    assert "@media (min-width:1100px) and (hover:hover) and (pointer:fine)" in navigation
+    assert "min-height:44px" in navigation
 
 
 def main() -> int:

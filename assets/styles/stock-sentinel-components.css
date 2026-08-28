@@ -105,3 +105,104 @@
 @media (prefers-reduced-motion: reduce) {
   .ss-processing-state::before { animation: none; }
 }
+
+/* Shared task-page introduction. The host adapter decides whether this sits
+   beside or above the framework-owned controls; the content contract remains
+   portable to a future frontend. */
+.ss-task-command-intro {
+  max-width: var(--ss-reading-max-width);
+  margin: 0 0 1.35rem;
+}
+
+.ss-task-command-intro h1 {
+  margin: 0 0 0.35rem;
+  color: var(--ss-color-text);
+  font-size: var(--ss-font-page-title);
+  font-weight: 760;
+  letter-spacing: -0.035em;
+  line-height: 1.08;
+}
+
+.ss-task-command-intro p {
+  max-width: 680px;
+  margin: 0;
+  color: var(--ss-color-text-muted);
+  font-size: 1rem;
+  line-height: 1.5;
+}
+
+.ss-task-hint {
+  display: flex;
+  min-height: 56px;
+  max-width: 780px;
+  box-sizing: border-box;
+  align-items: baseline;
+  gap: 0.75rem;
+  margin: 1rem 0 1.25rem;
+  padding: 0.7rem 0.95rem;
+  border: 1px solid var(--ss-color-border);
+  border-radius: 12px;
+  background: rgba(8, 15, 30, 0.42);
+}
+
+.ss-task-hint h2 {
+  flex: 0 0 auto;
+  margin: 0;
+  color: #dbe3ee;
+  font-size: 0.88rem;
+  font-weight: 750;
+  line-height: 1.45;
+}
+
+.ss-task-hint p {
+  margin: 0;
+  color: #8192aa;
+  font-size: 0.82rem;
+  line-height: 1.45;
+}
+
+@media (min-width: 1100px) and (hover: hover) and (pointer: fine) {
+  .ss-task-command-intro {
+    max-width: 330px;
+    margin: 0;
+  }
+
+  .ss-task-command-intro h1 {
+    margin-bottom: 0.55rem;
+    font-size: clamp(2.25rem, 3vw, 2.5rem);
+  }
+
+  .ss-task-command-intro p {
+    max-width: 310px;
+    line-height: 1.45;
+  }
+
+  .ss-task-hint {
+    min-height: 0;
+    max-width: 1100px;
+    margin: 0.85rem 0 1rem;
+    padding: 0 1.35rem;
+    border: 0;
+    border-radius: 0;
+    background: transparent;
+  }
+}
+
+@media (max-width: 700px) {
+  .ss-task-command-intro { margin-bottom: 1rem; }
+
+  .ss-task-command-intro h1 {
+    font-size: clamp(2rem, 9vw, 2.5rem);
+  }
+
+  .ss-task-command-intro p { font-size: 1rem; }
+
+  .ss-task-hint {
+    min-height: 0;
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 0.2rem;
+    margin: 0.85rem 0 1rem;
+    padding: 0.75rem 0.85rem;
+  }
+}
