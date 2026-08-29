@@ -211,6 +211,35 @@ check("a generic 204 'Missing response' is NOT recognised",
 check("a plain connection error is NOT recognised",
       not P._is_missing_credits_column(RuntimeError("connection refused")))
 
+# ── the config probe must not depend on a file being on disk ───────────────
+#
+# utils.config skips st.secrets when no secrets.toml exists, to avoid Streamlit
+# painting "No secrets found. Valid paths are: /app/.streamlit/..." into the
+# page on an environment-only host. The first version of that probe checked the
+# filesystem and NOTHING else -- so wherever no file existed, an INJECTED
+# st.secrets was ignored too.
+#
+# That is not hypothetical: .streamlit/ is gitignored, so CI has no file, and
+# eight assertions in test_billing failed there while passing on every
+# developer machine. The probe must apply only to Streamlit's own Secrets
+# object, which is the only one that raises.
+import types as _types
+
+_cfgmod = __import__("utils.config", fromlist=["config"])
+_cfgmod._SECRETS = None
+_stub = _types.ModuleType("streamlit")
+_stub.secrets = {"INJECTED_ONLY_IN_MEMORY": "value"}
+sys.modules["streamlit"] = _stub
+check("an injected st.secrets is read even with no file on disk",
+      _cfgmod.get("INJECTED_ONLY_IN_MEMORY", "") == "value",
+      "the probe rejected a stub because no secrets.toml was present -- the "
+      "exact failure that broke CI while passing locally")
+
+_cfgmod._SECRETS = None
+check("...and a missing key still falls back cleanly",
+      _cfgmod.get("NOT_THERE", "fallback") == "fallback")
+_cfgmod._SECRETS = None
+
 print("\n" + "=" * 70)
 print(f"  {len(PASSED)} passed, {len(FAILED)} failed")
 for n, d in FAILED:

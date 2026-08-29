@@ -73,15 +73,27 @@ def _secrets() -> Any:
     global _SECRETS
     if _SECRETS is not None:
         return _SECRETS
-    if not _secrets_file_exists():
-        # No file, so nothing to read and no reason to make Streamlit say so
-        # on screen. Environment-only hosts take this path.
-        logger.info("config: no secrets.toml found; using environment only")
-        _SECRETS = False
-        return _SECRETS
     try:
         import streamlit as st
-        _SECRETS = st.secrets
+        candidate = st.secrets
+        # THE FILE PROBE APPLIES ONLY TO STREAMLIT'S OWN Secrets OBJECT.
+        #
+        # That object is the one that calls st.error() and raises when no
+        # secrets.toml exists. Anything else -- a test stub, an injected
+        # mapping -- neither raises nor prints, and MUST still be readable.
+        #
+        # The first version of this probe checked the filesystem and nothing
+        # else, so it concluded "no secrets" whenever no file was on disk. In
+        # CI, where secrets.toml is gitignored and the billing suite injects a
+        # stub, that meant the stub was never read and eight assertions failed
+        # on a machine where the file merely happened not to exist. Which is
+        # the same class of mistake the probe was written to fix: inferring a
+        # capability from a proxy for it.
+        if type(candidate).__name__ == "Secrets" and not _secrets_file_exists():
+            logger.info("config: no secrets.toml found; using environment only")
+            _SECRETS = False
+            return _SECRETS
+        _SECRETS = candidate
     except Exception:
         # Ordinary outside the portal, so INFO rather than a warning: a worker
         # or a service is expected to configure itself from the environment.
