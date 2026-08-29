@@ -1,0 +1,40 @@
+# Streamlit config for the containerised portal. TRACKED ON PURPOSE.
+#
+# .gitignore ignores `.streamlit/` wholesale, so the repo carries no config.toml
+# at all and a Railway build would start with Streamlit's defaults -- losing
+# showErrorDetails=false (full tracebacks rendered in the browser, on an app
+# whose auth diagnostics embed SUPABASE_URL), headless=true (the container
+# prompts for an email on first run), and the entire dark theme, which would
+# leave Streamlit's own widget chrome light against the app's dark surfaces.
+#
+# browser.serverAddress is deliberately REMOVED from this copy: "localhost" is
+# correct for a laptop and breaks the websocket behind a custom domain.
+#
+# Streamlit Configuration - Stock Sentinel
+
+[theme]
+primaryColor = "#38BDF8"
+backgroundColor = "#0B1220"
+secondaryBackgroundColor = "#0F172A"
+textColor = "#E5E7EB"
+font = "sans serif"
+
+[client]
+# Enable persistent session storage across page refreshes
+showErrorDetails = false
+toolbarMode = "minimal"
+
+[server]
+# Run on save disabled for production
+runOnSave = false
+# Allow remote access
+headless = true
+# Session state persistence
+maxUploadSize = 50
+
+[logger]
+level = "info"
+
+[browser]
+# Enable faster browser caching
+gatherUsageStats = false

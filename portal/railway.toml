@@ -1,0 +1,59 @@
+# Railway service config for the Streamlit portal.
+#
+# Service settings that are NOT in this file and must be set in the UI:
+#   Root Directory      = (blank -- the repository root)
+#   Railway Config File = portal/railway.toml
+#
+# Root Directory matters. The build needs utils/, pages/, data/ and assets/,
+# none of which are under portal/. inference/ takes the opposite approach (Root
+# Directory = inference) because its image needs nothing outside that folder --
+# do not copy its shape here.
+
+[build]
+builder = "DOCKERFILE"
+# Repo-root-relative, matching core_api/railway.toml. That service is the one
+# place in this repo where watch paths are known to work, and it uses a
+# repo-root path -- so this file follows the pattern that has been observed
+# working rather than the one that has not.
+dockerfilePath = "portal/Dockerfile"
+
+# WITHOUT THIS, EVERY PUSH REBUILDS EVERY SERVICE. core_api/railway.toml
+# already carries that warning: an unrelated deploy once killed an in-flight
+# 100-minute price sync.
+#
+# utils/** is here AND in core_api's list, deliberately. One implementation,
+# two deployments -- a change to utils/deep_analysis.py genuinely affects both,
+# and narrowing this to "the modules the portal imports" would miss the
+# transitive ones and stop deploying a real change.
+watchPatterns = [
+  "app.py",
+  "pages/**",
+  "utils/**",
+  "assets/**",
+  "portal/**",
+  "requirements.txt",
+  "pkg_resources.py",
+  "data/influencers*.json",
+  "data/labels.jsonl",
+  "data/demo/**",
+  "data/education/**",
+]
+
+[deploy]
+# Streamlit's own liveness endpoint. NOT "/", which runs app.py -- and app.py
+# ends in st.switch_page("pages/Home.py"), so every platform probe would render
+# a full page and touch Supabase.
+healthcheckPath = "/_stcore/health"
+healthcheckTimeout = 120
+
+restartPolicyType = "ON_FAILURE"
+restartPolicyMaxRetries = 5
+
+# ONE REPLICA, and this is not a performance choice.
+#
+# A Streamlit session is a websocket bound to one process holding that user's
+# st.session_state -- which includes billing.url, the Stripe Checkout link that
+# stays payable for ~24h. With two replicas a reconnect can land on a process
+# that has never seen this user, so a mid-checkout refresh silently loses the
+# pending purchase. Scale by making the container bigger, not by adding them.
+numReplicas = 1

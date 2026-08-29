@@ -486,6 +486,77 @@ def test_only_utils_config_touches_st_secrets():
           f"credential into a silent empty string.")
 
 
+def test_the_portal_image_can_actually_run_the_portal():
+    """The deploy artifact must contain what the app reads, and no secrets file.
+
+    A Dockerfile is only correct until someone adds an import. These checks are
+    cheap and each one corresponds to a way the container starts green and then
+    fails on a page nobody loaded during the smoke test.
+    """
+    print("\nthe portal image contains what the portal needs")
+    df = (REPO / "portal" / "Dockerfile")
+    tf = (REPO / "portal" / "railway.toml")
+    check("portal/Dockerfile exists", df.exists())
+    check("portal/railway.toml exists", tf.exists())
+    if not (df.exists() and tf.exists()):
+        return
+    # CODE ONLY. Both files are heavily commented, and the first version of
+    # these checks matched the Dockerfile's own comment saying "NO secrets.toml
+    # is written into the image" -- reporting a violation because the file
+    # correctly documents that it does not do the thing.
+    def code_only(path):
+        return "\n".join(l for l in path.read_text().splitlines()
+                          if not l.lstrip().startswith("#"))
+
+    d, t = code_only(df), code_only(tf)
+
+    # Everything app.py needs at runtime. utils/ and pages/ are obvious; assets/
+    # carries the CSS apply_theme() injects, and data/ the demo and education
+    # fixtures the public pages read.
+    for need in ("app.py", "utils/", "pages/", "assets/", "requirements.txt",
+                 "data/demo/", "data/education/", "pkg_resources.py"):
+        check(f"image copies {need}", f"COPY {need}" in d or f" {need}" in d,
+              f"{need} is read at runtime and would be missing in the container")
+
+    check("the tracked streamlit config is copied",
+          "portal/streamlit-config.toml" in d,
+          ".streamlit/ is gitignored wholesale, so without this the container "
+          "loses showErrorDetails=false, headless, and the whole theme")
+    check("...and that file is TRACKED, not ignored",
+          (REPO / "portal" / "streamlit-config.toml").exists()
+          and "serverAddress" not in
+              "".join(l for l in (REPO / "portal" / "streamlit-config.toml")
+                      .read_text().splitlines() if not l.strip().startswith("#")),
+          "browser.serverAddress=localhost breaks the websocket behind a domain")
+
+    check("NO secrets.toml is written into the image",
+          "secrets.toml" not in d,
+          "config comes from os.environ; a baked secrets file would ship "
+          "credentials in an image layer")
+
+    check("the port is taken from $PORT",
+          "${PORT" in d,
+          "Railway assigns a port per deploy and probes THAT port")
+    check("...via shell form so it expands",
+          'CMD ["sh"' in d or "CMD sh" in d,
+          'exec form passes the literal string "${PORT:-8501}" to streamlit')
+
+    check("healthcheck is Streamlit's own endpoint, not /",
+          "/_stcore/health" in t,
+          '"/" runs app.py, which ends in st.switch_page -- every probe would '
+          "render a page and touch Supabase")
+    check("exactly one replica",
+          "numReplicas = 1" in t,
+          "a Streamlit session is a websocket bound to one process holding "
+          "st.session_state, including the payable Checkout link")
+    check("watchPatterns are declared",
+          "watchPatterns" in t,
+          "without them every push rebuilds every service")
+    check("...and cover the code the portal shares with core-api",
+          '"utils/**"' in t,
+          "one implementation, two deployments -- a utils/ change affects both")
+
+
 def main() -> int:
     major, minor = pinned_version()
     print("=" * 74)
@@ -567,6 +638,7 @@ def main() -> int:
     test_the_service_role_blast_radius_does_not_grow()
     test_no_module_references_an_undefined_name()
     test_only_utils_config_touches_st_secrets()
+    test_the_portal_image_can_actually_run_the_portal()
     print(f"\n  {len(PASSED)} passed, {len(FAILED)} failed")
     for n, d in FAILED:
         print(f"    - {n}: {d}")
