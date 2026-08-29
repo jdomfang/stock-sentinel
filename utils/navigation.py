@@ -5,6 +5,8 @@ from __future__ import annotations
 import html
 import streamlit as st
 
+from utils import config as _config
+
 _ACTIVE_KEYS = {
     "market_scan", "deep_analyze", "account",
     "how_it_works", "faq",
@@ -111,7 +113,14 @@ def render_top_nav(
     user = get_user() or {}
     email = ((user.get("email") if isinstance(user, dict)
               else getattr(user, "email", None)) or "").strip()
-    admin_email = str(st.secrets.get("ADMIN_EMAIL", "") or "").lower().strip()
+    # utils.config, NOT st.secrets directly. st.secrets.get() RAISES
+    # FileNotFoundError when no secrets.toml exists anywhere -- and this
+    # function renders on every page, so a container configured purely from
+    # environment variables (Railway, a VPS, any Docker host) died here before
+    # a single line of page code ran. utils.config reads os.environ first and
+    # swallows exactly this failure; the portal has always been portable
+    # everywhere except these two lines.
+    admin_email = _config.get("ADMIN_EMAIL", "").lower().strip()
     is_admin = bool(logged_in and admin_email and email.lower() == admin_email)
     show_credits = bool(logged_in and credits is not None)
 

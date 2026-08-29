@@ -158,15 +158,11 @@ def _secret(name: str) -> str:
     is guarded because this module must stay importable from cron scripts and
     tests, where there is no Streamlit runtime.
     """
-    val = os.getenv(name, "")
-    if val:
-        return val
-    try:
-        import streamlit as st
-
-        return str(st.secrets.get(name, "") or "")
-    except Exception:
-        return ""
+    # Delegates to utils.config, which does exactly this and is the ONLY module
+    # allowed to touch st.secrets. This function was already correct; keeping a
+    # second correct copy is how the two drift.
+    from utils import config as _config
+    return _config.get(name, "")
 
 
 # Query-parameter names whose VALUE must never leave this process. Matched

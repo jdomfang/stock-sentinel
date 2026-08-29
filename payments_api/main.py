@@ -54,7 +54,13 @@ def _env(name: str, default: str | None = None) -> str:
     return v
 
 
-APP_BASE_URL = os.getenv("APP_BASE_URL", "")
+# rstrip("/") because the value is INTERPOLATED, not joined. A trailing slash
+# -- which is what anyone pasting a browser URL produces -- yields
+# "https://example.com//?payment=success". Browsers mostly tolerate the double
+# slash, but it is a different path to any proxy or analytics in front of the
+# app, and the existing test only asserts endswith("/?payment=success"), so the
+# broken form passes the suite and fails in production.
+APP_BASE_URL = os.getenv("APP_BASE_URL", "").strip().rstrip("/")
 PAYMENTS_API_SHARED_SECRET = os.getenv("PAYMENTS_API_SHARED_SECRET", "")
 
 STRIPE_SECRET_KEY = os.getenv("STRIPE_SECRET_KEY", "")

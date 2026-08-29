@@ -420,6 +420,72 @@ def test_no_module_references_an_undefined_name():
           " | ".join(undefined[:6]))
 
 
+def test_only_utils_config_touches_st_secrets():
+    """One module reads st.secrets. Everything else goes through utils.config.
+
+    WHY THE RULE IS ABSOLUTE RATHER THAN "GUARD YOUR CALLS"
+
+    st.secrets raises FileNotFoundError when no secrets.toml exists -- so on any
+    host configured from environment variables (Railway, a VPS, any container)
+    an unguarded read kills the page. utils/navigation.py did that on EVERY
+    page, and pages/Admin.py did it at module scope.
+
+    But guarding is not the fix, and an earlier version of this test enforced
+    guarding and was WORSE THAN USELESS. It certified utils/billing.py:_cfg as
+    safe: that function wrapped the read in `except: return ""`, so on Railway
+    both payment secrets came back empty and checkout answered "Payments are
+    not configured yet." to every user, silently, forever. The test blessed the
+    money path being dead because the crash had been swallowed.
+
+    So the criterion is not "does it crash" but "does it read config the way the
+    host supplies it". utils.config does: os.environ first, st.secrets only if
+    importable, exception swallowed. One implementation, one place to fix.
+
+    MATCHES THE ATTRIBUTE, NOT THE CALL. A reviewer defeated the previous
+    matcher with st.secrets["KEY"], st.secrets.KEY, and "KEY" in st.secrets --
+    all of which raise identically and none of which is an ast.Call.
+    """
+    print("\nutils/config.py is the only module that may touch st.secrets")
+    import ast
+
+    allowed = (REPO / "utils" / "config.py").resolve()
+    offenders = []
+
+    targets = [REPO / "app.py"]
+    for d in ("utils", "pages"):
+        targets += sorted((REPO / d).rglob("*.py"))
+
+    for f in targets:
+        if not f.exists() or f.resolve() == allowed:
+            continue
+        tree = ast.parse(f.read_text(encoding="utf-8"))
+
+        # Whatever local name streamlit is bound to -- `import streamlit as st`
+        # is the convention, but an alias must not launder the rule.
+        names = set()
+        for n in ast.walk(tree):
+            if isinstance(n, ast.Import):
+                for a in n.names:
+                    if a.name == "streamlit":
+                        names.add(a.asname or "streamlit")
+            elif isinstance(n, ast.ImportFrom) and n.module == "streamlit":
+                for a in n.names:
+                    if a.name == "secrets":
+                        offenders.append(f"{f.relative_to(REPO)}:{n.lineno} "
+                                         f"(from streamlit import secrets)")
+
+        for n in ast.walk(tree):
+            if (isinstance(n, ast.Attribute) and n.attr == "secrets"
+                    and isinstance(n.value, ast.Name) and n.value.id in names):
+                offenders.append(f"{f.relative_to(REPO)}:{n.lineno}")
+
+    check("no module outside utils/config.py reads st.secrets",
+          not offenders,
+          f"{offenders} -- route through utils.config.get, which reads "
+          f"os.environ first. A try/except is NOT a fix: it turns a missing "
+          f"credential into a silent empty string.")
+
+
 def main() -> int:
     major, minor = pinned_version()
     print("=" * 74)
@@ -500,6 +566,7 @@ def main() -> int:
     test_no_suite_defines_a_test_it_never_runs()
     test_the_service_role_blast_radius_does_not_grow()
     test_no_module_references_an_undefined_name()
+    test_only_utils_config_touches_st_secrets()
     print(f"\n  {len(PASSED)} passed, {len(FAILED)} failed")
     for n, d in FAILED:
         print(f"    - {n}: {d}")

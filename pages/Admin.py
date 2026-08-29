@@ -17,6 +17,7 @@ import sys as _sys
 _sys.path.insert(0, str(_Path(__file__).resolve().parents[1]))
 
 
+from utils import config as _config
 from utils.navigation import render_sidebar_navigation, render_top_nav
 from utils.ui import apply_theme, close_page, safe_ui, ui_error
 from utils.auth import is_logged_in, get_user
@@ -57,7 +58,10 @@ if not is_logged_in():
         st.switch_page("pages/Auth.py")
     _bail()
 
-admin_email = st.secrets.get("ADMIN_EMAIL", "").lower().strip()
+# utils.config, not st.secrets -- see utils/navigation.py. This one is at
+# MODULE SCOPE, so on a host without a secrets.toml it raises during import and
+# the page cannot even render its "not authorised" state.
+admin_email = _config.get("ADMIN_EMAIL", "").lower().strip()
 user = get_user() or {}
 user_email_raw = user.get("email") if isinstance(user, dict) else getattr(user, "email", None)
 user_email = (user_email_raw or "").lower().strip()

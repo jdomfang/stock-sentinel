@@ -663,6 +663,42 @@ def test_the_session_is_priced_from_the_same_table():
     check("the redirect carries the marker app.py reads",
           kw["success_url"].endswith("/?payment=success"), kw["success_url"])
 
+    # A TRAILING SLASH IS THE COMMON CASE -- it is what anyone pasting a browser
+    # URL into an env var produces. APP_BASE_URL is INTERPOLATED, not joined, so
+    # without rstrip it yields "https://example.com//?payment=success".
+    #
+    # The assertion above cannot see it: "…//?payment=success" still ends with
+    # "/?payment=success", so the broken form passed the suite. Verified by
+    # mutation -- removing the rstrip left this file at 103/103 green.
+    import importlib
+    import os as _os
+    _os.environ["APP_BASE_URL"] = "https://app.test/"
+    try:
+        M2 = importlib.reload(M)
+        M2._supabase_admin_client = lambda: db
+        from fastapi.testclient import TestClient
+        c2 = TestClient(M2.app, raise_server_exceptions=False)
+        stripe.checkout.Session.last = None      # so a stale value cannot answer
+        r2 = c2.post("/create-checkout-session", json={"user_id": "u1"},
+                     headers={"X-Payments-Shared-Secret": "s3cret"})
+        # ASSERT THE REQUEST HAPPENED. Session.last is a class attribute on the
+        # stub: if this call never reaches Stripe -- a 401, a 500, a changed
+        # secret -- it still holds the PREVIOUS request's kwargs, which were
+        # built from a URL with no trailing slash and therefore contain no "//".
+        # Both checks below would then pass while testing nothing. Proven by a
+        # reviewer forcing a 401 here: 105/105 green.
+        check("the second session was actually created", r2.status_code == 200,
+              f"{r2.status_code} -- the assertions below would be vacuous")
+        kw2 = stripe.checkout.Session.last
+        check("Stripe was called with fresh kwargs", kw2 is not None)
+        if kw2:
+            check("a trailing slash does not produce a double slash",
+                  "//?payment=success" not in kw2["success_url"], kw2["success_url"])
+            check("...and the cancel URL is clean too",
+                  "//?payment=cancel" not in kw2["cancel_url"], kw2["cancel_url"])
+    finally:
+        _os.environ["APP_BASE_URL"] = "https://app.test"
+
 
 def test_an_unsigned_webhook_is_rejected():
     print("\nsignature is the only thing making any of this trustworthy")

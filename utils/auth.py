@@ -6,6 +6,7 @@ import streamlit as st
 import json
 
 from utils.supabase_client import get_client
+from utils import config as _config
 
 # Referenced by the remember-me helpers below. Its absence was a NameError on
 # the ORDINARY path -- every expired or already-spent code -- which raised out
@@ -190,7 +191,11 @@ def sign_in(email: str, password: str, remember_me: bool = False) -> tuple[bool,
                 except Exception as dns_e:
                     return f"FAILED ({dns_e})"
 
-            supabase_url = st.secrets.get("SUPABASE_URL", "")
+            # utils.config, so "only config.py touches st.secrets" holds with no
+            # exceptions to remember. These two are diagnostics inside an
+            # except block -- already safe, but an allow-list of "safe"
+            # direct reads is a list somebody has to keep correct.
+            supabase_url = _config.get("SUPABASE_URL", "")
             host = urlparse(supabase_url).hostname or "(no hostname parsed)"
 
             debug = (
@@ -229,7 +234,11 @@ def sign_up(email: str, password: str) -> tuple[bool, str]:
             import socket
             from urllib.parse import urlparse
 
-            supabase_url = st.secrets.get("SUPABASE_URL", "")
+            # utils.config, so "only config.py touches st.secrets" holds with no
+            # exceptions to remember. These two are diagnostics inside an
+            # except block -- already safe, but an allow-list of "safe"
+            # direct reads is a list somebody has to keep correct.
+            supabase_url = _config.get("SUPABASE_URL", "")
             host = urlparse(supabase_url).hostname or "(no hostname parsed)"
 
             dns_result = "not checked"

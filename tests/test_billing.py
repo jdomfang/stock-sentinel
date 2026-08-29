@@ -49,6 +49,19 @@ def fresh(secrets=None):
     """A billing module with streamlit stubbed. Returns (module, state)."""
     for m in [k for k in list(sys.modules) if k.startswith("utils.billing")]:
         del sys.modules[m]
+
+    # RESET utils.config's SECRETS CACHE TOO.
+    #
+    # billing._cfg now delegates to utils.config, which caches the st.secrets
+    # object in a module global and is attempted once per process. Reloading
+    # only utils.billing therefore left the cache holding a PREVIOUS test's
+    # stub -- so fresh(secrets={}) silently kept the last run's values and
+    # "no payments config" could not be tested at all.
+    try:
+        import utils.config as _cfgmod
+        _cfgmod._SECRETS = None
+    except Exception:
+        pass
     st = types.ModuleType("streamlit")
     st.session_state = {"auth.user": {"id": "u1"}}
     st.secrets = _Secrets(secrets if secrets is not None else {

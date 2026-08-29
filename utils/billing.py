@@ -43,6 +43,8 @@ import logging
 
 import streamlit as st
 
+from utils import config as _config
+
 logger = logging.getLogger(__name__)
 
 # WHAT A PACK CONTAINS, for display only. payments_api owns the real number --
@@ -62,11 +64,21 @@ _URL_TTL_S = 20 * 60
 
 
 def _cfg(name: str) -> str:
-    """Read a secret without importing streamlit's secrets at module scope."""
-    try:
-        return (st.secrets.get(name, "") or "").strip()
-    except Exception:
-        return ""
+    """Read a secret. Environment first, then st.secrets.
+
+    THIS READ WAS THE ONE THAT MATTERED, and it failed silently. It went
+    straight to st.secrets with a bare `except: return ""`, so on any host
+    configured from environment variables -- Railway, a VPS, any container --
+    PAYMENTS_API_BASE_URL and PAYMENTS_API_SHARED_SECRET both came back empty
+    and get_checkout_url() below answered "Payments are not configured yet."
+    to every user, forever, with nothing logged.
+
+    Worse than the crash it was written to avoid: a crash is noticed. A guarded
+    read that returns "" turns a missing credential into a plausible-looking
+    product state, which is the exact failure utils/config.py's docstring cites
+    as its reason for existing.
+    """
+    return _config.get(name, "")
 
 
 def get_checkout_url(user_id: str) -> tuple[str | None, str | None]:
