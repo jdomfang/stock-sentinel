@@ -40,6 +40,34 @@ logger = logging.getLogger(__name__)
 _SECRETS: Any = None
 
 
+def _secrets_file_exists() -> bool:
+    """Is there a secrets.toml for Streamlit to find?
+
+    ASKED BEFORE TOUCHING st.secrets, and that ordering is the point. Streamlit
+    does not merely raise when the file is missing -- Secrets._parse() calls
+    st.error() with the message "No secrets found. Valid paths for a
+    secrets.toml file are: /app/.streamlit/secrets.toml, ..." and THEN raises.
+
+    So on a host configured purely from environment variables, every key that
+    falls through to secrets paints a red box into the page the user is reading,
+    naming container filesystem paths. The failure is also not negatively
+    cached, so it repeats for every miss.
+
+    Checking the paths ourselves means the miss costs nothing and shows nothing.
+    Conservative by design: if a file IS present we fall through to st.secrets
+    and behave exactly as before, so Streamlit Community Cloud is unaffected.
+    """
+    import os.path
+    for cand in (os.path.join(os.getcwd(), ".streamlit", "secrets.toml"),
+                 os.path.expanduser("~/.streamlit/secrets.toml")):
+        try:
+            if os.path.isfile(cand):
+                return True
+        except Exception:
+            pass
+    return False
+
+
 def _secrets() -> Any:
     """st.secrets, or False. Attempted once per process."""
     global _SECRETS
@@ -47,7 +75,25 @@ def _secrets() -> Any:
         return _SECRETS
     try:
         import streamlit as st
-        _SECRETS = st.secrets
+        candidate = st.secrets
+        # THE FILE PROBE APPLIES ONLY TO STREAMLIT'S OWN Secrets OBJECT.
+        #
+        # That object is the one that calls st.error() and raises when no
+        # secrets.toml exists. Anything else -- a test stub, an injected
+        # mapping -- neither raises nor prints, and MUST still be readable.
+        #
+        # The first version of this probe checked the filesystem and nothing
+        # else, so it concluded "no secrets" whenever no file was on disk. In
+        # CI, where secrets.toml is gitignored and the billing suite injects a
+        # stub, that meant the stub was never read and eight assertions failed
+        # on a machine where the file merely happened not to exist. Which is
+        # the same class of mistake the probe was written to fix: inferring a
+        # capability from a proxy for it.
+        if type(candidate).__name__ == "Secrets" and not _secrets_file_exists():
+            logger.info("config: no secrets.toml found; using environment only")
+            _SECRETS = False
+            return _SECRETS
+        _SECRETS = candidate
     except Exception:
         # Ordinary outside the portal, so INFO rather than a warning: a worker
         # or a service is expected to configure itself from the environment.
