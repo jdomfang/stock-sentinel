@@ -38,6 +38,7 @@ NEEDS_DB = {
     "test_credit_integrity.py", "test_work_runs.py", "test_admin_adjust.py",
     "test_grant_credits.py", "test_corpus_cache.py", "test_credit_merge.py",
     "test_bootstrap_safety.py", "test_remember_me.py", "test_spend_budget.py",
+    "test_public_demo_snapshots.py",
 }
 
 SUMMARY = re.compile(r"(\d+) passed, (\d+) failed")

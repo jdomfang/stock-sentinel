@@ -102,7 +102,12 @@ def _bail() -> None:
     st.stop()
 
 ticker = str(st.session_state.get("selected_ticker") or "").strip().upper()
-sector = str(st.session_state.get("selected_sector") or "").strip()
+sector = str(
+    st.session_state.get("analysis_sector")
+    or st.session_state.get("demo_scan_sector")
+    or st.session_state.get("selected_sector")
+    or ""
+).strip()
 card = st.session_state.get("deep_analysis_card") or {}
 analysis_results = st.session_state.get("deep_analysis_results") or {}
 

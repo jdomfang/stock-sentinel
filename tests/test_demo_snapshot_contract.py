@@ -11,9 +11,11 @@ REPO = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(REPO))
 
 from utils.demo_snapshots import (
+    build_public_demo_bundle,
     normalize_scan_rows,
     social_posts_value,
     snapshot_timestamp,
+    validate_public_demo_bundle,
 )
 
 
@@ -70,16 +72,83 @@ def test_snapshot_timestamp_is_explicit_utc() -> None:
     assert datetime.fromisoformat(value.replace("Z", "+00:00")).tzinfo
 
 
+def test_public_bundle_is_one_coherent_scan_and_analysis() -> None:
+    bundle = build_public_demo_bundle(
+        scan_rows=[
+            {
+                "Ticker": "way",
+                "Overall Sentiment": "Neutral",
+                "Mentions": "21",
+            },
+            {
+                "Ticker": "low",
+                "Overall Sentiment": "Limited signal",
+                "Mentions": 1,
+            },
+        ],
+        scan_sector=" Tech ",
+        analysis_ticker="WAY",
+        analysis_summary={
+            "recommendation": "Watch",
+            "confidence": "Moderate",
+            "rationale": ["Evidence is mixed."],
+        },
+    )
+    assert bundle["scan"]["sector"] == "tech"
+    assert [row["Ticker"] for row in bundle["scan"]["validated_rows"]] == [
+        "WAY"
+    ]
+    assert bundle["deep_analysis"]["ticker"] == "WAY"
+    assert bundle["deep_analysis"]["sector"] == "tech"
+    assert bundle["deep_analysis"]["analysis_results"] == {
+        "public_summary": {
+            "recommendation": "Watch",
+            "confidence": "Moderate",
+            "rationale": ["Evidence is mixed."],
+        }
+    }
+
+
+def test_public_bundle_rejects_analysis_outside_current_scan() -> None:
+    try:
+        validate_public_demo_bundle(
+            {
+                "scan": {
+                    "sector": "tech",
+                    "validated_rows": [{
+                        "Ticker": "WAY",
+                        "Overall Sentiment": "Neutral",
+                        "Mentions": 21,
+                    }],
+                },
+                "deep_analysis": {
+                    "ticker": "NVDA",
+                    "sector": "tech",
+                    "analysis_results": {"recommendation": "Watch"},
+                },
+            }
+        )
+    except ValueError as exc:
+        assert "current Market Scan" in str(exc)
+    else:
+        raise AssertionError("analysis outside the current scan was accepted")
+
+
 def test_all_snapshot_publishers_keep_the_contract() -> None:
     admin = (REPO / "pages" / "Admin.py").read_text(encoding="utf-8")
     discovery = (REPO / "pages" / "Discovery.py").read_text(encoding="utf-8")
     home = (REPO / "pages" / "Home.py").read_text(encoding="utf-8")
 
-    assert "normalize_scan_rows(validated_rows)" in admin
-    assert "normalize_scan_rows(" in discovery
+    assert "build_public_demo_bundle(" in admin
+    assert "publish_public_demo(" in admin
+    assert "load_latest_public_demo(" in admin
+    assert "load_latest_public_demo()" in home
+    assert "st.session_state.demo_scan_sector = sector" in discovery
     assert '"Mentions", "Sample Tweets"' not in discovery
-    assert "snapshot_timestamp()" in admin
-    assert "snapshot_timestamp()" in discovery
+    assert "scan_latest.json\").write_text" not in admin
+    assert "scan_latest.json\").write_text" not in discovery
+    assert "deep_latest.json\").write_text" not in admin
+    assert "deep_latest.json\").write_text" not in discovery
     assert "social_posts_value(row)" in home
     assert "Social posts" in home
     assert "Attention unavailable" not in home
@@ -97,6 +166,8 @@ def main() -> int:
         test_incomplete_scan_snapshots_fail_instead_of_inventing_counts,
         test_social_posts_value_is_compact_and_uses_only_snapshot_data,
         test_snapshot_timestamp_is_explicit_utc,
+        test_public_bundle_is_one_coherent_scan_and_analysis,
+        test_public_bundle_rejects_analysis_outside_current_scan,
         test_all_snapshot_publishers_keep_the_contract,
     ]
     for test in tests:

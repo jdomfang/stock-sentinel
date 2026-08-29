@@ -5,7 +5,6 @@ from pathlib import Path
 import sys
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
-import json
 import html
 import pandas as pd
 import logging
@@ -33,7 +32,6 @@ from utils.finance import get_last_close_prices_best_effort
 # above is still local and imports what it needs directly.
 from utils import analyze_client as _client
 from utils import billing
-from utils.demo_snapshots import normalize_scan_rows, snapshot_timestamp
 
 
 # Verdicts we are willing to assert. Anything else is a statement about how
@@ -324,17 +322,56 @@ st.markdown(
     }
     [class*="st-key-scan_row_"] {
       box-sizing: border-box;
-      padding: 0.72rem 0.15rem;
+      padding: 0.72rem 0;
       border-bottom: 1px solid rgba(148, 163, 184, 0.14);
     }
     [class*="st-key-scan_row_selected_"] {
       border-radius: var(--radius-control);
+      border-bottom-color: transparent;
       background: rgba(56, 189, 248, 0.055);
       box-shadow: inset 0 0 0 1px rgba(56, 189, 248, 0.42);
     }
-    [class*="st-key-scan_header_"] [data-testid="stHorizontalBlock"],
-    [class*="st-key-scan_row_"] [data-testid="stHorizontalBlock"] {
-      align-items: center !important;
+    /* Header and rows use one physical track definition on non-card layouts.
+       The media gate prevents these !important desktop resets from winning
+       over the mobile flex-card contract through selector specificity. */
+    @media (min-width:721px) {
+      [class*="st-key-scan_header_"] [data-testid="stHorizontalBlock"],
+      [class*="st-key-scan_row_"] [data-testid="stHorizontalBlock"] {
+        display: grid !important;
+        grid-template-columns:
+          minmax(170px, 1.75fr)
+          minmax(72px, .72fr)
+          minmax(86px, .92fr)
+          minmax(68px, .62fr)
+          minmax(132px, 1.15fr);
+        gap: .5rem !important;
+        padding-inline: 8px !important;
+        box-sizing: border-box !important;
+        align-items: stretch !important;
+      }
+      [class*="st-key-scan_header_"] [data-testid="stHorizontalBlock"] > [data-testid="stColumn"],
+      [class*="st-key-scan_row_"] [data-testid="stHorizontalBlock"] > [data-testid="stColumn"] {
+        display: flex !important;
+        flex: none !important;
+        width: auto !important;
+        min-width: 0 !important;
+        align-items: center !important;
+      }
+      [class*="st-key-scan_header_"] [data-testid="stColumn"] > div,
+      [class*="st-key-scan_row_"] [data-testid="stColumn"] > div {
+        width: 100% !important;
+        min-width: 0 !important;
+      }
+      [class*="st-key-scan_row_"] [data-testid="stColumn"]:last-child [data-testid="stElementContainer"],
+      [class*="st-key-scan_row_"] [data-testid="stColumn"]:last-child [data-testid="stMarkdownContainer"],
+      [class*="st-key-scan_row_"] [data-testid="stColumn"]:last-child .stButton {
+        width: 100% !important;
+        min-width: 0 !important;
+        margin: 0 !important;
+      }
+      [class*="st-key-scan_row_"] [data-testid="stColumn"]:last-child [data-testid="stMarkdownContainer"] p {
+        margin: 0 !important;
+      }
     }
     .scan-stock-cell strong {
       color: var(--text);
@@ -415,6 +452,17 @@ st.markdown(
     .st-key-selected_analysis_panel {
       position:sticky;top:16px;padding:14px;border:1px solid rgba(56,189,248,.18);
       border-radius:var(--radius-panel);background:rgba(8,15,30,.72);
+      box-sizing:border-box;width:100%;min-width:0;max-width:100%;
+      container-type:inline-size;
+    }
+    .st-key-selected_analysis_panel > div,
+    .st-key-selected_analysis_panel [data-testid="stVerticalBlock"],
+    .st-key-selected_analysis_panel [data-testid="stElementContainer"] {
+      box-sizing:border-box!important;min-width:0!important;max-width:100%!important;
+    }
+    .st-key-selected_analysis_panel .selected-analysis-heading,
+    .st-key-selected_analysis_panel .ss-decision-card {
+      overflow-wrap:anywhere;
     }
     .st-key-selected_analysis_panel .selected-analysis-heading {margin:0 0 .7rem;}
     .st-key-selected_analysis_panel .stButton > button {width:100%;}
@@ -443,7 +491,7 @@ st.markdown(
 
     /* The master-detail workspace must stack before its shortlist becomes too
        narrow to keep financial values and paid actions on one line. */
-    @media (max-width: 1024px) {
+    @media (max-width: 1120px) {
       .st-key-scan_result_workspace [data-testid="stHorizontalBlock"]:has(
         .st-key-scan_workspace_results
       ):has(.st-key-scan_workspace_analysis) {flex-wrap:wrap!important;}
@@ -463,8 +511,11 @@ st.markdown(
       }
       [class*="st-key-scan_header_"] { display: none !important; }
       [class*="st-key-scan_row_"] [data-testid="stHorizontalBlock"] {
+        display: flex !important;
         flex-wrap: wrap;
         gap: 0.35rem;
+        padding-inline: 8px !important;
+        box-sizing: border-box !important;
       }
       [class*="st-key-scan_row_"] [data-testid="stColumn"] {
         flex: 1 1 calc(50% - 0.5rem) !important;
@@ -609,7 +660,12 @@ with st.container(key="discovery_command_shell"):
                     billing.render_credit_meter(profile=_profile, key="discovery")
 
             # Last scan context line
-            _last_sector = st.session_state.get("selected_sector")
+            _last_sector = (
+                st.session_state.get("demo_scan_sector")
+                or st.session_state.get("selected_sector")
+            )
+            if str(_last_sector or "").strip().lower() == "unknown":
+                _last_sector = sector
             _last_count = (
                 len(st.session_state.df_valid)
                 if st.session_state.get("df_valid") is not None else None
@@ -967,9 +1023,14 @@ if scan_triggered:
             st.session_state.df_valid = df_valid
             st.session_state.df_unvalidated = None  # not shown
             st.session_state.selected_sector = sector
+            # Keep the source sector with the scan itself. Deep Analyze can be
+            # opened independently and may update other route state, but the
+            # durable public demo must publish a coherent scan/analysis pair.
+            st.session_state.demo_scan_sector = sector
             st.session_state.selected_ticker = None
             st.session_state.deep_analysis_results = None
             st.session_state.deep_analysis_card = None
+            st.session_state.analysis_sector = None
 
             # Results are durable in session_state: the scan ran and produced an
             # answer. An empty answer is still an answer -- the sector genuinely
@@ -1067,67 +1128,6 @@ if scan_triggered:
     # This keeps refreshes from unexpectedly re-triggering autostart.
     if _intent_autostart:
         patch_query_params({"autostart": None, "next": None})
-
-# --- Admin-only: Save demo snapshots for Home (local only; no API calls) ---
-# These buttons save the *current* results to data/education/ so Home can show
-# a "clean" educational snapshot without running any paid API calls.
-
-ADMIN_MODE = bool(st.secrets.get("ADMIN_MODE", False))
-
-if ADMIN_MODE:
-    with st.expander("🛠 Admin: Demo snapshot tools", expanded=False):
-        # Save Scan snapshot (validated table)
-        if st.session_state.get("df_valid") is not None and len(st.session_state.df_valid) > 0:
-            if st.button("💾 Save Scan Snapshot for Home (demo)"):
-                try:
-                    from pathlib import Path
-                    import json
-
-                    out_dir = Path(__file__).resolve().parents[1] / "data" / "education"
-                    out_dir.mkdir(parents=True, exist_ok=True)
-
-                    df_out = st.session_state.df_valid.drop(
-                        columns=["Valid", "Sample Tweets", "Evidence"],
-                        errors="ignore",
-                    )
-                    validated_rows = normalize_scan_rows(
-                        df_out.to_dict(orient="records")
-                    )
-
-                    payload = {
-                        "sector": st.session_state.get("selected_sector") or "",
-                        "generated_at": snapshot_timestamp(),
-                        "validated_rows": validated_rows,
-                    }
-                    (out_dir / "scan_latest.json").write_text(json.dumps(payload, indent=2), encoding="utf-8")
-                    st.success("Saved: data/education/scan_latest.json")
-                except Exception:
-                    st.error("Something went wrong. Please try again later.")
-        else:
-            st.caption("Run a scan to enable saving scan snapshot.")
-
-        # Save Deep Analyze snapshot
-        if st.session_state.get("selected_ticker") and st.session_state.get("deep_analysis_results"):
-            if st.button("💾 Save Deep Analyze Snapshot for Home (demo)"):
-                try:
-                    from pathlib import Path
-                    import json
-
-                    out_dir = Path(__file__).resolve().parents[1] / "data" / "education"
-                    out_dir.mkdir(parents=True, exist_ok=True)
-
-                    payload = {
-                        "ticker": st.session_state.get("selected_ticker") or "",
-                        "sector": st.session_state.get("selected_sector") or "",
-                        "generated_at": snapshot_timestamp(),
-                        "analysis_results": st.session_state.get("deep_analysis_results") or {},
-                    }
-                    (out_dir / "deep_latest.json").write_text(json.dumps(payload, indent=2), encoding="utf-8")
-                    st.success("Saved: data/education/deep_latest.json")
-                except Exception:
-                    st.error("Something went wrong. Please try again later.")
-        else:
-            st.caption("Run Deep Analyze to enable saving deep snapshot.")
 
 def _render_deep_panel(ticker, sector, deep_results, *, compact=False):
     """Render the same paid analysis summary used by the dedicated route."""
@@ -1264,7 +1264,16 @@ if st.session_state.df_valid is not None:
         _summary_parts = [f"{_scored_count} with a sentiment signal"]
         if _low_count:
             _summary_parts.append(f"{_low_count} need more evidence")
-        _result_sector = st.session_state.get("selected_sector") or sector
+        # Deep Analyze has its own sector context. Never let an independent
+        # analysis (whose sector can legitimately be "unknown") relabel an
+        # already-completed Market Scan.
+        _result_sector = (
+            st.session_state.get("demo_scan_sector")
+            or st.session_state.get("selected_sector")
+            or sector
+        )
+        if str(_result_sector).strip().lower() == "unknown":
+            _result_sector = sector
         st.markdown(
             f'<div class="scan-results-intro">'
             f'<div><h2>{html.escape(str(_result_sector).title())} scan · {len(df_valid_display)} stocks</h2>'
@@ -1273,11 +1282,6 @@ if st.session_state.df_valid is not None:
             f'</div>',
             unsafe_allow_html=True,
         )
-        # Consume the one-shot flag without adding a second completion banner.
-        # The selected row and adjacent result panel already communicate that
-        # the paid analysis finished; another alert only shifts the workspace.
-        st.session_state.pop("_scroll_to_deep_panel", False)
-
         # Load last close prices with a progress indicator so the user sees activity
         tickers_for_prices = [str(t) for t in df_valid_display["Ticker"].tolist()]
         last_close_map = {}
@@ -1440,7 +1444,9 @@ if st.session_state.df_valid is not None:
                 )
                 if _has_selected_result:
                     st.markdown(
-                        '<span class="scan-view-result">Viewing result</span>',
+                        f'<a class="scan-view-result" href="#selected-analysis" '
+                        f'aria-label="View {_ticker_html} analysis result" '
+                        f'aria-current="true">View result</a>',
                         unsafe_allow_html=True,
                     )
                     _analyze_clicked = False
@@ -1633,7 +1639,7 @@ if st.session_state.df_valid is not None:
                             # service writes once per request now, so there is
                             # no duplicate to guard against and nothing read it.
                             st.session_state.selected_ticker = ticker_symbol
-                            st.session_state["_scroll_to_deep_panel"] = True
+                            st.session_state.analysis_sector = _result_sector
                             # Set BEFORE st.rerun(): it raises RerunException, so
                             # anything after it never runs.
                             _ddelivered = True
@@ -1681,7 +1687,8 @@ if st.session_state.df_valid is not None:
                 with st.container(key="selected_analysis_panel"):
                     st.markdown(
                         f'<section id="selected-analysis" '
-                        f'class="selected-analysis-heading" tabindex="-1">'
+                        f'class="selected-analysis-heading" tabindex="-1" '
+                        f'role="status" aria-live="polite" aria-atomic="true">'
                         f'<h2>{html.escape(str(_selected_ticker))} analysis result</h2>'
                         f'<p>Completed Buy, Watch, or Avoid recommendation.</p>'
                         f'</section>',

@@ -1,6 +1,3 @@
-import json
-from pathlib import Path
-
 import streamlit as st
 
 # PROJECT ROOT ON sys.path, BEFORE THE FIRST `utils` IMPORT.
@@ -23,7 +20,12 @@ _sys.path.insert(0, str(_Path(__file__).resolve().parents[1]))
 from utils.navigation import render_sidebar_navigation, render_top_nav
 from utils.ui import apply_theme, close_page, safe_ui, ui_error
 from utils.auth import is_logged_in, get_user
-from utils.demo_snapshots import normalize_scan_rows, snapshot_timestamp
+from utils.demo_repository import (
+    load_latest_public_demo,
+    publish_public_demo,
+)
+from utils.deep_analysis import generate_ai_summary
+from utils.demo_snapshots import build_public_demo_bundle
 from utils.supabase_client import get_admin_client
 
 st.set_page_config(page_title="Admin - Stock Sentinel", page_icon="🛠️", layout="wide", initial_sidebar_state="collapsed")
@@ -59,6 +61,7 @@ admin_email = st.secrets.get("ADMIN_EMAIL", "").lower().strip()
 user = get_user() or {}
 user_email_raw = user.get("email") if isinstance(user, dict) else getattr(user, "email", None)
 user_email = (user_email_raw or "").lower().strip()
+actor_id = user.get("id") if isinstance(user, dict) else getattr(user, "id", None)
 
 # First guard: must match configured admin email
 if not admin_email or user_email != admin_email:
@@ -188,70 +191,108 @@ if not rows:
 st.dataframe(rows, use_container_width=True)
 
 st.markdown("---")
-st.subheader("🎛️ Demo refresh tooling")
-st.caption("These buttons save the *current session's* latest scan / deep analyze into data/education so Home can render updated demos.")
+st.subheader("Public demo")
+st.caption(
+    "Publish one reviewed Market Scan and its selected Deep Analyze result. "
+    "The durable publication survives restarts and deployments."
+)
 
-root = Path(__file__).resolve().parents[1]
-edu_dir = root / "data" / "education"
-edu_dir.mkdir(parents=True, exist_ok=True)
+latest_demo = safe_ui(
+    lambda: load_latest_public_demo(sb),
+    context="admin.load_public_demo",
+)
+if latest_demo:
+    latest_bundle = latest_demo.get("bundle") or {}
+    latest_scan = latest_bundle.get("scan") or {}
+    latest_analysis = latest_bundle.get("deep_analysis") or {}
+    latest_when = str(latest_demo.get("published_at") or "")[:16].replace(
+        "T", " "
+    )
+    st.caption(
+        f"Published {latest_when} UTC · "
+        f"{str(latest_scan.get('sector') or '').title()} · "
+        f"{len(latest_scan.get('validated_rows') or [])} stocks · "
+        f"{latest_analysis.get('ticker') or '—'} analyzed"
+    )
+else:
+    st.caption("No durable public demo has been published yet.")
 
-c_demo1, c_demo2 = st.columns([1, 1])
+session_scan = st.session_state.get("df_valid")
+session_sector = (
+    st.session_state.get("demo_scan_sector")
+    or st.session_state.get("selected_sector")
+    or ""
+)
+session_ticker = st.session_state.get("selected_ticker") or ""
+session_results = st.session_state.get("deep_analysis_results") or {}
+publish_bundle = None
+publish_error = ""
 
-with c_demo1:
-    if st.button("💾 Save current scan as demo", type="primary"):
-        dfv = st.session_state.get("df_valid")
-        dfn = st.session_state.get("df_unvalidated")
-        if dfv is None or len(dfv) == 0:
-            st.error("No scan results in this session. Run a scan on Discovery first.")
-        else:
-            try:
-                # Enrich validated rows with Last Close prices (cache-first, fetch-on-miss)
-                from utils.finance import get_last_close_prices_best_effort
+if session_scan is None or len(session_scan) == 0:
+    publish_error = "Run a Market Scan in this session."
+elif not session_ticker or not session_results:
+    publish_error = "Deep Analyze one ticker from that Market Scan."
+else:
+    try:
+        # The public preview needs only these three scan facts. Keeping raw post
+        # text and internal evidence out of this bundle reduces both payload
+        # size and accidental exposure on the public landing page.
+        available = [
+            column
+            for column in ("Ticker", "Overall Sentiment", "Mentions")
+            if column in session_scan.columns
+        ]
+        scan_rows = session_scan[available].to_dict(orient="records")
+        publish_bundle = build_public_demo_bundle(
+            scan_rows=scan_rows,
+            scan_sector=session_sector,
+            analysis_ticker=session_ticker,
+            analysis_summary=generate_ai_summary(session_results),
+        )
+    except (TypeError, ValueError) as exc:
+        publish_error = str(exc)
 
-                dfv2 = dfv.drop(columns=["Sample Tweets"], errors="ignore").copy()
-                tickers = [str(t) for t in dfv2.get("Ticker", []).tolist()] if "Ticker" in dfv2.columns else []
-                price_map = get_last_close_prices_best_effort(tickers)
+status_scan, status_analysis = st.columns([1, 1])
+with status_scan:
+    st.markdown("**Current scan**")
+    if publish_bundle:
+        prepared_scan = publish_bundle["scan"]
+        st.caption(
+            f"{prepared_scan['sector'].title()} · "
+            f"{len(prepared_scan['validated_rows'])} public sentiment signals"
+        )
+    else:
+        st.caption("Not ready")
+with status_analysis:
+    st.markdown("**Current analysis**")
+    if publish_bundle:
+        st.caption(f"{publish_bundle['deep_analysis']['ticker']} · Ready")
+    else:
+        st.caption("Not ready")
 
-                validated_rows = []
-                for r in dfv2.to_dict("records"):
-                    t = str(r.get("Ticker") or "").upper()
-                    px = price_map.get(t)
-                    r["Last Close"] = (None if px is None else float(px))
-                    validated_rows.append(r)
-                validated_rows = normalize_scan_rows(validated_rows)
+if publish_error:
+    st.info(publish_error)
 
-                payload = {
-                    "sector": st.session_state.get("selected_sector") or "",
-                    "generated_at": snapshot_timestamp(),
-                    "validated_rows": validated_rows,
-                    "unvalidated_rows": (dfn.to_dict("records") if dfn is not None else []),
-                }
-                out = edu_dir / "scan_latest.json"
-                out.write_text(json.dumps(payload, indent=2), encoding="utf-8")
-                st.success("Saved: data/education/scan_latest.json")
-            except Exception as e:
-                st.error(f"Failed to save scan demo: {str(e)[:200]}")
-
-with c_demo2:
-    if st.button("💾 Save current deep analyze as demo", type="primary"):
-        ticker = st.session_state.get("selected_ticker") or ""
-        sector = st.session_state.get("selected_sector") or ""
-        results = st.session_state.get("deep_analysis_results")
-        if not ticker or not results:
-            st.error("No deep analysis results in this session. Run Deep Analyze first.")
-        else:
-            try:
-                payload = {
-                    "ticker": ticker,
-                    "sector": sector,
-                    "generated_at": snapshot_timestamp(),
-                    "analysis_results": results,
-                }
-                out = edu_dir / "deep_latest.json"
-                out.write_text(json.dumps(payload, indent=2), encoding="utf-8")
-                st.success("Saved: data/education/deep_latest.json")
-            except Exception as e:
-                st.error(f"Failed to save deep demo: {str(e)[:200]}")
+if st.button(
+    "Publish current demo",
+    type="primary",
+    disabled=publish_bundle is None or not actor_id,
+    use_container_width=True,
+):
+    try:
+        publication = publish_public_demo(
+            publish_bundle or {},
+            str(actor_id),
+            client=sb,
+        )
+    except Exception:
+        ui_error("The public demo could not be published. Nothing was changed.")
+    else:
+        bundle = publication.get("bundle") or {}
+        st.success(
+            f"Published {bundle.get('deep_analysis', {}).get('ticker', 'demo')} "
+            "to the public landing page. Home may take up to 60 seconds to refresh."
+        )
 
 st.markdown("---")
 st.subheader("⚙️ Manage a user")
@@ -300,8 +341,6 @@ _ADJUST_MESSAGES = {
 if st.button("💾 Save changes", type="primary"):
     # The actor is recorded in the ledger row, so the audit trail answers "who"
     # and not merely "what". Without it an adjustment is anonymous.
-    actor_id = user.get("id") if isinstance(user, dict) else getattr(user, "id", None)
-
     if not actor_id:
         ui_error("Could not identify your account. Please log in again.")
         _bail()

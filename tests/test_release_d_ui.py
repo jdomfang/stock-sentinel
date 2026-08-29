@@ -83,7 +83,7 @@ def main() -> int:
     )
     check(
         "delivered scan-row action becomes nonpaying viewing state",
-        "Viewing result" in discovery
+        "View result" in discovery
         and "View result ↓" not in discovery
         and '_is_selected and st.session_state.get("deep_analysis_card")'
         in discovery,

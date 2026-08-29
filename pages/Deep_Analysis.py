@@ -481,7 +481,10 @@ if _run_clicked or (_autorun and _prefill):
             # route. This is presentation state only; core-api already owns the
             # analysis and persistence, and opening the route performs no work.
             st.session_state.selected_ticker = _run_ticker
-            st.session_state.selected_sector = sector
+            # This route can analyze without a scan and therefore uses an
+            # "unknown" sector. Keep that analysis context separate so it
+            # cannot relabel a Market Scan still present in session state.
+            st.session_state.analysis_sector = sector
             st.session_state.deep_analysis_card = _card
             st.session_state.deep_analysis_results = analysis_results
             st.session_state["analysis_result_origin"] = "deep_analyze"

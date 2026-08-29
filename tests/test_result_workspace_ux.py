@@ -17,7 +17,7 @@ def test_completion_is_communicated_without_a_layout_shifting_banner() -> None:
     discovery = read("pages/Discovery.py")
     assert "Analysis ready for" not in discovery
     assert "The completed result is open beside the shortlist" not in discovery
-    assert "Viewing result" in discovery
+    assert "View result" in discovery
     assert "analysis result</h2>" in discovery
 
 
@@ -49,6 +49,13 @@ def test_compact_result_metrics_finish_on_an_aligned_row() -> None:
         ":last-child:nth-child(odd)"
     ) in ui
     assert "grid-column:1 / -1" in ui
+    compact_query = ui.split("@container (max-width:440px)", 1)[1].split(
+        "@media (max-width:720px)", 1
+    )[0]
+    assert ".ss-decision-card.compact .ss-decision-head" in compact_query
+    assert "display:block" in compact_query
+    assert ".ss-decision-card.compact .ss-decision-signal" in compact_query
+    assert "text-align:left" in compact_query
 
 
 def test_scan_header_and_rows_share_one_alignment_contract() -> None:
@@ -66,6 +73,17 @@ def test_scan_header_and_rows_share_one_alignment_contract() -> None:
     )
     assert '<span class="scan-social-posts">' in discovery
     assert "f'{_mentions}</span></div>'" in discovery
+    shared_grid_css = discovery.split(
+        "@media (min-width:721px)",
+        1,
+    )[1].split(".scan-stock-cell strong", 1)[0]
+    assert "display: grid !important" in shared_grid_css
+    assert "grid-template-columns:" in shared_grid_css
+    assert "minmax(170px, 1.75fr)" in shared_grid_css
+    assert "minmax(132px, 1.15fr)" in shared_grid_css
+    assert "flex: none !important" in shared_grid_css
+    assert "width: auto !important" in shared_grid_css
+    assert "padding-inline: 8px !important" in shared_grid_css
 
 
 def test_selected_rows_and_actions_do_not_change_column_geometry() -> None:
@@ -77,6 +95,14 @@ def test_selected_rows_and_actions_do_not_change_column_geometry() -> None:
     assert "padding-left" not in selected_css
     assert "padding-right" not in selected_css
     assert "box-shadow: inset" in selected_css
+    assert "border-bottom-color: transparent" in selected_css
+    row_css = discovery.split(
+        '[class*="st-key-scan_row_"] {', 1
+    )[1].split("}", 1)[0]
+    assert "padding: 0.72rem 0" in row_css
+    assert "0.15rem" not in row_css
+    assert 'class="scan-view-result" href="#selected-analysis"' in discovery
+    assert 'aria-current="true">View result</a>' in discovery
     viewing_css = discovery.split(".scan-view-result {", 1)[1].split("}", 1)[0]
     button_css = discovery.split(
         '[class*="st-key-scan_row_"] .stButton > button {', 1
@@ -87,13 +113,14 @@ def test_selected_rows_and_actions_do_not_change_column_geometry() -> None:
     assert "min-height: 44px !important" in button_css
     assert "white-space: nowrap !important" in button_css
     assert 'use_container_width=True' in discovery
+    assert 'role="status" aria-live="polite" aria-atomic="true"' in discovery
 
 
 def test_master_detail_stacks_before_the_shortlist_becomes_cramped() -> None:
     discovery = read("pages/Discovery.py")
 
     assert '_workspace.columns([1.28, .82])' in discovery
-    tablet_rule = discovery.split("@media (max-width: 1024px)", 1)[1].split(
+    tablet_rule = discovery.split("@media (max-width: 1120px)", 1)[1].split(
         "@media (max-width: 720px)", 1
     )[0]
     assert ".st-key-scan_result_workspace" in tablet_rule
@@ -109,6 +136,7 @@ def test_mobile_result_metadata_stacks_labels_without_shrinking_targets() -> Non
         "/* Hide Streamlit", 1
     )[0]
     assert ".scan-meta-cell" in mobile_rule
+    assert "padding-inline: 8px !important" in mobile_rule
     assert "flex-direction: column" in mobile_rule
     assert "align-items: flex-start" in mobile_rule
     assert ".scan-social-posts {white-space: nowrap;}" in mobile_rule
@@ -139,6 +167,30 @@ def test_desktop_result_panel_is_contained_and_top_aligned() -> None:
     assert "padding:14px" in panel_css
     assert "border:1px solid" in panel_css
     assert "border-radius:var(--radius-panel)" in panel_css
+    assert "box-sizing:border-box" in panel_css
+    assert "width:100%" in panel_css
+    assert "min-width:0" in panel_css
+    assert "max-width:100%" in panel_css
+    assert "overflow:hidden" not in panel_css
+
+
+def test_market_scan_sector_cannot_be_overwritten_by_independent_analysis() -> None:
+    discovery = read("pages/Discovery.py")
+    deep = read("pages/Deep_Analysis.py")
+    result = read("pages/Analysis_Result.py")
+
+    result_sector = discovery.split("_result_sector = (", 1)[1].split(
+        "st.markdown(", 1
+    )[0]
+    assert 'st.session_state.get("demo_scan_sector")' in result_sector
+    assert result_sector.index("demo_scan_sector") < result_sector.index(
+        "selected_sector"
+    )
+    assert "st.session_state.analysis_sector = sector" in deep
+    assert "st.session_state.selected_sector = sector" not in deep
+    assert "st.session_state.analysis_sector = _result_sector" in discovery
+    assert 'strip().lower() == "unknown"' in discovery
+    assert 'st.session_state.get("analysis_sector")' in result
 
 
 def test_public_preview_uses_compact_aligned_table_geometry() -> None:
@@ -212,6 +264,7 @@ def main() -> int:
         test_master_detail_stacks_before_the_shortlist_becomes_cramped,
         test_mobile_result_metadata_stacks_labels_without_shrinking_targets,
         test_desktop_result_panel_is_contained_and_top_aligned,
+        test_market_scan_sector_cannot_be_overwritten_by_independent_analysis,
         test_public_preview_uses_compact_aligned_table_geometry,
         test_prefilled_ticker_uses_explicit_cross_browser_contrast,
         test_every_page_loads_theme_before_visible_navigation,

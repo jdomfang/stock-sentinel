@@ -1,5 +1,6 @@
 import html
 import json
+import logging
 from pathlib import Path
 
 import pandas as pd
@@ -26,6 +27,10 @@ from utils.navigation import render_sidebar_navigation, render_top_nav
 from utils.ui import apply_theme, close_page
 from utils.deep_analysis import generate_ai_summary
 from utils.demo_snapshots import social_posts_value
+from utils.demo_repository import load_latest_public_demo
+
+
+logger = logging.getLogger(__name__)
 
 
 # Verdicts this page is willing to assert. Discovery's evidence floor also emits
@@ -37,11 +42,11 @@ _ASSERTED = {"bullish", "bearish", "neutral"}
 
 
 def _load_demo_scan() -> pd.DataFrame:
-    """Load the saved Scan demo.
+    """Load the checked-in Scan fallback.
 
     Priority:
-      1) data/education/scan_latest.json (freshly saved from Discovery)
-      2) data/demo/scan_tech.json (fallback)
+      1) data/education/scan_latest.json (legacy emergency fallback)
+      2) data/demo/scan_tech.json (checked-in emergency fallback)
     """
     root = Path(__file__).resolve().parents[1]
     candidates = [
@@ -72,11 +77,11 @@ def _load_demo_scan() -> pd.DataFrame:
 def _load_demo_deep(
     preferred_tickers: set[str] | None = None,
 ) -> tuple[str, str, dict]:
-    """Load a saved Deep Analyze demo payload (no API calls).
+    """Load the checked-in Deep Analyze fallback (no API calls).
 
     Priority:
-      1) data/education/deep_latest.json (freshly saved from Discovery)
-      2) data/demo/deep_NVDA_tech.json (fallback)
+      1) data/education/deep_latest.json (legacy emergency fallback)
+      2) data/demo/deep_NVDA_tech.json (checked-in emergency fallback)
     """
     root = Path(__file__).resolve().parents[1]
     candidates = [
@@ -99,6 +104,37 @@ def _load_demo_deep(
         if ticker and results:
             return ticker, sector, results
     return "", "", {}
+
+
+@st.cache_data(ttl=60, show_spinner=False)
+def _load_published_demo() -> dict | None:
+    """Read the durable publication without making Home depend on Streamlit."""
+    try:
+        return load_latest_public_demo()
+    except Exception:
+        # Marketing must remain available during a Supabase outage. The local
+        # files below are an explicit emergency fallback, never a write target.
+        logger.warning("durable public demo unavailable; using local fallback",
+                       exc_info=True)
+        return None
+
+
+def _scan_frame_from_bundle(bundle: dict) -> pd.DataFrame:
+    scan = bundle.get("scan") or {}
+    rows = scan.get("validated_rows") or []
+    frame = pd.DataFrame(rows) if rows else pd.DataFrame()
+    frame.attrs["sector"] = scan.get("sector") or ""
+    frame.attrs["generated_at"] = scan.get("generated_at") or ""
+    return frame
+
+
+def _deep_from_bundle(bundle: dict) -> tuple[str, str, dict]:
+    analysis = bundle.get("deep_analysis") or {}
+    return (
+        str(analysis.get("ticker") or "").strip().upper(),
+        str(analysis.get("sector") or "").strip(),
+        analysis.get("analysis_results") or {},
+    )
 
 
 def _select_demo_rows(
@@ -154,9 +190,13 @@ def _marketing_preview_html(
             sentiment = "neutral"
         social_posts = social_posts_value(row)
         selected = " selected" if raw_ticker == ticker else ""
+        selected_context = (
+            '<span class="ss-visually-hidden">Selected for the Deep Analyze example. </span>'
+            if selected else ""
+        )
         preview_rows.append(
             f'<tr class="ss-hero-preview-row{selected}">'
-            f'<th scope="row">{html.escape(raw_ticker)}</th>'
+            f'<th scope="row">{selected_context}{html.escape(raw_ticker)}</th>'
             f'<td><span class="ss-sentiment {sentiment}">'
             f'{sentiment.title()}</span></td>'
             f'<td class="ss-hero-preview-count">'
@@ -738,19 +778,38 @@ st.markdown(
 from utils.auth import is_logged_in
 
 _logged_in = is_logged_in()
-_demo_frame = _load_demo_scan()
+_demo_publication = _load_published_demo()
+_demo_bundle = (
+    (_demo_publication or {}).get("bundle")
+    if _demo_publication else None
+)
+_demo_frame = (
+    _scan_frame_from_bundle(_demo_bundle)
+    if _demo_bundle else _load_demo_scan()
+)
 _demo_available = {
     str(row.get("Ticker") or "").strip().upper()
     for row in _demo_frame.to_dict("records")
     if str(row.get("Overall Sentiment") or "").strip().lower() in _ASSERTED
 }
-_demo_ticker, _demo_sector, _demo_results = _load_demo_deep(
-    preferred_tickers=_demo_available,
-)
+if _demo_bundle:
+    _demo_ticker, _demo_sector, _demo_results = _deep_from_bundle(_demo_bundle)
+else:
+    _demo_ticker, _demo_sector, _demo_results = _load_demo_deep(
+        preferred_tickers=_demo_available,
+    )
 _demo_rows = _select_demo_rows(
     _demo_frame, limit=3, selected_ticker=_demo_ticker,
 )
-_demo_summary = generate_ai_summary(_demo_results) if _demo_results else {}
+_stored_public_summary = (
+    _demo_results.get("public_summary")
+    if isinstance(_demo_results, dict) else None
+)
+_demo_summary = (
+    _stored_public_summary
+    if isinstance(_stored_public_summary, dict) else
+    generate_ai_summary(_demo_results) if _demo_results else {}
+)
 
 with st.container(key="home_public_hero"):
     story_col, preview_col = st.columns([1.04, .96])

@@ -44,7 +44,7 @@ def main() -> int:
           "Analyze · 1 credit" in discovery and "Analyze · 1 credit" in deep)
     check("a delivered analysis becomes a nonpaying in-page result",
           "scan-view-result" in discovery
-          and "Viewing result" in discovery
+          and "View result" in discovery
           and 'key="selected_analysis_breakdown"' in discovery
           and 'label="View full breakdown"' in discovery)
     check("analysis renders in the page rather than a scrolling iframe",
@@ -56,7 +56,7 @@ def main() -> int:
     check("scan ranking is evidence/attention based",
           '["_group", "Evidence", "Mentions", "Ticker"]' in discovery)
     check("completed results keep their original scan sector",
-          '_result_sector = st.session_state.get("selected_sector") or sector'
+          'st.session_state.get("demo_scan_sector")'
           in discovery)
     check("mobile result values carry explicit labels",
           all(label in discovery for label in (

@@ -52,7 +52,12 @@ def test_all_literal_internal_link_targets_exist() -> None:
                 assert (REPO / target).is_file(), f"{path}: missing {target}"
 
         for href in re.findall(r'href=["\']([^"\']+)', source):
-            assert not href.startswith("#"), f"{path}: page-local fragment {href}"
+            if href.startswith("#"):
+                fragment = re.escape(href[1:])
+                assert re.search(
+                    rf'id=["\']{fragment}["\']', source
+                ), f"{path}: missing page-local fragment target {href}"
+                continue
             if href.startswith("/") and not href.startswith("//"):
                 raise AssertionError(f"{path}: unresolved hardcoded route {href}")
 

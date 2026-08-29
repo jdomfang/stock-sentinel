@@ -440,6 +440,7 @@ def render_recommendation_panel(
           }}
           .ss-decision-context strong,.ss-decision-financial strong {{
             display:block;margin-top:4px;color:#e5e7eb;font-size:.9rem;line-height:1.3;
+            overflow-wrap:anywhere;
           }}
           .ss-decision-context small {{display:block;margin-top:3px;color:#8192aa;font-size:.69rem;line-height:1.3;}}
           .ss-decision-context span,.ss-decision-financial span {{
@@ -454,12 +455,19 @@ def render_recommendation_panel(
           .ss-decision-change h3 {{margin:0 0 5px;font-size:.78rem;letter-spacing:.06em;text-transform:uppercase;color:#8192aa;}}
           .ss-decision-change p {{margin:0;color:#a8b5c7;font-size:.86rem;line-height:1.45;}}
           .ss-decision-source {{margin:15px 0 0;color:#8192aa;font-size:.73rem;line-height:1.4;}}
-          .ss-decision-card.compact {{margin:0 0 .7rem;}}
+          .ss-decision-card.compact {{margin:0 0 .7rem;container-type:inline-size;}}
           .ss-decision-card.compact .ss-decision-head {{padding:16px;}}
           .ss-decision-card.compact .ss-decision-body {{padding:15px 16px 17px;}}
           .ss-decision-card.compact .ss-decision-context {{grid-template-columns:repeat(2,minmax(0,1fr));}}
           .ss-decision-card.compact .ss-decision-financials {{grid-template-columns:repeat(2,minmax(0,1fr));}}
           .ss-decision-card.compact .ss-decision-financials > :last-child:nth-child(odd) {{grid-column:1 / -1;}}
+          @container (max-width:440px) {{
+            .ss-decision-card.compact .ss-decision-head {{display:block;}}
+            .ss-decision-card.compact .ss-decision-signal {{text-align:left;margin-top:14px;}}
+            .ss-decision-card.compact .ss-decision-context,
+            .ss-decision-card.compact .ss-decision-financials {{grid-template-columns:1fr;}}
+            .ss-decision-card.compact .ss-decision-financials > :last-child:nth-child(odd) {{grid-column:auto;}}
+          }}
           @media (max-width:720px) {{
             .ss-decision-head {{padding:15px 16px;}}
             .ss-decision-body {{padding:15px 16px 17px;}}
