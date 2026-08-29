@@ -1,4 +1,4 @@
-"""Regression checks for the public demo snapshot attention contract."""
+"""Regression checks for the public demo snapshot social-post contract."""
 
 from __future__ import annotations
 
@@ -11,8 +11,8 @@ REPO = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(REPO))
 
 from utils.demo_snapshots import (
-    mention_label,
     normalize_scan_rows,
+    social_posts_value,
     snapshot_timestamp,
 )
 
@@ -41,7 +41,7 @@ def test_scan_snapshot_preserves_real_mentions() -> None:
     }]
 
 
-def test_incomplete_scan_snapshots_fail_instead_of_inventing_attention() -> None:
+def test_incomplete_scan_snapshots_fail_instead_of_inventing_counts() -> None:
     rows = [
         {"Ticker": "NVDA"},
         {"Ticker": "NVDA", "Mentions": "unknown"},
@@ -56,12 +56,12 @@ def test_incomplete_scan_snapshots_fail_instead_of_inventing_attention() -> None
         raise AssertionError(f"invalid row was accepted: {row!r}")
 
 
-def test_attention_label_uses_only_snapshot_data() -> None:
-    assert mention_label({"Mentions": 0}) == "0 mentions"
-    assert mention_label({"Mentions": 1}) == "1 mention"
-    assert mention_label({"Mentions": "12"}) == "12 mentions"
-    assert mention_label({}) == "Attention unavailable"
-    assert mention_label({"Mentions": "invalid"}) == "Attention unavailable"
+def test_social_posts_value_is_compact_and_uses_only_snapshot_data() -> None:
+    assert social_posts_value({"Mentions": 0}) == "0"
+    assert social_posts_value({"Mentions": 1}) == "1"
+    assert social_posts_value({"Mentions": "12"}) == "12"
+    assert social_posts_value({}) == "—"
+    assert social_posts_value({"Mentions": "invalid"}) == "—"
 
 
 def test_snapshot_timestamp_is_explicit_utc() -> None:
@@ -80,18 +80,22 @@ def test_all_snapshot_publishers_keep_the_contract() -> None:
     assert '"Mentions", "Sample Tweets"' not in discovery
     assert "snapshot_timestamp()" in admin
     assert "snapshot_timestamp()" in discovery
-    assert "mention_label(row)" in home
+    assert "social_posts_value(row)" in home
+    assert "Social posts" in home
+    assert "Attention unavailable" not in home
+    assert '<table class="ss-hero-preview-table">' in home
+    assert 'scope="col"' in home and 'scope="row"' in home
     assert "attention_fallback" not in home
 
 
 def main() -> int:
     print("=" * 72)
-    print("  Public demo snapshot attention contract")
+    print("  Public demo snapshot social-post contract")
     print("=" * 72)
     tests = [
         test_scan_snapshot_preserves_real_mentions,
-        test_incomplete_scan_snapshots_fail_instead_of_inventing_attention,
-        test_attention_label_uses_only_snapshot_data,
+        test_incomplete_scan_snapshots_fail_instead_of_inventing_counts,
+        test_social_posts_value_is_compact_and_uses_only_snapshot_data,
         test_snapshot_timestamp_is_explicit_utc,
         test_all_snapshot_publishers_keep_the_contract,
     ]

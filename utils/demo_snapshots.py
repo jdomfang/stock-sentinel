@@ -18,9 +18,9 @@ def normalize_scan_rows(
 ) -> list[dict[str, Any]]:
     """Validate and normalize fields the public preview depends on.
 
-    ``Mentions`` is the real attention measure produced by Market Scan. A
-    publisher must fail rather than write a snapshot that would force the
-    public page to invent an attention count.
+    ``Mentions`` is the social-post count produced by Market Scan. A publisher
+    must fail rather than write a snapshot that would force the public page to
+    invent a count.
     """
     normalized: list[dict[str, Any]] = []
     for source in rows:
@@ -46,15 +46,14 @@ def normalize_scan_rows(
     return normalized
 
 
-def mention_label(row: Mapping[str, Any]) -> str:
-    """Render stored attention honestly, including legacy missing-data rows."""
+def social_posts_value(row: Mapping[str, Any]) -> str:
+    """Render a compact saved social-post count for the public preview."""
     if "Mentions" not in row:
-        return "Attention unavailable"
+        return "—"
     try:
         mentions = int(row["Mentions"])
     except (TypeError, ValueError):
-        return "Attention unavailable"
+        return "—"
     if mentions < 0:
-        return "Attention unavailable"
-    noun = "mention" if mentions == 1 else "mentions"
-    return f"{mentions} {noun}"
+        return "—"
+    return str(mentions)

@@ -25,7 +25,7 @@ _sys.path.insert(0, str(_Path(__file__).resolve().parents[1]))
 from utils.navigation import render_sidebar_navigation, render_top_nav
 from utils.ui import apply_theme, close_page
 from utils.deep_analysis import generate_ai_summary
-from utils.demo_snapshots import mention_label
+from utils.demo_snapshots import social_posts_value
 
 
 # Verdicts this page is willing to assert. Discovery's evidence floor also emits
@@ -152,13 +152,15 @@ def _marketing_preview_html(
         ).strip().lower()
         if sentiment not in _ASSERTED:
             sentiment = "neutral"
-        attention = mention_label(row)
+        social_posts = social_posts_value(row)
         selected = " selected" if raw_ticker == ticker else ""
         preview_rows.append(
-            f'<div class="ss-hero-preview-row{selected}">'
-            f'<strong>{html.escape(raw_ticker)}</strong>'
-            f'<span class="ss-sentiment {sentiment}">{sentiment.title()}</span>'
-            f'<span>{html.escape(attention)}</span></div>'
+            f'<tr class="ss-hero-preview-row{selected}">'
+            f'<th scope="row">{html.escape(raw_ticker)}</th>'
+            f'<td><span class="ss-sentiment {sentiment}">'
+            f'{sentiment.title()}</span></td>'
+            f'<td class="ss-hero-preview-count">'
+            f'{html.escape(social_posts)}</td></tr>'
         )
 
     recommendation = html.escape(
@@ -185,10 +187,14 @@ def _marketing_preview_html(
           <h2>Market Scan</h2>
           <span>{html.escape(str(sector or 'Technology').title())} · illustrative</span>
         </div>
-        <div class="ss-hero-preview-columns" aria-hidden="true">
-          <span>Stock</span><span>Sentiment</span><span>Attention</span>
-        </div>
-        <div class="ss-hero-preview-rows">{''.join(preview_rows)}</div>
+        <table class="ss-hero-preview-table">
+          <caption>Illustrative Market Scan results. Social posts are public
+          posts referencing each ticker in the saved scan.</caption>
+          <colgroup><col class="stock"><col class="sentiment"><col class="posts"></colgroup>
+          <thead><tr><th scope="col">Stock</th><th scope="col">Sentiment</th>
+          <th scope="col">Social posts</th></tr></thead>
+          <tbody>{''.join(preview_rows)}</tbody>
+        </table>
         <div class="ss-hero-result">
           <div class="ss-hero-preview-kicker">After Deep Analyze</div>
           <div class="ss-hero-result-line">
@@ -197,7 +203,6 @@ def _marketing_preview_html(
             <span>{confidence} confidence</span>
           </div>
           <p>{reason}</p>
-          <span class="ss-preview-note">Evidence preview</span>
         </div>
       </section>
     """
@@ -615,8 +620,8 @@ st.markdown(
     .ss-public-caveat {margin-top:.65rem;color:#8192aa;font-size:.78rem;}
     .ss-hero-preview {
       border:1px solid rgba(56,189,248,.25);border-radius:18px;
-      padding:18px;background:linear-gradient(145deg,rgba(8,20,39,.98),rgba(8,15,30,.96));
-      box-shadow:var(--ss-shadow-focus-panel);min-height:420px;
+      padding:16px;background:linear-gradient(145deg,rgba(8,20,39,.98),rgba(8,15,30,.96));
+      box-shadow:var(--ss-shadow-focus-panel);min-height:0;
     }
     .ss-hero-preview-kicker {
       color:var(--accent);font-size:.67rem;font-weight:780;
@@ -624,30 +629,42 @@ st.markdown(
     }
     .ss-hero-preview-head {
       display:flex;justify-content:space-between;align-items:baseline;
-      gap:16px;margin:.55rem 0 .7rem;
+      gap:16px;margin:.45rem 0 .55rem;
     }
     .ss-hero-preview-head h2 {margin:0;font-size:1.35rem;}
     .ss-hero-preview-head > span {color:#94a3b8;font-size:.73rem;}
-    .ss-hero-preview-columns,.ss-hero-preview-row {
-      display:grid;grid-template-columns:.8fr 1fr 1fr;align-items:center;gap:8px;
+    .ss-hero-preview-table {
+      width:100%;table-layout:fixed;border-collapse:separate;border-spacing:0;
+      border:1px solid rgba(148,163,184,.14);border-radius:10px;overflow:hidden;
+      color:#dbe3ee;font-size:.82rem;
     }
-    .ss-hero-preview-columns {
-      padding:8px 12px;color:#8192aa;font-size:.68rem;
-      border:1px solid rgba(148,163,184,.14);border-bottom:0;
-      border-radius:10px 10px 0 0;
+    .ss-hero-preview-table caption {
+      position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;
+      clip:rect(0,0,0,0);white-space:nowrap;border:0;
     }
-    .ss-hero-preview-row {
-      position:relative;padding:11px 12px;border:1px solid rgba(148,163,184,.14);
-      border-top:0;color:#dbe3ee;font-size:.82rem;
+    .ss-hero-preview-table col.stock {width:27%;}
+    .ss-hero-preview-table col.sentiment {width:43%;}
+    .ss-hero-preview-table col.posts {width:30%;}
+    .ss-hero-preview-table th,.ss-hero-preview-table td {
+      padding:9px 12px;text-align:left;vertical-align:middle;
+      border:0;border-bottom:1px solid rgba(148,163,184,.14);
     }
-    .ss-hero-preview-row:last-child {border-radius:0 0 10px 10px;}
-    .ss-hero-preview-row.selected {background:rgba(56,189,248,.055);}
-    .ss-hero-preview-row.selected:before {
-      content:"";position:absolute;inset:0 auto 0 -1px;width:2px;background:var(--accent);
+    .ss-hero-preview-table thead th {
+      color:#8192aa;font-size:.68rem;font-weight:600;
     }
-    .ss-hero-preview-row > span:last-child {text-align:right;color:#cbd5e1;}
+    .ss-hero-preview-table tbody th {color:#dbe3ee;font-weight:750;}
+    .ss-hero-preview-table tbody tr:last-child th,
+    .ss-hero-preview-table tbody tr:last-child td {border-bottom:0;}
+    .ss-hero-preview-table tbody tr.selected th,
+    .ss-hero-preview-table tbody tr.selected td {background:rgba(56,189,248,.055);}
+    .ss-hero-preview-table tbody tr.selected th {
+      box-shadow:inset 2px 0 0 var(--accent);
+    }
+    .ss-hero-preview-table th:last-child,
+    .ss-hero-preview-table td:last-child {text-align:right;}
+    .ss-hero-preview-count {color:#cbd5e1;font-variant-numeric:tabular-nums;}
     .ss-hero-result {
-      margin-top:18px;padding-top:16px;border-top:1px solid rgba(148,163,184,.16);
+      margin-top:14px;padding-top:12px;border-top:1px solid rgba(148,163,184,.16);
     }
     .ss-hero-result-line {display:flex;align-items:baseline;gap:11px;margin:.55rem 0;}
     .ss-hero-result-line strong {font-size:1.35rem;}
@@ -655,10 +672,9 @@ st.markdown(
     .ss-hero-result-line .watch {color:var(--ss-color-recommendation-watch);font-weight:800;}
     .ss-hero-result-line .avoid {color:var(--ss-color-recommendation-avoid);font-weight:800;}
     .ss-hero-result-line span:last-child {color:#cbd5e1;font-size:.8rem;}
-    .ss-hero-result p {margin:.45rem 0;color:#a8b5c7;font-size:.86rem;line-height:1.5;}
-    .ss-preview-note {
-      display:block;margin-top:.8rem;color:#8192aa;font-size:.74rem;
-      font-weight:700;letter-spacing:.055em;text-transform:uppercase;
+    .ss-hero-result p {
+      display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;
+      overflow:hidden;margin:.4rem 0 0;color:#a8b5c7;font-size:.84rem;line-height:1.45;
     }
     .ss-workflow-section {margin:2rem 0 0;padding-top:1.65rem;border-top:1px solid rgba(148,163,184,.14);}
     .ss-workflow-section h2 {margin:0 0 1.25rem;text-align:center;font-size:1.15rem;}

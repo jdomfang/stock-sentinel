@@ -61,7 +61,7 @@ def main() -> int:
     check("mobile result values carry explicit labels",
           all(label in discovery for label in (
               "Last close</span>", "Sentiment</span>",
-              "Evidence state</span>", "Attention</span>",
+              "Evidence state</span>", "Social posts</span>",
           )))
 
     check("navigation has a dedicated mobile layout",

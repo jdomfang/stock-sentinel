@@ -323,15 +323,18 @@ st.markdown(
       text-transform: uppercase;
     }
     [class*="st-key-scan_row_"] {
+      box-sizing: border-box;
       padding: 0.72rem 0.15rem;
       border-bottom: 1px solid rgba(148, 163, 184, 0.14);
     }
     [class*="st-key-scan_row_selected_"] {
-      padding-left: 0.65rem;
-      padding-right: 0.65rem;
-      border: 1px solid rgba(56, 189, 248, 0.42);
       border-radius: var(--radius-control);
       background: rgba(56, 189, 248, 0.055);
+      box-shadow: inset 0 0 0 1px rgba(56, 189, 248, 0.42);
+    }
+    [class*="st-key-scan_header_"] [data-testid="stHorizontalBlock"],
+    [class*="st-key-scan_row_"] [data-testid="stHorizontalBlock"] {
+      align-items: center !important;
     }
     .scan-stock-cell strong {
       color: var(--text);
@@ -339,7 +342,7 @@ st.markdown(
       letter-spacing: 0.01em;
     }
     .scan-stock-cell span,
-    .scan-attention,
+    .scan-social-posts,
     .scan-evidence-state {
       display: block;
       margin-top: 0.16rem;
@@ -349,6 +352,17 @@ st.markdown(
     }
     .scan-evidence-state {
       font-style: normal;
+    }
+    .scan-meta-cell {
+      min-height: 44px;
+      display: flex;
+      align-items: center;
+      white-space: nowrap;
+      font-variant-numeric: tabular-nums;
+    }
+    .scan-social-posts {
+      margin-top: 0;
+      white-space: nowrap;
     }
     .scan-mobile-label { display: none; }
     .scan-table-note {
@@ -369,6 +383,7 @@ st.markdown(
       color: rgba(125,211,252,.98) !important;
       font-size: .86rem;
       font-weight: 720;
+      white-space: nowrap;
       text-decoration: none !important;
     }
     .scan-view-result:hover { background: rgba(56,189,248,.18); }
@@ -418,6 +433,27 @@ st.markdown(
     .scan-view-result {
       box-sizing:border-box;
     }
+    [class*="st-key-scan_row_"] .stButton > button {
+      min-height: 44px !important;
+      white-space: nowrap !important;
+      padding-left: .65rem !important;
+      padding-right: .65rem !important;
+      font-size: .84rem !important;
+    }
+
+    /* The master-detail workspace must stack before its shortlist becomes too
+       narrow to keep financial values and paid actions on one line. */
+    @media (max-width: 1024px) {
+      .st-key-scan_result_workspace [data-testid="stHorizontalBlock"]:has(
+        .st-key-scan_workspace_results
+      ):has(.st-key-scan_workspace_analysis) {flex-wrap:wrap!important;}
+      .st-key-scan_result_workspace [data-testid="stHorizontalBlock"]:has(
+        .st-key-scan_workspace_results
+      ):has(.st-key-scan_workspace_analysis) > [data-testid="stColumn"] {
+        flex:1 1 100%!important;width:100%!important;
+      }
+      .st-key-selected_analysis_panel {position:static;margin-top:14px;}
+    }
 
     @media (max-width: 720px) {
       .scan-results-intro {
@@ -449,16 +485,15 @@ st.markdown(
         letter-spacing: .055em;
         text-transform: uppercase;
       }
+      .scan-meta-cell {
+        min-height: 0;
+        flex-direction: column;
+        align-items: flex-start;
+        white-space: normal;
+      }
+      .scan-social-posts {white-space: nowrap;}
       [class*="st-key-scan_row_"] .stButton > button {
         width: 100%;
-      }
-      .st-key-scan_result_workspace [data-testid="stHorizontalBlock"]:has(
-        .st-key-scan_workspace_results
-      ):has(.st-key-scan_workspace_analysis) {flex-wrap:wrap!important;}
-      .st-key-scan_result_workspace [data-testid="stHorizontalBlock"]:has(
-        .st-key-scan_workspace_results
-      ):has(.st-key-scan_workspace_analysis) > [data-testid="stColumn"] {
-        flex:1 1 100%!important;width:100%!important;
       }
       .st-key-selected_analysis_panel {position:static;padding:11px;margin-top:14px;}
     }
@@ -1278,11 +1313,15 @@ if st.session_state.df_valid is not None:
         )
         _workspace = st.container(key="scan_result_workspace")
         if _has_delivered_analysis:
-            _results_outer, _analysis_outer = _workspace.columns([1.18, .92])
+            _results_outer, _analysis_outer = _workspace.columns([1.28, .82])
             _results_col = _results_outer.container(key="scan_workspace_results")
             _analysis_col = _analysis_outer.container(key="scan_workspace_analysis")
         else:
             _results_col, _analysis_col = _workspace, None
+
+        # Header and rows share this one track contract. Keeping the action
+        # track wider prevents paid-action labels from wrapping in split view.
+        _SCAN_RESULT_COLUMNS = [1.75, 0.72, 0.92, 0.62, 1.15]
 
         def _render_scan_header(signal_label: str, parent=None) -> None:
             if parent is None:
@@ -1290,10 +1329,10 @@ if st.session_state.df_valid is not None:
             _header = parent.container(
                 key=f"scan_header_{signal_label.lower().replace(' ', '_')}"
             )
-            _header_cols = _header.columns([1.8, 0.75, 1.0, 0.7, 0.95])
+            _header_cols = _header.columns(_SCAN_RESULT_COLUMNS, gap="small")
             for _col, _label in zip(
                 _header_cols,
-                ["Stock", "Last close", signal_label, "Attention", "Action"],
+                ["Stock", "Last close", signal_label, "Social posts", "Action"],
             ):
                 _col.markdown(
                     f'<span style="font-size:0.72rem;font-weight:700;letter-spacing:0.06em;'
@@ -1354,7 +1393,7 @@ if st.session_state.df_valid is not None:
             _row_parent = _low_parent if _is_low_evidence else _results_col
             _row = _row_parent.container(key=f"{_row_prefix}_{_safe_ticker}")
             col1, col2, col3, col4, col5 = _row.columns(
-                [1.8, 0.75, 1.0, 0.7, 0.95]
+                _SCAN_RESULT_COLUMNS, gap="small"
             )
             with col1:
                 st.markdown(
@@ -1389,11 +1428,10 @@ if st.session_state.df_valid is not None:
                         unsafe_allow_html=True,
                     )
             with col4:
-                _attention_word = "mention" if _mentions == 1 else "mentions"
                 st.markdown(
                     f'<div class="scan-meta-cell"><span class="scan-mobile-label">'
-                    f'Attention</span><span class="scan-attention">'
-                    f'{_mentions} {_attention_word}</span></div>',
+                    f'Social posts</span><span class="scan-social-posts">'
+                    f'{_mentions}</span></div>',
                     unsafe_allow_html=True,
                 )
             with col5:
