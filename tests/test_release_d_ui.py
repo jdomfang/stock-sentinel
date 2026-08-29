@@ -76,10 +76,11 @@ def main() -> int:
         and '"Log in"' in nav,
     )
     check(
-        "scan results create a desktop result workspace",
+        "scan results create a full-width result workspace",
         'key="scan_result_workspace"' in discovery
         and 'key="scan_workspace_results"' in discovery
-        and 'key="scan_workspace_analysis"' in discovery,
+        and 'key="scan_workspace_analysis"' in discovery
+        and '_workspace.columns([1.28, .82])' not in discovery,
     )
     check(
         "delivered scan-row action becomes nonpaying viewing state",
@@ -91,6 +92,7 @@ def main() -> int:
     check(
         "selected result uses a compact decision summary",
         "compact=True" in discovery
+        and "embedded=True" in discovery
         and 'key="selected_analysis_panel"' in discovery
         and "would_change=card.get" in discovery,
     )
@@ -120,11 +122,10 @@ def main() -> int:
         and "What would change this" in ui,
     )
     check(
-        "result workspace stacks into labelled mobile flow",
-        ".st-key-scan_result_workspace" in discovery
-        and ".st-key-scan_workspace_results" in discovery
-        and ".st-key-scan_workspace_analysis" in discovery
-        and "flex:1 1 100%" in discovery
+        "result workspace retains labelled responsive flow",
+        ".st-key-selected_analysis_panel" in discovery
+        and ".ss-decision-card.compact.embedded" in ui
+        and "grid-template-columns:repeat(2,minmax(0,1fr))" in ui
         and "scan-mobile-label" in discovery,
     )
 

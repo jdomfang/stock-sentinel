@@ -15,10 +15,13 @@ def read(relative: str) -> str:
 
 def test_completion_is_communicated_without_a_layout_shifting_banner() -> None:
     discovery = read("pages/Discovery.py")
+    ui = read("utils/ui.py")
     assert "Analysis ready for" not in discovery
     assert "The completed result is open beside the shortlist" not in discovery
     assert "View result" in discovery
-    assert "analysis result</h2>" in discovery
+    assert "analysis result</h2>" not in discovery
+    assert 'element_id="selected-analysis"' in discovery
+    assert 'role="status"' in ui
 
 
 def test_full_breakdown_is_nonpaying_and_opens_in_place() -> None:
@@ -49,6 +52,13 @@ def test_compact_result_metrics_finish_on_an_aligned_row() -> None:
         ":last-child:nth-child(odd)"
     ) in ui
     assert "grid-column:1 / -1" in ui
+    assert ".ss-decision-card.compact.embedded .ss-decision-context" in ui
+    assert "grid-template-columns:repeat(4,minmax(0,1fr))" in ui
+    assert ".ss-decision-card.compact.embedded .ss-decision-financials" in ui
+    assert "grid-template-columns:repeat(3,minmax(0,1fr))" in ui
+    assert "visible_reasons = rationale[:1] if embedded else rationale[:3]" in ui
+    assert "if financial_tiles and not embedded else" in ui
+    assert "if change_items and not embedded else" in ui
     compact_query = ui.split("@container (max-width:440px)", 1)[1].split(
         "@media (max-width:720px)", 1
     )[0]
@@ -113,20 +123,25 @@ def test_selected_rows_and_actions_do_not_change_column_geometry() -> None:
     assert "min-height: 44px !important" in button_css
     assert "white-space: nowrap !important" in button_css
     assert 'use_container_width=True' in discovery
-    assert 'role="status" aria-live="polite" aria-atomic="true"' in discovery
+    ui = read("utils/ui.py")
+    assert 'role="status"' in ui
+    assert 'aria-live="polite"' in ui
+    assert 'aria-atomic="true"' in ui
 
 
-def test_master_detail_stacks_before_the_shortlist_becomes_cramped() -> None:
+def test_delivered_result_is_full_width_and_precedes_the_shortlist() -> None:
     discovery = read("pages/Discovery.py")
 
-    assert '_workspace.columns([1.28, .82])' in discovery
-    tablet_rule = discovery.split("@media (max-width: 1120px)", 1)[1].split(
-        "@media (max-width: 720px)", 1
-    )[0]
-    assert ".st-key-scan_result_workspace" in tablet_rule
-    assert "flex-wrap:wrap!important" in tablet_rule
-    assert "flex:1 1 100%!important" in tablet_rule
-    assert ".st-key-selected_analysis_panel {position:static" in tablet_rule
+    assert '_workspace.columns([1.28, .82])' not in discovery
+    result_container = (
+        '_analysis_col = _workspace.container(key="scan_workspace_analysis")'
+    )
+    shortlist_container = (
+        '_results_col = _workspace.container(key="scan_workspace_results")'
+    )
+    assert result_container in discovery
+    assert shortlist_container in discovery
+    assert discovery.index(result_container) < discovery.index(shortlist_container)
 
 
 def test_mobile_result_metadata_stacks_labels_without_shrinking_targets() -> None:
@@ -144,27 +159,13 @@ def test_mobile_result_metadata_stacks_labels_without_shrinking_targets() -> Non
 
 def test_desktop_result_panel_is_contained_and_top_aligned() -> None:
     discovery = read("pages/Discovery.py")
+    ui = read("utils/ui.py")
 
-    workspace_css = discovery.split(
-        '.st-key-scan_result_workspace [data-testid="stHorizontalBlock"]:has(\n'
-        "      .st-key-scan_workspace_results\n"
-        "    ):has(.st-key-scan_workspace_analysis) {",
-        1,
-    )[1].split("}", 1)[0]
-    column_css = discovery.split(
-        '.st-key-scan_result_workspace [data-testid="stHorizontalBlock"]:has(\n'
-        "      .st-key-scan_workspace_results\n"
-        "    ):has(.st-key-scan_workspace_analysis) > "
-        '[data-testid="stColumn"] {',
-        1,
-    )[1].split("}", 1)[0]
-    assert "align-items:flex-start!important;gap:20px!important" in workspace_css
-    assert "min-width:0!important" in column_css
     panel_css = discovery.split(
         ".st-key-selected_analysis_panel {", 1
     )[1].split("}", 1)[0]
-    assert "position:sticky" in panel_css
-    assert "padding:14px" in panel_css
+    assert "position:sticky" not in panel_css
+    assert "padding:18px 20px" in panel_css
     assert "border:1px solid" in panel_css
     assert "border-radius:var(--radius-panel)" in panel_css
     assert "box-sizing:border-box" in panel_css
@@ -172,6 +173,47 @@ def test_desktop_result_panel_is_contained_and_top_aligned() -> None:
     assert "min-width:0" in panel_css
     assert "max-width:100%" in panel_css
     assert "overflow:hidden" not in panel_css
+    embedded_css = ui.split(
+        ".ss-decision-card.embedded {", 1
+    )[1].split("}", 1)[0]
+    assert "border:0" in embedded_css
+    assert "background:transparent" in embedded_css
+
+
+def test_breakdown_is_nested_in_the_same_result_surface() -> None:
+    discovery = read("pages/Discovery.py")
+
+    result_surface = discovery.split(
+        'with st.container(key="selected_analysis_panel"):', 1
+    )[1].split("else:\n        st.markdown(", 1)[0]
+    assert 'key="selected_analysis_breakdown"' in result_surface
+    assert 'label="View full breakdown"' in result_surface
+    assert "decision_details=_decision_details" in result_surface
+    assert "same\n                    # result surface" in result_surface
+
+
+def test_embedded_result_keeps_semantic_heading_and_short_live_status() -> None:
+    ui = read("utils/ui.py")
+
+    assert '<h2 class="ss-decision-ticker">{ticker_safe}</h2>' in ui
+    assert 'class="ss-decision-sr-only" role="status"' in ui
+    assert "Analysis complete for {ticker_safe}." in ui
+    article = ui.split('<article class="ss-decision-card', 1)[1].split(
+        "</article>", 1
+    )[0]
+    assert 'role="status"' not in article.split("<header", 1)[0]
+
+
+def test_analysis_failures_render_outside_action_cells() -> None:
+    discovery = read("pages/Discovery.py")
+
+    assert "_analysis_status = _results_col.empty()" in discovery
+    action_block = discovery.split("with col5:", 1)[1].split(
+        "_results_col.markdown(", 1
+    )[0]
+    assert "_analysis_status.error(" in action_block
+    assert "with _analysis_status.container():" in action_block
+    assert "st.error(" not in action_block
 
 
 def test_market_scan_sector_cannot_be_overwritten_by_independent_analysis() -> None:
@@ -261,9 +303,12 @@ def main() -> int:
         test_compact_result_metrics_finish_on_an_aligned_row,
         test_scan_header_and_rows_share_one_alignment_contract,
         test_selected_rows_and_actions_do_not_change_column_geometry,
-        test_master_detail_stacks_before_the_shortlist_becomes_cramped,
+        test_delivered_result_is_full_width_and_precedes_the_shortlist,
         test_mobile_result_metadata_stacks_labels_without_shrinking_targets,
         test_desktop_result_panel_is_contained_and_top_aligned,
+        test_breakdown_is_nested_in_the_same_result_surface,
+        test_embedded_result_keeps_semantic_heading_and_short_live_status,
+        test_analysis_failures_render_outside_action_cells,
         test_market_scan_sector_cannot_be_overwritten_by_independent_analysis,
         test_public_preview_uses_compact_aligned_table_geometry,
         test_prefilled_ticker_uses_explicit_cross_browser_contrast,

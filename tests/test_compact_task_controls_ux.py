@@ -97,10 +97,10 @@ def test_account_purchase_and_logout_controls_are_contained():
     assert ".st-key-account_purchase .stButton > button" in adapter
     assert '.st-key-account_purchase [data-testid="stLinkButton"] > a' in adapter
     assert "max-width: 100% !important" in adapter
-    assert ".st-key-account_logout" in adapter
-    assert "max-width: 140px" in adapter
-    assert "border-top: 1px solid var(--ss-color-border)" in adapter
-    assert "background: transparent !important" in adapter
+    assert ".st-key-account_header_logout" in adapter
+    assert "min-height: 44px !important" in adapter
+    assert 'key="account_header_logout"' in account
+    assert 'key="account_session"' not in account
 
 
 def test_compact_hint_is_semantic_and_not_a_second_large_card():

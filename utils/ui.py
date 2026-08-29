@@ -305,6 +305,8 @@ def render_recommendation_panel(
     source_context: str = "Public social discussion and market-price data",
     would_change: list[str] | None = None,
     compact: bool = False,
+    embedded: bool = False,
+    element_id: str = "",
 ) -> None:
     """Render one self-contained, portable decision-summary component.
 
@@ -370,8 +372,9 @@ def render_recommendation_panel(
     sources_safe = html.escape(str(source_context))
 
     rationale = [str(item).strip() for item in (ai_summary.get("rationale") or []) if str(item).strip()]
+    visible_reasons = rationale[:1] if embedded else rationale[:3]
     reasons_html = "".join(
-        f"<li>{html.escape(reason)}</li>" for reason in rationale[:3]
+        f"<li>{html.escape(reason)}</li>" for reason in visible_reasons
     ) or "<li>No supporting explanation was returned for this analysis.</li>"
     change_items = [
         str(item).strip() for item in (would_change or [])
@@ -380,9 +383,19 @@ def render_recommendation_panel(
     change_html = (
         '<div class="ss-decision-change"><h3>What would change this</h3>'
         f'<p>{html.escape(change_items[0])}</p></div>'
-        if change_items else ""
+        if change_items and not embedded else ""
     )
     density_class = " compact" if compact else ""
+    if embedded:
+        density_class += " embedded"
+    safe_element_id = "".join(
+        character for character in str(element_id)
+        if character.isalnum() or character in ("-", "_")
+    )
+    element_attrs = (
+        f' id="{safe_element_id}" tabindex="-1"'
+        if safe_element_id else ""
+    )
 
     financial_tiles = []
     for label, value in (
@@ -401,7 +414,17 @@ def render_recommendation_panel(
         '<div class="ss-decision-financials">'
         + "".join(financial_tiles)
         + "</div>"
-        if financial_tiles else ""
+        if financial_tiles and not embedded else ""
+    )
+    source_html = (
+        f'<p class="ss-decision-source">{freshness_safe} · {sources_safe}</p>'
+        if not embedded else ""
+    )
+    status_html = (
+        '<p class="ss-decision-sr-only" role="status" aria-live="polite" '
+        f'aria-atomic="true">Analysis complete for {ticker_safe}. '
+        f'Recommendation {rec_safe}, confidence {conf_safe}.</p>'
+        if safe_element_id else ""
     )
 
     st.html(
@@ -422,6 +445,7 @@ def render_recommendation_panel(
             letter-spacing:.075em;text-transform:uppercase;
           }}
           .ss-decision-ticker {{font-size:1.55rem;font-weight:850;line-height:1.1;margin-top:4px;}}
+          h2.ss-decision-ticker {{margin:4px 0 0;}}
           .ss-decision-signal {{text-align:right;}}
           .ss-decision-value {{font-size:1.5rem;font-weight:850;line-height:1.1;margin:4px 0;}}
           .ss-decision-value.buy {{color:var(--ss-color-recommendation-buy,#38bdf8);}}
@@ -455,12 +479,32 @@ def render_recommendation_panel(
           .ss-decision-change h3 {{margin:0 0 5px;font-size:.78rem;letter-spacing:.06em;text-transform:uppercase;color:#8192aa;}}
           .ss-decision-change p {{margin:0;color:#a8b5c7;font-size:.86rem;line-height:1.45;}}
           .ss-decision-source {{margin:15px 0 0;color:#8192aa;font-size:.73rem;line-height:1.4;}}
+          .ss-decision-sr-only {{
+            position:absolute!important;width:1px!important;height:1px!important;
+            padding:0!important;margin:-1px!important;overflow:hidden!important;
+            clip:rect(0,0,0,0)!important;white-space:nowrap!important;border:0!important;
+          }}
           .ss-decision-card.compact {{margin:0 0 .7rem;container-type:inline-size;}}
           .ss-decision-card.compact .ss-decision-head {{padding:16px;}}
           .ss-decision-card.compact .ss-decision-body {{padding:15px 16px 17px;}}
           .ss-decision-card.compact .ss-decision-context {{grid-template-columns:repeat(2,minmax(0,1fr));}}
           .ss-decision-card.compact .ss-decision-financials {{grid-template-columns:repeat(2,minmax(0,1fr));}}
           .ss-decision-card.compact .ss-decision-financials > :last-child:nth-child(odd) {{grid-column:1 / -1;}}
+          .ss-decision-card.embedded {{
+            border:0;border-radius:0;background:transparent;margin:0;
+            overflow:visible;
+          }}
+          .ss-decision-card.embedded .ss-decision-head {{padding:0 0 14px;}}
+          .ss-decision-card.embedded .ss-decision-body {{padding:14px 0 0;}}
+          .ss-decision-card.compact.embedded .ss-decision-context {{
+            grid-template-columns:repeat(4,minmax(0,1fr));
+          }}
+          .ss-decision-card.compact.embedded .ss-decision-financials {{
+            grid-template-columns:repeat(3,minmax(0,1fr));
+          }}
+          .ss-decision-card.compact.embedded .ss-decision-financials > :last-child:nth-child(odd) {{
+            grid-column:auto;
+          }}
           @container (max-width:440px) {{
             .ss-decision-card.compact .ss-decision-head {{display:block;}}
             .ss-decision-card.compact .ss-decision-signal {{text-align:left;margin-top:14px;}}
@@ -473,17 +517,22 @@ def render_recommendation_panel(
             .ss-decision-body {{padding:15px 16px 17px;}}
             .ss-decision-context {{grid-template-columns:repeat(2,minmax(0,1fr));}}
             .ss-decision-financials {{grid-template-columns:1fr;}}
+            .ss-decision-card.compact.embedded .ss-decision-context,
+            .ss-decision-card.compact.embedded .ss-decision-financials {{
+              grid-template-columns:repeat(2,minmax(0,1fr));
+            }}
           }}
           @media (max-width:420px) {{
             .ss-decision-head {{display:block;}}
             .ss-decision-signal {{text-align:left;margin-top:14px;}}
           }}
         </style>
-        <article class="ss-decision-card{density_class}" aria-label="Deep analysis summary for {ticker_safe}">
+        <article class="ss-decision-card{density_class}"{element_attrs} aria-label="Deep analysis summary for {ticker_safe}">
+          {status_html}
           <header class="ss-decision-head">
             <div>
               <div class="ss-decision-eyebrow">Deep analysis · {sector_safe}</div>
-              <div class="ss-decision-ticker">{ticker_safe}</div>
+              <h2 class="ss-decision-ticker">{ticker_safe}</h2>
             </div>
             <div class="ss-decision-signal">
               <div class="ss-decision-label">Recommendation</div>
@@ -504,7 +553,7 @@ def render_recommendation_panel(
               <ul>{reasons_html}</ul>
             </div>
             {change_html}
-            <p class="ss-decision-source">{freshness_safe} · {sources_safe}</p>
+            {source_html}
           </div>
         </article>
         """
@@ -517,6 +566,7 @@ def render_full_analysis_expander(
     *,
     expanded: bool = False,
     label: str = "Full breakdown",
+    decision_details: dict | None = None,
 ) -> None:
     """Styled 'Full breakdown' expander — visually obvious, premium look."""
     from utils.deep_analysis import ANALYSIS_PROMPTS
@@ -535,13 +585,63 @@ def render_full_analysis_expander(
         .ss-breakdown-scroll:focus-visible {
           outline:3px solid var(--focus-ring);outline-offset:3px;
         }
+        .ss-breakdown-details {
+          display:grid;grid-template-columns:repeat(3,minmax(0,1fr));
+          gap:8px;margin:.55rem 0 1rem;
+        }
+        .ss-breakdown-detail {
+          border-left:2px solid rgba(56,189,248,.30);
+          padding:.2rem .7rem;min-width:0;
+        }
+        .ss-breakdown-detail span {
+          display:block;color:#8192aa;font-size:.68rem;font-weight:720;
+          letter-spacing:.045em;text-transform:uppercase;
+        }
+        .ss-breakdown-detail strong {
+          display:block;margin-top:.2rem;color:#e5e7eb;font-size:.9rem;
+          overflow-wrap:anywhere;
+        }
         .ss-sample-post {overflow-wrap:anywhere;word-break:break-word;}
+        @media (max-width:720px) {
+          .ss-breakdown-details {grid-template-columns:1fr;}
+        }
         </style>
         """,
         unsafe_allow_html=True,
     )
 
     with st.expander(label, expanded=expanded):
+        details = decision_details or {}
+        detail_metrics = details.get("metrics") or []
+        additional_reasons = details.get("additional_reasons") or []
+        detail_changes = details.get("would_change") or []
+        detail_source = str(details.get("source") or "").strip()
+        if detail_metrics or additional_reasons or detail_changes:
+            st.markdown("**Decision details**")
+            if detail_metrics:
+                detail_tiles = "".join(
+                    '<div class="ss-breakdown-detail"><span>'
+                    f'{html.escape(str(item.get("label") or "Detail"))}</span>'
+                    f'<strong>{html.escape(str(item.get("value") or "—"))}</strong></div>'
+                    for item in detail_metrics
+                )
+                st.markdown(
+                    '<div class="ss-breakdown-details">'
+                    f'{detail_tiles}</div>',
+                    unsafe_allow_html=True,
+                )
+            if additional_reasons:
+                st.markdown("**Additional reasons**")
+                for reason in additional_reasons:
+                    st.markdown(f"- {reason}")
+            if detail_changes:
+                st.markdown("**What would change this**")
+                for change in detail_changes:
+                    st.markdown(f"- {change}")
+            if detail_source:
+                st.caption(detail_source)
+            st.divider()
+
         coverage_rows = []
         for prompt_name, result in (analysis_results or {}).items():
             timeframe = (ANALYSIS_PROMPTS.get(prompt_name, {}) or {}).get("timeframe", "")

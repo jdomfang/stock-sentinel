@@ -424,50 +424,25 @@ st.markdown(
       text-decoration: none !important;
     }
     .scan-view-result:hover { background: rgba(56,189,248,.18); }
-    .selected-analysis-heading {
-      margin: 2rem 0 .75rem;
-      scroll-margin-top: 1rem;
-    }
-    .selected-analysis-heading h2 {
-      margin: 0 0 .2rem;
-      color: var(--text);
-      font-size: 1.35rem;
-      letter-spacing: -.02em;
-    }
-    .selected-analysis-heading p {
-      margin: 0;
-      color: var(--muted);
-      font-size: .84rem;
-    }
-    .st-key-scan_result_workspace [data-testid="stHorizontalBlock"]:has(
-      .st-key-scan_workspace_results
-    ):has(.st-key-scan_workspace_analysis) {
-      align-items:flex-start!important;gap:20px!important;
-    }
-    .st-key-scan_result_workspace [data-testid="stHorizontalBlock"]:has(
-      .st-key-scan_workspace_results
-    ):has(.st-key-scan_workspace_analysis) > [data-testid="stColumn"] {
-      min-width:0!important;
-    }
     .st-key-selected_analysis_panel {
-      position:sticky;top:16px;padding:14px;border:1px solid rgba(56,189,248,.18);
-      border-radius:var(--radius-panel);background:rgba(8,15,30,.72);
+      padding:18px 20px;border:1px solid rgba(56,189,248,.24);
+      border-radius:var(--radius-panel);
+      background:linear-gradient(145deg,rgba(8,20,39,.96),rgba(8,15,30,.96));
       box-sizing:border-box;width:100%;min-width:0;max-width:100%;
-      container-type:inline-size;
+      margin:0 0 1.25rem;scroll-margin-top:1rem;
     }
     .st-key-selected_analysis_panel > div,
     .st-key-selected_analysis_panel [data-testid="stVerticalBlock"],
     .st-key-selected_analysis_panel [data-testid="stElementContainer"] {
       box-sizing:border-box!important;min-width:0!important;max-width:100%!important;
     }
-    .st-key-selected_analysis_panel .selected-analysis-heading,
     .st-key-selected_analysis_panel .ss-decision-card {
       overflow-wrap:anywhere;
     }
-    .st-key-selected_analysis_panel .selected-analysis-heading {margin:0 0 .7rem;}
     .st-key-selected_analysis_panel .stButton > button {width:100%;}
     .st-key-selected_analysis_breakdown {
-      clear:both;margin-top:1rem;padding-top:.15rem;
+      margin-top:.15rem;padding-top:.85rem;
+      border-top:1px solid rgba(148,163,184,.14);
     }
     .st-key-selected_analysis_breakdown [data-testid="stExpander"] {
       border:1px solid rgba(56,189,248,.28)!important;
@@ -487,20 +462,6 @@ st.markdown(
       padding-left: .65rem !important;
       padding-right: .65rem !important;
       font-size: .84rem !important;
-    }
-
-    /* The master-detail workspace must stack before its shortlist becomes too
-       narrow to keep financial values and paid actions on one line. */
-    @media (max-width: 1120px) {
-      .st-key-scan_result_workspace [data-testid="stHorizontalBlock"]:has(
-        .st-key-scan_workspace_results
-      ):has(.st-key-scan_workspace_analysis) {flex-wrap:wrap!important;}
-      .st-key-scan_result_workspace [data-testid="stHorizontalBlock"]:has(
-        .st-key-scan_workspace_results
-      ):has(.st-key-scan_workspace_analysis) > [data-testid="stColumn"] {
-        flex:1 1 100%!important;width:100%!important;
-      }
-      .st-key-selected_analysis_panel {position:static;margin-top:14px;}
     }
 
     @media (max-width: 720px) {
@@ -546,7 +507,7 @@ st.markdown(
       [class*="st-key-scan_row_"] .stButton > button {
         width: 100%;
       }
-      .st-key-selected_analysis_panel {position:static;padding:11px;margin-top:14px;}
+      .st-key-selected_analysis_panel {padding:14px;margin-bottom:1rem;}
     }
 
     /* Hide Streamlit "Made with" footer */
@@ -1129,7 +1090,15 @@ if scan_triggered:
     if _intent_autostart:
         patch_query_params({"autostart": None, "next": None})
 
-def _render_deep_panel(ticker, sector, deep_results, *, compact=False):
+def _render_deep_panel(
+    ticker,
+    sector,
+    deep_results,
+    *,
+    compact=False,
+    embedded=False,
+    element_id="",
+):
     """Render the same paid analysis summary used by the dedicated route."""
     card = st.session_state.get("deep_analysis_card") or {}
     if not card:
@@ -1196,7 +1165,29 @@ def _render_deep_panel(ticker, sector, deep_results, *, compact=False):
         evidence_label=evidence_label,
         would_change=card.get("would_change") or [],
         compact=compact,
+        embedded=embedded,
+        element_id=element_id,
     )
+    decision_details = {
+        "metrics": [
+            {"label": label, "value": value}
+            for label, value in (
+                ("Last price", current_price),
+                ("30d range (volatility)", projected_range),
+                ("Drawdown before +5%", drawdown_first),
+            )
+            if value != "Unavailable"
+        ],
+        "additional_reasons": (card.get("rationale") or [])[1:3],
+        "would_change": (card.get("would_change") or [])[:2],
+        "source": (
+            "Analysis generated now · Public social discussion and "
+            f"market-price data · {price_points} price observations"
+            if price_points else
+            "Analysis generated now · Public social discussion and "
+            "market-price data"
+        ),
+    }
     if not compact:
         render_full_analysis_expander(
             deep_results or {},
@@ -1211,6 +1202,7 @@ def _render_deep_panel(ticker, sector, deep_results, *, compact=False):
                     "discovery: evidence check render failed",
                     exc_info=True,
                 )
+    return decision_details
 
 
 # ── Results table ──
@@ -1317,11 +1309,17 @@ if st.session_state.df_valid is not None:
         )
         _workspace = st.container(key="scan_result_workspace")
         if _has_delivered_analysis:
-            _results_outer, _analysis_outer = _workspace.columns([1.28, .82])
-            _results_col = _results_outer.container(key="scan_workspace_results")
-            _analysis_col = _analysis_outer.container(key="scan_workspace_analysis")
+            # The paid result is one full-width decision surface above the
+            # shortlist. This preserves the table's financial-data tracks and
+            # gives the evidence disclosure enough room without a nested rail.
+            _analysis_col = _workspace.container(key="scan_workspace_analysis")
+            _results_col = _workspace.container(key="scan_workspace_results")
         else:
             _results_col, _analysis_col = _workspace, None
+        # Failures belong to the workspace, never inside a narrow Action cell.
+        # Creating the placeholder before the table fixes its visual position
+        # even though row actions are handled later in the script.
+        _analysis_status = _results_col.empty()
 
         # Header and rows share this one track contract. Keeping the action
         # track wider prevents paid-action labels from wrapping in split view.
@@ -1471,18 +1469,21 @@ if st.session_state.df_valid is not None:
                     # misconfiguration must never take a credit and refund it.
                     if not _client.configured():
                         logger.error("deep_analyze unavailable: core-api not configured")
-                        st.error("Deep Analysis is temporarily unavailable. "
-                                 "No credit has been used.")
+                        _analysis_status.error(
+                            "Deep Analysis is temporarily unavailable. "
+                            "No credit has been used."
+                        )
                         _bail()
                     _dcredit = consume_credit(
                         "deep_analyze",
                         {"ticker": ticker_symbol, "sector": _result_sector, "page": "discovery"},
                     )
                     if not _dcredit.ok:
-                        billing.render_credit_refusal(
-                            _dcredit,
-                            f"The full analysis for {ticker_symbol} costs "
-                            f"1 credit.", key="row")
+                        with _analysis_status.container():
+                            billing.render_credit_refusal(
+                                _dcredit,
+                                f"The full analysis for {ticker_symbol} costs "
+                                f"1 credit.", key="row")
                         _bail()
 
                     # Charged work: try/finally, not try/except. Streamlit's
@@ -1646,7 +1647,8 @@ if st.session_state.df_valid is not None:
                             st.rerun()
 
                         if _deep_state:
-                            render_system_state(kind="error", **_deep_state)
+                            with _analysis_status.container():
+                                render_system_state(kind="error", **_deep_state)
                     finally:
                         # NOTE: the success path below calls st.rerun(), which
                         # itself raises RerunException -- so _ddelivered must be
@@ -1679,45 +1681,37 @@ if st.session_state.df_valid is not None:
             unsafe_allow_html=True,
         )
 
-        # The completed result occupies a separate desktop workspace column and
-        # stacks after the shortlist on mobile. It is a view of work already
-        # delivered, so its only action is the nonpaying full breakdown route.
+        # The completed result occupies one full-width surface above the
+        # shortlist. Its evidence disclosure remains inside that same surface,
+        # so summary and breakdown read as one delivered product.
         if _has_delivered_analysis and _analysis_col is not None:
             with _analysis_col:
                 with st.container(key="selected_analysis_panel"):
-                    st.markdown(
-                        f'<section id="selected-analysis" '
-                        f'class="selected-analysis-heading" tabindex="-1" '
-                        f'role="status" aria-live="polite" aria-atomic="true">'
-                        f'<h2>{html.escape(str(_selected_ticker))} analysis result</h2>'
-                        f'<p>Completed Buy, Watch, or Avoid recommendation.</p>'
-                        f'</section>',
-                        unsafe_allow_html=True,
-                    )
-                    _render_deep_panel(
+                    _decision_details = _render_deep_panel(
                         _selected_ticker,
                         _result_sector,
                         st.session_state.deep_analysis_results,
                         compact=True,
+                        embedded=True,
+                        element_id="selected-analysis",
                     )
-
-            # Keep the detailed evidence on this page. A route transition was
-            # unnecessary for data already delivered into session state and
-            # could discard the shortlist/scroll context on mobile. This
-            # disclosure performs no analysis and consumes no credit.
-            with _workspace.container(key="selected_analysis_breakdown"):
-                if st.session_state.deep_analysis_results:
-                    render_full_analysis_expander(
-                        st.session_state.deep_analysis_results,
-                        key_suffix=f"_discovery_{_selected_ticker}",
-                        label="View full breakdown",
-                    )
-                    st.caption("Already analyzed · no additional credit")
-                else:
-                    st.caption(
-                        "Detailed signal excerpts are unavailable for this "
-                        "earlier result."
-                    )
+                    # This disclosure performs no analysis and consumes no
+                    # credit. It is visually and structurally part of the same
+                    # result surface instead of a detached page-wide control.
+                    with st.container(key="selected_analysis_breakdown"):
+                        if st.session_state.deep_analysis_results:
+                            render_full_analysis_expander(
+                                st.session_state.deep_analysis_results,
+                                key_suffix=f"_discovery_{_selected_ticker}",
+                                label="View full breakdown",
+                                decision_details=_decision_details,
+                            )
+                            st.caption("Already analyzed · no additional credit")
+                        else:
+                            st.caption(
+                                "Detailed signal excerpts are unavailable for "
+                                "this earlier result."
+                            )
     else:
         st.markdown(
             """

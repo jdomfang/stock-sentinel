@@ -109,7 +109,7 @@ def main() -> int:
     check(
         "account is the single credit and session-management destination",
         'key="account_purchase"' in account
-        and 'key="account_session"' in account
+        and 'key="account_header_logout"' in account
         and 'st.button("Log out"' in account
         and 'key="home_credit_hub"' not in home,
     )

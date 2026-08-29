@@ -66,7 +66,9 @@ def test_account_owns_logout_and_alignment_contracts() -> None:
     adapter = _read("assets/styles/stock-sentinel-streamlit-adapter.css")
 
     assert 'from utils.auth import flush_pending_rt_save, get_user, sign_out' in account
-    assert 'key="account_session"' in account
+    assert 'key="account_header"' in account
+    assert 'key="account_header_logout"' in account
+    assert 'key="account_session"' not in account
     assert 'st.button("Log out"' in account
     assert 'st.switch_page("pages/Home.py")' in account
     assert 'align-items: stretch !important' in adapter
@@ -76,10 +78,17 @@ def test_account_owns_logout_and_alignment_contracts() -> None:
     assert '[data-testid="stElementContainer"]:has(.ss-account-card)' in adapter
     assert '[data-testid="stHtml"]:has(.ss-account-card)' in adapter
     assert account.count('class="ss-account-kicker"') >= 2
-    assert '.st-key-account_logout button' in adapter
+    assert '.st-key-account_header_logout button' in adapter
     assert 'min-height: 44px !important' in adapter
     assert 'flex: 1 1 100% !important' in adapter
     assert 'min-width: 100% !important' in adapter
+    mobile_header = account.split("@media (max-width:720px)", 1)[1].split(
+        "</style>", 1
+    )[0]
+    assert '.st-key-account_header [data-testid="stHorizontalBlock"]' in mobile_header
+    assert "flex-wrap:wrap!important" in mobile_header
+    assert '.st-key-account_header [data-testid="stColumn"]' in mobile_header
+    assert "flex:1 1 100%!important" in mobile_header
 
 
 def test_navigation_controls_share_alignment_and_touch_targets() -> None:
@@ -108,12 +117,12 @@ def test_authenticated_marketing_actions_do_not_restart_signup() -> None:
 
 def test_responsive_panels_and_actions_stack_before_they_cramp() -> None:
     home = _read("pages/Home.py")
-    adapter = _read("assets/styles/stock-sentinel-streamlit-adapter.css")
+    account = _read("pages/Account.py")
 
     assert '@media (max-width:900px)' in home
     assert '@media (max-width:520px)' in home
     assert '.st-key-home_public_ctas [data-testid="stColumn"]' in home
-    assert 'row-gap: .65rem !important' in adapter
+    assert 'row-gap:.65rem!important' in account
 
 
 def main() -> int:

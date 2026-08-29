@@ -459,25 +459,8 @@ button:disabled,
   min-height: 44px !important;
 }
 
-.st-key-account_session {
-  margin-top: .75rem;
-  padding: .8rem 0 0;
-  border-top: 1px solid var(--ss-color-border);
-  background: transparent !important;
-}
-
-.st-key-account_session [data-testid="stHorizontalBlock"] {
-  align-items: center !important;
-}
-
-.st-key-account_logout {
-  margin-left: auto;
-  max-width: 140px;
-  width: 100%;
-}
-
-.st-key-account_logout [data-testid="stButton"],
-.st-key-account_logout button {
+.st-key-account_header_logout [data-testid="stButton"],
+.st-key-account_header_logout button {
   width: 100% !important;
   min-width: 0 !important;
   max-width: 100% !important;
@@ -551,24 +534,13 @@ button:disabled,
     max-width: 100% !important;
   }
 
-  .st-key-account_grid [data-testid="stHorizontalBlock"],
-  .st-key-account_session [data-testid="stHorizontalBlock"] {
+  .st-key-account_grid [data-testid="stHorizontalBlock"] {
     flex-wrap: wrap !important;
   }
 
-  .st-key-account_grid [data-testid="stColumn"],
-  .st-key-account_session [data-testid="stColumn"] {
+  .st-key-account_grid [data-testid="stColumn"] {
     flex: 1 1 100% !important;
     min-width: 100% !important;
-  }
-
-  .st-key-account_session [data-testid="stHorizontalBlock"] {
-    row-gap: .65rem !important;
-  }
-
-  .st-key-account_logout {
-    margin-left: 0;
-    max-width: 100%;
   }
 }
 

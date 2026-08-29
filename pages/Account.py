@@ -55,6 +55,13 @@ st.markdown(
         letter-spacing:-.035em;line-height:1.08;
       }
       .ss-account-header p {margin:0;color:var(--muted);line-height:1.5;}
+      .st-key-account_header [data-testid="stHorizontalBlock"] {
+        align-items:flex-start!important;
+      }
+      .st-key-account_header_logout {padding-top:.15rem;}
+      .st-key-account_header_logout .stButton > button {
+        min-height:44px!important;max-width:132px;margin-left:auto;
+      }
       .ss-account-card {
         border:1px solid var(--border);border-radius:var(--radius-panel);
         background:rgba(15,23,42,.72);padding:1.1rem;
@@ -75,21 +82,39 @@ st.markdown(
         padding:.62rem 0;border-top:1px solid rgba(148,163,184,.11);
         color:#cbd5e1;font-size:.88rem;line-height:1.4;
       }
-      .ss-account-session-title {font-weight:750;color:var(--text);}
-      .ss-account-session-copy {font-size:.82rem;color:var(--muted);margin-top:.15rem;}
+      @media (max-width:720px) {
+        .st-key-account_header [data-testid="stHorizontalBlock"] {
+          flex-wrap:wrap!important;row-gap:.65rem!important;
+        }
+        .st-key-account_header [data-testid="stColumn"] {
+          flex:1 1 100%!important;width:100%!important;min-width:0!important;
+        }
+        .st-key-account_header_logout {padding-top:0;}
+        .st-key-account_header_logout .stButton > button {
+          max-width:none;margin-left:0;
+        }
+      }
     </style>
     """,
     unsafe_allow_html=True,
 )
 
-st.html(
-    """
-    <header class="ss-account-header">
-      <h1>Account</h1>
-      <p>Manage your credit balance and review how purchases work.</p>
-    </header>
-    """
-)
+with st.container(key="account_header"):
+    header_copy, header_action = st.columns([4.2, .8])
+    with header_copy:
+        st.html(
+            """
+            <header class="ss-account-header">
+              <h1>Account</h1>
+              <p>Manage your credit balance and review how purchases work.</p>
+            </header>
+            """
+        )
+    with header_action:
+        with st.container(key="account_header_logout"):
+            if st.button("Log out", use_container_width=True):
+                sign_out()
+                st.switch_page("pages/Home.py")
 
 billing.render_payment_return()
 
@@ -128,19 +153,5 @@ st.caption(
     "Payments are completed on Stripe. Stock Sentinel does not collect or "
     "display your card number."
 )
-
-with st.container(key="account_session"):
-    session_copy, session_action = st.columns([3.3, .7])
-    with session_copy:
-        st.markdown(
-            '<div class="ss-account-session-title">Signed-in session</div>'
-            '<div class="ss-account-session-copy">Log out on shared or public devices.</div>',
-            unsafe_allow_html=True,
-        )
-    with session_action:
-        with st.container(key="account_logout"):
-            if st.button("Log out", use_container_width=True):
-                sign_out()
-                st.switch_page("pages/Home.py")
 
 render_footer()
