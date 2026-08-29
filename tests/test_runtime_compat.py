@@ -557,6 +557,51 @@ def test_the_portal_image_can_actually_run_the_portal():
           "one implementation, two deployments -- a utils/ change affects both")
 
 
+def test_every_migration_records_itself():
+    """schema_migrations must list every migration, including the newest.
+
+    The table exists so "which migrations are live" is a query rather than
+    somebody's memory -- but only if it is complete. A migration that does not
+    record itself makes the table quietly wrong, and the thing it is wrong about
+    is the one thing it was built to report.
+
+    That happened immediately: 20260829010000 backfilled the files that existed
+    when it was written, which did not include itself. The table that detects a
+    missing migration was the missing migration.
+
+    This is a file-level check, not a database one -- it runs without Postgres
+    and fails the moment a new migration is added without its insert line.
+    """
+    print("\nevery migration has a row in schema_migrations")
+    mig = REPO / "supabase" / "migrations"
+    files = sorted(p.stem for p in mig.glob("*.sql"))
+    check("there are migrations to check", bool(files))
+
+    # Every version claimed anywhere in the chain -- the backfill list in
+    # 20260829010000 plus each later migration's own trailing insert.
+    import re
+    claimed = set()
+    for f in sorted(mig.glob("*.sql")):
+        src = f.read_text(encoding="utf-8")
+        code = "\n".join(l for l in src.splitlines() if not l.lstrip().startswith("--"))
+        if "schema_migrations" not in code:
+            continue
+        # NOT \d{14} -- 20260319_ticker_master predates the timestamp
+        # convention, and assuming that pattern is exactly how it got
+        # left out of the backfill in the first place.
+        claimed.update(re.findall(r"\('(\d{8,14}_[a-z0-9_]+)'\)", code))
+
+    missing = [f for f in files if f not in claimed]
+    check("no migration is unrecorded", not missing,
+          f"{missing} -- add `insert into public.schema_migrations (version) "
+          f"values ('<name>') on conflict do nothing;` as the last statement")
+
+    unknown = sorted(claimed - set(files))
+    check("no row claims a migration that does not exist", not unknown,
+          f"{unknown} -- a renamed or deleted file leaves the table asserting "
+          f"a schema this database does not have")
+
+
 def main() -> int:
     major, minor = pinned_version()
     print("=" * 74)
@@ -639,6 +684,7 @@ def main() -> int:
     test_no_module_references_an_undefined_name()
     test_only_utils_config_touches_st_secrets()
     test_the_portal_image_can_actually_run_the_portal()
+    test_every_migration_records_itself()
     print(f"\n  {len(PASSED)} passed, {len(FAILED)} failed")
     for n, d in FAILED:
         print(f"    - {n}: {d}")
