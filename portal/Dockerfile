@@ -3,9 +3,13 @@
 #
 # BUILD CONTEXT IS THE REPOSITORY ROOT, not this directory. The portal imports
 # utils/ (which it shares with core-api), renders pages/, and reads data/ and
-# assets/ at runtime -- none of which are reachable from portal/. Set the
-# Railway service's Root Directory to blank and point its Railway Config File
-# at portal/railway.toml.
+# assets/ at runtime -- none of which are reachable from portal/. So the Railway
+# service's Root Directory must be BLANK.
+#
+# Set that, and the builder + Dockerfile path, in the RAILWAY UI. Railway does
+# not read portal/railway.toml -- Config-as-Code is closed to new services and
+# deprecated with a 2026-12-01 cutoff. That file is a record of what the UI
+# settings should be, nothing more. See docs/ENVIRONMENTS.md.
 #
 # Python 3.11 because that is what Streamlit Community Cloud runs and what
 # tests/test_runtime_compat.py asserts every source file parses on. Building on

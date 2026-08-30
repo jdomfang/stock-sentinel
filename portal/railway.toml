@@ -1,8 +1,17 @@
 # Railway service config for the Streamlit portal.
 #
-# Service settings that are NOT in this file and must be set in the UI:
-#   Root Directory      = (blank -- the repository root)
-#   Railway Config File = portal/railway.toml
+# RAILWAY DOES NOT READ THIS FILE. Config-as-Code is closed to new services and
+# is deprecated with a 2026-12-01 cutoff, so pointing the "Railway Config File"
+# setting at it does nothing -- it produces a settings dialog that re-offers the
+# same changes forever, which is how that was discovered.
+#
+# This file is therefore DOCUMENTATION: the record of what the UI settings must
+# be. Change it and nothing deploys differently; change the UI and update this.
+#
+# Set in the UI:
+#   Root Directory  = (blank -- the repository root)
+#   Builder         = Dockerfile, path portal/Dockerfile
+#   Healthcheck     = /_stcore/health
 #
 # Root Directory matters. The build needs utils/, pages/, data/ and assets/,
 # none of which are under portal/. inference/ takes the opposite approach (Root
