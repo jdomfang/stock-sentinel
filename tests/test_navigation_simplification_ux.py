@@ -29,7 +29,7 @@ def test_public_home_is_not_a_duplicate_authenticated_workspace() -> None:
 def test_authenticated_navigation_has_one_destination_per_job() -> None:
     nav = _read("utils/navigation.py")
 
-    assert 'scan, deep, account = st.columns(3)' in nav
+    assert 'scan, deep, account, session = st.columns(' in nav
     assert 'scan, deep = st.columns(2)' in nav
     assert '"pages/Discovery.py", "Market Scan"' in nav
     assert '"pages/Deep_Analysis.py", "Deep Analyze"' in nav
@@ -61,16 +61,19 @@ def test_default_and_explicit_post_auth_destinations_are_preserved() -> None:
     assert 'st.switch_page("pages/Deep_Analysis.py")' in auth
 
 
-def test_account_owns_logout_and_alignment_contracts() -> None:
+def test_global_session_menu_owns_logout_and_account_alignment_contracts() -> None:
+    nav = _read("utils/navigation.py")
     account = _read("pages/Account.py")
     adapter = _read("assets/styles/stock-sentinel-streamlit-adapter.css")
 
-    assert 'from utils.auth import flush_pending_rt_save, get_user, sign_out' in account
-    assert 'key="account_header"' in account
-    assert 'key="account_header_logout"' in account
-    assert 'key="account_session"' not in account
-    assert 'st.button("Log out"' in account
-    assert 'st.switch_page("pages/Home.py")' in account
+    assert 'def _session_initial' in nav
+    assert 'with st.popover(' in nav
+    assert 'st.button(' in nav and '"Log out"' in nav
+    assert 'st.switch_page("pages/Home.py")' in nav
+    assert 'from utils.auth import sign_out' in nav
+    assert 'key="account_header_logout"' not in account
+    assert 'st.button("Log out"' not in account
+    assert 'sign_out' not in account
     assert 'align-items: stretch !important' in adapter
     assert 'height: 100% !important' in adapter
     assert 'box-sizing:border-box;width:100%;height:100%;' in account
@@ -78,17 +81,20 @@ def test_account_owns_logout_and_alignment_contracts() -> None:
     assert '[data-testid="stElementContainer"]:has(.ss-account-card)' in adapter
     assert '[data-testid="stHtml"]:has(.ss-account-card)' in adapter
     assert account.count('class="ss-account-kicker"') >= 2
-    assert '.st-key-account_header_logout button' in adapter
-    assert 'min-height: 44px !important' in adapter
+    assert '[class*="st-key-nav_desktop_session"]' in nav
+    assert 'width:44px!important' in nav
+    assert 'height:44px!important' in nav
+    assert 'gap:clamp(16px, 2vw, 20px)!important' in nav
+    assert ':has(.st-key-nav_desktop_session)' in nav
+    assert ':has(.st-key-nav_mobile_session)' in nav
+    assert '.st-key-ss_nav_mobile_primary [data-testid="stColumn"]:last-child' not in nav
+    assert '[data-testid="stPopoverButton"]' in nav
+    assert '[data-testid="stPopover"] > button' not in nav
+    assert '> div:last-child:has(svg[aria-hidden="true"])' in nav
+    assert 'f"{initial} Account menu"' in nav
+    assert 'p::first-letter' in nav
     assert 'flex: 1 1 100% !important' in adapter
     assert 'min-width: 100% !important' in adapter
-    mobile_header = account.split("@media (max-width:720px)", 1)[1].split(
-        "</style>", 1
-    )[0]
-    assert '.st-key-account_header [data-testid="stHorizontalBlock"]' in mobile_header
-    assert "flex-wrap:wrap!important" in mobile_header
-    assert '.st-key-account_header [data-testid="stColumn"]' in mobile_header
-    assert "flex:1 1 100%!important" in mobile_header
 
 
 def test_navigation_controls_share_alignment_and_touch_targets() -> None:
@@ -101,7 +107,7 @@ def test_navigation_controls_share_alignment_and_touch_targets() -> None:
     assert 'min-height:44px;justify-content:center' in nav
     assert 'class="ss-nav-semantic"' in nav
     assert 'left:18%;right:18%;bottom:-9px;' in nav
-    assert 'brand_col, account_col = st.columns([2.3, .9])' in nav
+    assert 'brand_col, account_col, session_col = st.columns(' in nav
     assert 'flex-wrap:nowrap!important' in nav
     assert 'aria-current="page"' in nav
     assert 'class="ss-nav-semantic"' in nav
@@ -128,12 +134,14 @@ def test_authenticated_marketing_actions_do_not_restart_signup() -> None:
 
 def test_responsive_panels_and_actions_stack_before_they_cramp() -> None:
     home = _read("pages/Home.py")
-    account = _read("pages/Account.py")
+    adapter = _read("assets/styles/stock-sentinel-streamlit-adapter.css")
 
     assert '@media (max-width:900px)' in home
     assert '@media (max-width:520px)' in home
     assert '.st-key-home_public_ctas [data-testid="stColumn"]' in home
-    assert 'row-gap:.65rem!important' in account
+    assert '@media (max-width: 720px)' in adapter
+    assert '.st-key-account_grid [data-testid="stHorizontalBlock"]' in adapter
+    assert 'flex: 1 1 100% !important' in adapter
 
 
 def main() -> int:
@@ -142,7 +150,7 @@ def main() -> int:
         test_authenticated_navigation_has_one_destination_per_job,
         test_brand_remains_the_public_landing_route_for_every_session,
         test_default_and_explicit_post_auth_destinations_are_preserved,
-        test_account_owns_logout_and_alignment_contracts,
+        test_global_session_menu_owns_logout_and_account_alignment_contracts,
         test_navigation_controls_share_alignment_and_touch_targets,
         test_authenticated_marketing_actions_do_not_restart_signup,
         test_responsive_panels_and_actions_stack_before_they_cramp,

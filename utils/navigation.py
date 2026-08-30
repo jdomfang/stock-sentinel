@@ -100,6 +100,58 @@ def _marketing_links(column, surface: str, active: str) -> None:
             )
 
 
+def _session_initial(user: object, email: str) -> str:
+    """Return one stable, human initial for the compact session control."""
+    metadata: object = {}
+    if isinstance(user, dict):
+        metadata = user.get("user_metadata") or {}
+    else:
+        metadata = getattr(user, "user_metadata", {}) or {}
+
+    display_name = ""
+    if isinstance(metadata, dict):
+        display_name = str(
+            metadata.get("display_name")
+            or metadata.get("full_name")
+            or metadata.get("name")
+            or ""
+        ).strip()
+
+    for candidate in (display_name, email.split("@", 1)[0]):
+        for character in candidate:
+            if character.isalpha():
+                return character.upper()
+    return "U"
+
+
+def _session_menu(column, *, surface: str, user: object, email: str) -> None:
+    """Render a fixed-size session trigger whose menu overlays the page."""
+    from utils.auth import sign_out
+
+    initial = _session_initial(user, email)
+    safe_email = html.escape(email or "Signed-in account", quote=True)
+    with column:
+        with st.container(key=f"nav_{surface}_session"):
+            with st.popover(
+                f"{initial} Account menu",
+                help=f"Open account menu for {email}" if email else "Open account menu",
+                use_container_width=True,
+            ):
+                st.html(
+                    '<div class="ss-session-menu">'
+                    '<div class="ss-session-menu__label">Signed in as</div>'
+                    f'<div class="ss-session-menu__email">{safe_email}</div>'
+                    '</div>'
+                )
+                if st.button(
+                    "Log out",
+                    key=f"nav_{surface}_logout_button",
+                    use_container_width=True,
+                ):
+                    sign_out()
+                    st.switch_page("pages/Home.py")
+
+
 def render_top_nav(
     *, active: str = "", credits: int | None = None,
     after_auth_page: str = "Discovery",
@@ -158,6 +210,15 @@ def render_top_nav(
         .st-key-ss_top_nav [data-testid="stHorizontalBlock"] {
           align-items:center!important;gap:.6rem!important;
         }
+        .st-key-ss_nav_desktop_links [data-testid="stHorizontalBlock"] {
+          align-items:center!important;
+          gap:clamp(16px, 2vw, 20px)!important;
+        }
+        .st-key-ss_nav_desktop_links [data-testid="stColumn"]:has(.st-key-nav_desktop_session),
+        .st-key-ss_nav_mobile_primary [data-testid="stColumn"]:has(.st-key-nav_mobile_session) {
+          flex:0 0 44px!important;width:44px!important;
+          min-width:44px!important;max-width:44px!important;
+        }
         .st-key-ss_nav_mobile { display:none; }
         [class*="st-key-nav_desktop_"],
         [class*="st-key-nav_mobile_"] { position:relative; }
@@ -210,6 +271,70 @@ def render_top_nav(
         [class*="st-key-nav_mobile_signup"] button {
           min-height:44px!important;border-radius:9px!important;
           white-space:nowrap!important;
+        }
+        [class*="st-key-nav_desktop_session"] [data-testid="stPopoverButton"],
+        [class*="st-key-nav_mobile_session"] [data-testid="stPopoverButton"] {
+          width:44px!important;min-width:44px!important;max-width:44px!important;
+          height:44px!important;min-height:44px!important;max-height:44px!important;
+          padding:0!important;border-radius:50%!important;
+          display:flex!important;align-items:center!important;justify-content:center!important;
+          border:1px solid rgba(56,189,248,.34)!important;
+          background:rgba(15,23,42,.78)!important;color:#f8fafc!important;
+          font-weight:800!important;line-height:1!important;
+        }
+        [class*="st-key-nav_desktop_session"] [data-testid="stPopoverButton"]
+          > div:last-child:has(svg[aria-hidden="true"]),
+        [class*="st-key-nav_mobile_session"] [data-testid="stPopoverButton"]
+          > div:last-child:has(svg[aria-hidden="true"]) {
+          display:none!important;
+        }
+        [class*="st-key-nav_desktop_session"] [data-testid="stPopoverButton"]
+          :is([data-testid="stMarkdownContainer"], p, span),
+        [class*="st-key-nav_mobile_session"] [data-testid="stPopoverButton"]
+          :is([data-testid="stMarkdownContainer"], p, span) {
+          margin:0!important;color:#f8fafc!important;
+          -webkit-text-fill-color:#f8fafc!important;
+          line-height:1!important;text-align:center!important;
+        }
+        [class*="st-key-nav_desktop_session"] [data-testid="stPopoverButton"] p,
+        [class*="st-key-nav_mobile_session"] [data-testid="stPopoverButton"] p {
+          font-size:0!important;width:1rem!important;white-space:nowrap!important;
+          overflow:visible!important;
+        }
+        [class*="st-key-nav_desktop_session"] [data-testid="stPopoverButton"] p::first-letter,
+        [class*="st-key-nav_mobile_session"] [data-testid="stPopoverButton"] p::first-letter {
+          font-size:.86rem!important;font-weight:800!important;
+        }
+        [class*="st-key-nav_desktop_session"] [data-testid="stPopoverButton"]:hover,
+        [class*="st-key-nav_mobile_session"] [data-testid="stPopoverButton"]:hover,
+        [class*="st-key-nav_desktop_session"] [data-testid="stPopover"]
+          > div[aria-expanded="true"] [data-testid="stPopoverButton"],
+        [class*="st-key-nav_mobile_session"] [data-testid="stPopover"]
+          > div[aria-expanded="true"] [data-testid="stPopoverButton"] {
+          border-color:rgba(56,189,248,.7)!important;
+          background:rgba(56,189,248,.1)!important;
+        }
+        [data-testid="stPopoverBody"]:has(.ss-session-menu) {
+          width:min(290px, calc(100vw - 2rem))!important;
+          padding:.8rem!important;border-radius:12px!important;
+          border:1px solid rgba(56,189,248,.28)!important;
+          background:#091326!important;
+          box-shadow:0 18px 48px rgba(0,0,0,.42)!important;
+        }
+        [data-testid="stPopoverBody"]:has(.ss-session-menu) [data-testid="stVerticalBlock"] {
+          gap:.65rem!important;
+        }
+        [data-testid="stPopoverBody"]:has(.ss-session-menu) button {
+          min-height:44px!important;width:100%!important;
+          display:flex!important;align-items:center!important;justify-content:center!important;
+        }
+        .ss-session-menu__label {
+          color:#8192aa!important;font-size:.68rem;font-weight:800;
+          letter-spacing:.07em;text-transform:uppercase;
+        }
+        .ss-session-menu__email {
+          margin-top:.18rem;color:#e2e8f0!important;font-size:.84rem;
+          font-weight:680;overflow-wrap:anywhere;
         }
         [class*="st-key-nav_desktop_marketing"] [data-testid="stHorizontalBlock"] {
           gap:.2rem!important;
@@ -292,13 +417,19 @@ def render_top_nav(
                 _brand(next(cols), "desktop")
                 links_col = next(cols)
                 with links_col:
-                    scan, deep, account = st.columns(3)
-                    _nav_link(scan, "pages/Discovery.py", "Market Scan",
-                              "market_scan", active, "desktop")
-                    _nav_link(deep, "pages/Deep_Analysis.py", "Deep Analyze",
-                              "deep_analyze", active, "desktop")
-                    _nav_link(account, "pages/Account.py", "Account",
-                              "account", active, "desktop")
+                    with st.container(key="ss_nav_desktop_links"):
+                        scan, deep, account, session = st.columns(
+                            [1, 1, 1, .28]
+                        )
+                        _nav_link(scan, "pages/Discovery.py", "Market Scan",
+                                  "market_scan", active, "desktop")
+                        _nav_link(deep, "pages/Deep_Analysis.py", "Deep Analyze",
+                                  "deep_analyze", active, "desktop")
+                        _nav_link(account, "pages/Account.py", "Account",
+                                  "account", active, "desktop")
+                        _session_menu(
+                            session, surface="desktop", user=user, email=email,
+                        )
 
                 if show_credits:
                     with next(cols):
@@ -313,17 +444,24 @@ def render_top_nav(
         with st.container(key="ss_nav_mobile"):
             with st.container(key="ss_nav_mobile_primary"):
                 if logged_in:
-                    brand_col, account_col = st.columns([2.3, .9])
+                    brand_col, account_col, session_col = st.columns(
+                        [2.3, .9, .34]
+                    )
                     auth_col = None
                     signup_col = None
                 else:
                     brand_col, auth_col, signup_col = st.columns([1.65, .72, .82])
                     account_col = None
+                    session_col = None
                 _brand(brand_col, "mobile")
                 if account_col is not None:
                     _nav_link(
                         account_col, "pages/Account.py", "Account", "account",
                         active, "mobile",
+                    )
+                if session_col is not None:
+                    _session_menu(
+                        session_col, surface="mobile", user=user, email=email,
                     )
                 if auth_col is not None:
                     _login_control(

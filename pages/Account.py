@@ -16,7 +16,7 @@ import streamlit as st
 _sys.path.insert(0, str(_Path(__file__).resolve().parents[1]))
 
 from utils import billing
-from utils.auth import flush_pending_rt_save, get_user, sign_out
+from utils.auth import flush_pending_rt_save, get_user
 from utils.guard import require_active_account, require_login
 from utils.navigation import render_sidebar_navigation, render_top_nav
 from utils.ui import apply_theme, render_footer
@@ -53,13 +53,6 @@ st.markdown(
         letter-spacing:-.035em;line-height:1.08;
       }
       .ss-account-header p {margin:0;color:var(--muted);line-height:1.5;}
-      .st-key-account_header [data-testid="stHorizontalBlock"] {
-        align-items:flex-start!important;
-      }
-      .st-key-account_header_logout {padding-top:.15rem;}
-      .st-key-account_header_logout .stButton > button {
-        min-height:44px!important;max-width:132px;margin-left:auto;
-      }
       .ss-account-card {
         border:1px solid var(--border);border-radius:var(--radius-panel);
         background:rgba(15,23,42,.72);padding:1.1rem;
@@ -80,39 +73,19 @@ st.markdown(
         padding:.62rem 0;border-top:1px solid rgba(148,163,184,.11);
         color:#cbd5e1;font-size:.88rem;line-height:1.4;
       }
-      @media (max-width:720px) {
-        .st-key-account_header [data-testid="stHorizontalBlock"] {
-          flex-wrap:wrap!important;row-gap:.65rem!important;
-        }
-        .st-key-account_header [data-testid="stColumn"] {
-          flex:1 1 100%!important;width:100%!important;min-width:0!important;
-        }
-        .st-key-account_header_logout {padding-top:0;}
-        .st-key-account_header_logout .stButton > button {
-          max-width:none;margin-left:0;
-        }
-      }
     </style>
     """,
     unsafe_allow_html=True,
 )
 
-with st.container(key="account_header"):
-    header_copy, header_action = st.columns([4.2, .8])
-    with header_copy:
-        st.html(
-            """
-            <header class="ss-account-header">
-              <h1>Account</h1>
-              <p>Manage your credit balance and review how purchases work.</p>
-            </header>
-            """
-        )
-    with header_action:
-        with st.container(key="account_header_logout"):
-            if st.button("Log out", use_container_width=True):
-                sign_out()
-                st.switch_page("pages/Home.py")
+st.html(
+    """
+    <header class="ss-account-header">
+      <h1>Account</h1>
+      <p>Manage your credit balance and review how purchases work.</p>
+    </header>
+    """
+)
 
 billing.render_payment_return()
 
@@ -142,7 +115,8 @@ with st.container(key="account_grid"):
             st.markdown(
                 '<div class="ss-account-kicker">Credits</div>'
                 "<h2>Add credits</h2>"
-                "<p>One-time purchase. No subscription and nothing to cancel.</p>",
+                '<p class="ss-account-purchase-copy">One-time purchase. '
+                "No subscription and nothing to cancel.</p>",
                 unsafe_allow_html=True,
             )
             billing.render_buy_credits(key="account", primary=True)
