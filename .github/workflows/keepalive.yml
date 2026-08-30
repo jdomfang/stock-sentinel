@@ -34,7 +34,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 12
     env:
-      APP_URL: https://stock-sentinel-xntrfnwvh3bga8igwmaynf.streamlit.app/
+      APP_URL: https://stock-sentinel-dev.streamlit.app/
 
     steps:
       - uses: actions/checkout@v4

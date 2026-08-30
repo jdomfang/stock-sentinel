@@ -18,17 +18,33 @@ the split exists at all. Everything else here is informational.
 | | dev (Streamlit Cloud, `develop`) | prod (Railway, `master`) |
 |---|---|---|
 | portal | Streamlit Community Cloud | Railway service, `portal/Dockerfile` |
-| domain | `*.streamlit.app` | `thestocksentinel.com` |
-| Stripe | sandbox keys | **live** keys, separate webhook + `whsec_` |
-| payments-api | the existing Railway service | a **second** service, live keys |
-| `APP_BASE_URL` | the Streamlit URL | `https://thestocksentinel.com` |
+| domain | `stock-sentinel-dev.streamlit.app` | `thestocksentinel.com`, `www.` |
+| Stripe | **shared with prod — live keys** | **live** keys, live webhook + `whsec_` |
+| payments-api | **shared with prod** | `stock-sentinel-production-2715` |
+| `APP_BASE_URL` | n/a — the shared instance uses prod's | `https://thestocksentinel.com` |
 | core-api, inference, worker, sync | shared | shared |
 | Supabase | shared | shared |
 
-payments-api is duplicated and nothing else is, for one reason: it holds a
-single `STRIPE_SECRET_KEY` and a single `APP_BASE_URL`, so one instance cannot
-be both sandbox-and-Streamlit and live-and-thestocksentinel. Every other service
-is stateless or environment-agnostic.
+### payments-api is NOT duplicated, and that costs something
+
+An earlier draft of this file described prod's payments-api as "a second
+service". It never was. There is **one** instance, and since 2026-08-30 it holds
+**live** Stripe keys. Dev points at the same host.
+
+So **the dev portal's "Buy 2 credits · $5" button creates a real charge on a real
+card**, then redirects to `thestocksentinel.com` because that instance's
+`APP_BASE_URL` is production's. There is no sandbox payment path anywhere.
+
+That is a deliberate choice (one fewer service to maintain), not an oversight,
+and the trade is named here so nobody rediscovers it by spending $5:
+
+* **Testing checkout costs real money.** $5 a time. Recoverable — it is your own
+  Stripe account — but it is a real charge, not a test one.
+* **A dev click can move money.** The button looks identical in both
+  environments. Treat dev checkout as production checkout, because it is.
+* Splitting it later means a second Railway service with `sk_test_`, its own
+  sandbox webhook, and `APP_BASE_URL` set to the Streamlit URL — same image,
+  three different variables. Nothing in the code needs to change.
 
 ## What sharing Supabase actually costs
 
@@ -48,17 +64,76 @@ discovered when it *is* the bug — but it has consequences worth naming:
   `purchases` table, so reconciling against the live Stripe account reports them
   as `GRANTED BUT NOT PAID`. Filter by era before trusting the output.
 
+## Keeping dev awake
+
+`.github/workflows/keepalive.yml` visits `stock-sentinel-dev.streamlit.app`
+every 6 hours — half Community Cloud's 12-hour sleep timeout, leaving room for
+GitHub's routinely-late schedules.
+
+It targets **dev on purpose**. Production is on Railway and never sleeps; this
+exists so a dev session does not start with the wake-up dance.
+
+* **It uses a headless browser, not curl.** Both the sleep state and the wake
+  action are JavaScript. The edge serves an identical React shell whether the
+  container runs or not, and `/_stcore/health` returns that shell rather than
+  `ok` — so an HTTP request cannot tell asleep from awake and does not reset the
+  timer. `stock-sentinel-dev.streamlit.app` answers `303` to curl for the same
+  reason: the auth handshake completes in JavaScript. That is not an outage.
+* **It only runs from `master`.** GitHub schedules fire on the default branch
+  only, so a change to this workflow on `develop` does nothing until merged.
+* **It costs nothing.** An anonymous visitor renders demo data — no X, no
+  Polygon, no credits.
+* GitHub disables scheduled workflows after 60 days with no commits to the repo.
+  You get an email; re-enable with one click.
+
 ## Where the domain takes effect
 
 Exactly three places, none of them in application code:
 
-1. **DNS** — CNAME `@` and `www` → the Railway target. GoDaddy cannot CNAME an
-   apex and has no ALIAS/flattening, so DNS moves to Cloudflare (free) while
-   registration stays at GoDaddy.
+1. **DNS** — CNAME `@` and `www` → the Railway targets. GoDaddy cannot CNAME an
+   apex and has no ALIAS/flattening, so DNS moved to Cloudflare (free) on
+   2026-08-30 while registration stays at GoDaddy. Nameservers are
+   `ignacio`/`ingrid.ns.cloudflare.com`.
 2. **Railway** — portal service → Networking → Custom Domain, for *both*
-   hostnames. TLS issues automatically once DNS resolves.
-3. **`APP_BASE_URL`** on production payments-api — it builds Stripe's
-   success/cancel redirects.
+   hostnames, target port **8080**. TLS issues automatically once DNS resolves.
+3. **`APP_BASE_URL`** on payments-api — it builds Stripe's success/cancel
+   redirects.
+
+### The two CNAME targets are different
+
+Railway issues a **distinct** target per custom domain. They are not
+interchangeable and neither equals the service's own `...up.railway.app` URL:
+
+```
+@     →  flacjo5o.up.railway.app
+www   →  w29sq23q.up.railway.app
+```
+
+Read the value off Railway's own dialog when adding a domain; do not copy the
+service URL from the Networking panel.
+
+### Cloudflare is DNS-only. Do not enable the proxy.
+
+Every record is grey-cloud (**DNS only**). The orange cloud is off deliberately:
+
+* **Streamlit is a websocket.** Every interaction rides one long-lived
+  connection. Cloudflare's free-tier proxy applies timeouts to those, and a
+  dropped socket is a dead-looking UI mid-session.
+* **Proxy + the wrong SSL mode is an infinite redirect loop**, and the symptom
+  is a site that appears down with nothing in any log.
+* **Railway already terminates TLS** and there is nothing to cache — every page
+  is live, per-user data.
+
+Cloudflare still flattens the apex CNAME in DNS-only mode, which is the *only*
+reason DNS is here at all. The dashboard nags to enable proxying; that is an
+advertisement, not a warning about this setup.
+
+### Certificates are Railway's, not Cloudflare's
+
+Two Let's Encrypt certificates, one per hostname, requested by Railway over ACME
+and renewed automatically around day 60 of 90. Nothing to diarise, nothing to
+install. Cloudflare's Universal SSL is not in play — it only applies to proxied
+records.
 
 It does **not** affect the Stripe webhook (an endpoint on payments-api at its
 own hostname), Supabase (password auth only; no `emailRedirectTo` anywhere), or
@@ -69,12 +144,24 @@ payments-api **restart**, not just a variable save.
 
 ## Portal deployment
 
-`portal/Dockerfile` and `portal/railway.toml`. Two settings live in the Railway
-UI and cannot be expressed in the file:
+`portal/Dockerfile` builds the image. **`portal/railway.toml` is documentation
+only — Railway does not read it.** Config-as-Code is closed to new services and
+is deprecated with a 2026-12-01 cutoff, so pointing the "Railway Config File"
+setting at it does nothing. Attempting to apply it produces a settings dialog
+that re-offers the same changes forever.
+
+Every setting therefore lives in the Railway UI, and `portal/railway.toml` is
+the record of what those settings should be:
 
 * **Root Directory** = blank (the repository root). The build needs `utils/`,
   `pages/`, `data/` and `assets/`, none of which are under `portal/`.
-* **Railway Config File** = `portal/railway.toml`.
+* **Builder** = Dockerfile, path `portal/Dockerfile`.
+* **Healthcheck** = `/_stcore/health`.
+
+If a deploy ever succeeds but nothing listens on `$PORT`, check whether Railway
+fell back to **Nixpacks** — it runs `python app.py`, which exits immediately at
+`st.switch_page`. The tell is `python@3.11.16`-style version labels in the build
+log where Dockerfile stages should be.
 
 `numReplicas = 1` is not a performance choice. A Streamlit session is a
 websocket bound to one process holding that user's `st.session_state`, including
