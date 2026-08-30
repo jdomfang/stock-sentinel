@@ -44,10 +44,13 @@
   --ss-radius-control: 10px;
   --ss-radius-panel: 16px;
   --ss-control-min-height: 44px;
-  --ss-content-max-width: 1180px;
+  /* One desktop canvas prevents the shell from resizing between routes. */
+  --ss-shell-max-width: 1100px;
+  --ss-shell-gutter: clamp(16px, 4vw, 28px);
+  --ss-content-max-width: var(--ss-shell-max-width);
   --ss-reading-max-width: 760px;
-  --ss-workspace-max-width: 1240px;
-  --ss-marketing-max-width: 1408px;
+  --ss-workspace-max-width: var(--ss-shell-max-width);
+  --ss-marketing-max-width: var(--ss-shell-max-width);
   --ss-font-display: clamp(2.65rem, 5vw, 4.3rem);
   --ss-font-page-title: clamp(2rem, 4vw, 2.85rem);
   --ss-space-control: 0.75rem;

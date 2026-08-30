@@ -110,7 +110,9 @@ def main() -> int:
         and '[data-testid="stFormSubmitButton"] button[kind="primary"]' in adapter
         and "var(--ss-color-action)" in adapter
         and "var(--ss-color-action-rest-end)" in home
-        and "var(--ss-color-action-rest-end)" in discovery
+        # Discovery now relies on the early shared adapter instead of
+        # restyling every primary button after its navigation has rendered.
+        and 'button[data-testid^="stBaseButton-primary"]' not in discovery
         and "rgba(14,116,144,.95)" not in home
         and "rgba(14,116,144,.95)" not in discovery,
     )

@@ -82,9 +82,18 @@ def apply_theme() -> None:
         }
 
         div[data-testid="stMainBlockContainer"] {
-          max-width: 1180px;
+          max-width: var(--ss-shell-max-width);
           margin: 0 auto;
-          padding: 0 clamp(16px, 3vw, 32px) 2rem;
+          padding: 0 var(--ss-shell-gutter) 2rem;
+        }
+
+        /* Establish the vertical shell before page-local styles arrive. */
+        div[data-testid="stMainBlockContainer"] > div:first-child {
+          margin-top: 0 !important;
+          padding-top: 0 !important;
+        }
+        section[data-testid="stMain"] > div {
+          padding-top: 0 !important;
         }
 
         @media (max-width: 640px) {
@@ -95,10 +104,12 @@ def apply_theme() -> None:
         }
 
         .clawd-app-wrapper {
-          /* Keep wrapper aligned with global main container */
-          max-width: 1100px;
-          margin: 0 auto;
-          padding: 0 1rem;
+          /* The shared main container owns width and gutters. */
+          width: 100%;
+          max-width: none;
+          margin: 0;
+          padding: 0;
+          box-sizing: border-box;
         }
 
         footer { visibility: hidden; }

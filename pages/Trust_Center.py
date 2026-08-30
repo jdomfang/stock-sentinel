@@ -26,7 +26,6 @@ render_top_nav()
 st.markdown(
     """
     <style>
-      div[data-testid="stMainBlockContainer"] {max-width:1100px;margin:0 auto;padding-top:.25rem;}
       .ss-trust-header {max-width:760px;margin:0 0 1.2rem;}
       .ss-trust-header h1 {margin:0 0 .35rem;font-size:clamp(2rem,4vw,2.7rem);letter-spacing:-.035em;}
       .ss-trust-header p {margin:0;color:var(--muted);line-height:1.55;}

@@ -17,7 +17,7 @@ _sys.path.insert(0, str(_Path(__file__).resolve().parents[1]))
 
 from utils import billing
 from utils.auth import flush_pending_rt_save, get_user, sign_out
-from utils.guard import require_active_account
+from utils.guard import require_active_account, require_login
 from utils.navigation import render_sidebar_navigation, render_top_nav
 from utils.ui import apply_theme, render_footer
 
@@ -31,8 +31,9 @@ st.set_page_config(
 
 apply_theme()
 render_sidebar_navigation()
-render_top_nav(active="account")
 flush_pending_rt_save()
+require_login(after_auth_page="Account")
+render_top_nav(active="account")
 profile = require_active_account(after_auth_page="Account")
 credits = int((profile or {}).get("credits") or 0)
 
@@ -46,9 +47,6 @@ credit_word = "credit" if credits == 1 else "credits"
 st.markdown(
     """
     <style>
-      div[data-testid="stMainBlockContainer"] {
-        max-width:1100px;margin:0 auto;padding-top:.25rem;
-      }
       .ss-account-header {margin:0 0 1.1rem;max-width:720px;}
       .ss-account-header h1 {
         margin:0 0 .35rem;font-size:clamp(2rem,4vw,2.7rem);

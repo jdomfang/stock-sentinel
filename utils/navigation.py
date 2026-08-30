@@ -29,21 +29,20 @@ def _nav_link(column, page: str, label: str, key: str,
               active: str, surface: str) -> None:
     with column:
         with st.container(key=f"nav_{surface}_{key}"):
-            if active == key:
-                # Streamlit's page_link does not expose aria-current. Render
-                # only the already-current destination as a normal relative
-                # anchor so keyboard and screen-reader users receive the same
-                # current-page state as sighted users. Non-current links keep
-                # Streamlit's smooth in-app navigation.
-                route = "./" + page.rsplit("/", 1)[-1].removesuffix(".py")
-                st.html(
-                    f'<a class="ss-nav-active-link" '
-                    f'href="{html.escape(route, quote=True)}" '
-                    f'aria-current="page">{html.escape(label)}</a>'
-                    '<span class="ss-nav-current" aria-hidden="true"></span>',
-                )
-            else:
-                st.page_link(page, label=label, use_container_width=True)
+            # Keep the same Streamlit PageLink component mounted on every
+            # route. Swapping it for a raw anchor on the active route caused
+            # the desktop navigation to visibly reflow between pages.
+            st.page_link(page, label=label, use_container_width=True)
+            current_attr = ' aria-current="page"' if active == key else ""
+            current_text = (
+                f"Current page: {html.escape(label)}" if active == key else ""
+            )
+            # This zero-layout semantic slot exists for every destination so
+            # the active route never changes the nav cell's child geometry.
+            st.html(
+                f'<span class="ss-nav-semantic"{current_attr}>'
+                f'<span class="ss-sr-only">{current_text}</span></span>',
+            )
 
 
 def _brand(column, surface: str) -> None:
@@ -124,6 +123,26 @@ def render_top_nav(
     is_admin = bool(logged_in and admin_email and email.lower() == admin_email)
     show_credits = bool(logged_in and credits is not None)
 
+    active_css = ""
+    if active:
+        desktop = f".st-key-nav_desktop_{active}"
+        mobile = f".st-key-nav_mobile_{active}"
+        active_css = f"""
+        {desktop} [data-testid="stPageLink"] a,
+        {mobile} [data-testid="stPageLink"] a {{
+          color:rgba(248,250,252,.98)!important;
+        }}
+        {desktop}::after,
+        {mobile}::after {{
+          content:"";position:absolute;left:18%;right:18%;bottom:-9px;
+          height:2px;border-radius:999px;background:var(--accent);
+          pointer-events:none;
+        }}
+        @media (max-width:760px) {{
+          {mobile}::after {{bottom:-5px;}}
+        }}
+        """
+
     st.markdown(
         """<style>
         .ss-sr-only {
@@ -142,9 +161,18 @@ def render_top_nav(
         .st-key-ss_nav_mobile { display:none; }
         [class*="st-key-nav_desktop_"],
         [class*="st-key-nav_mobile_"] { position:relative; }
+        [class*="st-key-nav_desktop_"] > [data-testid="stVerticalBlock"],
+        [class*="st-key-nav_mobile_"] > [data-testid="stVerticalBlock"] {
+          gap:0!important;
+        }
+        [class*="st-key-nav_desktop_"] [data-testid="stElementContainer"]:has(.ss-nav-semantic),
+        [class*="st-key-nav_mobile_"] [data-testid="stElementContainer"]:has(.ss-nav-semantic) {
+          position:absolute!important;width:1px!important;height:1px!important;
+          min-height:0!important;margin:0!important;padding:0!important;
+          overflow:hidden!important;
+        }
         [class*="st-key-nav_desktop_"] [data-testid="stPageLink"] a,
-        [class*="st-key-nav_mobile_"] [data-testid="stPageLink"] a,
-        .ss-nav-active-link {
+        [class*="st-key-nav_mobile_"] [data-testid="stPageLink"] a {
           min-height:44px;justify-content:center;border-radius:8px;
           padding:.45rem .55rem;color:rgba(203,213,225,.88)!important;
           font-size:.86rem;font-weight:680;text-decoration:none!important;
@@ -159,18 +187,13 @@ def render_top_nav(
           background:transparent!important;
         }
         [class*="st-key-nav_desktop_"] [data-testid="stPageLink"] a:hover,
-        [class*="st-key-nav_mobile_"] [data-testid="stPageLink"] a:hover,
-        .ss-nav-active-link:hover {
+        [class*="st-key-nav_mobile_"] [data-testid="stPageLink"] a:hover {
           background:rgba(56,189,248,.07)!important;
           color:rgba(248,250,252,.98)!important;
         }
         [class*="st-key-nav_desktop_admin"] [data-testid="stPageLink"] a,
         [class*="st-key-nav_mobile_admin"] [data-testid="stPageLink"] a {
           border:1px solid rgba(148,163,184,.24)!important;
-        }
-        .ss-nav-current {
-          position:absolute;left:18%;right:18%;bottom:-9px;height:2px;
-          border-radius:999px;background:var(--accent);
         }
         .ss-credit-badge {
           display:inline-flex;min-height:40px;align-items:center;
@@ -235,16 +258,14 @@ def render_top_nav(
             margin-top:.2rem;padding-top:.2rem;
             border-top:1px solid rgba(148,163,184,.12);
           }
-          [class*="st-key-nav_mobile_"] [data-testid="stPageLink"] a,
-          .ss-nav-active-link {
+          [class*="st-key-nav_mobile_"] [data-testid="stPageLink"] a {
             padding-left:.2rem;padding-right:.2rem;font-size:.79rem;
           }
           [class*="st-key-nav_mobile_brand"] [data-testid="stPageLink"] a {
             font-size:.76rem;
           }
-          .ss-nav-current {bottom:-5px;}
         }
-        </style>""",
+        </style>""" + f"<style>{active_css}</style>",
         unsafe_allow_html=True,
     )
 

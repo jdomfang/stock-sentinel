@@ -291,6 +291,9 @@ def test_every_page_loads_theme_before_visible_navigation() -> None:
         "pages/Analysis_Result.py", "pages/Account.py",
     ):
         source = read(relative)
+        assert source.index("require_login(") < source.index(
+            "render_top_nav("
+        ), relative
         assert source.index("render_top_nav(") < source.index(
             "require_active_account("
         ), relative

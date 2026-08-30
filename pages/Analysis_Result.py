@@ -15,7 +15,7 @@ import streamlit as st
 
 _sys.path.insert(0, str(_Path(__file__).resolve().parents[1]))
 
-from utils.guard import require_active_account
+from utils.guard import require_active_account, require_login
 from utils.navigation import render_sidebar_navigation, render_top_nav
 from utils.ui import (
     apply_theme,
@@ -40,16 +40,13 @@ render_sidebar_navigation()
 from utils.auth import flush_pending_rt_save
 
 flush_pending_rt_save()
+require_login(after_auth_page="Analysis_Result")
 render_top_nav(active="deep_analyze")
 profile = require_active_account(after_auth_page="Analysis_Result")
 
 st.markdown(
     """
     <style>
-      div[data-testid="stMainBlockContainer"] {
-        max-width:1240px;margin:0 auto;
-        padding-left:clamp(16px,3vw,32px);padding-right:clamp(16px,3vw,32px);
-      }
       .ss-result-back {margin:.15rem 0 .85rem;}
       .ss-result-header {margin:0 0 .8rem;max-width:900px;}
       .ss-result-header .eyebrow {

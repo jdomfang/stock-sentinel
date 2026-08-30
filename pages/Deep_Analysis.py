@@ -56,25 +56,14 @@ from utils.auth import flush_pending_rt_save
 apply_theme()
 render_sidebar_navigation()
 flush_pending_rt_save()
-from utils.guard import require_active_account
+from utils.guard import require_active_account, require_login
+require_login(after_auth_page="Deep_Analysis")
 render_top_nav(active="deep_analyze")
 _profile = require_active_account(after_auth_page="Deep_Analysis")
 
 st.markdown(
     """
     <style>
-    div[data-testid="stMainBlockContainer"] {
-      max-width: 1100px; margin: 0 auto;
-      padding-left: clamp(16px, 4vw, 28px);
-      padding-right: clamp(16px, 4vw, 28px);
-      padding-top: 0.25rem;
-    }
-    div[data-testid="stMainBlockContainer"] > div:first-child,
-    div[data-testid="stVerticalBlock"] > div:first-child {
-      margin-top: 0 !important; padding-top: 0 !important;
-    }
-    section[data-testid="stMain"] > div { padding-top: 0 !important; }
-
     .st-key-deep_full_result_link [data-testid="stExpander"] {
       border:1px solid rgba(56,189,248,.36)!important;
       border-radius:var(--radius-control)!important;

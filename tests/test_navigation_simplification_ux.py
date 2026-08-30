@@ -93,15 +93,26 @@ def test_account_owns_logout_and_alignment_contracts() -> None:
 
 def test_navigation_controls_share_alignment_and_touch_targets() -> None:
     nav = _read("utils/navigation.py")
+    tokens = _read("assets/styles/stock-sentinel-tokens.css")
+    ui = _read("utils/ui.py")
+    home = _read("pages/Home.py")
 
     assert 'align-items:center!important;gap:.6rem!important;' in nav
     assert 'min-height:44px;justify-content:center' in nav
-    assert '.ss-nav-current {' in nav
-    assert 'left:18%;right:18%;bottom:-9px;height:2px;' in nav
+    assert 'class="ss-nav-semantic"' in nav
+    assert 'left:18%;right:18%;bottom:-9px;' in nav
     assert 'brand_col, account_col = st.columns([2.3, .9])' in nav
     assert 'flex-wrap:nowrap!important' in nav
     assert 'aria-current="page"' in nav
-    assert 'class="ss-nav-active-link"' in nav
+    assert 'class="ss-nav-semantic"' in nav
+    assert nav.count("st.page_link(page, label=label") == 1
+    assert nav.count('st.html(') >= 1
+    assert 'f".st-key-nav_desktop_{active}"' in nav
+    assert 'f".st-key-nav_mobile_{active}"' in nav
+    assert "ss-nav-active-link" not in nav
+    assert "--ss-shell-max-width: 1100px" in tokens
+    assert "max-width: var(--ss-shell-max-width)" in ui
+    assert "max-width: var(--ss-marketing-max-width)" not in home
 
 
 def test_authenticated_marketing_actions_do_not_restart_signup() -> None:

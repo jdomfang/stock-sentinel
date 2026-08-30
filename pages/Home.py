@@ -275,22 +275,6 @@ st.markdown(
       -webkit-text-fill-color: rgba(56,189,248,.95) !important;
     }
 
-    /* Public story uses the approved broad marketing canvas. Signed-in cards
-       still establish their own readable widths inside it. */
-    div[data-testid="stMainBlockContainer"] {
-      max-width: var(--ss-marketing-max-width);
-      margin: 0 auto;
-      padding-left: clamp(16px, 3vw, 32px);
-      padding-right: clamp(16px, 3vw, 32px);
-      padding-top: 0.25rem;
-    }
-
-    .discovery-wrapper {
-      max-width: var(--ss-marketing-max-width);
-      margin: 0 auto;
-      padding: 0;
-    }
-
     /* Section titles */
     .section-title {
       font-size: 1.35rem;
@@ -612,7 +596,7 @@ st.markdown(
     .st-key-home_public_hero [data-testid="stHorizontalBlock"]:has(
       .st-key-home_public_story
     ):has(.st-key-home_public_preview) {
-      align-items:center!important;gap:clamp(24px,5vw,64px)!important;
+      align-items:center!important;gap:clamp(24px,3vw,40px)!important;
       flex-wrap:nowrap!important;
     }
     .st-key-home_public_hero [data-testid="stHorizontalBlock"]:has(
@@ -623,17 +607,17 @@ st.markdown(
     .st-key-home_public_hero [data-testid="stHorizontalBlock"]:has(
       .st-key-home_public_story
     ):has(.st-key-home_public_preview) > [data-testid="stColumn"]:first-child {
-      flex:1.04 1 0!important;
+      flex:1 1 0!important;
     }
     .st-key-home_public_hero [data-testid="stHorizontalBlock"]:has(
       .st-key-home_public_story
     ):has(.st-key-home_public_preview) > [data-testid="stColumn"]:last-child {
-      flex:.96 1 0!important;
+      flex:1 1 0!important;
     }
     .ss-public-hero-copy {padding:clamp(1rem,3vw,2.2rem) 0;}
     .ss-public-hero-copy .ss-proof-strip {margin-bottom:1.15rem;}
     .ss-public-hero-copy h1 {
-      margin:0;color:var(--text);font-size:clamp(2.75rem,4.2vw,3.8rem);
+      margin:0;color:var(--text);font-size:clamp(2.65rem,4vw,3.35rem);
       font-weight:850;letter-spacing:-.045em;line-height:1.02;
     }
     .ss-public-hero-copy > p {
