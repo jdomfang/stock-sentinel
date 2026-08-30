@@ -14,7 +14,8 @@ non-zero on failure; this collects them. Exit code is what CI keys on.
     python3 tests/run_all.py            # everything
     python3 tests/run_all.py --no-db    # skip suites that need Postgres
 
-The five SQL suites need the throwaway database:
+The ten SQL suites need the throwaway database (the list is NEEDS_DB below --
+count it there, not here):
     docker compose -f docker-compose.test.yml up -d
 """
 

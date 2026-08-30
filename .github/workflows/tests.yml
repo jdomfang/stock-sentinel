@@ -1,4 +1,10 @@
-# Run the suite on every push and pull request.
+# Run the suite on every push to a long-lived branch, and on every pull request.
+#
+# `develop` is listed as well as `master` because Streamlit Community Cloud
+# redeploys the preview on push. Without it a broken commit reaches the preview
+# before anything has been run against it, and the first signal is a broken page
+# rather than a red check. Production was never at risk -- the PR gate covers
+# that -- but finding out from CI is cheaper than finding out from the app.
 #
 # Until now .github/workflows/ held one keepalive ping and nothing else, so
 # nothing verified anything unless a human remembered to. This repo moves money:
@@ -12,7 +18,7 @@ name: tests
 
 on:
   push:
-    branches: [master]
+    branches: [master, develop]
   pull_request:
 
 jobs:
