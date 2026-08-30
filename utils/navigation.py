@@ -321,20 +321,41 @@ def render_top_nav(
           background:#091326!important;
           box-shadow:0 18px 48px rgba(0,0,0,.42)!important;
         }
+        [data-testid="stPopoverBody"]:has(.ss-session-menu) > div,
+        [data-testid="stPopoverBody"]:has(.ss-session-menu)
+          [data-testid="stVerticalBlockBorderWrapper"],
+        [data-testid="stPopoverBody"]:has(.ss-session-menu)
+          [data-testid="stVerticalBlock"],
+        [data-testid="stPopoverBody"]:has(.ss-session-menu)
+          [data-testid="stElementContainer"],
+        [data-testid="stPopoverBody"]:has(.ss-session-menu)
+          [data-testid="stHtml"] {
+          background:transparent!important;background-color:transparent!important;
+        }
         [data-testid="stPopoverBody"]:has(.ss-session-menu) [data-testid="stVerticalBlock"] {
           gap:.65rem!important;
         }
         [data-testid="stPopoverBody"]:has(.ss-session-menu) button {
           min-height:44px!important;width:100%!important;
           display:flex!important;align-items:center!important;justify-content:center!important;
+          border-color:rgba(56,189,248,.38)!important;
+          background:rgba(15,23,42,.94)!important;color:#f8fafc!important;
+        }
+        [data-testid="stPopoverBody"]:has(.ss-session-menu) button
+          :is([data-testid="stMarkdownContainer"], p, span) {
+          color:#f8fafc!important;-webkit-text-fill-color:#f8fafc!important;
+          margin:0!important;text-align:center!important;
         }
         .ss-session-menu__label {
-          color:#8192aa!important;font-size:.68rem;font-weight:800;
+          color:#a8b6c9!important;-webkit-text-fill-color:#a8b6c9!important;
+          font-size:.72rem;font-weight:800;line-height:1.2;opacity:1!important;
           letter-spacing:.07em;text-transform:uppercase;
         }
         .ss-session-menu__email {
-          margin-top:.18rem;color:#e2e8f0!important;font-size:.84rem;
-          font-weight:680;overflow-wrap:anywhere;
+          margin-top:.22rem;color:#f8fafc!important;
+          -webkit-text-fill-color:#f8fafc!important;
+          font-size:.88rem;font-weight:700;line-height:1.35;
+          opacity:1!important;overflow-wrap:anywhere;
         }
         [class*="st-key-nav_desktop_marketing"] [data-testid="stHorizontalBlock"] {
           gap:.2rem!important;

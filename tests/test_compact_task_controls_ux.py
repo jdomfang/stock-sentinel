@@ -104,6 +104,11 @@ def test_account_purchase_and_global_session_controls_are_contained():
     assert 'width:44px!important' in nav
     assert 'height:44px!important' in nav
     assert '[data-testid="stPopoverBody"]:has(.ss-session-menu)' in nav
+    assert '[data-testid="stVerticalBlockBorderWrapper"]' in nav
+    assert 'background-color:transparent!important' in nav
+    assert 'color:#a8b6c9!important' in nav
+    assert 'color:#f8fafc!important' in nav
+    assert '-webkit-text-fill-color:#f8fafc!important' in nav
     assert '[data-testid="stPopoverButton"]' in nav
     assert '[aria-expanded="true"]' in nav
     assert 'class="ss-account-purchase-copy"' in account
