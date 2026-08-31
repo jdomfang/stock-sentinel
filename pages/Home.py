@@ -133,7 +133,7 @@ def _deep_from_bundle(bundle: dict) -> tuple[str, str, dict]:
     return (
         str(analysis.get("ticker") or "").strip().upper(),
         str(analysis.get("sector") or "").strip(),
-        analysis.get("analysis_results") or {},
+        analysis.get("public_card") or {},
     )
 
 
@@ -176,13 +176,40 @@ def _select_demo_rows(
     return [records[index] for index in sorted(chosen)[:limit]]
 
 
-def _marketing_preview_html(
-    rows: list[dict], ticker: str, summary: dict, sector: str,
+def _legacy_public_card(
+    results: dict, ticker: str, sector: str,
+) -> dict:
+    """Adapt checked-in v1 fallback files without inventing rich metrics."""
+    summary = generate_ai_summary(results) if results else {}
+    rationale = [
+        str(reason).strip()
+        for reason in (summary.get("rationale") or [])
+        if str(reason).strip()
+    ]
+    return {
+        "ticker": ticker,
+        "sector": sector,
+        "verdict": summary.get("recommendation") or "Watch",
+        "confidence": summary.get("confidence") or "Low",
+        "reason": (
+            rationale[0] if rationale else
+            "Evidence is mixed; inspect the supporting signals before acting."
+        ),
+        "would_change": [],
+        "tiles": [],
+        "evidence": {},
+        "movement": {},
+    }
+
+
+def _decision_workspace_html(
+    rows: list[dict], ticker: str, card: dict, sector: str,
 ) -> str:
-    """Render the v4 product preview from saved, nonpaying demo data."""
+    """Render a rich, unified preview from the canonical public card."""
     preview_rows = []
-    for row in rows[:3]:
+    for row in rows[:5]:
         raw_ticker = str(row.get("Ticker") or "—").strip().upper()
+        company = str(row.get("Company Name") or "").strip()
         sentiment = str(
             row.get("Overall Sentiment") or "Neutral"
         ).strip().lower()
@@ -195,54 +222,101 @@ def _marketing_preview_html(
             if selected else ""
         )
         preview_rows.append(
-            f'<tr class="ss-hero-preview-row{selected}">'
-            f'<th scope="row">{selected_context}{html.escape(raw_ticker)}</th>'
+            f'<tr class="ss-decision-row{selected}">'
+            f'<th scope="row"><span class="ss-decision-symbol">'
+            f'{selected_context}{html.escape(raw_ticker)}</span>'
+            f'<span class="ss-decision-company">{html.escape(company)}</span></th>'
             f'<td><span class="ss-sentiment {sentiment}">'
             f'{sentiment.title()}</span></td>'
-            f'<td class="ss-hero-preview-count">'
+            f'<td class="ss-decision-count">'
             f'{html.escape(social_posts)}</td></tr>'
         )
 
-    recommendation = html.escape(
-        str(summary.get("recommendation") or "Watch")
-    )
-    confidence = html.escape(str(summary.get("confidence") or "Moderate"))
-    reasons = [
-        str(reason).strip()
-        for reason in (summary.get("rationale") or [])
-        if str(reason).strip()
-    ]
-    reason = html.escape(
-        reasons[0] if reasons else
-        "Evidence is mixed; inspect the supporting signals before acting."
-    )
+    recommendation = html.escape(str(card.get("verdict") or "Watch"))
+    confidence = html.escape(str(card.get("confidence") or "Low"))
+    reason = html.escape(str(card.get("reason") or ""))
+    would_change = card.get("would_change") or []
+    change = html.escape(str(would_change[0])) if would_change else ""
     result_ticker = html.escape(ticker or "NVDA")
     result_class = recommendation.lower()
     if result_class not in {"buy", "watch", "avoid"}:
         result_class = "watch"
+
+    evidence = card.get("evidence") or {}
+    movement = card.get("movement") or {}
+    independent = evidence.get("independent_voices")
+    mentions = evidence.get("mentions")
+    if independent is not None:
+        evidence_value = f"{int(independent)} independent clusters"
+    elif mentions is not None:
+        evidence_value = f"{int(mentions)} social posts"
+    else:
+        evidence_value = ""
+    horizon = movement.get("horizon_days")
+    price_points = evidence.get("price_points")
+    range_tile = next(
+        (
+            tile for tile in (card.get("tiles") or [])
+            if isinstance(tile, dict) and tile.get("key") == "range_30d"
+        ),
+        {},
+    )
+    metrics = []
+    if evidence_value:
+        metrics.append(("Evidence", evidence_value))
+    if horizon is not None:
+        metrics.append(("Signal horizon", f"{int(horizon)} trading days"))
+    if price_points is not None:
+        metrics.append(("Price history", f"{int(price_points)} daily closes"))
+    if range_tile.get("value"):
+        metrics.append(("30D risk range", str(range_tile["value"])))
+    metric_html = "".join(
+        '<div class="ss-decision-metric"><span>'
+        f'{html.escape(label)}</span><strong>{html.escape(value)}</strong></div>'
+        for label, value in metrics
+    )
+    change_html = (
+        '<div class="ss-decision-change"><span>What would change this</span>'
+        f'<strong>{change}</strong></div>' if change else ""
+    )
     return f"""
-      <section class="ss-hero-preview" aria-label="Illustrative product preview">
-        <div class="ss-hero-preview-kicker">Product preview · illustrative</div>
-        <div class="ss-hero-preview-head">
-          <h2>Market Scan</h2>
-          <span>{html.escape(str(sector or 'Technology').title())} · illustrative</span>
-        </div>
-        <table class="ss-hero-preview-table">
-          <caption>Illustrative Market Scan results. Social posts are public
-          posts referencing each ticker in the saved scan.</caption>
-          <colgroup><col class="stock"><col class="sentiment"><col class="posts"></colgroup>
-          <thead><tr><th scope="col">Stock</th><th scope="col">Sentiment</th>
-          <th scope="col">Social posts</th></tr></thead>
-          <tbody>{''.join(preview_rows)}</tbody>
-        </table>
-        <div class="ss-hero-result">
-          <div class="ss-hero-preview-kicker">After Deep Analyze</div>
-          <div class="ss-hero-result-line">
-            <strong>{result_ticker}</strong>
-            <span class="{result_class}">{recommendation}</span>
-            <span>{confidence} confidence</span>
+      <section class="ss-decision" aria-label="Illustrative decision workspace">
+        <header class="ss-decision-head">
+          <div>
+            <div class="ss-decision-kicker">Product preview · illustrative</div>
+            <h2>Decision Workspace</h2>
           </div>
-          <p>{reason}</p>
+          <div class="ss-decision-meta">
+            <strong>{html.escape(str(sector or 'Technology').title())}</strong>
+            <span>{len(rows)} shortlisted stocks</span>
+            <small>Saved illustrative example · not live market data</small>
+          </div>
+        </header>
+        <div class="ss-decision-grid">
+          <div class="ss-decision-scan">
+            <div class="ss-decision-section-label">Market Scan</div>
+            <table class="ss-decision-table">
+              <caption>Illustrative saved Market Scan results.</caption>
+              <colgroup><col class="stock"><col class="sentiment"><col class="posts"></colgroup>
+              <thead><tr><th scope="col">Stock</th><th scope="col">Sentiment</th>
+              <th scope="col">Social posts</th></tr></thead>
+              <tbody>{''.join(preview_rows)}</tbody>
+            </table>
+          </div>
+          <aside class="ss-decision-analysis">
+            <div class="ss-decision-section-label">Deep Analyze</div>
+            <div class="ss-decision-verdict">
+              <div><strong>{result_ticker}</strong><span class="{result_class}">{recommendation}</span></div>
+              <span>{confidence} confidence</span>
+            </div>
+            <p class="ss-decision-reason">{reason}</p>
+            <div class="ss-decision-metrics">{metric_html}</div>
+            {change_html}
+            <div class="ss-decision-context">
+              <span>Market context</span>
+              <strong>Public social discussion + market-price history</strong>
+            </div>
+          </aside>
         </div>
       </section>
     """
@@ -753,6 +827,144 @@ st.markdown(
       .ss-workflow-step + .ss-workflow-step {border-left:0;border-top:1px solid rgba(148,163,184,.14);}
       .ss-trust-strip span {padding:5px 0;text-align:left;}
     }
+
+    /* Schema-v2 landing: compact introduction + one unified decision surface. */
+    .st-key-home_public_intro [data-testid="stHorizontalBlock"] {
+      align-items:center!important;gap:clamp(28px,5vw,72px)!important;
+    }
+    .ss-public-value {padding:clamp(1rem,3vw,2.1rem) 0;}
+    .ss-public-value h1 {
+      margin:0;color:var(--text);font-size:clamp(2.65rem,4vw,3.45rem);
+      font-weight:850;letter-spacing:-.045em;line-height:1.02;
+    }
+    .ss-public-value p {
+      max-width:610px;margin:1rem 0 0;color:var(--muted);
+      font-size:clamp(1rem,1.5vw,1.14rem);line-height:1.55;
+    }
+    .st-key-home_intro_action_shell {
+      padding:20px;border:1px solid rgba(56,189,248,.2);border-radius:16px;
+      background:linear-gradient(145deg,rgba(8,20,39,.8),rgba(8,15,30,.68));
+    }
+    .ss-public-action {padding:0;}
+    .ss-public-action .ss-decision-kicker {margin-bottom:.45rem;}
+    .ss-public-action h2 {margin:0;font-size:1.2rem;}
+    .ss-public-action p {margin:.4rem 0 .9rem;color:#94a3b8;font-size:.84rem;}
+    .ss-public-action ul {margin:.85rem 0 0;padding:0;list-style:none;}
+    .ss-public-action li {
+      display:grid;grid-template-columns:100px 1fr;gap:10px;padding:8px 0;
+      border-top:1px solid rgba(148,163,184,.12);font-size:.76rem;
+    }
+    .ss-public-action li span {color:#8192aa;}
+    .ss-public-action li strong {color:#cbd5e1;font-weight:650;}
+    .st-key-home_intro_action .stButton > button,
+    .st-key-home_intro_action [data-testid="stPageLink"] a {
+      min-height:48px!important;width:100%;display:flex;align-items:center;
+      justify-content:center;border-radius:10px;font-weight:750;
+    }
+    .ss-decision {
+      margin:1.35rem 0 0;border:1px solid rgba(56,189,248,.26);
+      border-radius:18px;background:linear-gradient(145deg,rgba(8,20,39,.98),rgba(8,15,30,.96));
+      box-shadow:var(--ss-shadow-focus-panel);overflow:hidden;
+    }
+    .ss-decision-head {
+      display:flex;align-items:flex-end;justify-content:space-between;gap:24px;
+      padding:18px 20px;border-bottom:1px solid rgba(148,163,184,.15);
+    }
+    .ss-decision-kicker {
+      color:var(--accent);font-size:.67rem;font-weight:780;
+      letter-spacing:.1em;text-transform:uppercase;
+    }
+    .ss-decision-head h2 {margin:.38rem 0 0;font-size:1.45rem;}
+    .ss-decision-meta {text-align:right;}
+    .ss-decision-meta strong,.ss-decision-meta span,.ss-decision-meta small {
+      display:block;
+    }
+    .ss-decision-meta strong {color:#dbe3ee;font-size:.8rem;}
+    .ss-decision-meta span {color:#94a3b8;font-size:.74rem;}
+    .ss-decision-meta small {margin-top:2px;color:#64748b;font-size:.68rem;}
+    .ss-decision-grid {display:grid;grid-template-columns:42% 58%;}
+    .ss-decision-scan,.ss-decision-analysis {padding:18px 20px 20px;min-width:0;}
+    .ss-decision-analysis {border-left:1px solid rgba(148,163,184,.15);}
+    .ss-decision-section-label {
+      margin-bottom:10px;color:#8192aa;font-size:.66rem;font-weight:780;
+      letter-spacing:.09em;text-transform:uppercase;
+    }
+    .ss-decision-table {
+      width:100%;table-layout:fixed;border-collapse:separate;border-spacing:0;
+      border:1px solid rgba(148,163,184,.14);border-radius:10px;overflow:hidden;
+    }
+    .ss-decision-table caption {
+      position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;
+      clip:rect(0,0,0,0);white-space:nowrap;border:0;
+    }
+    .ss-decision-table col.stock {width:47%;}
+    .ss-decision-table col.sentiment {width:30%;}
+    .ss-decision-table col.posts {width:23%;}
+    .ss-decision-table th,.ss-decision-table td {
+      padding:9px 11px;text-align:left;vertical-align:middle;
+      border-bottom:1px solid rgba(148,163,184,.12);
+    }
+    .ss-decision-table thead th {color:#8192aa;font-size:.66rem;font-weight:650;}
+    .ss-decision-table tbody th {font-size:.78rem;}
+    .ss-decision-table tbody tr:last-child th,
+    .ss-decision-table tbody tr:last-child td {border-bottom:0;}
+    .ss-decision-table .selected th,.ss-decision-table .selected td {
+      background:rgba(56,189,248,.06);
+    }
+    .ss-decision-table .selected th {box-shadow:inset 2px 0 0 var(--accent);}
+    .ss-decision-table th:last-child,.ss-decision-table td:last-child {text-align:right;}
+    .ss-decision-symbol,.ss-decision-company {display:block;min-width:0;}
+    .ss-decision-symbol {color:#e2e8f0;font-weight:800;}
+    .ss-decision-company {
+      margin-top:2px;color:#718198;font-size:.65rem;font-weight:500;
+      overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
+    }
+    .ss-decision-count {color:#cbd5e1;font-size:.76rem;font-variant-numeric:tabular-nums;}
+    .ss-decision-verdict {display:flex;align-items:baseline;justify-content:space-between;gap:18px;}
+    .ss-decision-verdict > div {display:flex;align-items:baseline;gap:12px;}
+    .ss-decision-verdict strong {font-size:1.55rem;}
+    .ss-decision-verdict .buy {color:var(--ss-color-recommendation-buy);font-weight:820;}
+    .ss-decision-verdict .watch {color:var(--ss-color-recommendation-watch);font-weight:820;}
+    .ss-decision-verdict .avoid {color:var(--ss-color-recommendation-avoid);font-weight:820;}
+    .ss-decision-verdict > span {color:#cbd5e1;font-size:.78rem;}
+    .ss-decision-reason {margin:.55rem 0 1rem;color:#a8b5c7;font-size:.84rem;line-height:1.45;}
+    .ss-decision-metrics {
+      display:grid;grid-template-columns:repeat(2,minmax(0,1fr));
+      border-top:1px solid rgba(148,163,184,.14);
+      border-bottom:1px solid rgba(148,163,184,.14);
+    }
+    .ss-decision-metric {padding:11px 12px 11px 0;min-width:0;}
+    .ss-decision-metric:nth-child(even) {padding-left:14px;border-left:1px solid rgba(148,163,184,.12);}
+    .ss-decision-metric:nth-child(n+3) {border-top:1px solid rgba(148,163,184,.12);}
+    .ss-decision-metric span,.ss-decision-change span,.ss-decision-context span {
+      display:block;color:#718198;font-size:.62rem;font-weight:760;
+      letter-spacing:.065em;text-transform:uppercase;
+    }
+    .ss-decision-metric strong {
+      display:block;margin-top:4px;color:#dbe3ee;font-size:.78rem;
+      overflow-wrap:anywhere;
+    }
+    .ss-decision-change,.ss-decision-context {padding-top:11px;}
+    .ss-decision-change strong,.ss-decision-context strong {
+      display:block;margin-top:4px;color:#a8b5c7;font-size:.75rem;font-weight:600;
+    }
+    @media (max-width:900px) {
+      .st-key-home_public_intro [data-testid="stHorizontalBlock"] {flex-wrap:wrap!important;}
+      .st-key-home_public_intro [data-testid="stColumn"] {
+        flex:1 1 100%!important;min-width:100%!important;width:100%!important;
+      }
+      .ss-decision-grid {grid-template-columns:1fr;}
+      .ss-decision-analysis {border-left:0;border-top:1px solid rgba(148,163,184,.15);}
+    }
+    @media (max-width:600px) {
+      .ss-decision-head {align-items:flex-start;}
+      .ss-decision-meta {text-align:left;}
+      .ss-decision-table .ss-decision-company {display:none;}
+      .ss-decision-table col.stock {width:31%;}
+      .ss-decision-table col.sentiment {width:40%;}
+      .ss-decision-table col.posts {width:29%;}
+      .ss-decision-verdict {align-items:flex-start;flex-direction:column;gap:4px;}
+    }
     </style>
     """,
     unsafe_allow_html=True,
@@ -777,49 +989,48 @@ _demo_available = {
     if str(row.get("Overall Sentiment") or "").strip().lower() in _ASSERTED
 }
 if _demo_bundle:
-    _demo_ticker, _demo_sector, _demo_results = _deep_from_bundle(_demo_bundle)
+    _demo_ticker, _demo_sector, _demo_card = _deep_from_bundle(_demo_bundle)
 else:
     _demo_ticker, _demo_sector, _demo_results = _load_demo_deep(
         preferred_tickers=_demo_available,
     )
+    _demo_card = _legacy_public_card(
+        _demo_results,
+        _demo_ticker,
+        _demo_sector or _demo_frame.attrs.get("sector") or "tech",
+    )
 _demo_rows = _select_demo_rows(
-    _demo_frame, limit=3, selected_ticker=_demo_ticker,
-)
-_stored_public_summary = (
-    _demo_results.get("public_summary")
-    if isinstance(_demo_results, dict) else None
-)
-_demo_summary = (
-    _stored_public_summary
-    if isinstance(_stored_public_summary, dict) else
-    generate_ai_summary(_demo_results) if _demo_results else {}
+    _demo_frame, limit=5, selected_ticker=_demo_ticker,
 )
 
-with st.container(key="home_public_hero"):
-    story_col, preview_col = st.columns([1.04, .96])
-    with story_col.container(key="home_public_story"):
+with st.container(key="home_public_intro"):
+    story_col, action_col = st.columns([1.12, .88])
+    with story_col:
         st.html(
             """
-            <div class="ss-public-hero-copy">
-              <div class="ss-proof-strip" aria-label="Product capabilities">
-                <span class="ss-proof-item">4,000+ US stocks</span>
-                <span class="ss-proof-item">Freshness shown</span>
-                <span class="ss-proof-item">Evidence explained</span>
-              </div>
+            <div class="ss-public-value">
               <h1>Finding short-term opportunities shouldn't feel like a full-time job.</h1>
               <p>Stock Sentinel turns social chatter into a ranked sentiment shortlist, then validates a selected ticker with market data.</p>
             </div>
             """
         )
-        with st.container(key="home_public_ctas"):
-            start_col, explain_col = st.columns([1.18, .82])
-            with start_col:
+    with action_col:
+        with st.container(key="home_intro_action_shell"):
+            st.html(
+                """
+                <div class="ss-public-action">
+                  <div class="ss-decision-kicker">A complete decision path</div>
+                  <h2>One scan. One analysis. Clear evidence.</h2>
+                  <p>See the cost before every action. No card is required to begin.</p>
+                </div>
+                """
+            )
+            with st.container(key="home_intro_action"):
                 if _logged_in:
-                    with st.container(key="home_open_scan_link"):
-                        st.page_link(
-                            "pages/Discovery.py", label="Open Market Scan",
-                            use_container_width=True,
-                        )
+                    st.page_link(
+                        "pages/Discovery.py", label="Open Market Scan",
+                        use_container_width=True,
+                    )
                 elif st.button(
                     "Start with 2 free credits", type="primary",
                     key="home_start_free", use_container_width=True,
@@ -827,41 +1038,26 @@ with st.container(key="home_public_hero"):
                     st.session_state["auth_initial_mode"] = "Create Account"
                     st.session_state["_after_auth_page"] = "Discovery"
                     st.switch_page("pages/Auth.py")
-            with explain_col:
-                with st.container(key="home_analyze_link"):
-                    if _logged_in:
-                        with st.container(key="home_open_deep_link"):
-                            st.page_link(
-                                "pages/Deep_Analysis.py",
-                                label="Open Deep Analyze",
-                                use_container_width=True,
-                            )
-                    elif st.button(
-                        "Analyze a ticker", key="home_start_deep",
-                        use_container_width=True,
-                    ):
-                        st.session_state["auth_initial_mode"] = "Sign In"
-                        st.session_state["_after_auth_page"] = "Deep_Analysis"
-                        st.switch_page("pages/Auth.py")
-        caveat = (
-            "Signed in · Open the workspace when you are ready."
-            if _logged_in else
-            "No card required · 1 credit per scan or analysis<br>"
-            "Research support, not financial advice."
-        )
-        st.markdown(
-            f'<div class="ss-public-caveat">{caveat}</div>',
-            unsafe_allow_html=True,
-        )
-    with preview_col.container(key="home_public_preview"):
-        st.html(
-            _marketing_preview_html(
-                _demo_rows,
-                _demo_ticker or "NVDA",
-                _demo_summary,
-                _demo_sector or _demo_frame.attrs.get("sector") or "tech",
+            st.html(
+                """
+                <div class="ss-public-action">
+                  <ul>
+                    <li><span>Coverage</span><strong>US-listed stocks in the supported market universe</strong></li>
+                    <li><span>Transparency</span><strong>Evidence age shown on live results</strong></li>
+                    <li><span>Explanation</span><strong>Reasons and confidence included</strong></li>
+                  </ul>
+                </div>
+                """
             )
-        )
+
+st.html(
+    _decision_workspace_html(
+        _demo_rows,
+        _demo_ticker or "NVDA",
+        _demo_card,
+        _demo_sector or _demo_frame.attrs.get("sector") or "tech",
+    )
+)
 
 st.markdown("<div style='height:.1rem'></div>", unsafe_allow_html=True)
 

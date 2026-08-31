@@ -23,7 +23,8 @@ def test_public_home_is_not_a_duplicate_authenticated_workspace() -> None:
     assert 'key="home_credit_hub"' not in home
     assert "Welcome back," not in home
     assert '"Open Market Scan"' in home
-    assert '"Analyze a ticker"' in home
+    assert '"Start with 2 free credits"' in home
+    assert "Decision Workspace" in home
 
 
 def test_authenticated_navigation_has_one_destination_per_job() -> None:
@@ -56,7 +57,6 @@ def test_default_and_explicit_post_auth_destinations_are_preserved() -> None:
     assert 'after_auth_page: str = "Discovery"' in nav
     assert 'after_auth_page: str = "Discovery"' in guard
     assert 'st.session_state["_after_auth_page"] = "Discovery"' in home
-    assert 'st.session_state["_after_auth_page"] = "Deep_Analysis"' in home
     assert 'st.switch_page("pages/Discovery.py")' in auth
     assert 'st.switch_page("pages/Deep_Analysis.py")' in auth
 
@@ -129,7 +129,7 @@ def test_authenticated_marketing_actions_do_not_restart_signup() -> None:
     assert 'label="Continue to Market Scan"' in how
     assert '"pages/Discovery.py", label="Continue to Market Scan"' in how
     assert 'label="Open Market Scan"' in home
-    assert 'label="Open Deep Analyze"' in home
+    assert 'label="Open Market Scan"' in home
 
 
 def test_responsive_panels_and_actions_stack_before_they_cramp() -> None:
@@ -138,7 +138,7 @@ def test_responsive_panels_and_actions_stack_before_they_cramp() -> None:
 
     assert '@media (max-width:900px)' in home
     assert '@media (max-width:520px)' in home
-    assert '.st-key-home_public_ctas [data-testid="stColumn"]' in home
+    assert '.st-key-home_public_intro [data-testid="stColumn"]' in home
     assert '@media (max-width: 720px)' in adapter
     assert '.st-key-account_grid [data-testid="stHorizontalBlock"]' in adapter
     assert 'flex: 1 1 100% !important' in adapter

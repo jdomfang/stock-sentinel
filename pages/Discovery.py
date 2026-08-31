@@ -32,6 +32,7 @@ from utils.finance import get_last_close_prices_best_effort
 # above is still local and imports what it needs directly.
 from utils import analyze_client as _client
 from utils import billing
+from utils.demo_snapshots import snapshot_timestamp
 
 
 st.set_page_config(
@@ -832,9 +833,20 @@ if scan_triggered:
             # opened independently and may update other route state, but the
             # durable public demo must publish a coherent scan/analysis pair.
             st.session_state.demo_scan_sector = sector
+            st.session_state.scan_completed_at = snapshot_timestamp()
+            st.session_state.scan_result_metadata = {
+                "posts_seen": _r.posts_seen,
+                "from_cache": _r.from_cache,
+                "corpus_age_s": _r.corpus_age_s,
+                "stop_reason": _r.stop_reason,
+                "x_error": _r.x_error,
+                "elapsed_s": _r.elapsed_s,
+            }
             st.session_state.selected_ticker = None
             st.session_state.deep_analysis_results = None
             st.session_state.deep_analysis_card = None
+            st.session_state.deep_analysis_completed_at = None
+            st.session_state.deep_analysis_metadata = {}
             st.session_state.analysis_sector = None
 
             # Results are durable in session_state: the scan ran and produced an
@@ -1131,7 +1143,7 @@ if st.session_state.df_valid is not None:
             _price_prog.progress(40)
             last_close_map = get_last_close_prices_best_effort(tickers_for_prices)
             _price_prog.progress(100)
-        except Exception as e:
+        except Exception:
             logger.exception("Last close price lookup failed")
             last_close_map = {}
         finally:
@@ -1382,6 +1394,13 @@ if st.session_state.df_valid is not None:
                                         _r.elapsed_s or -1, ticker_symbol)
                                     _disc_holder["card"] = _r.card
                                     _disc_holder["result"] = _r.analysis_results
+                                    _disc_holder["metadata"] = {
+                                        "degraded": _r.degraded,
+                                        "status": _r.status,
+                                        "posts_billed": _r.posts_billed,
+                                        "elapsed_s": _r.elapsed_s,
+                                        "route": "discovery",
+                                    }
                                 else:
                                     _disc_holder["error"] = _r.error
                                     _disc_holder["pre_spend"] = _r.retryable
@@ -1477,6 +1496,10 @@ if st.session_state.df_valid is not None:
                         else:
                             st.session_state.deep_analysis_results = _disc_holder.get("result")
                             st.session_state.deep_analysis_card = _disc_holder.get("card")
+                            st.session_state.deep_analysis_completed_at = snapshot_timestamp()
+                            st.session_state.deep_analysis_metadata = (
+                                _disc_holder.get("metadata") or {}
+                            )
                             # deep_analysis_event_id is GONE with the writes it
                             # existed for. It let the panel key a rerun guard on
                             # the credit event, back when the panel itself wrote

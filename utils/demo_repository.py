@@ -9,12 +9,15 @@ from __future__ import annotations
 from typing import Any, Mapping
 from uuid import UUID
 
-from utils.demo_snapshots import validate_public_demo_bundle
+from utils.demo_snapshots import (
+    validate_demo_publication,
+    validate_public_demo_bundle,
+)
 from utils.supabase_client import get_client
 
 
 TABLE = "public_demo_snapshots"
-SCHEMA_VERSION = 1
+SCHEMA_VERSION = 2
 
 
 def _client(client=None):
@@ -37,16 +40,45 @@ def load_latest_public_demo(client=None) -> dict[str, Any] | None:
     return row
 
 
+def load_latest_demo_publication(client=None) -> dict[str, Any] | None:
+    """Return the newest complete publication to an explicit admin client."""
+    if client is None:
+        raise ValueError("Private demo loading requires a server-side client")
+    response = (
+        _client(client)
+        .table(TABLE)
+        .select(
+            "id,schema_version,bundle,source_payload,published_at,published_by"
+        )
+        .eq("schema_version", SCHEMA_VERSION)
+        .order("published_at", desc=True)
+        .order("id", desc=True)
+        .limit(1)
+        .execute()
+    )
+    rows = getattr(response, "data", None) or []
+    if not rows:
+        return None
+    row = dict(rows[0])
+    row["bundle"], row["source_payload"] = validate_demo_publication(
+        row.get("bundle") or {}, row.get("source_payload") or {}
+    )
+    return row
+
+
 def publish_public_demo(
     bundle: Mapping[str, Any],
+    source_payload: Mapping[str, Any],
     published_by: str,
     client=None,
 ) -> dict[str, Any]:
-    """Append one validated publication and return its persisted metadata."""
+    """Append one public projection plus its private canonical source."""
     if client is None:
         raise ValueError("Publishing requires an explicit server-side client")
     actor = str(UUID(str(published_by)))
-    normalized = validate_public_demo_bundle(bundle)
+    normalized, normalized_source = validate_demo_publication(
+        bundle, source_payload
+    )
     response = (
         _client(client)
         .table(TABLE)
@@ -54,6 +86,7 @@ def publish_public_demo(
             {
                 "schema_version": SCHEMA_VERSION,
                 "bundle": normalized,
+                "source_payload": normalized_source,
                 "published_by": actor,
             }
         )

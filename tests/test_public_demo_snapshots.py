@@ -40,6 +40,12 @@ READER_MIGRATION = (
     / "migrations"
     / "20260828020000_public_demo_reader.sql"
 )
+V2_MIGRATION = (
+    REPO
+    / "supabase"
+    / "migrations"
+    / "20260830010000_demo_snapshot_v2.sql"
+)
 PUBLISHER = "11111111-1111-1111-1111-111111111111"
 
 PASSED: list[str] = []
@@ -77,13 +83,18 @@ def valid_bundle() -> dict:
             "validated_rows": [
                 {
                     "Ticker": "WAY",
+                    "Company Name": "Waystar Holding Corp.",
                     "Overall Sentiment": "Neutral",
                     "Mentions": 21,
+                    "Evidence": 2,
+                    "Avg Sentiment Score": 0.06,
                 },
                 {
                     "Ticker": "SATA",
                     "Overall Sentiment": "Neutral",
                     "Mentions": 12,
+                    "Evidence": 1,
+                    "Avg Sentiment Score": 0.01,
                 },
             ],
             "unvalidated_rows": [],
@@ -92,25 +103,106 @@ def valid_bundle() -> dict:
             "ticker": "WAY",
             "sector": "tech",
             "generated_at": "2026-08-28T21:01:00Z",
-            "analysis_results": {"recommendation": "Watch"},
+            "public_card": {
+                "ticker": "WAY",
+                "sector": "tech",
+                "verdict": "Watch",
+                "confidence": "Moderate",
+                "avg_sentiment": 0.06,
+                "reason": "Evidence is mixed.",
+                "tiles": [{
+                    "key": "range_30d",
+                    "label": "30d range (vol)",
+                    "value": "-8.0% to 9.0%",
+                }],
+                "evidence": {
+                    "independent_voices": 2,
+                    "mentions": 21,
+                    "price_points": 25,
+                },
+                "movement": {"band_pct": 8.5, "horizon_days": 10},
+            },
         },
     }
 
 
-def insert(cursor, bundle: dict, version: int = 1) -> None:
+def valid_source() -> dict:
+    return {
+        "scan": {
+            "sector": "tech",
+            "generated_at": "2026-08-28T21:00:00Z",
+            "rows": [
+                {
+                    "Ticker": "WAY",
+                    "Overall Sentiment": "Neutral",
+                    "Mentions": 21,
+                    "Evidence": 2,
+                    "Avg Sentiment Score": 0.06,
+                    "Sample Tweets": ["private post"],
+                },
+                {
+                    "Ticker": "SATA",
+                    "Overall Sentiment": "Neutral",
+                    "Mentions": 12,
+                    "Evidence": 1,
+                    "Avg Sentiment Score": 0.01,
+                },
+            ],
+            "metadata": {"posts_seen": 42},
+        },
+        "deep_analysis": {
+            "ticker": "WAY",
+            "sector": "tech",
+            "generated_at": "2026-08-28T21:01:00Z",
+            "card": {
+                "ticker": "WAY",
+                "sector": "tech",
+                "verdict": "Watch",
+                "confidence": "Moderate",
+                "avg_sentiment": 0.06,
+                "reason": "Evidence is mixed.",
+                "pillars": [{"name": "quality", "passed": True}],
+                "tiles": [{
+                    "key": "range_30d",
+                    "label": "30d range (vol)",
+                    "value": "-8.0% to 9.0%",
+                }],
+                "evidence": {
+                    "independent_voices": 2,
+                    "mentions": 21,
+                    "price_points": 25,
+                },
+                "movement": {"band_pct": 8.5, "horizon_days": 10},
+            },
+            "analysis_results": {"raw": {"tweet_ids": ["123"]}},
+            "metadata": {"elapsed_s": 4.2},
+        },
+    }
+
+
+def insert(
+    cursor, bundle: dict, source: dict | None = None, version: int = 2
+) -> None:
     cursor.execute(
         """
         insert into public.public_demo_snapshots
-            (schema_version, bundle, published_by)
-        values (%s, %s::jsonb, %s::uuid)
+            (schema_version, bundle, source_payload, published_by)
+        values (%s, %s::jsonb, %s::jsonb, %s::uuid)
         """,
-        (version, json.dumps(bundle), PUBLISHER),
+        (
+            version,
+            json.dumps(bundle),
+            json.dumps(source) if source is not None else None,
+            PUBLISHER,
+        ),
     )
 
 
-def rejected(cursor, bundle: dict, version: int = 1) -> bool:
+def rejected(
+    cursor, bundle: dict, source: dict | None = None, version: int = 2
+) -> bool:
     try:
-        insert(cursor, bundle, version)
+        insert(cursor, bundle, source, version)
         return False
     except psycopg2.Error:
         return True
@@ -176,7 +268,15 @@ def test_schema_and_security(cursor) -> None:
 def test_bundle_constraints(cursor) -> None:
     print("\nintegrity: incomplete or mismatched demos cannot be published")
     bundle = valid_bundle()
-    insert(cursor, bundle)
+    source = valid_source()
+    cursor.execute(
+        "select public.is_coherent_demo_snapshot_v2('{}'::jsonb, '{}'::jsonb)"
+    )
+    check(
+        "the coherence helper rejects empty payloads directly",
+        cursor.fetchone()[0] is False,
+    )
+    insert(cursor, bundle, source)
     check("a coherent scan and analysis bundle is accepted", True)
 
     cursor.execute("set role anon")
@@ -187,54 +287,108 @@ def test_bundle_constraints(cursor) -> None:
         "the narrow reader returns the reviewed public bundle",
         public_bundle["deep_analysis"]["ticker"] == "WAY",
     )
+    check(
+        "the narrow reader never exposes the private source payload",
+        "source_payload" not in public_bundle,
+    )
 
     missing_mentions = copy.deepcopy(bundle)
     del missing_mentions["scan"]["validated_rows"][0]["Mentions"]
     check(
         "every scan row must contain Social posts",
-        rejected(cursor, missing_mentions),
+        rejected(cursor, missing_mentions, source),
     )
 
     fractional_mentions = copy.deepcopy(bundle)
     fractional_mentions["scan"]["validated_rows"][0]["Mentions"] = 1.5
     check(
         "Social posts must be a non-negative whole number",
-        rejected(cursor, fractional_mentions),
+        rejected(cursor, fractional_mentions, source),
     )
 
     wrong_ticker = copy.deepcopy(bundle)
     wrong_ticker["deep_analysis"]["ticker"] = "NVDA"
     check(
         "the analyzed ticker must belong to the published scan",
-        rejected(cursor, wrong_ticker),
+        rejected(cursor, wrong_ticker, source),
     )
 
     wrong_sector = copy.deepcopy(bundle)
     wrong_sector["deep_analysis"]["sector"] = "finance"
-    check("scan and analysis sectors must match", rejected(cursor, wrong_sector))
+    check(
+        "scan and analysis sectors must match",
+        rejected(cursor, wrong_sector, source),
+    )
 
-    empty_analysis = copy.deepcopy(bundle)
-    empty_analysis["deep_analysis"]["analysis_results"] = {}
-    check("analysis results cannot be empty", rejected(cursor, empty_analysis))
+    missing_reason = copy.deepcopy(bundle)
+    missing_reason["deep_analysis"]["public_card"]["reason"] = ""
+    check(
+        "the public recommendation reason is required",
+        rejected(cursor, missing_reason, source),
+    )
 
-    check("unsupported schema versions are rejected", rejected(cursor, bundle, 2))
+    check(
+        "v2 requires a complete private source",
+        rejected(cursor, bundle, None),
+    )
+
+    wrong_source = copy.deepcopy(source)
+    wrong_source["deep_analysis"]["ticker"] = "NVDA"
+    check(
+        "private scan and analysis must be coherent",
+        rejected(cursor, bundle, wrong_source),
+    )
+
+    check(
+        "unsupported schema versions are rejected",
+        rejected(cursor, bundle, source, 3),
+    )
 
 
 def test_history_and_rerun(cursor) -> None:
     print("\nhistory: publications append and the migration is rerunnable")
     second = valid_bundle()
     second["scan"]["validated_rows"][0]["Mentions"] = 22
-    insert(cursor, second)
+    second_source = valid_source()
+    second_source["scan"]["rows"][0]["Mentions"] = 22
+    insert(cursor, second, second_source)
     cursor.execute("select count(*) from public.public_demo_snapshots")
     check("publishing retains the previous version", cursor.fetchone()[0] == 2)
 
     try:
         cursor.execute(MIGRATION.read_text(encoding="utf-8"))
         cursor.execute(READER_MIGRATION.read_text(encoding="utf-8"))
+        cursor.execute(V2_MIGRATION.read_text(encoding="utf-8"))
         reran = True
     except psycopg2.Error:
         reran = False
     check("the migration can be safely rerun", reran)
+
+
+def test_optional_migration_ledger(cursor) -> None:
+    print("\nportability: production does not need the optional migration ledger")
+    cursor.execute(
+        "drop schema if exists public cascade; create schema public; "
+        "drop schema if exists auth cascade;"
+    )
+    for migration in migration_chain():
+        if migration.name == "20260829010000_schema_migrations.sql":
+            continue
+        cursor.execute(migration.read_text(encoding="utf-8"))
+
+    cursor.execute("select to_regclass('public.schema_migrations')")
+    check(
+        "schema v2 installs when schema_migrations is absent",
+        cursor.fetchone()[0] is None,
+    )
+    cursor.execute(
+        "select exists ("
+        "select 1 from information_schema.columns "
+        "where table_schema='public' "
+        "and table_name='public_demo_snapshots' "
+        "and column_name='source_payload')"
+    )
+    check("the private source column is still installed", cursor.fetchone()[0])
 
 
 def main() -> int:
@@ -254,6 +408,7 @@ def main() -> int:
     test_schema_and_security(cursor)
     test_bundle_constraints(cursor)
     test_history_and_rerun(cursor)
+    test_optional_migration_ledger(cursor)
     connection.close()
 
     print("\n" + "=" * 74)

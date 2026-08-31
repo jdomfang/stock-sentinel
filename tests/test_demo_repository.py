@@ -11,7 +11,9 @@ REPO = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(REPO))
 
 from utils.demo_repository import (
+    SCHEMA_VERSION,
     TABLE,
+    load_latest_demo_publication,
     load_latest_public_demo,
     publish_public_demo,
 )
@@ -35,13 +37,78 @@ def _bundle() -> dict:
                 "Ticker": "WAY",
                 "Overall Sentiment": "Neutral",
                 "Mentions": 21,
+                "Evidence": 2,
+                "Avg Sentiment Score": 0.06,
             }],
         },
         "deep_analysis": {
             "ticker": "WAY",
             "sector": "tech",
             "generated_at": "2026-08-28T01:01:00Z",
-            "analysis_results": {"recommendation": "Watch"},
+            "public_card": {
+                "ticker": "WAY",
+                "sector": "tech",
+                "verdict": "Watch",
+                "confidence": "Moderate",
+                "avg_sentiment": 0.06,
+                "reason": "Evidence is mixed.",
+                "tiles": [{
+                    "key": "range_30d",
+                    "label": "30d range (vol)",
+                    "value": "-8.0% to 9.0%",
+                }],
+                "evidence": {
+                    "independent_voices": 2,
+                    "mentions": 21,
+                    "price_points": 25,
+                },
+                "movement": {"band_pct": 8.5, "horizon_days": 10},
+            },
+        },
+    }
+
+
+def _source() -> dict:
+    return {
+        "scan": {
+            "sector": "tech",
+            "generated_at": "2026-08-28T01:00:00Z",
+            "rows": [{
+                "Ticker": "WAY",
+                "Overall Sentiment": "Neutral",
+                "Mentions": 21,
+                "Evidence": 2,
+                "Avg Sentiment Score": 0.06,
+                "Sample Tweets": ["private post"],
+            }],
+            "metadata": {"posts_seen": 42},
+        },
+        "deep_analysis": {
+            "ticker": "WAY",
+            "sector": "tech",
+            "generated_at": "2026-08-28T01:01:00Z",
+            "card": {
+                "ticker": "WAY",
+                "sector": "tech",
+                "verdict": "Watch",
+                "confidence": "Moderate",
+                "avg_sentiment": 0.06,
+                "reason": "Evidence is mixed.",
+                "pillars": [{"name": "quality", "passed": True}],
+                "tiles": [{
+                    "key": "range_30d",
+                    "label": "30d range (vol)",
+                    "value": "-8.0% to 9.0%",
+                }],
+                "evidence": {
+                    "independent_voices": 2,
+                    "mentions": 21,
+                    "price_points": 25,
+                },
+                "movement": {"band_pct": 8.5, "horizon_days": 10},
+            },
+            "analysis_results": {"raw": {"tweet_ids": ["123"]}},
+            "metadata": {"elapsed_s": 3.2},
         },
     }
 
@@ -65,6 +132,10 @@ class _Query:
         self.calls.append(("order", column, desc))
         return self
 
+    def eq(self, column, value):
+        self.calls.append(("eq", column, value))
+        return self
+
     def limit(self, count):
         self.calls.append(("limit", count))
         return self
@@ -81,6 +152,7 @@ class _Query:
                 "id": str(uuid4()),
                 "schema_version": self.inserted["schema_version"],
                 "bundle": self.inserted["bundle"],
+                "source_payload": self.inserted["source_payload"],
                 "published_by": self.inserted["published_by"],
                 "published_at": "2026-08-28T01:02:00Z",
             }])
@@ -104,7 +176,7 @@ class _Client:
 def test_loads_only_latest_valid_bundle() -> None:
     row = {
         "id": str(uuid4()),
-        "schema_version": 1,
+        "schema_version": SCHEMA_VERSION,
         "bundle": _bundle(),
         "published_at": "2026-08-28T01:02:00Z",
         "published_by": str(uuid4()),
@@ -121,18 +193,44 @@ def test_empty_repository_is_an_expected_state() -> None:
     assert load_latest_public_demo(_Client([])) is None
 
 
+def test_private_loader_requires_admin_client_and_returns_source() -> None:
+    row = {
+        "id": str(uuid4()),
+        "schema_version": SCHEMA_VERSION,
+        "bundle": _bundle(),
+        "source_payload": _source(),
+        "published_at": "2026-08-28T01:02:00Z",
+        "published_by": str(uuid4()),
+    }
+    client = _Client([row])
+    loaded = load_latest_demo_publication(client)
+    assert client.table_name == TABLE
+    assert loaded and loaded["source_payload"]["scan"]["rows"][0][
+        "Sample Tweets"
+    ] == ["private post"]
+    try:
+        load_latest_demo_publication()
+    except ValueError as exc:
+        assert "server-side client" in str(exc)
+    else:
+        raise AssertionError("private loader constructed a privileged client")
+
+
 def test_publisher_validates_actor_and_payload_before_insert() -> None:
     actor = str(uuid4())
     client = _Client([])
-    saved = publish_public_demo(_bundle(), actor, client)
+    saved = publish_public_demo(_bundle(), _source(), actor, client)
     assert client.table_name == TABLE
-    assert client.query.inserted["schema_version"] == 1
+    assert client.query.inserted["schema_version"] == SCHEMA_VERSION
     assert client.query.inserted["published_by"] == str(UUID(actor))
+    assert client.query.inserted["source_payload"]["scan"]["rows"][0][
+        "Sample Tweets"
+    ] == ["private post"]
     assert saved["bundle"]["deep_analysis"]["ticker"] == "WAY"
 
     invalid_client = _Client([])
     try:
-        publish_public_demo(_bundle(), "not-a-uuid", invalid_client)
+        publish_public_demo(_bundle(), _source(), "not-a-uuid", invalid_client)
     except ValueError:
         pass
     else:
@@ -140,7 +238,7 @@ def test_publisher_validates_actor_and_payload_before_insert() -> None:
     assert invalid_client.query.inserted is None
 
     try:
-        publish_public_demo(_bundle(), actor)
+        publish_public_demo(_bundle(), _source(), actor)
     except ValueError as exc:
         assert "explicit server-side client" in str(exc)
     else:
@@ -162,6 +260,7 @@ def main() -> int:
     tests = [
         test_loads_only_latest_valid_bundle,
         test_empty_repository_is_an_expected_state,
+        test_private_loader_requires_admin_client_and_returns_source,
         test_publisher_validates_actor_and_payload_before_insert,
         test_repository_has_no_portal_dependency,
     ]

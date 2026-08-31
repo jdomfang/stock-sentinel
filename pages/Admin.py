@@ -22,11 +22,13 @@ from utils.navigation import render_sidebar_navigation, render_top_nav
 from utils.ui import apply_theme, close_page, safe_ui, ui_error
 from utils.auth import is_logged_in, get_user
 from utils.demo_repository import (
-    load_latest_public_demo,
+    load_latest_demo_publication,
     publish_public_demo,
 )
-from utils.deep_analysis import generate_ai_summary
-from utils.demo_snapshots import build_public_demo_bundle
+from utils.demo_snapshots import (
+    build_demo_source_payload,
+    build_public_demo_bundle,
+)
 from utils.supabase_client import get_admin_client
 
 st.set_page_config(page_title="Admin - Stock Sentinel", page_icon="🛠️", layout="wide", initial_sidebar_state="collapsed")
@@ -198,17 +200,24 @@ st.markdown("---")
 st.subheader("Public demo")
 st.caption(
     "Publish one reviewed Market Scan and its selected Deep Analyze result. "
-    "The durable publication survives restarts and deployments."
+    "The complete source snapshot is retained privately; Home receives a "
+    "strict public projection without raw social-post text."
 )
 
 latest_demo = safe_ui(
-    lambda: load_latest_public_demo(sb),
+    lambda: load_latest_demo_publication(sb),
     context="admin.load_public_demo",
 )
 if latest_demo:
     latest_bundle = latest_demo.get("bundle") or {}
     latest_scan = latest_bundle.get("scan") or {}
     latest_analysis = latest_bundle.get("deep_analysis") or {}
+    latest_source = latest_demo.get("source_payload") or {}
+    retained_scan = (latest_source.get("scan") or {}).get("rows") or []
+    retained_analysis = (
+        (latest_source.get("deep_analysis") or {}).get("analysis_results")
+        or {}
+    )
     latest_when = str(latest_demo.get("published_at") or "")[:16].replace(
         "T", " "
     )
@@ -216,7 +225,9 @@ if latest_demo:
         f"Published {latest_when} UTC · "
         f"{str(latest_scan.get('sector') or '').title()} · "
         f"{len(latest_scan.get('validated_rows') or [])} stocks · "
-        f"{latest_analysis.get('ticker') or '—'} analyzed"
+        f"{latest_analysis.get('ticker') or '—'} analyzed · "
+        f"private source retained: {len(retained_scan)} scan rows, "
+        f"{len(retained_analysis)} analysis sections"
     )
 else:
     st.caption("No durable public demo has been published yet.")
@@ -229,29 +240,45 @@ session_sector = (
 )
 session_ticker = st.session_state.get("selected_ticker") or ""
 session_results = st.session_state.get("deep_analysis_results") or {}
+session_card = st.session_state.get("deep_analysis_card") or {}
 publish_bundle = None
+source_payload = None
 publish_error = ""
 
 if session_scan is None or len(session_scan) == 0:
     publish_error = "Run a Market Scan in this session."
-elif not session_ticker or not session_results:
+elif not session_ticker or not session_results or not session_card:
     publish_error = "Deep Analyze one ticker from that Market Scan."
 else:
     try:
-        # The public preview needs only these three scan facts. Keeping raw post
-        # text and internal evidence out of this bundle reduces both payload
-        # size and accidental exposure on the public landing page.
-        available = [
-            column
-            for column in ("Ticker", "Overall Sentiment", "Mentions")
-            if column in session_scan.columns
-        ]
-        scan_rows = session_scan[available].to_dict(orient="records")
+        # Preserve the complete client-visible results in the private source
+        # payload. build_public_demo_bundle performs its own explicit allowlist
+        # for the Home projection, so raw post text cannot leak through it.
+        scan_rows = session_scan.to_dict(orient="records")
+        scan_generated_at = st.session_state.get("scan_completed_at")
+        analysis_generated_at = st.session_state.get(
+            "deep_analysis_completed_at"
+        )
         publish_bundle = build_public_demo_bundle(
             scan_rows=scan_rows,
             scan_sector=session_sector,
             analysis_ticker=session_ticker,
-            analysis_summary=generate_ai_summary(session_results),
+            analysis_card=session_card,
+            scan_generated_at=scan_generated_at,
+            analysis_generated_at=analysis_generated_at,
+        )
+        source_payload = build_demo_source_payload(
+            scan_rows=scan_rows,
+            scan_sector=session_sector,
+            analysis_ticker=session_ticker,
+            analysis_card=session_card,
+            analysis_results=session_results,
+            scan_generated_at=scan_generated_at,
+            analysis_generated_at=analysis_generated_at,
+            scan_metadata=st.session_state.get("scan_result_metadata") or {},
+            analysis_metadata=(
+                st.session_state.get("deep_analysis_metadata") or {}
+            ),
         )
     except (TypeError, ValueError) as exc:
         publish_error = str(exc)
@@ -280,12 +307,15 @@ if publish_error:
 if st.button(
     "Publish current demo",
     type="primary",
-    disabled=publish_bundle is None or not actor_id,
+    disabled=(
+        publish_bundle is None or source_payload is None or not actor_id
+    ),
     use_container_width=True,
 ):
     try:
         publication = publish_public_demo(
             publish_bundle or {},
+            source_payload or {},
             str(actor_id),
             client=sb,
         )

@@ -41,6 +41,7 @@ from utils.ui import (
 # comes back is the day there are two implementations again.
 from utils import analyze_client as _client
 from utils import billing
+from utils.demo_snapshots import snapshot_timestamp
 
 # Page configuration
 st.set_page_config(
@@ -245,6 +246,13 @@ if _run_clicked or (_autorun and _prefill):
                             _r.elapsed_s or -1, _r.degraded, _run_ticker)
                         _result_holder["card"] = _r.card
                         _result_holder["analysis_results"] = _r.analysis_results
+                        _result_holder["metadata"] = {
+                            "degraded": _r.degraded,
+                            "status": _r.status,
+                            "posts_billed": _r.posts_billed,
+                            "elapsed_s": _r.elapsed_s,
+                            "route": "deep_analyze",
+                        }
                     else:
                         _result_holder["error"] = _r.error
                         if _r.posts_billed:
@@ -476,6 +484,10 @@ if _run_clicked or (_autorun and _prefill):
             st.session_state.analysis_sector = sector
             st.session_state.deep_analysis_card = _card
             st.session_state.deep_analysis_results = analysis_results
+            st.session_state.deep_analysis_completed_at = snapshot_timestamp()
+            st.session_state.deep_analysis_metadata = (
+                _result_holder.get("metadata") or {}
+            )
             st.session_state["analysis_result_origin"] = "deep_analyze"
 
             # EVIDENCE CHECK. Which gates passed, which failed, and what would
