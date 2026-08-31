@@ -23,6 +23,155 @@ CACHE_SESSION_KEY = "_cached_session"
 CACHE_USER_KEY = "_cached_user"
 REMEMBER_ME_KEY = "_remember_me"
 
+# Product results live in Streamlit's websocket-local session_state. That
+# session survives page navigation and can also survive signing out and signing
+# back in without closing the tab. Every key below contains private work,
+# derives from private work, or can replay a paid/private action. They therefore
+# belong to exactly one authenticated user at a time.
+PRODUCT_STATE_OWNER_KEY = "_product_state_owner_user_id"
+USER_SCOPED_SESSION_KEYS = frozenset({
+    # Market Scan results and provenance.
+    "df_valid",
+    "df_unvalidated",
+    "selected_sector",
+    "demo_scan_sector",
+    "scan_corpus_age_s",
+    "scan_completed_at",
+    "scan_result_metadata",
+    "_scan_last_close_key",
+    "_scan_last_close_map",
+    # Deep Analyze results and provenance.
+    "selected_ticker",
+    "analysis_sector",
+    "deep_analysis_card",
+    "deep_analysis_results",
+    "deep_analysis_completed_at",
+    "deep_analysis_metadata",
+    "analysis_result_origin",
+    # Cross-page intents and in-flight actions. These must never replay for the
+    # next person who signs into the same browser tab.
+    "_pending_discovery_analysis",
+    "discovery_sector",
+    "_intent_sector_applied",
+    "_autostart_discovery_scan",
+    "_scan_autostart_consumed",
+    "prefill_deep_ticker",
+    "_autorun_deep_analysis",
+    "da_ticker_input",
+    # Stripe return/checkout state is private even though billing.url carries a
+    # uid of its own. Clearing both is the safer identity-boundary contract.
+    "billing.return",
+    "billing.url",
+})
+
+_IDENTITY_SCOPED_AUTH_KEYS = frozenset({
+    "_pending_rt_save",
+    "_remember_hash",
+})
+
+_AUTH_FORM_KEYS = frozenset({
+    # Explicit widget keys can otherwise retain the previous account's email
+    # and password in the same Streamlit websocket after logout.
+    "auth_email",
+    "auth_password",
+})
+
+_CURRENT_USER = object()
+
+
+def user_id(user: object | None = _CURRENT_USER) -> str:
+    """Return a stable authenticated user id from a dict or Supabase model."""
+    candidate = (
+        st.session_state.get(USER_KEY)
+        if user is _CURRENT_USER
+        else user
+    )
+    raw = (
+        candidate.get("id")
+        if isinstance(candidate, dict)
+        else getattr(candidate, "id", None)
+    )
+    return str(raw or "").strip()
+
+
+def clear_user_scoped_state(*, clear_owner: bool = True) -> None:
+    """Remove private product state without disturbing unrelated UI state."""
+    for key in USER_SCOPED_SESSION_KEYS:
+        st.session_state.pop(key, None)
+    if clear_owner:
+        st.session_state.pop(PRODUCT_STATE_OWNER_KEY, None)
+
+
+def _clear_identity_scoped_auth_state(*, include_form: bool = False) -> None:
+    """Drop credentials/artifacts that cannot follow a different identity."""
+    keys = (
+        CACHE_SESSION_KEY,
+        CACHE_USER_KEY,
+        REMEMBER_ME_KEY,
+        *_IDENTITY_SCOPED_AUTH_KEYS,
+    )
+    if include_form:
+        keys = (*keys, *_AUTH_FORM_KEYS)
+    for key in keys:
+        st.session_state.pop(key, None)
+
+
+def bind_user_scoped_state(user: object | None = _CURRENT_USER) -> bool:
+    """Bind private product state to ``user``, clearing it on any mismatch.
+
+    An absent owner is treated as untrusted legacy state, not implicitly
+    adopted. That fail-closed rule prevents results created before this guard
+    existed from being exposed to whichever account happens to log in next.
+    """
+    uid = user_id(user)
+    if not uid:
+        clear_user_scoped_state()
+        return False
+
+    owner = str(st.session_state.get(PRODUCT_STATE_OWNER_KEY) or "").strip()
+    if owner != uid:
+        clear_user_scoped_state()
+    st.session_state[PRODUCT_STATE_OWNER_KEY] = uid
+    return True
+
+
+def ensure_user_scoped_state_owner() -> bool:
+    """Enforce the identity boundary for the currently authenticated user."""
+    return bind_user_scoped_state(st.session_state.get(USER_KEY))
+
+
+def user_scoped_state_belongs_to(user: object | None = _CURRENT_USER) -> bool:
+    """True only when private state is explicitly owned by ``user``."""
+    uid = user_id(user)
+    owner = str(st.session_state.get(PRODUCT_STATE_OWNER_KEY) or "").strip()
+    return bool(uid and owner == uid)
+
+
+def _establish_authenticated_state(
+    session: object | None,
+    user: object | None,
+) -> None:
+    """Install auth state and enforce isolation before the identity is usable."""
+    previous_uid = user_id()
+    next_uid = user_id(user)
+    owner = str(st.session_state.get(PRODUCT_STATE_OWNER_KEY) or "").strip()
+    identity_changed = bool(
+        next_uid
+        and (
+            (previous_uid and previous_uid != next_uid)
+            or (owner and owner != next_uid)
+        )
+    )
+    if identity_changed:
+        # This can run from the Auth form itself, where Streamlit forbids
+        # mutating instantiated widget keys. Form credentials are cleared on
+        # logout; this path clears non-widget credential artifacts only.
+        _clear_identity_scoped_auth_state()
+
+    st.session_state[SESSION_KEY] = session
+    st.session_state[USER_KEY] = user
+    bind_user_scoped_state(user)
+
 
 def refresh_session_if_needed() -> bool:
     """Silently refresh Supabase session token if it exists but may be stale.
@@ -52,10 +201,11 @@ def refresh_session_if_needed() -> bool:
         if new_user is not None and hasattr(new_user, "model_dump"):
             new_user = new_user.model_dump()
 
-        if new_session:
-            st.session_state[SESSION_KEY] = new_session
-        if new_user:
-            st.session_state[USER_KEY] = new_user
+        if new_session or new_user:
+            _establish_authenticated_state(
+                new_session or st.session_state.get(SESSION_KEY),
+                new_user or st.session_state.get(USER_KEY),
+            )
 
         # Update cache if remember-me is on
         if st.session_state.get(REMEMBER_ME_KEY):
@@ -134,11 +284,10 @@ def sign_out() -> None:
     except Exception:
         pass
 
+    clear_user_scoped_state()
+    _clear_identity_scoped_auth_state(include_form=True)
     st.session_state.pop(SESSION_KEY, None)
     st.session_state.pop(USER_KEY, None)
-    st.session_state.pop(CACHE_SESSION_KEY, None)
-    st.session_state.pop(CACHE_USER_KEY, None)
-    st.session_state.pop(REMEMBER_ME_KEY, None)
     
     # Clear browser cache
     _clear_browser_cache()
@@ -158,8 +307,7 @@ def sign_in(email: str, password: str, remember_me: bool = False) -> tuple[bool,
         if user is not None and hasattr(user, "model_dump"):
             user = user.model_dump()
 
-        st.session_state[SESSION_KEY] = session
-        st.session_state[USER_KEY] = user
+        _establish_authenticated_state(session, user)
 
         # Cache to browser if remember_me enabled
         if remember_me:
@@ -225,8 +373,7 @@ def sign_up(email: str, password: str) -> tuple[bool, str]:
         if user is not None and hasattr(user, "model_dump"):
             user = user.model_dump()
 
-        st.session_state[SESSION_KEY] = session
-        st.session_state[USER_KEY] = user
+        _establish_authenticated_state(session, user)
         return True, ""
     except Exception as e:
         # Add extra diagnostics for deployment debugging (does NOT print secrets).
@@ -491,8 +638,7 @@ def restore_session_from_refresh_token(refresh_token: str) -> bool:
             session = session.model_dump()
         if hasattr(user, "model_dump"):
             user = user.model_dump()
-        st.session_state[SESSION_KEY] = session
-        st.session_state[USER_KEY] = user
+        _establish_authenticated_state(session, user)
         st.session_state[REMEMBER_ME_KEY] = True
         # Cache to session_state for within-session fast path
         st.session_state[CACHE_SESSION_KEY] = json.dumps(session)
@@ -524,8 +670,14 @@ def try_restore_cached_session() -> bool:
             if cached_session_json and cached_user_json:
                 session = json.loads(cached_session_json)
                 user = json.loads(cached_user_json)
-                st.session_state[SESSION_KEY] = session
-                st.session_state[USER_KEY] = user
+                _establish_authenticated_state(session, user)
+                # _establish_authenticated_state deliberately drops cached
+                # credentials if it detects a different prior identity. These
+                # local values are the newly verified identity, so restore its
+                # fast-path cache after the boundary has been enforced.
+                st.session_state[CACHE_SESSION_KEY] = json.dumps(session)
+                st.session_state[CACHE_USER_KEY] = json.dumps(user)
+                st.session_state[REMEMBER_ME_KEY] = True
                 return True
     except Exception as e:
         print(f"Warning: Failed to restore cached session: {e}")

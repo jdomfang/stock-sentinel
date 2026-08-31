@@ -8,7 +8,7 @@ import streamlit as st
 from utils import config as _config
 
 _ACTIVE_KEYS = {
-    "market_scan", "deep_analyze", "account",
+    "market_scan", "deep_analyze", "account", "admin",
     "how_it_works", "faq",
 }
 
@@ -54,11 +54,16 @@ def _brand(column, surface: str) -> None:
             )
 
 
-def _admin_link(column, surface: str) -> None:
-    with column:
-        with st.container(key=f"nav_{surface}_admin"):
-            st.page_link("pages/Admin.py", label="Admin",
-                         use_container_width=True)
+def _admin_link(column, surface: str, active: str) -> None:
+    """Render Admin through the same stable destination component as tabs."""
+    _nav_link(
+        column,
+        "pages/Admin.py",
+        "Admin",
+        "admin",
+        active,
+        surface,
+    )
 
 
 def _login_control(
@@ -190,7 +195,7 @@ def render_top_nav(
           height:2px;border-radius:999px;background:var(--accent);
           pointer-events:none;
         }}
-        @media (max-width:760px) {{
+        @media (max-width:900px) {{
           {mobile}::after {{bottom:-5px;}}
         }}
         """
@@ -211,8 +216,13 @@ def render_top_nav(
           align-items:center!important;gap:.6rem!important;
         }
         .st-key-ss_nav_desktop_links [data-testid="stHorizontalBlock"] {
-          align-items:center!important;
+          display:flex!important;align-items:center!important;
+          flex-wrap:nowrap!important;
           gap:clamp(16px, 2vw, 20px)!important;
+        }
+        .st-key-ss_nav_desktop_links [data-testid="stHorizontalBlock"]
+          > [data-testid="stColumn"] {
+          min-width:0!important;
         }
         .st-key-ss_nav_desktop_links [data-testid="stColumn"]:has(.st-key-nav_desktop_session),
         .st-key-ss_nav_mobile_primary [data-testid="stColumn"]:has(.st-key-nav_mobile_session) {
@@ -381,7 +391,7 @@ def render_top_nav(
             margin-bottom:.65rem;
           }
         }
-        @media (max-width:760px) {
+        @media (max-width:900px) {
           .st-key-ss_top_nav {padding:.45rem 0 .4rem;margin-bottom:1.15rem;}
           .st-key-ss_nav_desktop {display:none!important;}
           .st-key-ss_nav_mobile {display:block!important;}
@@ -428,39 +438,46 @@ def render_top_nav(
                 )
                 _signup_control(signup, surface="desktop")
             else:
-                widths = [1.55, 3.2]
-                if show_credits:
-                    widths.append(.82)
-                if is_admin:
-                    widths.append(.58)
-                cols = iter(st.columns(widths))
-
-                _brand(next(cols), "desktop")
-                links_col = next(cols)
+                # One stable outer shell and one non-wrapping destination row.
+                # Admin and the session trigger used to live in different
+                # nested column systems. At desktop zoom or narrower shells,
+                # the avatar wrapped below Market Scan while Admin remained on
+                # the first row. Keep every authenticated action in one row,
+                # with the fixed-size session utility always last.
+                brand_col, links_col = st.columns([1.35, 3.65])
+                _brand(brand_col, "desktop")
                 with links_col:
                     with st.container(key="ss_nav_desktop_links"):
-                        scan, deep, account, session = st.columns(
-                            [1, 1, 1, .28]
-                        )
+                        nav_widths = [1, 1, 1]
+                        if is_admin:
+                            nav_widths.append(.72)
+                        if show_credits:
+                            nav_widths.append(.72)
+                        nav_widths.append(.30)
+                        nav_cols = iter(st.columns(nav_widths))
+                        scan = next(nav_cols)
+                        deep = next(nav_cols)
+                        account = next(nav_cols)
                         _nav_link(scan, "pages/Discovery.py", "Market Scan",
                                   "market_scan", active, "desktop")
                         _nav_link(deep, "pages/Deep_Analysis.py", "Deep Analyze",
                                   "deep_analyze", active, "desktop")
                         _nav_link(account, "pages/Account.py", "Account",
                                   "account", active, "desktop")
+                        if is_admin:
+                            _admin_link(next(nav_cols), "desktop", active)
+                        if show_credits:
+                            with next(nav_cols):
+                                word = "credit" if int(credits) == 1 else "credits"
+                                st.markdown(
+                                    f'<span class="ss-credit-badge">'
+                                    f'{int(credits)} {word}</span>',
+                                    unsafe_allow_html=True,
+                                )
                         _session_menu(
-                            session, surface="desktop", user=user, email=email,
+                            next(nav_cols), surface="desktop", user=user,
+                            email=email,
                         )
-
-                if show_credits:
-                    with next(cols):
-                        word = "credit" if int(credits) == 1 else "credits"
-                        st.markdown(
-                            f'<span class="ss-credit-badge">{int(credits)} {word}</span>',
-                            unsafe_allow_html=True,
-                        )
-                if is_admin:
-                    _admin_link(next(cols), "desktop")
 
         with st.container(key="ss_nav_mobile"):
             with st.container(key="ss_nav_mobile_primary"):
@@ -514,4 +531,4 @@ def render_top_nav(
                 with st.container(key="ss_nav_mobile_admin_row"):
                     spacer, admin = st.columns([2.5, .7])
                     del spacer
-                    _admin_link(admin, "mobile_utility")
+                    _admin_link(admin, "mobile", active)

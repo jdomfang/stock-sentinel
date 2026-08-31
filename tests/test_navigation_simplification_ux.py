@@ -30,7 +30,10 @@ def test_public_home_is_not_a_duplicate_authenticated_workspace() -> None:
 def test_authenticated_navigation_has_one_destination_per_job() -> None:
     nav = _read("utils/navigation.py")
 
-    assert 'scan, deep, account, session = st.columns(' in nav
+    assert 'with st.container(key="ss_nav_desktop_links"):' in nav
+    assert 'nav_cols = iter(st.columns(nav_widths))' in nav
+    assert 'nav_widths.append(.30)' in nav
+    assert 'flex-wrap:nowrap!important' in nav
     assert 'scan, deep = st.columns(2)' in nav
     assert '"pages/Discovery.py", "Market Scan"' in nav
     assert '"pages/Deep_Analysis.py", "Deep Analyze"' in nav
@@ -38,6 +41,8 @@ def test_authenticated_navigation_has_one_destination_per_job() -> None:
     assert '"pages/Home.py", "Home"' not in nav
     assert '_auth_control(next(cols), logged_in=True' not in nav
     assert 'nav_desktop_account"] [data-testid="stPageLink"] a' not in nav
+    assert '_admin_link(next(nav_cols), "desktop", active)' in nav
+    assert '_session_menu(\n                            next(nav_cols)' in nav
 
 
 def test_brand_remains_the_public_landing_route_for_every_session() -> None:
@@ -121,6 +126,21 @@ def test_navigation_controls_share_alignment_and_touch_targets() -> None:
     assert "max-width: var(--ss-marketing-max-width)" not in home
 
 
+def test_admin_and_session_share_the_same_desktop_alignment_row() -> None:
+    nav = _read("utils/navigation.py")
+    admin = _read("pages/Admin.py")
+
+    desktop = nav.split(
+        'with st.container(key="ss_nav_desktop_links"):', 1
+    )[1].split('with st.container(key="ss_nav_mobile"):', 1)[0]
+    assert '_admin_link(next(nav_cols), "desktop", active)' in desktop
+    assert "_session_menu(" in desktop
+    assert desktop.index("_admin_link(") < desktop.index("_session_menu(")
+    assert 'nav_widths.append(.30)' in desktop
+    assert '"admin"' in nav.split("_ACTIVE_KEYS", 1)[1].split("}", 1)[0]
+    assert 'render_top_nav(active="admin", after_auth_page="Admin")' in admin
+
+
 def test_authenticated_marketing_actions_do_not_restart_signup() -> None:
     home = _read("pages/Home.py")
     how = _read("pages/How_It_Works.py")
@@ -152,6 +172,7 @@ def main() -> int:
         test_default_and_explicit_post_auth_destinations_are_preserved,
         test_global_session_menu_owns_logout_and_account_alignment_contracts,
         test_navigation_controls_share_alignment_and_touch_targets,
+        test_admin_and_session_share_the_same_desktop_alignment_row,
         test_authenticated_marketing_actions_do_not_restart_signup,
         test_responsive_panels_and_actions_stack_before_they_cramp,
     ]

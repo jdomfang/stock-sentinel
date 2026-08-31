@@ -20,7 +20,12 @@ _sys.path.insert(0, str(_Path(__file__).resolve().parents[1]))
 from utils import config as _config
 from utils.navigation import render_sidebar_navigation, render_top_nav
 from utils.ui import apply_theme, close_page, safe_ui, ui_error
-from utils.auth import is_logged_in, get_user
+from utils.auth import (
+    ensure_user_scoped_state_owner,
+    get_user,
+    is_logged_in,
+    user_scoped_state_belongs_to,
+)
 from utils.demo_repository import (
     load_latest_demo_publication,
     publish_public_demo,
@@ -34,7 +39,7 @@ from utils.supabase_client import get_admin_client
 st.set_page_config(page_title="Admin - Stock Sentinel", page_icon="🛠️", layout="wide", initial_sidebar_state="collapsed")
 apply_theme()
 render_sidebar_navigation()
-render_top_nav(after_auth_page="Admin")
+render_top_nav(active="admin", after_auth_page="Admin")
 
 st.markdown('<div class="clawd-app-wrapper">', unsafe_allow_html=True)
 
@@ -68,6 +73,11 @@ user = get_user() or {}
 user_email_raw = user.get("email") if isinstance(user, dict) else getattr(user, "email", None)
 user_email = (user_email_raw or "").lower().strip()
 actor_id = user.get("id") if isinstance(user, dict) else getattr(user, "id", None)
+
+# Admin reads raw, session-local Scan and Deep Analyze payloads for demo
+# publication. Enforce the same account boundary as protected customer pages
+# before any of those keys are inspected.
+ensure_user_scoped_state_owner()
 
 # First guard: must match configured admin email
 if not admin_email or user_email != admin_email:
@@ -244,8 +254,14 @@ session_card = st.session_state.get("deep_analysis_card") or {}
 publish_bundle = None
 source_payload = None
 publish_error = ""
+session_owner_ok = user_scoped_state_belongs_to(user)
 
-if session_scan is None or len(session_scan) == 0:
+if not session_owner_ok:
+    publish_error = (
+        "This session's demo source is not owned by the signed-in admin. "
+        "Run and publish a fresh Scan → Deep Analyze workflow."
+    )
+elif session_scan is None or len(session_scan) == 0:
     publish_error = "Run a Market Scan in this session."
 elif not session_ticker or not session_results or not session_card:
     publish_error = "Deep Analyze one ticker from that Market Scan."
@@ -308,7 +324,10 @@ if st.button(
     "Publish current demo",
     type="primary",
     disabled=(
-        publish_bundle is None or source_payload is None or not actor_id
+        publish_bundle is None
+        or source_payload is None
+        or not actor_id
+        or not session_owner_ok
     ),
     use_container_width=True,
 ):

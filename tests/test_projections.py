@@ -171,13 +171,18 @@ def test_drawdown_grows_with_volatility():
     # This pins that the page still asks for the drawdown, and asks by KEY --
     # selecting on the label coupled the page to prose, so rewording
     # "Drawdown first" made the tile vanish with every suite still passing.
-    # BOTH renderers. Discovery draws its own markup rather than calling
-    # render_recommendation_panel, so it selects the same tiles independently
-    # and can lose one on its own.
+    # Both entry routes now consume one shared view adapter. Keeping the tile
+    # selection here, rather than duplicating it in each page, prevents the
+    # scan-launched result from drifting away from Deep Analyze again.
     _disc_src = (REPO / "pages" / "Discovery.py").read_text()
-    for _name, _src in (("Deep_Analysis", _page_src), ("Discovery", _disc_src)):
-        check(f"{_name} selects both price tiles, and does so by key",
-              '"drawdown_first"' in _src and '"range_30d"' in _src)
+    _ui_src = (REPO / "utils" / "ui.py").read_text()
+    check("the shared renderer selects both price tiles, and does so by key",
+          'tiles.get("drawdown_first"' in _ui_src
+          and 'tiles.get("range_30d"' in _ui_src)
+    check("Deep_Analysis uses the shared delivered-result renderer",
+          "render_delivered_analysis_result(" in _page_src)
+    check("Discovery uses the shared delivered-result renderer",
+          "render_delivered_analysis_result(" in _disc_src)
     check("...and reaches past the card for neither",
           "mae_p50" not in _page_src and "mae_median" not in _page_src)
 

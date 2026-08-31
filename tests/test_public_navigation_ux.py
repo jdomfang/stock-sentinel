@@ -188,7 +188,7 @@ def test_every_explicit_login_origin_resets_sign_in_mode() -> None:
     admin = _read("pages/Admin.py")
     assert 'st.session_state["_after_auth_page"] = after_auth_page' in guard
     assert 'st.session_state["_after_auth_page"] = "Admin"' in admin
-    assert 'render_top_nav(after_auth_page="Admin")' in admin
+    assert 'render_top_nav(active="admin", after_auth_page="Admin")' in admin
     for target in (
         "pages/Home.py", "pages/Discovery.py", "pages/Deep_Analysis.py",
         "pages/Analysis_Result.py", "pages/Account.py", "pages/Admin.py",

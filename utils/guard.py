@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import streamlit as st
 
-from utils.auth import is_logged_in
+from utils.auth import ensure_user_scoped_state_owner, is_logged_in
 from utils.profile import get_my_profile
 
 
@@ -35,6 +35,10 @@ def require_login(*, after_auth_page: str = "Discovery") -> None:
                 st.session_state["_after_auth_page"] = after_auth_page
                 st.switch_page("pages/Auth.py")
         st.stop()
+    # A Streamlit websocket survives page changes and can survive an in-tab
+    # logout/login. Enforce the user boundary before any protected page reads
+    # session-local scan, analysis, intent, or billing state.
+    ensure_user_scoped_state_owner()
 
 
 def require_active_account(*, after_auth_page: str = "Discovery") -> dict:
