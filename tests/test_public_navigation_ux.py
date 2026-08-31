@@ -202,7 +202,8 @@ def test_shared_links_have_accessible_targets_and_current_state() -> None:
     billing = _read("utils/billing.py")
 
     assert 'aria-current="page"' in nav
-    assert 'class="ss-nav-active-link"' in nav
+    assert 'class="ss-nav-semantic"' in nav
+    assert "ss-nav-active-link" not in nav
     assert 'min-height: 44px;' in footer
     assert 'with st.container(key="footer_links"):' in footer
     assert '.st-key-footer_links [data-testid="stPageLink"] a' in footer

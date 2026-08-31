@@ -11,6 +11,7 @@ REPO = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(REPO))
 
 from utils.demo_snapshots import (
+    build_demo_source_payload,
     build_public_demo_bundle,
     normalize_scan_rows,
     social_posts_value,
@@ -26,6 +27,41 @@ FAILED: list[tuple[str, str]] = []
 def check(name: str, condition: bool, detail: str = "") -> None:
     (PASSED.append(name) if condition else FAILED.append((name, detail)))
     print(f"  {'PASS' if condition else 'FAIL'}  {name}")
+
+
+def _card(ticker: str = "WAY") -> dict:
+    return {
+        "ticker": ticker,
+        "sector": "tech",
+        "verdict": "Watch",
+        "confidence": "Moderate",
+        "adjudicator": "ledger",
+        "headline": "Hold — monitor closely",
+        "confidence_note": "Useful evidence with uncertainty",
+        "avg_sentiment": 0.06,
+        "rationale": ["Evidence is mixed."],
+        "reason": "Evidence is mixed.",
+        "would_change": ["More independent confirmation"],
+        "confidence_notes": ["One risk remains"],
+        "pillars": [{"name": "quality", "passed": True}],
+        "tiles": [
+            {"key": "last_price", "label": "Last Price", "value": "$24.17"},
+            {"key": "range_30d", "label": "30d range (vol)", "value": "-8.0% to 9.0%"},
+        ],
+        "evidence": {
+            "independent_voices": 2,
+            "own_voices": 3,
+            "quality": 0.72,
+            "quality_tier": "usable",
+            "mentions": 21,
+            "price_points": 25,
+        },
+        "movement": {
+            "band_pct": 8.5,
+            "horizon_days": 10,
+            "targets": {"5%": {"probability": 0.42}},
+        },
+    }
 
 
 def test_scan_snapshot_preserves_real_mentions() -> None:
@@ -77,8 +113,12 @@ def test_public_bundle_is_one_coherent_scan_and_analysis() -> None:
         scan_rows=[
             {
                 "Ticker": "way",
+                "Company Name": "Waystar Holding Corp.",
                 "Overall Sentiment": "Neutral",
                 "Mentions": "21",
+                "Evidence": 2,
+                "Avg Sentiment Score": 0.06,
+                "Sample Tweets": ["raw post stays private"],
             },
             {
                 "Ticker": "low",
@@ -88,11 +128,7 @@ def test_public_bundle_is_one_coherent_scan_and_analysis() -> None:
         ],
         scan_sector=" Tech ",
         analysis_ticker="WAY",
-        analysis_summary={
-            "recommendation": "Watch",
-            "confidence": "Moderate",
-            "rationale": ["Evidence is mixed."],
-        },
+        analysis_card=_card(),
     )
     assert bundle["scan"]["sector"] == "tech"
     assert [row["Ticker"] for row in bundle["scan"]["validated_rows"]] == [
@@ -100,13 +136,45 @@ def test_public_bundle_is_one_coherent_scan_and_analysis() -> None:
     ]
     assert bundle["deep_analysis"]["ticker"] == "WAY"
     assert bundle["deep_analysis"]["sector"] == "tech"
-    assert bundle["deep_analysis"]["analysis_results"] == {
-        "public_summary": {
-            "recommendation": "Watch",
-            "confidence": "Moderate",
-            "rationale": ["Evidence is mixed."],
-        }
-    }
+    assert "Sample Tweets" not in bundle["scan"]["validated_rows"][0]
+    public_card = bundle["deep_analysis"]["public_card"]
+    assert public_card["verdict"] == "Watch"
+    assert public_card["evidence"]["price_points"] == 25
+    assert public_card["movement"]["horizon_days"] == 10
+    assert "pillars" not in public_card
+
+
+def test_private_source_retains_complete_scan_and_analysis() -> None:
+    card = _card()
+    source = build_demo_source_payload(
+        scan_rows=[{
+            "Ticker": "WAY",
+            "Company Name": "Waystar Holding Corp.",
+            "Overall Sentiment": "Neutral",
+            "Mentions": 21,
+            "Sample Tweets": ["complete raw post"],
+        }],
+        scan_sector="tech",
+        analysis_ticker="WAY",
+        analysis_card=card,
+        analysis_results={
+            "Real-Time Market Sentiment": {
+                "sample_tweets": ["complete evidence post"],
+                "tweet_ids": ["123"],
+            }
+        },
+        scan_metadata={"posts_seen": 74, "from_cache": False},
+        analysis_metadata={"elapsed_s": 7.2, "degraded": False},
+    )
+    assert source["scan"]["rows"][0]["Sample Tweets"] == [
+        "complete raw post"
+    ]
+    assert source["deep_analysis"]["card"]["pillars"]
+    assert source["deep_analysis"]["card"]["movement"]["targets"]
+    assert source["deep_analysis"]["analysis_results"][
+        "Real-Time Market Sentiment"
+    ]["sample_tweets"] == ["complete evidence post"]
+    assert source["scan"]["metadata"]["posts_seen"] == 74
 
 
 def test_public_bundle_rejects_analysis_outside_current_scan() -> None:
@@ -119,12 +187,14 @@ def test_public_bundle_rejects_analysis_outside_current_scan() -> None:
                         "Ticker": "WAY",
                         "Overall Sentiment": "Neutral",
                         "Mentions": 21,
+                        "Evidence": 2,
+                        "Avg Sentiment Score": 0.0,
                     }],
                 },
                 "deep_analysis": {
                     "ticker": "NVDA",
                     "sector": "tech",
-                    "analysis_results": {"recommendation": "Watch"},
+                    "public_card": _card("NVDA"),
                 },
             }
         )
@@ -140,8 +210,9 @@ def test_all_snapshot_publishers_keep_the_contract() -> None:
     home = (REPO / "pages" / "Home.py").read_text(encoding="utf-8")
 
     assert "build_public_demo_bundle(" in admin
+    assert "build_demo_source_payload(" in admin
     assert "publish_public_demo(" in admin
-    assert "load_latest_public_demo(" in admin
+    assert "load_latest_demo_publication(" in admin
     assert "load_latest_public_demo()" in home
     assert "st.session_state.demo_scan_sector = sector" in discovery
     assert '"Mentions", "Sample Tweets"' not in discovery
@@ -152,7 +223,9 @@ def test_all_snapshot_publishers_keep_the_contract() -> None:
     assert "social_posts_value(row)" in home
     assert "Social posts" in home
     assert "Attention unavailable" not in home
-    assert '<table class="ss-hero-preview-table">' in home
+    assert '<table class="ss-decision-table">' in home
+    assert "Decision Workspace" in home
+    assert "Price history" in home
     assert 'scope="col"' in home and 'scope="row"' in home
     assert "attention_fallback" not in home
 
@@ -167,6 +240,7 @@ def main() -> int:
         test_social_posts_value_is_compact_and_uses_only_snapshot_data,
         test_snapshot_timestamp_is_explicit_utc,
         test_public_bundle_is_one_coherent_scan_and_analysis,
+        test_private_source_retains_complete_scan_and_analysis,
         test_public_bundle_rejects_analysis_outside_current_scan,
         test_all_snapshot_publishers_keep_the_contract,
     ]

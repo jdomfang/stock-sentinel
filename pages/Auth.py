@@ -35,7 +35,6 @@ render_sidebar_navigation()
 st.markdown(
     """
     <style>
-      div[data-testid="stMainBlockContainer"] {max-width:1100px;margin:0 auto;padding:.35rem 1.25rem 1rem;}
       div[data-testid="stMainBlockContainer"] > div > [data-testid="stVerticalBlock"] {gap:.75rem!important;}
       .st-key-auth_topbar {border-bottom:1px solid rgba(148,163,184,.16);padding:.35rem 0 .55rem;margin-bottom:.25rem;}
       .st-key-auth_topbar [data-testid="stHorizontalBlock"] {align-items:center!important;}
@@ -75,7 +74,10 @@ st.markdown(
       .st-key-auth_topbar a:focus-visible,.st-key-auth_shell button:focus-visible,.st-key-auth_shell input:focus-visible {outline:3px solid var(--ss-color-focus)!important;outline-offset:3px!important;}
       footer {visibility:hidden;}
       @media (max-width:760px) {
-        div[data-testid="stMainBlockContainer"] {padding:.2rem .75rem .75rem;}
+        div[data-testid="stMainBlockContainer"] {
+          padding-top:.2rem;
+          padding-bottom:.75rem;
+        }
         .st-key-auth_topbar [data-testid="stHorizontalBlock"] {flex-wrap:nowrap!important;}
         .st-key-auth_topbar [data-testid="stColumn"] {min-width:0!important;width:0!important;}
         .st-key-auth_topbar [data-testid="stColumn"]:first-child {flex:2.5 1 0!important;}

@@ -27,7 +27,6 @@ render_top_nav(active="how_it_works")
 st.markdown(
     """
     <style>
-      div[data-testid="stMainBlockContainer"] {max-width:1100px;margin:0 auto;padding-top:.25rem;}
       .ss-how-hero {max-width:800px;margin:0 0 1.35rem;}
       .ss-how-kicker {color:#7dd3fc;font-size:.73rem;font-weight:800;letter-spacing:.08em;text-transform:uppercase;margin-bottom:.55rem;}
       .ss-how-hero h1 {margin:0 0 .45rem;font-size:clamp(2.15rem,5vw,3.35rem);letter-spacing:-.045em;line-height:1.03;}

@@ -97,6 +97,26 @@ a[data-testid^="stBaseLinkButton-primary"],
   background-color: var(--ss-color-action) !important;
   border-color: rgba(56, 189, 248, 0.58) !important;
   color: var(--ss-color-action-ink) !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  text-align: center !important;
+  line-height: 1.2 !important;
+}
+
+:is(
+  button[data-testid^="stBaseButton-primary"],
+  a[data-testid^="stBaseLinkButton-primary"],
+  .stButton > button[kind="primary"],
+  [data-testid="stLinkButton"] a[kind="primary"],
+  [data-testid="stFormSubmitButton"] button[kind="primary"]
+) :is([data-testid="stMarkdownContainer"], p, span) {
+  margin-top: 0 !important;
+  margin-bottom: 0 !important;
+  color: var(--ss-color-action-ink) !important;
+  -webkit-text-fill-color: var(--ss-color-action-ink) !important;
+  line-height: 1.2 !important;
+  text-align: center !important;
 }
 
 button[data-testid^="stBaseButton-primary"]:hover,
@@ -115,6 +135,17 @@ a[data-testid^="stBaseLinkButton-primary"]:active,
 [data-testid="stFormSubmitButton"] button[kind="primary"]:active {
   background: var(--ss-color-action-pressed) !important;
   color: #ffffff !important;
+}
+
+:is(
+  button[data-testid^="stBaseButton-primary"],
+  a[data-testid^="stBaseLinkButton-primary"],
+  .stButton > button[kind="primary"],
+  [data-testid="stLinkButton"] a[kind="primary"],
+  [data-testid="stFormSubmitButton"] button[kind="primary"]
+):active :is([data-testid="stMarkdownContainer"], p, span) {
+  color: #ffffff !important;
+  -webkit-text-fill-color: #ffffff !important;
 }
 
 button:disabled,
@@ -398,7 +429,7 @@ button:disabled,
 }
 
 .st-key-account_purchase h2 { font-size: 1rem; margin: 0 0 .3rem; }
-.st-key-account_purchase p {
+.st-key-account_purchase .ss-account-purchase-copy {
   color: var(--ss-color-text-muted);
   font-size: .86rem;
   margin: 0 0 .8rem;
@@ -456,16 +487,7 @@ button:disabled,
 .st-key-account_purchase .stButton > button,
 .st-key-account_purchase [data-testid="stLinkButton"] > a,
 .st-key-account_purchase .stLinkButton > a {
-  min-height: 44px !important;
-}
-
-.st-key-account_header_logout [data-testid="stButton"],
-.st-key-account_header_logout button {
-  width: 100% !important;
-  min-width: 0 !important;
-  max-width: 100% !important;
-  min-height: 44px !important;
-  box-sizing: border-box !important;
+  min-height: 48px !important;
 }
 
 @media (max-width: 900px) {

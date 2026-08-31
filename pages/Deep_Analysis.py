@@ -41,6 +41,7 @@ from utils.ui import (
 # comes back is the day there are two implementations again.
 from utils import analyze_client as _client
 from utils import billing
+from utils.demo_snapshots import snapshot_timestamp
 
 # Page configuration
 st.set_page_config(
@@ -56,25 +57,14 @@ from utils.auth import flush_pending_rt_save
 apply_theme()
 render_sidebar_navigation()
 flush_pending_rt_save()
-from utils.guard import require_active_account
+from utils.guard import require_active_account, require_login
+require_login(after_auth_page="Deep_Analysis")
 render_top_nav(active="deep_analyze")
 _profile = require_active_account(after_auth_page="Deep_Analysis")
 
 st.markdown(
     """
     <style>
-    div[data-testid="stMainBlockContainer"] {
-      max-width: 1100px; margin: 0 auto;
-      padding-left: clamp(16px, 4vw, 28px);
-      padding-right: clamp(16px, 4vw, 28px);
-      padding-top: 0.25rem;
-    }
-    div[data-testid="stMainBlockContainer"] > div:first-child,
-    div[data-testid="stVerticalBlock"] > div:first-child {
-      margin-top: 0 !important; padding-top: 0 !important;
-    }
-    section[data-testid="stMain"] > div { padding-top: 0 !important; }
-
     .st-key-deep_full_result_link [data-testid="stExpander"] {
       border:1px solid rgba(56,189,248,.36)!important;
       border-radius:var(--radius-control)!important;
@@ -256,6 +246,13 @@ if _run_clicked or (_autorun and _prefill):
                             _r.elapsed_s or -1, _r.degraded, _run_ticker)
                         _result_holder["card"] = _r.card
                         _result_holder["analysis_results"] = _r.analysis_results
+                        _result_holder["metadata"] = {
+                            "degraded": _r.degraded,
+                            "status": _r.status,
+                            "posts_billed": _r.posts_billed,
+                            "elapsed_s": _r.elapsed_s,
+                            "route": "deep_analyze",
+                        }
                     else:
                         _result_holder["error"] = _r.error
                         if _r.posts_billed:
@@ -487,6 +484,10 @@ if _run_clicked or (_autorun and _prefill):
             st.session_state.analysis_sector = sector
             st.session_state.deep_analysis_card = _card
             st.session_state.deep_analysis_results = analysis_results
+            st.session_state.deep_analysis_completed_at = snapshot_timestamp()
+            st.session_state.deep_analysis_metadata = (
+                _result_holder.get("metadata") or {}
+            )
             st.session_state["analysis_result_origin"] = "deep_analyze"
 
             # EVIDENCE CHECK. Which gates passed, which failed, and what would

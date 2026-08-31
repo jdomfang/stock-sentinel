@@ -44,16 +44,15 @@ def main() -> int:
         and "--ss-font-display" in tokens,
     )
     check(
-        "public Home uses a two-column story and product preview",
-        'key="home_public_hero"' in home
-        and 'key="home_public_story"' in home
-        and 'key="home_public_preview"' in home
-        and "_marketing_preview_html(" in home
+        "public Home uses a two-column story and full-width decision workspace",
+        'key="home_public_intro"' in home
+        and "_decision_workspace_html(" in home
+        and 'class="ss-decision-grid"' in home
         and "Product preview" in home,
     )
     check(
         "public preview is clearly illustrative",
-        'aria-label="Illustrative product preview"' in home
+        'aria-label="Illustrative decision workspace"' in home
         and home.count("illustrative") >= 2,
     )
     check(

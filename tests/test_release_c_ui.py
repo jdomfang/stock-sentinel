@@ -107,10 +107,11 @@ def main() -> int:
         'st.page_link("pages/Trust_Center.py", label="Trust Center")' in ui,
     )
     check(
-        "account is the single credit and session-management destination",
+        "account owns credits while the global header owns session management",
         'key="account_purchase"' in account
-        and 'key="account_header_logout"' in account
-        and 'st.button("Log out"' in account
+        and 'key="account_header_logout"' not in account
+        and 'def _session_menu' in nav
+        and '"Log out"' in nav
         and 'key="home_credit_hub"' not in home,
     )
     check(

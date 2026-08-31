@@ -74,8 +74,8 @@ def main() -> int:
     )
     check(
         "landing proof language avoids unsupported speed/freshness claims",
-        "Freshness shown" in home
-        and "Evidence explained" in home
+        "Evidence age shown on live results" in home
+        and "Reasons and confidence included" in home
         and "Results in under 60 seconds" not in home,
     )
     check(
@@ -87,7 +87,7 @@ def main() -> int:
     )
     check(
         "the product preview is named for assistive technology",
-        'aria-label="Illustrative product preview"' in home,
+        'aria-label="Illustrative decision workspace"' in home,
     )
     check(
         "full breakdown is keyboard reachable and mobile contained",

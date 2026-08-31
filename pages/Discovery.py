@@ -32,6 +32,15 @@ from utils.finance import get_last_close_prices_best_effort
 # above is still local and imports what it needs directly.
 from utils import analyze_client as _client
 from utils import billing
+from utils.demo_snapshots import snapshot_timestamp
+
+
+st.set_page_config(
+    page_title="Market Scan - Stock Sentinel",
+    page_icon="🔎",
+    layout="wide",
+    initial_sidebar_state="collapsed",
+)
 
 
 # Verdicts we are willing to assert. Anything else is a statement about how
@@ -83,9 +92,10 @@ if (
     st.session_state["discovery_sector"] = _intent_sector
     st.session_state["_intent_sector_applied"] = True
 
-from utils.guard import require_active_account
+from utils.guard import require_active_account, require_login
 from utils.auth import refresh_session_if_needed, flush_pending_rt_save
 flush_pending_rt_save()
+require_login(after_auth_page="Discovery")
 render_top_nav(active="market_scan")
 _profile = require_active_account(after_auth_page="Discovery")
 
@@ -107,151 +117,6 @@ st.markdown(
     <style>
     /* Discovery page styling; global theme comes from utils.ui.apply_theme() */
 
-    /* Main container spacing (match Home exactly) */
-    div[data-testid="stMainBlockContainer"] {
-      max-width: 1100px;
-      margin: 0 auto;
-      padding-left: clamp(16px, 4vw, 28px);
-      padding-right: clamp(16px, 4vw, 28px);
-      padding-top: 0.25rem;
-    }
-
-    /* Kill Streamlit's default top padding that creates the dead gap */
-    div[data-testid="stMainBlockContainer"] > div:first-child,
-    div[data-testid="stVerticalBlock"] > div:first-child {
-      margin-top: 0 !important;
-      padding-top: 0 !important;
-    }
-
-    /* Streamlit injects extra block padding - neutralise it */
-    section[data-testid="stMain"] > div {
-      padding-top: 0 !important;
-    }
-
-    .discovery-wrapper {
-      max-width: 1100px;
-      margin: 0 auto;
-      padding: 0;
-    }
-
-    /* Control row */
-    .control-hint {
-      color: var(--muted);
-      font-size: 0.9rem;
-      margin-top: 0.25rem;
-    }
-
-    /* Metrics row tweaks */
-    [data-testid="stMetric"] {
-      border: 1px solid var(--border);
-      background: rgba(15,23,42,.65);
-      border-radius: 14px;
-      padding: 12px 14px;
-    }
-    [data-testid="stMetric"] label {
-      color: var(--muted) !important;
-    }
-
-    /* Inputs */
-    [data-baseweb="select"] > div,
-    [data-baseweb="input"] > div {
-      background-color: rgba(2,6,23,.55) !important;
-      border-color: var(--border) !important;
-      color: var(--text) !important;
-    }
-
-    /* Select dropdown menu (Streamlit/Browser differences: BaseWeb + native fallbacks) */
-    [data-baseweb="popover"] { z-index: 9999; }
-
-    /* BaseWeb list surfaces */
-    [data-baseweb="popover"] [data-baseweb="menu"],
-    [data-baseweb="popover"] ul[role="listbox"],
-    [data-baseweb="popover"] div[role="listbox"],
-    ul[role="listbox"],
-    div[role="listbox"],
-    [role="listbox"],
-    [role="list"],
-    [role="menu"] {
-      background-color: #0F172A !important;
-      border: 1px solid var(--border) !important;
-      border-radius: 14px !important;
-      overflow: hidden;
-      box-shadow: 0 16px 40px rgba(0,0,0,.45) !important;
-    }
-
-    /* BaseWeb option rows */
-    [role="option"],
-    [role="menuitem"] {
-      background-color: transparent !important;
-      color: #E5E7EB !important;
-      opacity: 1 !important;
-    }
-    [role="option"]:hover,
-    [role="menuitem"]:hover {
-      background-color: rgba(56,189,248,.16) !important;
-    }
-    [role="option"][aria-selected="true"] {
-      background-color: rgba(56,189,248,.22) !important;
-    }
-
-    /* Streamlit selectbox virtual dropdown (this is what you're seeing) */
-    /* Streamlit selectbox virtual dropdown (this is what you're seeing) */
-    ul[data-testid="stSelectboxVirtualDropdown"],
-    [data-testid="stSelectboxVirtualDropdown"] {
-      background: #0F172A !important;
-      background-color: #0F172A !important;
-      border: 1px solid var(--border) !important;
-      border-radius: 14px !important;
-      box-shadow: 0 16px 40px rgba(0,0,0,.45) !important;
-    }
-
-    /* Ensure list items inherit dark background */
-    ul[data-testid="stSelectboxVirtualDropdown"] li {
-      background: transparent !important;
-      background-color: transparent !important;
-      color: #E5E7EB !important;
-      opacity: 1 !important;
-    }
-    ul[data-testid="stSelectboxVirtualDropdown"] li:hover {
-      background: rgba(56,189,248,.16) !important;
-      background-color: rgba(56,189,248,.16) !important;
-    }
-
-    /* Force text within options */
-    ul[data-testid="stSelectboxVirtualDropdown"] li *,
-    ul[data-testid="stSelectboxVirtualDropdown"] * {
-      color: #E5E7EB !important;
-      opacity: 1 !important;
-    }
-
-    /* Native <select> fallback (Windows light theme can force pale options) */
-    select {
-      background-color: rgba(2,6,23,.55) !important;
-      color: #E5E7EB !important;
-      border-color: var(--border) !important;
-    }
-    select option {
-      background-color: #0F172A !important;
-      color: #E5E7EB !important;
-    }
-
-    /* Buttons */
-    .stButton > button {
-      border-radius: 12px;
-      border: 1px solid rgba(56,189,248,0.28);
-      background: rgba(15, 23, 42, 0.85);
-      background-color: rgba(15, 23, 42, 0.85);
-      color: #E5E7EB;
-      font-weight: 650;
-      opacity: 1;
-      filter: none;
-    }
-    .stButton > button:hover {
-      border-color: rgba(56, 189, 248, 0.55);
-      background: rgba(15, 23, 42, 1.0);
-      background-color: rgba(15, 23, 42, 1.0);
-    }
-
     /* Secondary buttons (Deep Analyze) - stronger presence */
     [class*="st-key-scan_row_"] button[data-testid="stBaseButton-secondary"],
     [class*="st-key-scan_row_"] .stButton > button[kind="secondary"] {
@@ -270,26 +135,6 @@ st.markdown(
       border-color: rgba(56,189,248,0.75) !important;
       color: rgba(255,255,255,.98) !important;
       box-shadow: 0 0 12px rgba(56,189,248,.20) !important;
-    }
-
-    /* Primary CTA */
-    /* Primary buttons (Scan X) - must override the generic button rule */
-    button[data-testid="stBaseButton-primary"],
-    .stButton > button[kind="primary"] {
-      background: linear-gradient(180deg, var(--ss-color-action), var(--ss-color-action-rest-end)) !important;
-      background-color: var(--ss-color-action) !important;
-      border: 1px solid rgba(56,189,248,.45) !important;
-      color: #001018 !important;
-      font-weight: 650 !important;
-    }
-
-    /* Disabled state readability (fix Deep Analyze looking "invisible") */
-    .stButton > button:disabled {
-      background: rgba(15, 23, 42, 0.55) !important;
-      color: rgba(229, 231, 235, 0.70) !important;
-      border-color: rgba(56,189,248,0.20) !important;
-      opacity: 1 !important;
-      filter: none !important;
     }
 
     /* Release A: task-first hierarchy and native Streamlit result rows. */
@@ -988,9 +833,20 @@ if scan_triggered:
             # opened independently and may update other route state, but the
             # durable public demo must publish a coherent scan/analysis pair.
             st.session_state.demo_scan_sector = sector
+            st.session_state.scan_completed_at = snapshot_timestamp()
+            st.session_state.scan_result_metadata = {
+                "posts_seen": _r.posts_seen,
+                "from_cache": _r.from_cache,
+                "corpus_age_s": _r.corpus_age_s,
+                "stop_reason": _r.stop_reason,
+                "x_error": _r.x_error,
+                "elapsed_s": _r.elapsed_s,
+            }
             st.session_state.selected_ticker = None
             st.session_state.deep_analysis_results = None
             st.session_state.deep_analysis_card = None
+            st.session_state.deep_analysis_completed_at = None
+            st.session_state.deep_analysis_metadata = {}
             st.session_state.analysis_sector = None
 
             # Results are durable in session_state: the scan ran and produced an
@@ -1287,7 +1143,7 @@ if st.session_state.df_valid is not None:
             _price_prog.progress(40)
             last_close_map = get_last_close_prices_best_effort(tickers_for_prices)
             _price_prog.progress(100)
-        except Exception as e:
+        except Exception:
             logger.exception("Last close price lookup failed")
             last_close_map = {}
         finally:
@@ -1538,6 +1394,13 @@ if st.session_state.df_valid is not None:
                                         _r.elapsed_s or -1, ticker_symbol)
                                     _disc_holder["card"] = _r.card
                                     _disc_holder["result"] = _r.analysis_results
+                                    _disc_holder["metadata"] = {
+                                        "degraded": _r.degraded,
+                                        "status": _r.status,
+                                        "posts_billed": _r.posts_billed,
+                                        "elapsed_s": _r.elapsed_s,
+                                        "route": "discovery",
+                                    }
                                 else:
                                     _disc_holder["error"] = _r.error
                                     _disc_holder["pre_spend"] = _r.retryable
@@ -1633,6 +1496,10 @@ if st.session_state.df_valid is not None:
                         else:
                             st.session_state.deep_analysis_results = _disc_holder.get("result")
                             st.session_state.deep_analysis_card = _disc_holder.get("card")
+                            st.session_state.deep_analysis_completed_at = snapshot_timestamp()
+                            st.session_state.deep_analysis_metadata = (
+                                _disc_holder.get("metadata") or {}
+                            )
                             # deep_analysis_event_id is GONE with the writes it
                             # existed for. It let the panel key a rerun guard on
                             # the credit event, back when the panel itself wrote
