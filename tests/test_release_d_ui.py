@@ -89,17 +89,19 @@ def main() -> int:
         in discovery,
     )
     check(
-        "selected result uses a compact decision summary",
-        "compact=True" in discovery
-        and "embedded=True" in discovery
+        "selected result uses the canonical complete decision summary",
+        "render_delivered_analysis_result(" in discovery
+        and "compact=True" not in discovery
+        and "embedded=True" not in discovery
         and 'key="selected_analysis_panel"' in discovery
-        and "would_change=card.get" in discovery,
+        and "def render_delivered_analysis_result(" in ui,
     )
     check(
         "selected result opens its full breakdown without leaving context",
-        'key="selected_analysis_breakdown"' in discovery
-        and 'label="View full breakdown"' in discovery
-        and 'label="View full breakdown"' in deep
+        'key=f"delivered_analysis_breakdown_{safe_key}"' in ui
+        and 'label="View full breakdown"' in ui
+        and "render_delivered_analysis_result(" in discovery
+        and "render_delivered_analysis_result(" in deep
         and '"pages/Analysis_Result.py"' not in discovery
         and '"pages/Analysis_Result.py"' not in deep,
     )
@@ -123,7 +125,7 @@ def main() -> int:
     check(
         "result workspace retains labelled responsive flow",
         ".st-key-selected_analysis_panel" in discovery
-        and ".ss-decision-card.compact.embedded" in ui
+        and '[class*="st-key-delivered_analysis_breakdown_"]' in ui
         and "grid-template-columns:repeat(2,minmax(0,1fr))" in ui
         and "scan-mobile-label" in discovery,
     )

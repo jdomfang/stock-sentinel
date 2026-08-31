@@ -28,21 +28,34 @@ def test_full_breakdown_is_nonpaying_and_opens_in_place() -> None:
     discovery = read("pages/Discovery.py")
     deep = read("pages/Deep_Analysis.py")
     result = read("pages/Analysis_Result.py")
+    ui = read("utils/ui.py")
 
-    assert 'key="selected_analysis_breakdown"' in discovery
-    assert 'label="View full breakdown"' in discovery
-    assert 'label="View full breakdown"' in deep
-    assert "render_full_analysis_expander," in deep.split(
-        "from utils.ui import (", 1
-    )[1].split(")", 1)[0]
-    deep_breakdown = deep.split(
-        'with st.container(key="deep_full_result_link"):', 1
-    )[1].split("# Written AFTER delivery", 1)[0]
-    assert "render_full_analysis_expander(\n                    analysis_results," in deep_breakdown
+    assert "render_delivered_analysis_result(" in discovery
+    assert "render_delivered_analysis_result(" in deep
+    assert 'key=f"delivered_analysis_breakdown_{safe_key}"' in ui
+    assert 'label="View full breakdown"' in ui
+    assert "render_full_analysis_expander(" in ui
     assert '"pages/Analysis_Result.py"' not in discovery
     assert '"pages/Analysis_Result.py"' not in deep
     assert "consume_credit" not in result
     assert "analyze_remote" not in result
+
+
+def test_paid_summary_closes_delivery_before_optional_ui() -> None:
+    deep = read("pages/Deep_Analysis.py")
+    ui = read("utils/ui.py")
+
+    helper = ui.split("def render_delivered_analysis_result", 1)[1]
+    assert helper.index("render_recommendation_panel(") < helper.index(
+        "on_summary_delivered()"
+    )
+    assert helper.index("on_summary_delivered()") < helper.index(
+        "render_evidence_check("
+    )
+    assert "on_summary_delivered=_mark_summary_delivered" in deep
+    assert deep.index("st.session_state.deep_analysis_card = _card") < deep.index(
+        "render_delivered_analysis_result("
+    )
 
 
 def test_compact_result_metrics_finish_on_an_aligned_row() -> None:
@@ -165,31 +178,30 @@ def test_desktop_result_panel_is_contained_and_top_aligned() -> None:
         ".st-key-selected_analysis_panel {", 1
     )[1].split("}", 1)[0]
     assert "position:sticky" not in panel_css
-    assert "padding:18px 20px" in panel_css
-    assert "border:1px solid" in panel_css
-    assert "border-radius:var(--radius-panel)" in panel_css
     assert "box-sizing:border-box" in panel_css
     assert "width:100%" in panel_css
     assert "min-width:0" in panel_css
     assert "max-width:100%" in panel_css
     assert "overflow:hidden" not in panel_css
-    embedded_css = ui.split(
-        ".ss-decision-card.embedded {", 1
-    )[1].split("}", 1)[0]
-    assert "border:0" in embedded_css
-    assert "background:transparent" in embedded_css
+    # The wrapper owns geometry only; the shared canonical card owns all
+    # visible chrome, preventing a bordered box nested inside another.
+    assert "padding:" not in panel_css
+    assert "border:" not in panel_css
+    assert "background:" not in panel_css
+    assert "def render_delivered_analysis_result(" in ui
 
 
 def test_breakdown_is_nested_in_the_same_result_surface() -> None:
     discovery = read("pages/Discovery.py")
+    ui = read("utils/ui.py")
 
     result_surface = discovery.split(
         'with st.container(key="selected_analysis_panel"):', 1
     )[1].split("else:\n        st.markdown(", 1)[0]
-    assert 'key="selected_analysis_breakdown"' in result_surface
-    assert 'label="View full breakdown"' in result_surface
-    assert "decision_details=_decision_details" in result_surface
-    assert "same\n                    # result surface" in result_surface
+    assert "render_delivered_analysis_result(" in result_surface
+    assert 'key=f"delivered_analysis_breakdown_{safe_key}"' in ui
+    assert 'label="View full breakdown"' in ui
+    assert '[class*="st-key-delivered_analysis_breakdown_"]' in ui
 
 
 def test_embedded_result_keeps_semantic_heading_and_short_live_status() -> None:
@@ -207,13 +219,48 @@ def test_embedded_result_keeps_semantic_heading_and_short_live_status() -> None:
 def test_analysis_failures_render_outside_action_cells() -> None:
     discovery = read("pages/Discovery.py")
 
-    assert "_analysis_status = _results_col.empty()" in discovery
+    assert "def _queue_discovery_analysis(" in discovery
+    assert "def _process_pending_discovery_analysis(" in discovery
+    assert 'key="discovery_analysis_progress"' in discovery
     action_block = discovery.split("with col5:", 1)[1].split(
         "_results_col.markdown(", 1
     )[0]
-    assert "_analysis_status.error(" in action_block
-    assert "with _analysis_status.container():" in action_block
+    assert "on_click=_queue_discovery_analysis" in action_block
+    assert "consume_credit(" not in action_block
+    assert "analyze_remote(" not in action_block
     assert "st.error(" not in action_block
+
+
+def test_scan_analysis_has_one_stable_processing_and_paint_cycle() -> None:
+    discovery = read("pages/Discovery.py")
+    processor = discovery.split(
+        "def _process_pending_discovery_analysis", 1
+    )[1].split("# One task command", 1)[0]
+
+    assert '"request_id": new_request_id()' in discovery
+    assert "_set_request_id(request_id)" in processor
+    assert processor.count('key="discovery_analysis_progress"') == 1
+    assert processor.index('key="discovery_analysis_progress"') < processor.index(
+        'consume_credit(\n        "deep_analyze"'
+    )
+    assert "st.rerun()" not in processor
+    finally_block = processor.split("finally:", 1)[1].split(
+        "# No Streamlit calls occur", 1
+    )[0]
+    assert "overlay_slot.empty()" not in finally_block
+    assert "complete_work(" in finally_block
+    assert "refund_credit(" in finally_block
+    assert "overlay_slot.empty()" in processor.split(
+        "# No Streamlit calls occur", 1
+    )[1]
+
+    result_render = discovery.index(
+        "render_delivered_analysis_result(\n                        card="
+    )
+    first_header = discovery.index(
+        "def _render_scan_header", result_render
+    )
+    assert result_render < first_header
 
 
 def test_market_scan_sector_cannot_be_overwritten_by_independent_analysis() -> None:
@@ -230,7 +277,8 @@ def test_market_scan_sector_cannot_be_overwritten_by_independent_analysis() -> N
     )
     assert "st.session_state.analysis_sector = sector" in deep
     assert "st.session_state.selected_sector = sector" not in deep
-    assert "st.session_state.analysis_sector = _result_sector" in discovery
+    assert "st.session_state.analysis_sector = result_sector" in discovery
+    assert "args=(ticker_symbol, _result_sector)" in discovery
     assert 'strip().lower() == "unknown"' in discovery
     assert 'st.session_state.get("analysis_sector")' in result
 
@@ -303,6 +351,7 @@ def main() -> int:
     tests = [
         test_completion_is_communicated_without_a_layout_shifting_banner,
         test_full_breakdown_is_nonpaying_and_opens_in_place,
+        test_paid_summary_closes_delivery_before_optional_ui,
         test_compact_result_metrics_finish_on_an_aligned_row,
         test_scan_header_and_rows_share_one_alignment_contract,
         test_selected_rows_and_actions_do_not_change_column_geometry,
@@ -312,6 +361,7 @@ def main() -> int:
         test_breakdown_is_nested_in_the_same_result_surface,
         test_embedded_result_keeps_semantic_heading_and_short_live_status,
         test_analysis_failures_render_outside_action_cells,
+        test_scan_analysis_has_one_stable_processing_and_paint_cycle,
         test_market_scan_sector_cannot_be_overwritten_by_independent_analysis,
         test_public_preview_uses_compact_aligned_table_geometry,
         test_prefilled_ticker_uses_explicit_cross_browser_contrast,

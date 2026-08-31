@@ -1,4 +1,3 @@
-import html
 import logging
 import re
 import streamlit as st
@@ -29,10 +28,8 @@ from utils.navigation import render_sidebar_navigation, render_top_nav
 from utils.ui import (
     close_page,
     processing_state_html,
-    render_evidence_check,
-    render_full_analysis_expander,
     render_compact_task_hint,
-    render_recommendation_panel,
+    render_delivered_analysis_result,
     render_system_state,
 )
 # NOT the pipeline. This page charges a credit, draws a progress bar and
@@ -53,7 +50,7 @@ st.set_page_config(
 
 # Apply the shared theme before the authenticated workspace shell.
 from utils.ui import apply_theme
-from utils.auth import flush_pending_rt_save
+from utils.auth import ensure_user_scoped_state_owner, flush_pending_rt_save
 apply_theme()
 render_sidebar_navigation()
 flush_pending_rt_save()
@@ -64,20 +61,6 @@ _profile = require_active_account(after_auth_page="Deep_Analysis")
 
 st.markdown(
     """
-    <style>
-    .st-key-deep_full_result_link [data-testid="stExpander"] {
-      border:1px solid rgba(56,189,248,.36)!important;
-      border-radius:var(--radius-control)!important;
-      background:rgba(8,15,30,.58)!important;
-    }
-    .st-key-deep_full_result_link details > summary {
-      min-height:var(--ss-control-min-height);color:var(--accent)!important;
-      font-size:.9rem;font-weight:720!important;
-    }
-    .st-key-deep_full_result_link [data-testid="stExpander"]:hover {
-      background:rgba(56,189,248,.07)!important;
-    }
-    </style>
     <div class="clawd-app-wrapper">
     """,
     unsafe_allow_html=True,
@@ -375,112 +358,12 @@ if _run_clicked or (_autorun and _prefill):
                             retry_ok=False)
                 _bail()
 
-            # EVERYTHING BELOW READS THE CARD -- not the Analysis, not the
-            # Verdict. The card is the only thing the remote path can hand back
-            # and the only thing card() guarantees agrees with the decision, so
-            # identical code now draws an analysis computed in this process and
-            # one computed in a container. The two cannot present the same
-            # verdict differently, which is the property the whole migration is
-            # for.
-            _evidence = _card.get("evidence") or {}
-            _movement = _card.get("movement") or {}
-            price_points = _evidence.get("price_points") or 0
-
-            ai_summary = {
-                # "—" rather than None: render_recommendation_panel calls
-                # .lower() on the recommendation, so a card missing it raised
-                # AttributeError mid-page, before _delivered.
-                "recommendation": _card.get("verdict") or "—",
-                "confidence": _card.get("confidence") or "—",
-                # NOT `or 0.0`. card() returns None when the fallback reported
-                # no score, precisely so a renderer cannot print
-                # "Neutral (+0.00)" as a finding nobody made. Discovery honours
-                # that; this page must not disagree about the same card.
-                "avg_sentiment": _card.get("avg_sentiment"),
-                # The reason only. would_change belongs to the evidence check
-                # below; duplicating it here printed "more independent voices,
-                # not more posts" as a REASON for the signal.
-                "rationale": _card.get("rationale") or [],
-            }
-
-            current_price = projected_gain = drawdown_first = "Unavailable"
-            # Selected by KEY, not by the label's wording: rewording a label
-            # would otherwise delete a tile with nothing raised anywhere.
-            for _tile in (_card.get("tiles") or []):
-                if _tile.get("key") == "last_price":
-                    current_price = _tile.get("value", "Unavailable")
-                elif _tile.get("key") == "range_30d":
-                    projected_gain = _tile.get("value", "Unavailable")
-                elif _tile.get("key") == "drawdown_first":
-                    drawdown_first = _tile.get("value", "Unavailable")
-
-            # UNIQUE ids. Summing mention_count across the eight angles counts
-            # a post once per angle it lands in -- angle 1 is the whole corpus
-            # and most others are subsets -- printing 141 for a 98-post corpus
-            # in which 90 were analysed, and logging that inflated figure.
-            # THE NUMBER ON THE CARD MUST BE THE NUMBER THAT DECIDED THE CALL.
-            # The corpus union is ~90 of 98 posts and rendered as "90 posts
-            # analysed" beside a verdict resting on 5 independent voices -- the
-            # one figure a reader takes as sample size, off by ~18x. Both come
-            # from the card, so this page and Discovery cannot disagree about
-            # which of them is being shown.
-            _independent_voices = _evidence.get("independent_voices")
-            _raw_mentions = _evidence.get("mentions")
-            if _independent_voices is not None:
-                _shown_mentions = int(_independent_voices or 0)
-                _cluster_suffix = "s" if _shown_mentions != 1 else ""
-                _evidence_label = (
-                    f"{_shown_mentions} independent evidence "
-                    f"cluster{_cluster_suffix}"
-                )
-            elif _raw_mentions is not None:
-                _shown_mentions = int(_raw_mentions or 0)
-                _post_suffix = "s" if _shown_mentions != 1 else ""
-                _evidence_label = (
-                    f"{_shown_mentions} post{_post_suffix} analyzed"
-                )
-            else:
-                _shown_mentions = 0
-                _evidence_label = "Evidence count unavailable"
-            _horizon_days = int(_movement.get("horizon_days") or 0)
-            _day_suffix = "s" if _horizon_days != 1 else ""
-            _horizon_label = (
-                f"{_horizon_days} trading day{_day_suffix}"
-                if _horizon_days else "Short-term horizon"
-            )
-
-            # Semantic result anchor. The current adapter does not inject
-            # parent-frame scrolling JavaScript; future hosts can route/focus
-            # this product state using their native navigation primitives.
-            import streamlit as _st
-            _st.markdown('<div id="da-results-anchor"></div>', unsafe_allow_html=True)
-
-            render_recommendation_panel(
-                ticker=_run_ticker,
-                sector=sector,
-                ai_summary=ai_summary,
-                current_price=current_price,
-                projected_gain=projected_gain,
-                drawdown_first=drawdown_first,
-                mentions=_shown_mentions,
-                price_points=price_points,
-                evidence_label=_evidence_label,
-                horizon=_horizon_label,
-                freshness="Analysis generated now",
-                would_change=_card.get("would_change") or [],
-            )
-
-            # The recommendation panel IS the product. Once it has rendered the user
-            # has what they paid for, so anything that fails after this point is a
-            # presentation bug, not a delivery failure.
-            _delivered = True
-            # Preserve the delivered view model for the nonpaying breakdown
-            # route. This is presentation state only; core-api already owns the
-            # analysis and persistence, and opening the route performs no work.
+            # Preserve the canonical result before rendering. If Streamlit
+            # notices navigation after the paid summary is visible, the next
+            # run can still restore that delivered product rather than losing
+            # it between the summary and an optional supplement.
+            ensure_user_scoped_state_owner()
             st.session_state.selected_ticker = _run_ticker
-            # This route can analyze without a scan and therefore uses an
-            # "unknown" sector. Keep that analysis context separate so it
-            # cannot relabel a Market Scan still present in session state.
             st.session_state.analysis_sector = sector
             st.session_state.deep_analysis_card = _card
             st.session_state.deep_analysis_results = analysis_results
@@ -490,101 +373,25 @@ if _run_clicked or (_autorun and _prefill):
             )
             st.session_state["analysis_result_origin"] = "deep_analyze"
 
-            # EVIDENCE CHECK. Which gates passed, which failed, and what would
-            # change the call. Generated from cascade state, so it cannot
-            # contradict the verdict above it.
-            if _card.get("pillars"):
-                try:
-                    render_evidence_check(_card, _run_ticker)
-                except Exception:
-                    _da_logger.warning("evidence check render failed", exc_info=True)
+            def _mark_summary_delivered() -> None:
+                # The helper invokes this immediately after the canonical paid
+                # recommendation renders and before any optional Streamlit UI.
+                global _delivered
+                _delivered = True
 
-            # MOVEMENT PROFILE. The part of this page that speaks directly to a
-            # short-term trader -- a target and a horizon -- computed from
-            # realised volatility with no forecast in it. Both directions are
-            # shown together and always: volatility is symmetric, so publishing
-            # "+5% in 66% of paths" alone would be read as a 66% win rate.
-            try:
-                _mp = _movement.get("targets") or {}
-                if _mp:
-                    _hz = int(_movement.get("horizon_days") or 10)
-                    _parts = [
-                        "<tr style='color:rgba(148,163,184,.6);font-size:0.74rem;"
-                        "text-transform:uppercase;letter-spacing:.05em;'>"
-                        "<td style='padding:0 14px 6px 0;'>target</td>"
-                        "<td style='padding:0 14px 6px;'>reached, 30d</td>"
-                        "<td style='padding:0 14px 6px;'>fallen, 30d</td>"
-                        f"<td style='padding:0 0 6px 14px;'>within {_hz}d</td></tr>"
-                    ]
-                    for _k, _v in _mp.items():
-                        _ud = _v.get("up_median_day")
-                        _dd = _v.get("down_median_day")
-                        _up = f"{_v['up_rate']:.0%}" + (f" &middot; day {_ud}" if _ud else "")
-                        _dn = f"{_v['down_rate']:.0%}" + (f" &middot; day {_dd}" if _dd else "")
-                        # The same question over the window the social evidence
-                        # can actually speak to. Both directions, for the same
-                        # reason the 30-day columns show both.
-                        _su = _v.get("up_rate_by_decision")
-                        _sd = _v.get("down_rate_by_decision")
-                        _short = ("&mdash;" if _su is None or _sd is None
-                                  else f"{_su:.0%} up &middot; {_sd:.0%} down")
-                        _parts.append(
-                            f"<tr><td style='padding:6px 14px 6px 0;'>&plusmn;{_k}</td>"
-                            f"<td style='padding:6px 14px;color:rgba(56,189,248,.95);'>{_up}</td>"
-                            f"<td style='padding:6px 14px;color:rgba(248,113,113,.95);'>{_dn}</td>"
-                            f"<td style='padding:6px 0 6px 14px;color:rgba(148,163,184,.9);'>{_short}</td></tr>"
-                        )
-                    # Order matters and symmetry does not hide it: whether +5%
-                    # arrives BEFORE -5% is the one directional question this
-                    # simulation can answer. With no drift estimate it answers
-                    # 50%, and saying so plainly is the point -- it states that
-                    # the price history alone gives no edge, rather than leaving
-                    # the reader to infer an edge from the up column.
-                    _f5d = _mp.get("5%") or {}
-                    _f5 = _f5d.get("up_first_rate")
-                    _tch = _f5d.get("touched_rate")
-                    # Conditional on having touched either side, and the base it
-                    # is conditional on is stated. The unconditional version of
-                    # this number reads 23% on a calm large cap -- an apparent
-                    # bearish edge printed directly under a denial of any edge.
-                    _first = ("" if _f5 is None else
-                              "<div style='color:rgba(148,163,184,.8);font-size:0.82rem;"
-                              "margin-top:10px;'>Of the paths that reach &plusmn;5% at all"
-                              + (f" ({_tch:.0%} of them)" if _tch is not None else "")
-                              + f", {_f5:.0%} reach +5% <em>first</em>. Price history alone "
-                              "carries no direction; only the evidence above does.</div>")
-                    _tk = html.escape(str(_run_ticker))
-                    st.markdown(
-                        "<div style='border:1px solid rgba(148,163,184,.22);border-radius:14px;"
-                        "padding:16px 20px;margin:0.75rem 0;'>"
-                        "<div style='font-weight:700;margin-bottom:2px;'>Movement profile</div>"
-                        "<div style='color:rgba(148,163,184,.8);font-size:0.82rem;margin-bottom:10px;'>"
-                        f"How far {_tk} normally travels, from its own recent "
-                        f"volatility (&plusmn;{_movement.get('band_pct') or 0:.1f}% over 30 days). Not a "
-                        "forecast &mdash; the same volatility carries it both ways.</div>"
-                        f"<table style='font-size:0.9rem;'>{''.join(_parts)}</table>"
-                        f"{_first}</div>",
-                        unsafe_allow_html=True,
-                    )
-            except Exception:
-                _da_logger.warning("movement profile render failed", exc_info=True)
-
-            # EVERY piece of the page is on screen before the logging below
-            # runs. Both writes are synchronous urllib POSTs, and Streamlit
-            # cannot interrupt a blocked urlopen -- it only notices a rerun at
-            # the next st.* call. With the expander after them, a slow Supabase
-            # left the recommendation panel rendered, the full analysis simply
-            # missing, and the page ignoring clicks; a click in that window
-            # raises RerunException (a BaseException, so no `except Exception`
-            # catches it) and the user is charged for an analysis they never
-            # fully saw.
-            with st.container(key="deep_full_result_link"):
-                render_full_analysis_expander(
-                    analysis_results,
-                    key_suffix=f"_deep_{_run_ticker}",
-                    label="View full breakdown",
-                )
-                st.caption("Already analyzed · no additional credit")
+            # Both entry paths render one complete product surface from this
+            # canonical card. Route context may differ; paid-result hierarchy,
+            # metrics, evidence, movement profile and disclosure may not.
+            render_delivered_analysis_result(
+                card=_card,
+                analysis_results=analysis_results,
+                ticker=_run_ticker,
+                sector=sector,
+                key_suffix=f"_deep_{_run_ticker}",
+                element_id="da-results-anchor",
+                freshness="Analysis generated now",
+                on_summary_delivered=_mark_summary_delivered,
+            )
 
             # Written AFTER delivery, and unable to affect it. This is the only
             # record that this call was ever made: X's index is 7 days deep and

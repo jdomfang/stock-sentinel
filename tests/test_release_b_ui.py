@@ -33,8 +33,9 @@ def main() -> int:
 
     check(
         "all delivered analysis entry points use the shared decision summary",
-        "render_recommendation_panel(" in deep
-        and "render_recommendation_panel(" in discovery,
+        "render_delivered_analysis_result(" in deep
+        and "render_delivered_analysis_result(" in discovery
+        and "def render_delivered_analysis_result(" in ui,
     )
     check(
         "legacy probability-like bars are absent from decision summaries",
@@ -42,8 +43,8 @@ def main() -> int:
     )
     check(
         "live signal horizon comes from the result model",
-        'movement.get("horizon_days")' in discovery
-        and '_movement.get("horizon_days")' in deep,
+        'movement.get("horizon_days")' in ui
+        and 'view["horizon"]' in ui,
     )
     check(
         "analysis generation time does not claim evidence freshness",
@@ -53,10 +54,8 @@ def main() -> int:
     )
     check(
         "degraded evidence remains posts rather than independent clusters",
-        'elif raw_mentions is not None' in discovery
-        and 'elif _raw_mentions is not None' in deep
-        and "post{post_suffix} analyzed" in discovery
-        and "post{_post_suffix} analyzed" in deep,
+        'elif raw_mentions is not None' in ui
+        and "post{suffix} analyzed" in ui,
     )
     check(
         "non-finite sentiment is rendered as unscored",

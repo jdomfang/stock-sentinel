@@ -297,7 +297,9 @@ def test_an_empty_summary_is_refunded_not_rendered() -> None:
         tree = ast.parse(src)
         guards = [n for n in ast.walk(tree)
                   if isinstance(n, ast.If)
-                  and any(isinstance(x, ast.Name) and x.id in ("_card", "_disc_holder")
+                  and any(isinstance(x, ast.Name) and x.id in (
+                              "_card", "card", "_disc_holder", "result_holder"
+                          )
                           or (isinstance(x, ast.Constant) and x.value == "card")
                           for x in ast.walk(n.test))
                   and _call_name_in(n.body, "refund_credit")]

@@ -45,10 +45,10 @@ def main() -> int:
     check("a delivered analysis becomes a nonpaying in-page result",
           "scan-view-result" in discovery
           and "View result" in discovery
-          and 'key="selected_analysis_breakdown"' in discovery
-          and 'label="View full breakdown"' in discovery)
+          and "render_delivered_analysis_result(" in discovery
+          and 'label="View full breakdown"' in ui)
     check("analysis renders in the page rather than a scrolling iframe",
-          "render_recommendation_panel(" in discovery and
+          "render_delivered_analysis_result(" in discovery and
           "components.html(_panel_html" not in discovery)
 
     check("asserted scan sentiment enforces the evidence floor",

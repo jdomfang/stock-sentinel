@@ -10,6 +10,7 @@ import html
 import logging
 import math
 from pathlib import Path
+from typing import Callable
 
 import streamlit as st
 
@@ -841,12 +842,280 @@ def render_evidence_check(
             f"font-size:0.9rem;margin-bottom:12px;'>"
             f"{_html.escape(str(card.get('reason') or ''))}</div>"
         )
+    else:
+        header = (
+            "<div style='color:rgba(148,163,184,.82);font-size:.72rem;"
+            "font-weight:760;letter-spacing:.07em;text-transform:uppercase;"
+            "margin-bottom:10px;'>Evidence check</div>"
+        )
 
     st.markdown(
-        f"<div style='border:1px solid rgba({rgb},.28);border-radius:14px;"
-        f"padding:16px 20px;margin:0.75rem 0;background:rgba({rgb},.04);'>"
+        "<style>"
+        ".ss-evidence-check__scroll{overflow-x:auto;-webkit-overflow-scrolling:touch;}"
+        ".ss-evidence-check table{width:100%;border-collapse:collapse;}"
+        "@media(max-width:520px){.ss-evidence-check table{min-width:560px;}}"
+        "</style>"
+        f"<div class='ss-evidence-check' style='border:1px solid rgba({rgb},.28);"
+        f"border-radius:14px;padding:16px 20px;margin:0.75rem 0;"
+        f"background:rgba({rgb},.04);'>"
         f"{header}{lead}"
-        f"<table style='width:100%;border-collapse:collapse;'>{''.join(rows)}</table>"
+        "<div class='ss-evidence-check__scroll' role='region' "
+        "aria-label='Evidence checks' tabindex='0'>"
+        f"<table>{''.join(rows)}</table></div>"
         f"{change}{notes}</div>",
         unsafe_allow_html=True,
     )
+
+
+def analysis_card_view_model(card: dict) -> dict:
+    """Normalize one canonical analysis card for every UI entry path.
+
+    Market Scan and Deep Analyze previously assembled the same labels and tile
+    values independently. That allowed the scan-launched result to become a
+    stripped-down, visually different product. This adapter is now the single
+    card-to-view contract shared by both routes.
+    """
+    card = card or {}
+    evidence = card.get("evidence") or {}
+    movement = card.get("movement") or {}
+    independent = evidence.get("independent_voices")
+    raw_mentions = evidence.get("mentions")
+    if independent is not None:
+        shown_mentions = int(independent or 0)
+        suffix = "s" if shown_mentions != 1 else ""
+        evidence_label = (
+            f"{shown_mentions} independent evidence cluster{suffix}"
+        )
+    elif raw_mentions is not None:
+        shown_mentions = int(raw_mentions or 0)
+        suffix = "s" if shown_mentions != 1 else ""
+        evidence_label = f"{shown_mentions} post{suffix} analyzed"
+    else:
+        shown_mentions = 0
+        evidence_label = "Evidence count unavailable"
+
+    tiles = {
+        str(tile.get("key") or ""): str(
+            tile.get("value") or "Unavailable"
+        )
+        for tile in (card.get("tiles") or [])
+        if isinstance(tile, dict)
+    }
+    horizon_days = int(movement.get("horizon_days") or 0)
+    day_suffix = "s" if horizon_days != 1 else ""
+    horizon = (
+        f"{horizon_days} trading day{day_suffix}"
+        if horizon_days else "Short-term horizon"
+    )
+    return {
+        "summary": {
+            "recommendation": card.get("verdict") or "—",
+            "confidence": card.get("confidence") or "—",
+            "avg_sentiment": card.get("avg_sentiment"),
+            "rationale": card.get("rationale") or [],
+        },
+        "current_price": tiles.get("last_price", "Unavailable"),
+        "projected_range": tiles.get("range_30d", "Unavailable"),
+        "drawdown_first": tiles.get("drawdown_first", "Unavailable"),
+        "shown_mentions": shown_mentions,
+        "evidence_label": evidence_label,
+        "price_points": int(evidence.get("price_points") or 0),
+        "horizon": horizon,
+    }
+
+
+def render_movement_profile(card: dict, ticker: str) -> None:
+    """Render the shared, symmetric volatility context for an analysis."""
+    movement = (card or {}).get("movement") or {}
+    targets = movement.get("targets") or {}
+    if not targets:
+        return
+
+    horizon_days = int(movement.get("horizon_days") or 10)
+    rows = [
+        "<tr class='ss-movement-head'><th>Target</th><th>Reached, 30d</th>"
+        "<th>Fallen, 30d</th>"
+        f"<th>Within {horizon_days}d</th></tr>"
+    ]
+    for target, values in targets.items():
+        up_day = values.get("up_median_day")
+        down_day = values.get("down_median_day")
+        up = f"{values['up_rate']:.0%}" + (
+            f" · day {up_day}" if up_day else ""
+        )
+        down = f"{values['down_rate']:.0%}" + (
+            f" · day {down_day}" if down_day else ""
+        )
+        short_up = values.get("up_rate_by_decision")
+        short_down = values.get("down_rate_by_decision")
+        short = (
+            "—" if short_up is None or short_down is None
+            else f"{short_up:.0%} up · {short_down:.0%} down"
+        )
+        rows.append(
+            "<tr>"
+            f"<th scope='row'>±{html.escape(str(target))}</th>"
+            f"<td class='up'>{html.escape(up)}</td>"
+            f"<td class='down'>{html.escape(down)}</td>"
+            f"<td>{html.escape(short)}</td></tr>"
+        )
+
+    five_percent = targets.get("5%") or {}
+    up_first = five_percent.get("up_first_rate")
+    touched = five_percent.get("touched_rate")
+    first_note = ""
+    if up_first is not None:
+        touched_copy = f" ({touched:.0%} of them)" if touched is not None else ""
+        first_note = (
+            "<p class='ss-movement-note'>Of the paths that reach ±5% at all"
+            f"{touched_copy}, {up_first:.0%} reach +5% <em>first</em>. "
+            "Price history alone carries no direction; only the evidence "
+            "above does.</p>"
+        )
+
+    ticker_safe = html.escape(str(ticker or "the stock"))
+    band = float(movement.get("band_pct") or 0)
+    st.markdown(
+        """
+        <style>
+        .ss-movement-profile {
+          border:1px solid rgba(148,163,184,.22);border-radius:14px;
+          padding:16px 20px;margin:.75rem 0;background:rgba(15,23,42,.28);
+        }
+        .ss-movement-profile h3 {margin:0 0 3px;font-size:1rem;}
+        .ss-movement-copy,.ss-movement-note {
+          color:rgba(148,163,184,.82);font-size:.82rem;line-height:1.45;
+        }
+        .ss-movement-copy {margin:0 0 10px;}
+        .ss-movement-note {margin:10px 0 0;}
+        .ss-movement-scroll {overflow-x:auto;-webkit-overflow-scrolling:touch;}
+        .ss-movement-table {border-collapse:collapse;min-width:560px;font-size:.88rem;}
+        .ss-movement-table th,.ss-movement-table td {
+          padding:7px 14px;text-align:left;border-bottom:1px solid rgba(148,163,184,.13);
+        }
+        .ss-movement-table th:first-child,.ss-movement-table td:first-child {padding-left:0;}
+        .ss-movement-table .ss-movement-head th {
+          color:rgba(148,163,184,.62);font-size:.69rem;font-weight:720;
+          letter-spacing:.05em;text-transform:uppercase;
+        }
+        .ss-movement-table td.up {color:rgba(56,189,248,.95);}
+        .ss-movement-table td.down {color:rgba(248,113,113,.95);}
+        </style>
+        """
+        "<section class='ss-movement-profile' aria-labelledby='ss-movement-title'>"
+        "<h3 id='ss-movement-title'>Movement profile</h3>"
+        f"<p class='ss-movement-copy'>How far {ticker_safe} normally travels, "
+        f"from its recent volatility (±{band:.1f}% over 30 days). Not a "
+        "forecast—the same volatility carries it both ways.</p>"
+        "<div class='ss-movement-scroll' role='region' aria-label='Movement "
+        "profile table' tabindex='0'><table class='ss-movement-table'>"
+        f"{''.join(rows)}</table></div>{first_note}</section>",
+        unsafe_allow_html=True,
+    )
+
+
+def render_delivered_analysis_result(
+    *,
+    card: dict,
+    analysis_results: dict,
+    ticker: str,
+    sector: str,
+    key_suffix: str,
+    element_id: str = "",
+    freshness: str = "Analysis generated now",
+    on_summary_delivered: Callable[[], None] | None = None,
+) -> None:
+    """Render the complete paid result identically from every entry path."""
+    view = analysis_card_view_model(card)
+    render_recommendation_panel(
+        ticker=ticker,
+        sector=sector,
+        ai_summary=view["summary"],
+        current_price=view["current_price"],
+        projected_gain=view["projected_range"],
+        drawdown_first=view["drawdown_first"],
+        mentions=view["shown_mentions"],
+        price_points=view["price_points"],
+        horizon=view["horizon"],
+        freshness=freshness,
+        evidence_label=view["evidence_label"],
+        would_change=(card or {}).get("would_change") or [],
+        element_id=element_id,
+    )
+    # This is the paid-product boundary. Route code can close its ledger work
+    # immediately after the canonical recommendation is visible, before any
+    # optional evidence, movement, CSS or disclosure element yields control
+    # back to Streamlit.
+    if on_summary_delivered is not None:
+        on_summary_delivered()
+
+    if (card or {}).get("pillars"):
+        try:
+            # Identity, verdict and change criteria already belong to the
+            # decision card immediately above. Keep this section focused on
+            # its unique contribution: the evidence gates themselves.
+            render_evidence_check(
+                card,
+                ticker,
+                show_header=False,
+                show_change=False,
+            )
+        except Exception:
+            LOG.warning("evidence check render failed", exc_info=True)
+    try:
+        render_movement_profile(card, ticker)
+    except Exception:
+        LOG.warning("movement profile render failed", exc_info=True)
+
+    safe_key = "".join(
+        character if character.isalnum() else "_"
+        for character in str(key_suffix)
+    )
+    decision_details = {
+        "additional_reasons": ((card or {}).get("rationale") or [])[3:],
+        "would_change": ((card or {}).get("would_change") or [])[1:],
+    }
+    has_decision_details = any(decision_details.values())
+    st.markdown(
+        """
+        <style>
+        [class*="st-key-delivered_analysis_breakdown_"] [data-testid="stExpander"] {
+          border:1px solid rgba(56,189,248,.36)!important;
+          border-radius:var(--radius-control)!important;
+          background:rgba(8,15,30,.58)!important;
+        }
+        [class*="st-key-delivered_analysis_breakdown_"] details > summary {
+          min-height:var(--ss-control-min-height);color:var(--accent)!important;
+          font-size:.9rem;font-weight:720!important;
+        }
+        [class*="st-key-delivered_analysis_breakdown_"] [data-testid="stExpander"]:hover {
+          background:rgba(56,189,248,.07)!important;
+        }
+        </style>
+        """,
+        unsafe_allow_html=True,
+    )
+    try:
+        with st.container(key=f"delivered_analysis_breakdown_{safe_key}"):
+            if analysis_results or has_decision_details:
+                render_full_analysis_expander(
+                    analysis_results or {},
+                    key_suffix=key_suffix,
+                    label="View full breakdown",
+                    decision_details=decision_details,
+                )
+            else:
+                st.caption(
+                    "Detailed signal excerpts are unavailable for this earlier "
+                    "result; the delivered recommendation remains available above."
+                )
+            st.caption("Already analyzed · no additional credit")
+    except Exception:
+        # The recommendation card above is the paid product. An optional
+        # disclosure renderer must never turn a visibly delivered result into
+        # a billing failure.
+        LOG.warning("full analysis breakdown render failed", exc_info=True)
+        st.caption(
+            "The recommendation is available above; its optional detailed "
+            "breakdown could not be displayed."
+        )

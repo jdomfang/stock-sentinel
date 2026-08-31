@@ -158,10 +158,10 @@ def main() -> int:
     )
     check(
         "paid failures are semantic and never suggest retry during a pending refund",
-        discovery.count("render_system_state(") >= 10
-        and "_deep_state" in discovery
+        discovery.count("render_system_state(") >= 8
+        and "failure_state" in discovery
         and "If your credit was not returned" in discovery
-        and "if _refunded and _disc_holder.get(\"pre_spend\")" in discovery
+        and 'if refunded and result_holder.get("pre_spend")' in discovery
         and "⚠️ {_deep_error}" not in discovery
         and "if refunded and retry_ok" in deep
         and "If your credit was not returned" in deep,
