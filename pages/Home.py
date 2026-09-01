@@ -373,9 +373,10 @@ def _decision_workspace_html(
             "Monitoring window",
         ),
         (
-            "Modeled 30-day range",
+            "Recent volatility range",
             range_value,
-            "Volatility context · not a forecast" if range_value != "Unavailable" else "",
+            "Historical movement context · not a forecast"
+            if range_value != "Unavailable" else "",
         ),
     ]
     metric_html = "".join(
@@ -385,8 +386,8 @@ def _decision_workspace_html(
         for label, value, helper in metrics
     )
     change_html = (
-        '<div class="ss-b5-explanation"><span>What would change this</span>'
-        f'<strong>{change}</strong></div>' if change else ""
+        '<div class="ss-b5-change"><span>What would change this</span>'
+        f'<p>{change}</p></div>' if change else ""
     )
     shown_count = len(rows)
     total_results = max(int(total_results or shown_count), shown_count)
@@ -431,18 +432,18 @@ def _decision_workspace_html(
           </div>
           <p class="ss-b5-attention-note">Social-post count indicates attention, not independent evidence.</p>
           <div class="ss-b5-divider"></div>
-          <aside class="ss-b5-analysis">
+          <aside class="ss-b5-analysis" aria-label="Illustrative Deep Analysis result">
             <div class="ss-b5-analysis-head">
               <div>
                 <span class="ss-b5-section-label">Deep Analysis · model output</span>
                 <div class="ss-b5-verdict"><strong>{result_ticker}</strong><b class="{result_class}">{recommendation}</b><span>{confidence} confidence</span></div>
               </div>
             </div>
-            <div class="ss-b5-metrics">{metric_html}</div>
-            <div class="ss-b5-explanations">
-              <div class="ss-b5-explanation"><span>Why this output</span><strong>{reason}</strong></div>
-              {change_html}
+            <div class="ss-b5-insight">
+              <span>Why this output</span><p>{reason}</p>
             </div>
+            <div class="ss-b5-metrics">{metric_html}</div>
+            {change_html}
             <div class="ss-b5-source">
               <span>Sources: public social discussion + market-price history · {html.escape(closes)}</span>
               <small>Confidence reflects evidence quality and agreement, not probability of return.</small>
@@ -1177,29 +1178,56 @@ st.markdown(
     .ss-b5-evidence-state {color:#cbd5e1;font-size:.8125rem;font-weight:650;}
     .ss-b5-attention-note {margin:9px 0 0;color:#a8b5c7;font-size:.8125rem;}
     .ss-b5-divider {height:1px;margin:20px 0;background:rgba(148,163,184,.15);}
-    .ss-b5-analysis-head {display:flex;align-items:flex-end;justify-content:space-between;gap:24px;}
-    .ss-b5-verdict {display:flex;align-items:baseline;gap:12px;margin-top:7px;}
-    .ss-b5-verdict strong {font-size:1.75rem;letter-spacing:-.02em;}
-    .ss-b5-verdict b {font-size:1.125rem;font-weight:850;}
-    .ss-b5-verdict .buy {color:var(--ss-color-recommendation-buy);}
-    .ss-b5-verdict .watch {color:var(--ss-color-recommendation-watch);}
-    .ss-b5-verdict .avoid {color:var(--ss-color-recommendation-avoid);}
-    .ss-b5-verdict > span {color:#a9b8ca;font-size:.875rem;font-weight:650;}
-    .ss-b5-metrics {
-      display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:9px;margin-top:18px;
+    .ss-b5-analysis {
+      position:relative;overflow:hidden;padding:20px;border:1px solid rgba(56,189,248,.2);
+      border-radius:14px;background:linear-gradient(180deg,rgba(11,24,42,.96),rgba(8,20,36,.92));
+      box-shadow:inset 0 1px 0 rgba(226,232,240,.035);
     }
-    .ss-b5-metric {min-height:83px;padding:13px 14px;border:1px solid rgba(148,163,184,.15);border-radius:10px;background:rgba(15,23,42,.42);}
-    .ss-b5-metric span,.ss-b5-explanation span {display:block;color:#a8b5c7;font-size:.75rem;font-weight:750;letter-spacing:.01em;text-transform:none;}
-    .ss-b5-metric strong {display:block;margin-top:7px;color:#e2e8f0;font-size:.9375rem;line-height:1.35;}
-    .ss-b5-metric small {display:block;margin-top:5px;color:#a8b5c7;font-size:.8125rem;line-height:1.4;}
-    .ss-b5-explanations {display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:22px;margin-top:16px;}
-    .ss-b5-explanation {padding-top:0;}
-    .ss-b5-explanation:only-child {grid-column:1 / -1;}
-    .ss-b5-explanation + .ss-b5-explanation {padding-left:22px;border-left:1px solid rgba(148,163,184,.13);}
-    .ss-b5-explanation strong {display:block;margin-top:6px;color:#d5deea;font-size:.9375rem;font-weight:620;line-height:1.5;}
+    .ss-b5-analysis::before {
+      content:"";position:absolute;inset:0 34% auto 0;height:2px;
+      background:linear-gradient(90deg,rgba(56,189,248,.8),rgba(56,189,248,0));
+    }
+    .ss-b5-analysis-head {display:flex;align-items:flex-end;justify-content:space-between;gap:24px;}
+    .ss-b5-verdict {display:flex;align-items:center;flex-wrap:wrap;gap:10px;margin-top:8px;}
+    .ss-b5-verdict strong {font-size:1.75rem;letter-spacing:-.02em;}
+    .ss-b5-verdict b {
+      display:inline-flex;align-items:center;min-height:30px;padding:3px 10px;
+      border:1px solid transparent;border-radius:999px;font-size:1rem;font-weight:800;
+    }
+    .ss-b5-verdict .buy {color:var(--ss-color-recommendation-buy);background:rgba(34,197,94,.09);border-color:rgba(34,197,94,.28);}
+    .ss-b5-verdict .watch {color:#fbbf24;background:rgba(245,158,11,.1);border-color:rgba(245,158,11,.3);}
+    .ss-b5-verdict .avoid {color:var(--ss-color-recommendation-avoid);background:rgba(248,113,113,.09);border-color:rgba(248,113,113,.28);}
+    .ss-b5-verdict > span {
+      display:inline-flex;align-items:center;min-height:30px;padding:3px 10px;
+      border:1px solid rgba(148,163,184,.18);border-radius:999px;
+      color:#cbd5e1;background:rgba(15,30,51,.66);font-size:.875rem;font-weight:650;
+    }
+    .ss-b5-insight,.ss-b5-change {
+      position:relative;margin-top:16px;padding:13px 15px 14px;border:1px solid rgba(148,163,184,.16);
+      border-radius:10px;background:rgba(15,30,51,.55);
+    }
+    .ss-b5-insight {border-left:2px solid rgba(56,189,248,.72);background:rgba(56,189,248,.045);}
+    .ss-b5-change {border-left:2px solid rgba(245,158,11,.62);background:rgba(245,158,11,.035);}
+    .ss-b5-insight span,.ss-b5-change span {
+      display:block;color:#afc0d2;font-size:.78125rem;font-weight:700;letter-spacing:.01em;
+    }
+    .ss-b5-insight p,.ss-b5-change p {
+      max-width:72ch;margin:6px 0 0;color:#e6edf5;font-size:.9375rem;
+      font-weight:520;line-height:1.55;
+    }
+    .ss-b5-metrics {
+      display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;margin-top:16px;
+    }
+    .ss-b5-metric {
+      min-height:94px;padding:15px 16px;border:1px solid rgba(148,163,184,.2);
+      border-radius:10px;background:rgba(15,30,51,.72);box-shadow:inset 0 1px 0 rgba(226,232,240,.025);
+    }
+    .ss-b5-metric span {display:block;color:#afc0d2;font-size:.78125rem;font-weight:650;letter-spacing:.01em;text-transform:none;}
+    .ss-b5-metric strong {display:block;margin-top:7px;color:#f1f5f9;font-size:1rem;line-height:1.35;}
+    .ss-b5-metric small {display:block;margin-top:5px;color:#afc0d2;font-size:.8125rem;line-height:1.45;}
     .ss-b5-source {
       display:flex;justify-content:space-between;gap:20px;margin-top:17px;padding-top:14px;
-      border-top:1px solid rgba(148,163,184,.13);color:#a8b5c7;font-size:.8125rem;line-height:1.5;
+      border-top:1px solid rgba(148,163,184,.16);color:#afc0d2;font-size:.8125rem;line-height:1.5;
     }
     .ss-b5-source small {font-size:inherit;text-align:right;}
     .ss-b5-assurance {
@@ -1228,10 +1256,10 @@ st.markdown(
       .ss-b5-provenance,.ss-b5-source small {text-align:left;}
       .ss-b5-stock small,.ss-b5-count,.ss-b5-evidence-state,
       .ss-b5-attention-note,.ss-b5-metric small,.ss-b5-source {font-size:.8125rem;}
-      .ss-b5-metrics,.ss-b5-assurance,.ss-b5-explanations {grid-template-columns:1fr;}
+      .ss-b5-metrics,.ss-b5-assurance {grid-template-columns:1fr;}
       .ss-b5-scan-grid.items-1 .ss-b5-scan-card {grid-template-columns:minmax(0,1fr) auto;}
       .ss-b5-scan-grid.items-1 .ss-b5-stock {grid-column:1 / -1;}
-      .ss-b5-explanation + .ss-b5-explanation {padding:14px 0 0;border-left:0;border-top:1px solid rgba(148,163,184,.13);}
+      .ss-b5-analysis {padding:16px;}
       .ss-b5-workspace-head,.ss-b5-workspace-body {padding-left:16px;padding-right:16px;}
       .ss-b5-assurance span {padding:8px 4px;text-align:left;}
       .ss-b5-assurance span + span {border-left:0;border-top:1px solid rgba(148,163,184,.12);}

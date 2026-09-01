@@ -318,7 +318,7 @@ def test_all_snapshot_publishers_keep_the_contract() -> None:
     assert 'role="listitem"' in home
     assert "Decision Workspace" in home
     assert "Independent evidence" in home
-    assert "Modeled 30-day range" in home
+    assert "Recent volatility range" in home
     assert "not probability of return" in home
     assert "stocks scanned" in home
     assert "Saved example from an actual run" in home

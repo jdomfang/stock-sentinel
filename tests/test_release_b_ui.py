@@ -75,7 +75,7 @@ def main() -> int:
         "landing proof language avoids unsupported speed/freshness claims",
         "not live market data" in home
         and "not probability of return" in home
-        and "Volatility context · not a forecast" in home
+        and "Historical movement context · not a forecast" in home
         and "Results in under 60 seconds" not in home,
     )
     check(

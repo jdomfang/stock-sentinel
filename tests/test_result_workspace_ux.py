@@ -288,24 +288,25 @@ def test_public_preview_uses_compact_responsive_workspace_geometry() -> None:
 
     scan_css = home.split(".ss-b5-scan-grid {", 1)[1].split("}", 1)[0]
     metric_css = home.split(".ss-b5-metrics {", 1)[1].split("}", 1)[0]
-    explanation_css = home.split(
-        ".ss-b5-explanations {", 1
-    )[1].split("}", 1)[0]
+    analysis_css = home.split(".ss-b5-analysis {", 1)[1].split("}", 1)[0]
     count_css = home.split(".ss-b5-count {", 1)[1].split("}", 1)[0]
 
     assert "repeat(3,minmax(0,1fr))" in scan_css
     assert "repeat(4,minmax(0,1fr))" in metric_css
-    assert "repeat(2,minmax(0,1fr))" in explanation_css
+    assert "rgba(11,24,42,.96)" in analysis_css
     assert "font-variant-numeric:tabular-nums" in count_css
     assert '@media (max-width:800px)' in home
     assert '.ss-b5-scan-grid {grid-template-columns:1fr;}' in home
     assert '.ss-b5-scan-grid.items-1 {grid-template-columns:1fr;}' in home
     assert 'class="ss-b5-stock"' in home
-    assert '.ss-b5-explanation:only-child {grid-column:1 / -1;}' in home
+    assert 'class="ss-b5-insight"' in home
+    assert 'class="ss-b5-change"' in home
+    assert ".ss-b5-verdict .watch" in home
+    assert "rgba(245,158,11,.1)" in home
     assert "font-size:.9375rem" in home
     assert "font-size:.8125rem" in home
     assert "text-transform:none" in home
-    assert "color:#a8b5c7" in home
+    assert "color:#afc0d2" in home
     assert 'role="list"' in home and 'role="listitem"' in home
     assert 'render_top_nav(signup_primary=False)' in home
     assert "min-height:420px" not in home
