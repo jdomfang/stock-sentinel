@@ -48,7 +48,7 @@ def main() -> int:
         'key="home_public_intro"' in home
         and "_decision_workspace_html(" in home
         and 'class="ss-b5-workspace"' in home
-        and 'class="ss-b5-scan-grid"' in home
+        and 'class="ss-b5-scan-grid items-' in home
         and "Product preview" in home,
     )
     check(

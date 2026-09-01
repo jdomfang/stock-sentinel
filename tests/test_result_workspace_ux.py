@@ -299,6 +299,8 @@ def test_public_preview_uses_compact_responsive_workspace_geometry() -> None:
     assert "font-variant-numeric:tabular-nums" in count_css
     assert '@media (max-width:800px)' in home
     assert '.ss-b5-scan-grid {grid-template-columns:1fr;}' in home
+    assert '.ss-b5-scan-grid.items-1 {grid-template-columns:1fr;}' in home
+    assert 'class="ss-b5-stock"' in home
     assert '.ss-b5-explanation:only-child {grid-column:1 / -1;}' in home
     assert 'role="list"' in home and 'role="listitem"' in home
     assert 'render_top_nav(signup_primary=False)' in home
@@ -330,6 +332,34 @@ def test_public_preview_always_keeps_the_analyzed_ticker() -> None:
     )
     assert len(rows) == 3
     assert "KEEP" in {row["Ticker"] for row in rows}
+
+
+def test_public_preview_polishes_internal_analysis_copy() -> None:
+    home = read("pages/Home.py")
+    helper_source = "def _count_phrase" + home.split(
+        "def _count_phrase", 1
+    )[1].split("def _decision_workspace_html", 1)[0]
+    namespace: dict = {}
+    exec("from __future__ import annotations\n" + helper_source, namespace)
+
+    count_phrase = namespace["_count_phrase"]
+    polish = namespace["_polish_preview_text"]
+    assert count_phrase(1, "result") == "1 result"
+    assert count_phrase(2, "result") == "2 results"
+    reason = polish(
+        "Real evidence, but it does not line up into a call.", kind="reason"
+    )
+    assert reason == (
+        "Evidence is present, but it does not support a directional call."
+    )
+    change = polish(
+        "the 2 confirmed event(s) reading clearly one way — they measure "
+        "+0.00, inside the +0.15 needed to carry a call",
+        kind="change",
+    )
+    assert "event(s)" not in change
+    assert "+0.15" not in change
+    assert "decision threshold" in change
 
 
 def test_prefilled_ticker_uses_explicit_cross_browser_contrast() -> None:
@@ -383,6 +413,7 @@ def main() -> int:
         test_market_scan_sector_cannot_be_overwritten_by_independent_analysis,
         test_public_preview_uses_compact_responsive_workspace_geometry,
         test_public_preview_always_keeps_the_analyzed_ticker,
+        test_public_preview_polishes_internal_analysis_copy,
         test_prefilled_ticker_uses_explicit_cross_browser_contrast,
         test_every_page_loads_theme_before_visible_navigation,
     ]

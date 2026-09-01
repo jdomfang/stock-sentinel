@@ -280,13 +280,15 @@ def test_all_snapshot_publishers_keep_the_contract() -> None:
     assert "social_posts_value(row)" in home
     assert "social posts" in home.lower()
     assert "Attention unavailable" not in home
-    assert 'class="ss-b5-scan-grid" role="list"' in home
+    assert 'class="ss-b5-scan-grid items-' in home
     assert 'role="listitem"' in home
     assert "Decision Workspace" in home
     assert "Independent evidence" in home
     assert "Modeled 30-day range" in home
     assert "not probability of return" in home
-    assert "results in saved scan" in home
+    assert "in saved scan" in home
+    assert "Saved example from an actual run" in home
+    assert "total_results_complete" in home
     assert "attention_fallback" not in home
 
 
