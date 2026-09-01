@@ -69,19 +69,20 @@ def main() -> int:
     )
     check(
         "demo product data is explicitly illustrative",
-        home.count("illustrative") >= 2,
+        home.lower().count("illustrative") >= 2,
     )
     check(
         "landing proof language avoids unsupported speed/freshness claims",
-        "Evidence age shown on live results" in home
-        and "Reasons and confidence included" in home
+        "not live market data" in home
+        and "not probability of return" in home
+        and "Volatility context · not a forecast" in home
         and "Results in under 60 seconds" not in home,
     )
     check(
         "landing controls and mobile cards use accessible sizing",
-        home.count("min-height: 44px") >= 2
-        and "min-height:50px" in home
-        and '@media (max-width:520px)' in home
+        "min-height:52px" in home
+        and '@media (max-width:800px)' in home
+        and '.ss-b5-scan-grid {grid-template-columns:1fr;}' in home
         and 'flex:1 1 100%!important' in home,
     )
     check(

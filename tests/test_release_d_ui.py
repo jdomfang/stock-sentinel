@@ -44,23 +44,24 @@ def main() -> int:
         and "--ss-font-display" in tokens,
     )
     check(
-        "public Home uses a two-column story and full-width decision workspace",
+        "public Home uses a focused hero and full-width decision workspace",
         'key="home_public_intro"' in home
         and "_decision_workspace_html(" in home
-        and 'class="ss-decision-grid"' in home
+        and 'class="ss-b5-workspace"' in home
+        and 'class="ss-b5-scan-grid"' in home
         and "Product preview" in home,
     )
     check(
         "public preview is clearly illustrative",
         'aria-label="Illustrative decision workspace"' in home
-        and home.count("illustrative") >= 2,
+        and home.lower().count("illustrative") >= 2,
     )
     check(
-        "landing workflow explains scan, analyze, and evidence",
-        'id="how-it-works"' in home
-        and "Scan a sector" in home
-        and "Analyze a ticker" in home
-        and "Inspect the evidence" in home,
+        "landing workspace explains scan, analysis, evidence, and invalidation",
+        "Market Scan" in home
+        and "Deep Analyze" in home
+        and "Independent evidence" in home
+        and "What would change this" in home,
     )
     check(
         "landing trust strip explains the complete credit promise",

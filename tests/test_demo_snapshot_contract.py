@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from datetime import datetime
+from copy import deepcopy
 from pathlib import Path
 import sys
 
@@ -16,6 +17,7 @@ from utils.demo_snapshots import (
     normalize_scan_rows,
     social_posts_value,
     snapshot_timestamp,
+    validate_demo_publication,
     validate_public_demo_bundle,
 )
 
@@ -131,6 +133,7 @@ def test_public_bundle_is_one_coherent_scan_and_analysis() -> None:
         analysis_card=_card(),
     )
     assert bundle["scan"]["sector"] == "tech"
+    assert bundle["scan"]["total_results"] == 2
     assert [row["Ticker"] for row in bundle["scan"]["validated_rows"]] == [
         "WAY"
     ]
@@ -142,6 +145,60 @@ def test_public_bundle_is_one_coherent_scan_and_analysis() -> None:
     assert public_card["evidence"]["price_points"] == 25
     assert public_card["movement"]["horizon_days"] == 10
     assert "pillars" not in public_card
+
+
+def test_legacy_v2_publication_without_total_results_remains_valid() -> None:
+    rows = [
+        {
+            "Ticker": "WAY",
+            "Overall Sentiment": "Neutral",
+            "Mentions": 21,
+            "Evidence": 2,
+            "Avg Sentiment Score": 0.06,
+        },
+        {
+            "Ticker": "LOW",
+            "Overall Sentiment": "Limited signal",
+            "Mentions": 1,
+        },
+    ]
+    public = build_public_demo_bundle(rows, "tech", "WAY", _card())
+    legacy_public = deepcopy(public)
+    legacy_public["scan"].pop("total_results")
+    source = build_demo_source_payload(
+        rows,
+        "tech",
+        "WAY",
+        _card(),
+        {"Real-Time Market Sentiment": {"status": "complete"}},
+        scan_generated_at=public["scan"]["generated_at"],
+        analysis_generated_at=public["deep_analysis"]["generated_at"],
+    )
+
+    normalized, _ = validate_demo_publication(legacy_public, source)
+    assert normalized["scan"]["total_results"] == 1
+
+
+def test_public_bundle_rejects_total_below_public_result_count() -> None:
+    bundle = build_public_demo_bundle(
+        [{
+            "Ticker": "WAY",
+            "Overall Sentiment": "Neutral",
+            "Mentions": 21,
+            "Evidence": 2,
+            "Avg Sentiment Score": 0.06,
+        }],
+        "tech",
+        "WAY",
+        _card(),
+    )
+    bundle["scan"]["total_results"] = 0
+    try:
+        validate_public_demo_bundle(bundle)
+    except ValueError as exc:
+        assert "total results" in str(exc)
+    else:
+        raise AssertionError("an impossible saved-result total was accepted")
 
 
 def test_private_source_retains_complete_scan_and_analysis() -> None:
@@ -221,12 +278,15 @@ def test_all_snapshot_publishers_keep_the_contract() -> None:
     assert "deep_latest.json\").write_text" not in admin
     assert "deep_latest.json\").write_text" not in discovery
     assert "social_posts_value(row)" in home
-    assert "Social posts" in home
+    assert "social posts" in home.lower()
     assert "Attention unavailable" not in home
-    assert '<table class="ss-decision-table">' in home
+    assert 'class="ss-b5-scan-grid" role="list"' in home
+    assert 'role="listitem"' in home
     assert "Decision Workspace" in home
-    assert "Price history" in home
-    assert 'scope="col"' in home and 'scope="row"' in home
+    assert "Independent evidence" in home
+    assert "Modeled 30-day range" in home
+    assert "not probability of return" in home
+    assert "results in saved scan" in home
     assert "attention_fallback" not in home
 
 
@@ -240,6 +300,8 @@ def main() -> int:
         test_social_posts_value_is_compact_and_uses_only_snapshot_data,
         test_snapshot_timestamp_is_explicit_utc,
         test_public_bundle_is_one_coherent_scan_and_analysis,
+        test_legacy_v2_publication_without_total_results_remains_valid,
+        test_public_bundle_rejects_total_below_public_result_count,
         test_private_source_retains_complete_scan_and_analysis,
         test_public_bundle_rejects_analysis_outside_current_scan,
         test_all_snapshot_publishers_keep_the_contract,

@@ -283,35 +283,53 @@ def test_market_scan_sector_cannot_be_overwritten_by_independent_analysis() -> N
     assert 'st.session_state.get("analysis_sector")' in result
 
 
-def test_public_preview_uses_compact_aligned_table_geometry() -> None:
+def test_public_preview_uses_compact_responsive_workspace_geometry() -> None:
     home = read("pages/Home.py")
 
-    preview_css = home.split(".ss-hero-preview {", 1)[1].split("}", 1)[0]
-    table_css = home.split(".ss-hero-preview-table {", 1)[1].split("}", 1)[0]
-    count_css = home.split(".ss-hero-preview-count {", 1)[1].split("}", 1)[0]
-    result_css = home.split(".ss-hero-result {", 1)[1].split("}", 1)[0]
-    cell_css = home.split(
-        ".ss-hero-preview-table th,.ss-hero-preview-table td {", 1
+    scan_css = home.split(".ss-b5-scan-grid {", 1)[1].split("}", 1)[0]
+    metric_css = home.split(".ss-b5-metrics {", 1)[1].split("}", 1)[0]
+    explanation_css = home.split(
+        ".ss-b5-explanations {", 1
     )[1].split("}", 1)[0]
-    numeric_alignment_css = home.split(
-        ".ss-hero-preview-table th:last-child,\n"
-        "    .ss-hero-preview-table td:last-child {",
-        1,
-    )[1].split("}", 1)[0]
-    assert "min-height:0" in preview_css
-    assert "padding:16px" in preview_css
-    assert "table-layout:fixed" in table_css
-    assert "border-collapse:separate" in table_css
-    assert ".ss-hero-preview-table col.stock {width:27%;" in home
-    assert ".ss-hero-preview-table col.sentiment {width:43%;" in home
-    assert ".ss-hero-preview-table col.posts {width:30%;" in home
-    assert "padding:9px 12px" in cell_css
-    assert "vertical-align:middle" in cell_css
+    count_css = home.split(".ss-b5-count {", 1)[1].split("}", 1)[0]
+
+    assert "repeat(3,minmax(0,1fr))" in scan_css
+    assert "repeat(4,minmax(0,1fr))" in metric_css
+    assert "repeat(2,minmax(0,1fr))" in explanation_css
     assert "font-variant-numeric:tabular-nums" in count_css
-    assert "text-align:right" in numeric_alignment_css
-    assert "margin-top:14px" in result_css
-    assert "padding-top:12px" in result_css
+    assert '@media (max-width:800px)' in home
+    assert '.ss-b5-scan-grid {grid-template-columns:1fr;}' in home
+    assert '.ss-b5-explanation:only-child {grid-column:1 / -1;}' in home
+    assert 'role="list"' in home and 'role="listitem"' in home
+    assert 'render_top_nav(signup_primary=False)' in home
     assert "min-height:420px" not in home
+
+
+def test_public_preview_always_keeps_the_analyzed_ticker() -> None:
+    home = read("pages/Home.py")
+    function_source = "def _select_demo_rows" + home.split(
+        "def _select_demo_rows", 1
+    )[1].split("def _legacy_public_card", 1)[0]
+    namespace = {"_ASSERTED": {"bullish", "bearish", "neutral"}}
+    exec("from __future__ import annotations\n" + function_source, namespace)
+
+    class Frame:
+        empty = False
+
+        def to_dict(self, orient: str) -> list[dict]:
+            assert orient == "records"
+            return [
+                {"Ticker": "AAA", "Overall Sentiment": "Bullish"},
+                {"Ticker": "BBB", "Overall Sentiment": "Bearish"},
+                {"Ticker": "CCC", "Overall Sentiment": "Neutral"},
+                {"Ticker": "KEEP", "Overall Sentiment": "Neutral"},
+            ]
+
+    rows = namespace["_select_demo_rows"](
+        Frame(), limit=3, selected_ticker="KEEP"
+    )
+    assert len(rows) == 3
+    assert "KEEP" in {row["Ticker"] for row in rows}
 
 
 def test_prefilled_ticker_uses_explicit_cross_browser_contrast() -> None:
@@ -363,7 +381,8 @@ def main() -> int:
         test_analysis_failures_render_outside_action_cells,
         test_scan_analysis_has_one_stable_processing_and_paint_cycle,
         test_market_scan_sector_cannot_be_overwritten_by_independent_analysis,
-        test_public_preview_uses_compact_aligned_table_geometry,
+        test_public_preview_uses_compact_responsive_workspace_geometry,
+        test_public_preview_always_keeps_the_analyzed_ticker,
         test_prefilled_ticker_uses_explicit_cross_browser_contrast,
         test_every_page_loads_theme_before_visible_navigation,
     ]

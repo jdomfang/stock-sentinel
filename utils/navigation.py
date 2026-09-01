@@ -78,12 +78,13 @@ def _login_control(
                 st.switch_page("pages/Auth.py")
 
 
-def _signup_control(column, *, surface: str) -> None:
+def _signup_control(column, *, surface: str, primary: bool = True) -> None:
     """Public primary action; authentication behavior remains owned by Auth."""
     with column:
         with st.container(key=f"nav_{surface}_signup"):
             if st.button(
-                "Start free", type="primary", use_container_width=True,
+                "Start free", type="primary" if primary else "secondary",
+                use_container_width=True,
                 key=f"nav_{surface}_signup_button",
             ):
                 st.session_state["auth_initial_mode"] = "Create Account"
@@ -159,7 +160,7 @@ def _session_menu(column, *, surface: str, user: object, email: str) -> None:
 
 def render_top_nav(
     *, active: str = "", credits: int | None = None,
-    after_auth_page: str = "Discovery",
+    after_auth_page: str = "Discovery", signup_primary: bool = True,
 ) -> None:
     """Render a shared two-layout header without extra data reads."""
     from utils.auth import get_user, is_logged_in
@@ -436,7 +437,9 @@ def render_top_nav(
                 _login_control(
                     login, surface="desktop", after_auth_page=after_auth_page,
                 )
-                _signup_control(signup, surface="desktop")
+                _signup_control(
+                    signup, surface="desktop", primary=signup_primary,
+                )
             else:
                 # One stable outer shell and one non-wrapping destination row.
                 # Admin and the session trigger used to live in different
@@ -507,7 +510,9 @@ def render_top_nav(
                         after_auth_page=after_auth_page,
                     )
                 if signup_col is not None:
-                    _signup_control(signup_col, surface="mobile")
+                    _signup_control(
+                        signup_col, surface="mobile", primary=signup_primary,
+                    )
 
             if not logged_in:
                 with st.container(key="ss_nav_mobile_marketing"):
