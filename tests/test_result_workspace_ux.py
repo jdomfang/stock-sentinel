@@ -302,6 +302,10 @@ def test_public_preview_uses_compact_responsive_workspace_geometry() -> None:
     assert '.ss-b5-scan-grid.items-1 {grid-template-columns:1fr;}' in home
     assert 'class="ss-b5-stock"' in home
     assert '.ss-b5-explanation:only-child {grid-column:1 / -1;}' in home
+    assert "font-size:.9375rem" in home
+    assert "font-size:.8125rem" in home
+    assert "text-transform:none" in home
+    assert "color:#a8b5c7" in home
     assert 'role="list"' in home and 'role="listitem"' in home
     assert 'render_top_nav(signup_primary=False)' in home
     assert "min-height:420px" not in home
@@ -325,6 +329,11 @@ def test_public_preview_always_keeps_the_analyzed_ticker() -> None:
                 {"Ticker": "BBB", "Overall Sentiment": "Bearish"},
                 {"Ticker": "CCC", "Overall Sentiment": "Neutral"},
                 {"Ticker": "KEEP", "Overall Sentiment": "Neutral"},
+                {
+                    "Ticker": "LOW",
+                    "Overall Sentiment": "Limited Signal",
+                    "Evidence State": "Needs more evidence",
+                },
             ]
 
     rows = namespace["_select_demo_rows"](
@@ -332,6 +341,33 @@ def test_public_preview_always_keeps_the_analyzed_ticker() -> None:
     )
     assert len(rows) == 3
     assert "KEEP" in {row["Ticker"] for row in rows}
+
+
+def test_public_preview_uses_real_inconclusive_rows_to_complete_shortlist() -> None:
+    home = read("pages/Home.py")
+    function_source = "def _select_demo_rows" + home.split(
+        "def _select_demo_rows", 1
+    )[1].split("def _legacy_public_card", 1)[0]
+    namespace = {"_ASSERTED": {"bullish", "bearish", "neutral"}}
+    exec("from __future__ import annotations\n" + function_source, namespace)
+
+    class Frame:
+        empty = False
+
+        def to_dict(self, orient: str) -> list[dict]:
+            assert orient == "records"
+            return [
+                {"Ticker": "PLTR", "Overall Sentiment": "Neutral"},
+                {"Ticker": "NVDA", "Overall Sentiment": "Limited Signal"},
+                {"Ticker": "META", "Overall Sentiment": "Single Mention"},
+            ]
+
+    rows = namespace["_select_demo_rows"](
+        Frame(), limit=3, selected_ticker="PLTR"
+    )
+    assert [row["Ticker"] for row in rows] == ["PLTR", "NVDA", "META"]
+    assert "Needs more evidence" in home
+    assert "stocks scanned" in home
 
 
 def test_public_preview_polishes_internal_analysis_copy() -> None:
@@ -344,8 +380,12 @@ def test_public_preview_polishes_internal_analysis_copy() -> None:
 
     count_phrase = namespace["_count_phrase"]
     polish = namespace["_polish_preview_text"]
+    scan_summary = namespace["_scan_summary"]
     assert count_phrase(1, "result") == "1 result"
     assert count_phrase(2, "result") == "2 results"
+    assert scan_summary(10, 1) == (
+        "10 stocks scanned · 1 signal · 9 need more evidence"
+    )
     reason = polish(
         "Real evidence, but it does not line up into a call.", kind="reason"
     )
@@ -413,6 +453,7 @@ def main() -> int:
         test_market_scan_sector_cannot_be_overwritten_by_independent_analysis,
         test_public_preview_uses_compact_responsive_workspace_geometry,
         test_public_preview_always_keeps_the_analyzed_ticker,
+        test_public_preview_uses_real_inconclusive_rows_to_complete_shortlist,
         test_public_preview_polishes_internal_analysis_copy,
         test_prefilled_ticker_uses_explicit_cross_browser_contrast,
         test_every_page_loads_theme_before_visible_navigation,

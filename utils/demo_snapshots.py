@@ -14,6 +14,7 @@ from typing import Any, Iterable, Mapping
 
 
 _PUBLIC_SENTIMENTS = {"bullish", "bearish", "neutral"}
+_PUBLIC_EVIDENCE_STATES = {"unscored", "single mention", "limited signal"}
 _VERDICTS = {"buy", "watch", "avoid"}
 _CONFIDENCE = {"low", "moderate", "high"}
 _PUBLIC_SCAN_FIELDS = (
@@ -23,6 +24,7 @@ _PUBLIC_SCAN_FIELDS = (
     "Evidence",
     "Avg Sentiment Score",
     "Overall Sentiment",
+    "Evidence State",
 )
 _PUBLIC_TILE_KEYS = {
     "last_price",
@@ -112,11 +114,15 @@ def normalize_scan_rows(
 
 def _public_scan_rows(
     rows: Iterable[Mapping[str, Any]],
+    *,
+    include_inconclusive: bool = True,
 ) -> list[dict[str, Any]]:
     public: list[dict[str, Any]] = []
     for row in normalize_scan_rows(rows):
         sentiment = str(row.get("Overall Sentiment") or "").strip().lower()
-        if sentiment not in _PUBLIC_SENTIMENTS:
+        is_signal = sentiment in _PUBLIC_SENTIMENTS
+        is_inconclusive = sentiment in _PUBLIC_EVIDENCE_STATES
+        if not is_signal and not (include_inconclusive and is_inconclusive):
             continue
         ticker = row["Ticker"]
         score = _finite_number(
@@ -136,6 +142,9 @@ def _public_scan_rows(
                 "Evidence": evidence,
                 "Avg Sentiment Score": score,
                 "Overall Sentiment": sentiment.title(),
+                "Evidence State": (
+                    "" if is_signal else "Needs more evidence"
+                ),
             }
         )
         public.append(projection)
@@ -442,9 +451,11 @@ def validate_demo_publication(
     # equality for those durable snapshots while every new publish carries the
     # complete saved-result count.
     if legacy_without_total:
-        expected["scan"]["total_results"] = len(
-            expected["scan"]["validated_rows"]
+        legacy_rows = _public_scan_rows(
+            scan["rows"], include_inconclusive=False
         )
+        expected["scan"]["validated_rows"] = legacy_rows
+        expected["scan"]["total_results"] = len(legacy_rows)
     if public != expected:
         raise ValueError(
             "Public demo projection does not match its private source payload"

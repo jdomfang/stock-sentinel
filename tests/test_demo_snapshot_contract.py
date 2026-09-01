@@ -135,11 +135,18 @@ def test_public_bundle_is_one_coherent_scan_and_analysis() -> None:
     assert bundle["scan"]["sector"] == "tech"
     assert bundle["scan"]["total_results"] == 2
     assert [row["Ticker"] for row in bundle["scan"]["validated_rows"]] == [
-        "WAY"
+        "WAY", "LOW"
     ]
+    assert bundle["scan"]["validated_rows"][1]["Evidence State"] == (
+        "Needs more evidence"
+    )
     assert bundle["deep_analysis"]["ticker"] == "WAY"
     assert bundle["deep_analysis"]["sector"] == "tech"
     assert "Sample Tweets" not in bundle["scan"]["validated_rows"][0]
+    assert all(
+        "Sample Tweets" not in row
+        for row in bundle["scan"]["validated_rows"]
+    )
     public_card = bundle["deep_analysis"]["public_card"]
     assert public_card["verdict"] == "Watch"
     assert public_card["evidence"]["price_points"] == 25
@@ -165,6 +172,10 @@ def test_legacy_v2_publication_without_total_results_remains_valid() -> None:
     public = build_public_demo_bundle(rows, "tech", "WAY", _card())
     legacy_public = deepcopy(public)
     legacy_public["scan"].pop("total_results")
+    legacy_public["scan"]["validated_rows"] = [
+        row for row in legacy_public["scan"]["validated_rows"]
+        if row["Overall Sentiment"] == "Neutral"
+    ]
     source = build_demo_source_payload(
         rows,
         "tech",
@@ -177,6 +188,27 @@ def test_legacy_v2_publication_without_total_results_remains_valid() -> None:
 
     normalized, _ = validate_demo_publication(legacy_public, source)
     assert normalized["scan"]["total_results"] == 1
+
+
+def test_public_bundle_can_analyze_a_real_inconclusive_scan_row() -> None:
+    bundle = build_public_demo_bundle(
+        scan_rows=[{
+            "Ticker": "LOW",
+            "Company Name": "Low Evidence Corp.",
+            "Overall Sentiment": "Single mention",
+            "Mentions": 1,
+            "Evidence": 1,
+            "Avg Sentiment Score": 0.02,
+            "Sample Tweets": ["private post"],
+        }],
+        scan_sector="tech",
+        analysis_ticker="LOW",
+        analysis_card=_card("LOW"),
+    )
+    row = bundle["scan"]["validated_rows"][0]
+    assert row["Ticker"] == "LOW"
+    assert row["Evidence State"] == "Needs more evidence"
+    assert "Sample Tweets" not in row
 
 
 def test_public_bundle_rejects_total_below_public_result_count() -> None:
@@ -269,6 +301,8 @@ def test_all_snapshot_publishers_keep_the_contract() -> None:
     assert "build_public_demo_bundle(" in admin
     assert "build_demo_source_payload(" in admin
     assert "publish_public_demo(" in admin
+    assert "Refresh preview from saved snapshot" in admin
+    assert "This does not run a scan or analysis" in admin
     assert "load_latest_demo_publication(" in admin
     assert "load_latest_public_demo()" in home
     assert "st.session_state.demo_scan_sector = sector" in discovery
@@ -286,7 +320,7 @@ def test_all_snapshot_publishers_keep_the_contract() -> None:
     assert "Independent evidence" in home
     assert "Modeled 30-day range" in home
     assert "not probability of return" in home
-    assert "in saved scan" in home
+    assert "stocks scanned" in home
     assert "Saved example from an actual run" in home
     assert "total_results_complete" in home
     assert "attention_fallback" not in home
@@ -303,6 +337,7 @@ def main() -> int:
         test_snapshot_timestamp_is_explicit_utc,
         test_public_bundle_is_one_coherent_scan_and_analysis,
         test_legacy_v2_publication_without_total_results_remains_valid,
+        test_public_bundle_can_analyze_a_real_inconclusive_scan_row,
         test_public_bundle_rejects_total_below_public_result_count,
         test_private_source_retains_complete_scan_and_analysis,
         test_public_bundle_rejects_analysis_outside_current_scan,

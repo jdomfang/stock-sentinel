@@ -72,6 +72,10 @@ def _load_demo_scan() -> pd.DataFrame:
     frame.attrs["sector"] = payload.get("sector", "") or ""
     frame.attrs["generated_at"] = payload.get("generated_at", "") or ""
     frame.attrs["total_results"] = payload.get("total_results", len(rows))
+    frame.attrs["signal_results"] = sum(
+        str(row.get("Overall Sentiment") or "").strip().lower() in _ASSERTED
+        for row in rows
+    )
     return frame
 
 
@@ -127,6 +131,10 @@ def _scan_frame_from_bundle(bundle: dict) -> pd.DataFrame:
     frame.attrs["sector"] = scan.get("sector") or ""
     frame.attrs["generated_at"] = scan.get("generated_at") or ""
     frame.attrs["total_results"] = scan.get("total_results", len(rows))
+    frame.attrs["signal_results"] = sum(
+        str(row.get("Overall Sentiment") or "").strip().lower() in _ASSERTED
+        for row in rows
+    )
     return frame
 
 
@@ -146,17 +154,14 @@ def _select_demo_rows(
 ) -> list[dict]:
     """Return a small representative preview without changing scan ranking.
 
-    The landing page demonstrates the three Market Scan sentiment states; it
-    is not a second results page. Rows retain their source order after we make
-    sure the available Bullish, Bearish, and Neutral examples are represented.
+    The landing page is not a second results page. It keeps the analyzed ticker,
+    represents the available directional states, then uses genuine inconclusive
+    rows to show that the scan rejects weak evidence.
     """
     if frame.empty or limit <= 0:
         return []
 
-    records = [
-        row for row in frame.to_dict("records")
-        if str(row.get("Overall Sentiment", "")).strip().lower() in _ASSERTED
-    ]
+    records = frame.to_dict("records")
     if not records:
         return []
     chosen: list[int] = []
@@ -177,6 +182,15 @@ def _select_demo_rows(
             ):
                 chosen.append(index)
                 break
+    for index, row in enumerate(records):
+        if len(chosen) >= limit:
+            break
+        if (
+            index not in chosen
+            and str(row.get("Overall Sentiment", "")).strip().lower()
+            in _ASSERTED
+        ):
+            chosen.append(index)
     for index in range(len(records)):
         if len(chosen) >= limit:
             break
@@ -247,10 +261,26 @@ def _sector_label(value: object) -> str:
     return {"tech": "Technology"}.get(sector, sector.title() or "Technology")
 
 
+def _scan_summary(total_results: int, signal_results: int) -> str:
+    """Summarize selectivity without implying inconclusive rows are signals."""
+    total = max(int(total_results), 0)
+    signals = min(max(int(signal_results), 0), total)
+    needs = total - signals
+    needs_label = (
+        f"{needs} need more evidence" if needs != 1 else
+        "1 needs more evidence"
+    )
+    return (
+        f"{total} stocks scanned · {_count_phrase(signals, 'signal')} · "
+        f"{needs_label}"
+    )
+
+
 def _decision_workspace_html(
     rows: list[dict], ticker: str, card: dict, sector: str,
     *, total_results: int | None = None, durable: bool = False,
     total_results_complete: bool = False,
+    signal_results: int | None = None,
 ) -> str:
     """Render the date-free, saved-workflow preview from the public card."""
     preview_rows = []
@@ -260,8 +290,16 @@ def _decision_workspace_html(
         sentiment = str(
             row.get("Overall Sentiment") or "Neutral"
         ).strip().lower()
-        if sentiment not in _ASSERTED:
-            sentiment = "neutral"
+        is_signal = sentiment in _ASSERTED
+        evidence_state = str(row.get("Evidence State") or "").strip()
+        if not is_signal:
+            evidence_state = evidence_state or "Needs more evidence"
+        state_html = (
+            f'<span class="ss-sentiment {sentiment}">{sentiment.title()}</span>'
+            if is_signal else
+            f'<span class="ss-b5-evidence-state">'
+            f'{html.escape(evidence_state)}</span>'
+        )
         social_posts = social_posts_value(row)
         selected = " selected" if raw_ticker == ticker else ""
         selected_context = (
@@ -281,7 +319,7 @@ def _decision_workspace_html(
             f'<div class="ss-b5-stock"><strong>{selected_context}'
             f'{html.escape(raw_ticker)}</strong>'
             f'<small>{html.escape(company)}</small></div>'
-            f'<span class="ss-sentiment {sentiment}">{sentiment.title()}</span>'
+            f'{state_html}'
             f'<span class="ss-b5-count"{count_aria}>{count_label}</span>'
             f'</article>'
         )
@@ -352,16 +390,16 @@ def _decision_workspace_html(
     )
     shown_count = len(rows)
     total_results = max(int(total_results or shown_count), shown_count)
+    signal_count = (
+        int(signal_results) if signal_results is not None else
+        sum(
+            str(row.get("Overall Sentiment") or "").strip().lower() in _ASSERTED
+            for row in rows
+        )
+    )
     if durable and total_results_complete:
-        provenance = (
-            f"{_count_phrase(total_results, 'result')} in saved scan · "
-            "actual saved run · not live market data"
-        )
-        shown_label = (
-            f"{_count_phrase(shown_count, 'result')} shown"
-            if shown_count == total_results else
-            f"{shown_count} of {total_results} saved results shown"
-        )
+        provenance = "Actual saved run · not live market data"
+        shown_label = _scan_summary(total_results, signal_count)
     elif durable:
         provenance = "Saved example from an actual run · not live market data"
         shown_label = f"{_count_phrase(shown_count, 'public result')} shown"
@@ -1071,9 +1109,9 @@ st.markdown(
     }
     .ss-b5-hero {padding:clamp(1.9rem,3.5vw,2.6rem) 0 clamp(1.7rem,3vw,2.2rem);}
     .ss-b5-eyebrow,.ss-b5-kicker,.ss-b5-section-label,
-    .ss-b5-section-head > span,.ss-b5-metric span,.ss-b5-explanation span {
-      color:var(--accent);font-size:.7rem;font-weight:800;
-      letter-spacing:.1em;text-transform:uppercase;
+    .ss-b5-section-head > span {
+      color:var(--accent);font-size:.75rem;font-weight:800;
+      letter-spacing:.08em;text-transform:uppercase;
     }
     .ss-b5-hero h1 {
       max-width:720px;margin:.75rem 0 0;color:var(--text);
@@ -1082,13 +1120,13 @@ st.markdown(
     }
     .ss-b5-hero-side p {
       max-width:430px;margin:0 0 1.2rem;color:#b4c1d2;
-      font-size:clamp(1rem,1.35vw,1.1rem);line-height:1.62;
+      font-size:1.125rem;line-height:1.55;
     }
     .st-key-home_intro_action_shell {
       padding:0!important;border:0!important;border-radius:0!important;
       background:transparent!important;box-shadow:none!important;
     }
-    .ss-b5-cta-copy {margin-top:.75rem;color:#93a4bc;font-size:.8rem;line-height:1.5;}
+    .ss-b5-cta-copy {margin-top:.75rem;color:#a8b5c7;font-size:.8125rem;line-height:1.5;}
     .st-key-home_intro_action .stButton > button,
     .st-key-home_intro_action [data-testid="stPageLink"] a {
       min-height:52px!important;width:100%;display:flex;align-items:center;
@@ -1103,16 +1141,16 @@ st.markdown(
       display:flex;align-items:flex-end;justify-content:space-between;gap:28px;
       padding:22px 24px;border-bottom:1px solid rgba(148,163,184,.15);
     }
-    .ss-b5-workspace-head h2 {margin:.45rem 0 0;font-size:1.55rem;letter-spacing:-.025em;}
+    .ss-b5-workspace-head h2 {margin:.45rem 0 0;font-size:1.625rem;letter-spacing:-.025em;}
     .ss-b5-provenance {max-width:520px;text-align:right;}
     .ss-b5-provenance strong,.ss-b5-provenance span {display:block;}
-    .ss-b5-provenance strong {color:#dbe3ee;font-size:.8rem;}
-    .ss-b5-provenance span {margin-top:4px;color:#93a4bc;font-size:.76rem;line-height:1.4;}
+    .ss-b5-provenance strong {color:#dbe3ee;font-size:.875rem;}
+    .ss-b5-provenance span {margin-top:4px;color:#a8b5c7;font-size:.8125rem;line-height:1.5;}
     .ss-b5-workspace-body {padding:21px 24px 24px;}
     .ss-b5-section-head {
       display:flex;align-items:center;justify-content:space-between;gap:20px;margin-bottom:11px;
     }
-    .ss-b5-section-head > strong {color:#93a4bc;font-size:.75rem;font-weight:650;}
+    .ss-b5-section-head > strong {color:#a8b5c7;font-size:.8125rem;font-weight:650;line-height:1.4;}
     .ss-b5-scan-grid {display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:9px;}
     .ss-b5-scan-card {
       position:relative;display:grid;grid-template-columns:minmax(0,1fr) auto;
@@ -1126,49 +1164,49 @@ st.markdown(
       background:var(--accent);
     }
     .ss-b5-stock {grid-column:1 / -1;min-width:0;}
-    .ss-b5-stock strong {display:block;color:#e2e8f0;font-size:.86rem;font-weight:820;}
-    .ss-b5-stock small {display:block;margin-top:3px;color:#8ca0ba;font-size:.7rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+    .ss-b5-stock strong {display:block;color:#e2e8f0;font-size:.9375rem;font-weight:820;}
+    .ss-b5-stock small {display:block;margin-top:3px;color:#a8b5c7;font-size:.8125rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
     .ss-b5-scan-grid.items-1 {grid-template-columns:1fr;}
     .ss-b5-scan-grid.items-1 .ss-b5-scan-card {
       grid-template-columns:minmax(240px,1fr) auto auto;min-height:62px;
     }
     .ss-b5-scan-grid.items-1 .ss-b5-stock {grid-column:auto;}
-    .ss-b5-count {color:#cbd5e1;font-size:.77rem;font-variant-numeric:tabular-nums;}
+    .ss-b5-count {color:#cbd5e1;font-size:.8125rem;font-variant-numeric:tabular-nums;}
     .ss-b5-count {text-align:right;}
-    .ss-b5-count span {color:#8ca0ba;}
-    .ss-b5-attention-note {margin:9px 0 0;color:#8ca0ba;font-size:.74rem;}
+    .ss-b5-count span {color:#a8b5c7;}
+    .ss-b5-evidence-state {color:#cbd5e1;font-size:.8125rem;font-weight:650;}
+    .ss-b5-attention-note {margin:9px 0 0;color:#a8b5c7;font-size:.8125rem;}
     .ss-b5-divider {height:1px;margin:20px 0;background:rgba(148,163,184,.15);}
     .ss-b5-analysis-head {display:flex;align-items:flex-end;justify-content:space-between;gap:24px;}
     .ss-b5-verdict {display:flex;align-items:baseline;gap:12px;margin-top:7px;}
-    .ss-b5-verdict strong {font-size:1.65rem;letter-spacing:-.02em;}
-    .ss-b5-verdict b {font-size:1.05rem;font-weight:850;}
+    .ss-b5-verdict strong {font-size:1.75rem;letter-spacing:-.02em;}
+    .ss-b5-verdict b {font-size:1.125rem;font-weight:850;}
     .ss-b5-verdict .buy {color:var(--ss-color-recommendation-buy);}
     .ss-b5-verdict .watch {color:var(--ss-color-recommendation-watch);}
     .ss-b5-verdict .avoid {color:var(--ss-color-recommendation-avoid);}
-    .ss-b5-verdict > span {color:#a9b8ca;font-size:.8rem;font-weight:650;}
+    .ss-b5-verdict > span {color:#a9b8ca;font-size:.875rem;font-weight:650;}
     .ss-b5-metrics {
       display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:9px;margin-top:18px;
     }
     .ss-b5-metric {min-height:83px;padding:13px 14px;border:1px solid rgba(148,163,184,.15);border-radius:10px;background:rgba(15,23,42,.42);}
-    .ss-b5-metric span {display:block;color:#8ca0ba;font-size:.65rem;}
-    .ss-b5-metric strong {display:block;margin-top:7px;color:#e2e8f0;font-size:.83rem;line-height:1.3;}
-    .ss-b5-metric small {display:block;margin-top:5px;color:#8ca0ba;font-size:.7rem;line-height:1.35;}
+    .ss-b5-metric span,.ss-b5-explanation span {display:block;color:#a8b5c7;font-size:.75rem;font-weight:750;letter-spacing:.01em;text-transform:none;}
+    .ss-b5-metric strong {display:block;margin-top:7px;color:#e2e8f0;font-size:.9375rem;line-height:1.35;}
+    .ss-b5-metric small {display:block;margin-top:5px;color:#a8b5c7;font-size:.8125rem;line-height:1.4;}
     .ss-b5-explanations {display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:22px;margin-top:16px;}
     .ss-b5-explanation {padding-top:0;}
     .ss-b5-explanation:only-child {grid-column:1 / -1;}
     .ss-b5-explanation + .ss-b5-explanation {padding-left:22px;border-left:1px solid rgba(148,163,184,.13);}
-    .ss-b5-explanation span {display:block;color:#8ca0ba;font-size:.65rem;}
-    .ss-b5-explanation strong {display:block;margin-top:6px;color:#cbd5e1;font-size:.82rem;font-weight:620;line-height:1.5;}
+    .ss-b5-explanation strong {display:block;margin-top:6px;color:#d5deea;font-size:.9375rem;font-weight:620;line-height:1.5;}
     .ss-b5-source {
       display:flex;justify-content:space-between;gap:20px;margin-top:17px;padding-top:14px;
-      border-top:1px solid rgba(148,163,184,.13);color:#8ca0ba;font-size:.73rem;line-height:1.45;
+      border-top:1px solid rgba(148,163,184,.13);color:#a8b5c7;font-size:.8125rem;line-height:1.5;
     }
     .ss-b5-source small {font-size:inherit;text-align:right;}
     .ss-b5-assurance {
       display:grid;grid-template-columns:repeat(3,1fr);gap:0;margin:1.35rem 0 .25rem;
       padding:15px 0;border-top:1px solid rgba(148,163,184,.14);border-bottom:1px solid rgba(148,163,184,.14);
     }
-    .ss-b5-assurance span {padding:0 18px;text-align:center;color:#93a4bc;font-size:.78rem;}
+    .ss-b5-assurance span {padding:0 18px;text-align:center;color:#a8b5c7;font-size:.875rem;}
     .ss-b5-assurance span + span {border-left:1px solid rgba(148,163,184,.14);}
     @media (max-width:900px) {
       .st-key-home_public_intro [data-testid="stHorizontalBlock"] {flex-wrap:wrap!important;}
@@ -1188,6 +1226,8 @@ st.markdown(
       .ss-b5-hero h1 {font-size:clamp(2.35rem,11vw,2.55rem);}
       .ss-b5-workspace-head,.ss-b5-analysis-head,.ss-b5-source {align-items:flex-start;flex-direction:column;}
       .ss-b5-provenance,.ss-b5-source small {text-align:left;}
+      .ss-b5-stock small,.ss-b5-count,.ss-b5-evidence-state,
+      .ss-b5-attention-note,.ss-b5-metric small,.ss-b5-source {font-size:.8125rem;}
       .ss-b5-metrics,.ss-b5-assurance,.ss-b5-explanations {grid-template-columns:1fr;}
       .ss-b5-scan-grid.items-1 .ss-b5-scan-card {grid-template-columns:minmax(0,1fr) auto;}
       .ss-b5-scan-grid.items-1 .ss-b5-stock {grid-column:1 / -1;}
@@ -1280,6 +1320,7 @@ st.html(
         _demo_card,
         _demo_sector or _demo_frame.attrs.get("sector") or "tech",
         total_results=_demo_frame.attrs.get("total_results"),
+        signal_results=_demo_frame.attrs.get("signal_results"),
         durable=bool(_demo_bundle),
         total_results_complete=bool(
             (_demo_publication or {}).get("total_results_complete")
