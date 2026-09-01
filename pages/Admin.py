@@ -218,6 +218,10 @@ latest_demo = safe_ui(
     lambda: load_latest_demo_publication(sb),
     context="admin.load_public_demo",
 )
+latest_source = {}
+refresh_bundle = None
+refresh_source = None
+refresh_error = ""
 if latest_demo:
     latest_bundle = latest_demo.get("bundle") or {}
     latest_scan = latest_bundle.get("scan") or {}
@@ -239,8 +243,51 @@ if latest_demo:
         f"private source retained: {len(retained_scan)} scan rows, "
         f"{len(retained_analysis)} analysis sections"
     )
+    try:
+        retained_scan_payload = latest_source.get("scan") or {}
+        retained_analysis_payload = latest_source.get("deep_analysis") or {}
+        refresh_bundle = build_public_demo_bundle(
+            scan_rows=retained_scan_payload.get("rows") or [],
+            scan_sector=retained_scan_payload.get("sector") or "",
+            analysis_ticker=retained_analysis_payload.get("ticker") or "",
+            analysis_card=retained_analysis_payload.get("card") or {},
+            scan_generated_at=retained_scan_payload.get("generated_at"),
+            analysis_generated_at=retained_analysis_payload.get("generated_at"),
+        )
+        refresh_source = latest_source
+    except (TypeError, ValueError) as exc:
+        refresh_error = str(exc)
 else:
     st.caption("No durable public demo has been published yet.")
+
+if refresh_error:
+    st.caption(f"Saved snapshot cannot refresh the preview: {refresh_error}")
+elif refresh_bundle and refresh_source:
+    if st.button(
+        "Refresh preview from saved snapshot",
+        help=(
+            "Rebuild the safe public projection from the retained snapshot. "
+            "This does not run a scan or analysis and does not spend a credit."
+        ),
+        disabled=not actor_id,
+        use_container_width=True,
+    ):
+        try:
+            refreshed = publish_public_demo(
+                refresh_bundle,
+                refresh_source,
+                str(actor_id),
+                client=sb,
+            )
+        except Exception:
+            ui_error("The saved public preview could not be refreshed.")
+        else:
+            refreshed_scan = (refreshed.get("bundle") or {}).get("scan") or {}
+            st.success(
+                "Refreshed the landing-page preview from the retained snapshot "
+                f"with {len(refreshed_scan.get('validated_rows') or [])} safe "
+                "scan rows. Home may take up to 60 seconds to refresh."
+            )
 
 session_scan = st.session_state.get("df_valid")
 session_sector = (
@@ -306,7 +353,7 @@ with status_scan:
         prepared_scan = publish_bundle["scan"]
         st.caption(
             f"{prepared_scan['sector'].title()} · "
-            f"{len(prepared_scan['validated_rows'])} public sentiment signals"
+            f"{len(prepared_scan['validated_rows'])} safe public scan rows"
         )
     else:
         st.caption("Not ready")

@@ -17,7 +17,7 @@ def _read(relative: str) -> str:
 def test_public_home_is_not_a_duplicate_authenticated_workspace() -> None:
     home = _read("pages/Home.py")
 
-    assert 'render_top_nav()' in home
+    assert 'render_top_nav(signup_primary=False)' in home
     assert 'render_top_nav(active="home")' not in home
     assert 'key="home_cap_grid"' not in home
     assert 'key="home_credit_hub"' not in home

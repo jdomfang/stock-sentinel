@@ -283,35 +283,124 @@ def test_market_scan_sector_cannot_be_overwritten_by_independent_analysis() -> N
     assert 'st.session_state.get("analysis_sector")' in result
 
 
-def test_public_preview_uses_compact_aligned_table_geometry() -> None:
+def test_public_preview_uses_compact_responsive_workspace_geometry() -> None:
     home = read("pages/Home.py")
 
-    preview_css = home.split(".ss-hero-preview {", 1)[1].split("}", 1)[0]
-    table_css = home.split(".ss-hero-preview-table {", 1)[1].split("}", 1)[0]
-    count_css = home.split(".ss-hero-preview-count {", 1)[1].split("}", 1)[0]
-    result_css = home.split(".ss-hero-result {", 1)[1].split("}", 1)[0]
-    cell_css = home.split(
-        ".ss-hero-preview-table th,.ss-hero-preview-table td {", 1
-    )[1].split("}", 1)[0]
-    numeric_alignment_css = home.split(
-        ".ss-hero-preview-table th:last-child,\n"
-        "    .ss-hero-preview-table td:last-child {",
-        1,
-    )[1].split("}", 1)[0]
-    assert "min-height:0" in preview_css
-    assert "padding:16px" in preview_css
-    assert "table-layout:fixed" in table_css
-    assert "border-collapse:separate" in table_css
-    assert ".ss-hero-preview-table col.stock {width:27%;" in home
-    assert ".ss-hero-preview-table col.sentiment {width:43%;" in home
-    assert ".ss-hero-preview-table col.posts {width:30%;" in home
-    assert "padding:9px 12px" in cell_css
-    assert "vertical-align:middle" in cell_css
+    scan_css = home.split(".ss-b5-scan-grid {", 1)[1].split("}", 1)[0]
+    metric_css = home.split(".ss-b5-metrics {", 1)[1].split("}", 1)[0]
+    analysis_css = home.split(".ss-b5-analysis {", 1)[1].split("}", 1)[0]
+    count_css = home.split(".ss-b5-count {", 1)[1].split("}", 1)[0]
+
+    assert "repeat(3,minmax(0,1fr))" in scan_css
+    assert "repeat(4,minmax(0,1fr))" in metric_css
+    assert "rgba(11,24,42,.96)" in analysis_css
     assert "font-variant-numeric:tabular-nums" in count_css
-    assert "text-align:right" in numeric_alignment_css
-    assert "margin-top:14px" in result_css
-    assert "padding-top:12px" in result_css
+    assert '@media (max-width:800px)' in home
+    assert '.ss-b5-scan-grid {grid-template-columns:1fr;}' in home
+    assert '.ss-b5-scan-grid.items-1 {grid-template-columns:1fr;}' in home
+    assert 'class="ss-b5-stock"' in home
+    assert 'class="ss-b5-insight"' in home
+    assert 'class="ss-b5-change"' in home
+    assert ".ss-b5-verdict .watch" in home
+    assert "rgba(245,158,11,.1)" in home
+    assert "font-size:.9375rem" in home
+    assert "font-size:.8125rem" in home
+    assert "text-transform:none" in home
+    assert "color:#afc0d2" in home
+    assert 'role="list"' in home and 'role="listitem"' in home
+    assert 'render_top_nav(signup_primary=False)' in home
     assert "min-height:420px" not in home
+
+
+def test_public_preview_always_keeps_the_analyzed_ticker() -> None:
+    home = read("pages/Home.py")
+    function_source = "def _select_demo_rows" + home.split(
+        "def _select_demo_rows", 1
+    )[1].split("def _legacy_public_card", 1)[0]
+    namespace = {"_ASSERTED": {"bullish", "bearish", "neutral"}}
+    exec("from __future__ import annotations\n" + function_source, namespace)
+
+    class Frame:
+        empty = False
+
+        def to_dict(self, orient: str) -> list[dict]:
+            assert orient == "records"
+            return [
+                {"Ticker": "AAA", "Overall Sentiment": "Bullish"},
+                {"Ticker": "BBB", "Overall Sentiment": "Bearish"},
+                {"Ticker": "CCC", "Overall Sentiment": "Neutral"},
+                {"Ticker": "KEEP", "Overall Sentiment": "Neutral"},
+                {
+                    "Ticker": "LOW",
+                    "Overall Sentiment": "Limited Signal",
+                    "Evidence State": "Needs more evidence",
+                },
+            ]
+
+    rows = namespace["_select_demo_rows"](
+        Frame(), limit=3, selected_ticker="KEEP"
+    )
+    assert len(rows) == 3
+    assert "KEEP" in {row["Ticker"] for row in rows}
+
+
+def test_public_preview_uses_real_inconclusive_rows_to_complete_shortlist() -> None:
+    home = read("pages/Home.py")
+    function_source = "def _select_demo_rows" + home.split(
+        "def _select_demo_rows", 1
+    )[1].split("def _legacy_public_card", 1)[0]
+    namespace = {"_ASSERTED": {"bullish", "bearish", "neutral"}}
+    exec("from __future__ import annotations\n" + function_source, namespace)
+
+    class Frame:
+        empty = False
+
+        def to_dict(self, orient: str) -> list[dict]:
+            assert orient == "records"
+            return [
+                {"Ticker": "PLTR", "Overall Sentiment": "Neutral"},
+                {"Ticker": "NVDA", "Overall Sentiment": "Limited Signal"},
+                {"Ticker": "META", "Overall Sentiment": "Single Mention"},
+            ]
+
+    rows = namespace["_select_demo_rows"](
+        Frame(), limit=3, selected_ticker="PLTR"
+    )
+    assert [row["Ticker"] for row in rows] == ["PLTR", "NVDA", "META"]
+    assert "Needs more evidence" in home
+    assert "stocks scanned" in home
+
+
+def test_public_preview_polishes_internal_analysis_copy() -> None:
+    home = read("pages/Home.py")
+    helper_source = "def _count_phrase" + home.split(
+        "def _count_phrase", 1
+    )[1].split("def _decision_workspace_html", 1)[0]
+    namespace: dict = {}
+    exec("from __future__ import annotations\n" + helper_source, namespace)
+
+    count_phrase = namespace["_count_phrase"]
+    polish = namespace["_polish_preview_text"]
+    scan_summary = namespace["_scan_summary"]
+    assert count_phrase(1, "result") == "1 result"
+    assert count_phrase(2, "result") == "2 results"
+    assert scan_summary(10, 1) == (
+        "10 stocks scanned · 1 signal · 9 need more evidence"
+    )
+    reason = polish(
+        "Real evidence, but it does not line up into a call.", kind="reason"
+    )
+    assert reason == (
+        "Evidence is present, but it does not support a directional call."
+    )
+    change = polish(
+        "the 2 confirmed event(s) reading clearly one way — they measure "
+        "+0.00, inside the +0.15 needed to carry a call",
+        kind="change",
+    )
+    assert "event(s)" not in change
+    assert "+0.15" not in change
+    assert "decision threshold" in change
 
 
 def test_prefilled_ticker_uses_explicit_cross_browser_contrast() -> None:
@@ -363,7 +452,10 @@ def main() -> int:
         test_analysis_failures_render_outside_action_cells,
         test_scan_analysis_has_one_stable_processing_and_paint_cycle,
         test_market_scan_sector_cannot_be_overwritten_by_independent_analysis,
-        test_public_preview_uses_compact_aligned_table_geometry,
+        test_public_preview_uses_compact_responsive_workspace_geometry,
+        test_public_preview_always_keeps_the_analyzed_ticker,
+        test_public_preview_uses_real_inconclusive_rows_to_complete_shortlist,
+        test_public_preview_polishes_internal_analysis_copy,
         test_prefilled_ticker_uses_explicit_cross_browser_contrast,
         test_every_page_loads_theme_before_visible_navigation,
     ]

@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from datetime import datetime
+from copy import deepcopy
 from pathlib import Path
 import sys
 
@@ -16,6 +17,7 @@ from utils.demo_snapshots import (
     normalize_scan_rows,
     social_posts_value,
     snapshot_timestamp,
+    validate_demo_publication,
     validate_public_demo_bundle,
 )
 
@@ -131,17 +133,104 @@ def test_public_bundle_is_one_coherent_scan_and_analysis() -> None:
         analysis_card=_card(),
     )
     assert bundle["scan"]["sector"] == "tech"
+    assert bundle["scan"]["total_results"] == 2
     assert [row["Ticker"] for row in bundle["scan"]["validated_rows"]] == [
-        "WAY"
+        "WAY", "LOW"
     ]
+    assert bundle["scan"]["validated_rows"][1]["Evidence State"] == (
+        "Needs more evidence"
+    )
     assert bundle["deep_analysis"]["ticker"] == "WAY"
     assert bundle["deep_analysis"]["sector"] == "tech"
     assert "Sample Tweets" not in bundle["scan"]["validated_rows"][0]
+    assert all(
+        "Sample Tweets" not in row
+        for row in bundle["scan"]["validated_rows"]
+    )
     public_card = bundle["deep_analysis"]["public_card"]
     assert public_card["verdict"] == "Watch"
     assert public_card["evidence"]["price_points"] == 25
     assert public_card["movement"]["horizon_days"] == 10
     assert "pillars" not in public_card
+
+
+def test_legacy_v2_publication_without_total_results_remains_valid() -> None:
+    rows = [
+        {
+            "Ticker": "WAY",
+            "Overall Sentiment": "Neutral",
+            "Mentions": 21,
+            "Evidence": 2,
+            "Avg Sentiment Score": 0.06,
+        },
+        {
+            "Ticker": "LOW",
+            "Overall Sentiment": "Limited signal",
+            "Mentions": 1,
+        },
+    ]
+    public = build_public_demo_bundle(rows, "tech", "WAY", _card())
+    legacy_public = deepcopy(public)
+    legacy_public["scan"].pop("total_results")
+    legacy_public["scan"]["validated_rows"] = [
+        row for row in legacy_public["scan"]["validated_rows"]
+        if row["Overall Sentiment"] == "Neutral"
+    ]
+    source = build_demo_source_payload(
+        rows,
+        "tech",
+        "WAY",
+        _card(),
+        {"Real-Time Market Sentiment": {"status": "complete"}},
+        scan_generated_at=public["scan"]["generated_at"],
+        analysis_generated_at=public["deep_analysis"]["generated_at"],
+    )
+
+    normalized, _ = validate_demo_publication(legacy_public, source)
+    assert normalized["scan"]["total_results"] == 1
+
+
+def test_public_bundle_can_analyze_a_real_inconclusive_scan_row() -> None:
+    bundle = build_public_demo_bundle(
+        scan_rows=[{
+            "Ticker": "LOW",
+            "Company Name": "Low Evidence Corp.",
+            "Overall Sentiment": "Single mention",
+            "Mentions": 1,
+            "Evidence": 1,
+            "Avg Sentiment Score": 0.02,
+            "Sample Tweets": ["private post"],
+        }],
+        scan_sector="tech",
+        analysis_ticker="LOW",
+        analysis_card=_card("LOW"),
+    )
+    row = bundle["scan"]["validated_rows"][0]
+    assert row["Ticker"] == "LOW"
+    assert row["Evidence State"] == "Needs more evidence"
+    assert "Sample Tweets" not in row
+
+
+def test_public_bundle_rejects_total_below_public_result_count() -> None:
+    bundle = build_public_demo_bundle(
+        [{
+            "Ticker": "WAY",
+            "Overall Sentiment": "Neutral",
+            "Mentions": 21,
+            "Evidence": 2,
+            "Avg Sentiment Score": 0.06,
+        }],
+        "tech",
+        "WAY",
+        _card(),
+    )
+    bundle["scan"]["total_results"] = 0
+    try:
+        validate_public_demo_bundle(bundle)
+    except ValueError as exc:
+        assert "total results" in str(exc)
+    else:
+        raise AssertionError("an impossible saved-result total was accepted")
 
 
 def test_private_source_retains_complete_scan_and_analysis() -> None:
@@ -212,6 +301,8 @@ def test_all_snapshot_publishers_keep_the_contract() -> None:
     assert "build_public_demo_bundle(" in admin
     assert "build_demo_source_payload(" in admin
     assert "publish_public_demo(" in admin
+    assert "Refresh preview from saved snapshot" in admin
+    assert "This does not run a scan or analysis" in admin
     assert "load_latest_demo_publication(" in admin
     assert "load_latest_public_demo()" in home
     assert "st.session_state.demo_scan_sector = sector" in discovery
@@ -221,12 +312,17 @@ def test_all_snapshot_publishers_keep_the_contract() -> None:
     assert "deep_latest.json\").write_text" not in admin
     assert "deep_latest.json\").write_text" not in discovery
     assert "social_posts_value(row)" in home
-    assert "Social posts" in home
+    assert "social posts" in home.lower()
     assert "Attention unavailable" not in home
-    assert '<table class="ss-decision-table">' in home
+    assert 'class="ss-b5-scan-grid items-' in home
+    assert 'role="listitem"' in home
     assert "Decision Workspace" in home
-    assert "Price history" in home
-    assert 'scope="col"' in home and 'scope="row"' in home
+    assert "Independent evidence" in home
+    assert "Recent volatility range" in home
+    assert "not probability of return" in home
+    assert "stocks scanned" in home
+    assert "Saved example from an actual run" in home
+    assert "total_results_complete" in home
     assert "attention_fallback" not in home
 
 
@@ -240,6 +336,9 @@ def main() -> int:
         test_social_posts_value_is_compact_and_uses_only_snapshot_data,
         test_snapshot_timestamp_is_explicit_utc,
         test_public_bundle_is_one_coherent_scan_and_analysis,
+        test_legacy_v2_publication_without_total_results_remains_valid,
+        test_public_bundle_can_analyze_a_real_inconclusive_scan_row,
+        test_public_bundle_rejects_total_below_public_result_count,
         test_private_source_retains_complete_scan_and_analysis,
         test_public_bundle_rejects_analysis_outside_current_scan,
         test_all_snapshot_publishers_keep_the_contract,

@@ -14,6 +14,7 @@ from typing import Any, Iterable, Mapping
 
 
 _PUBLIC_SENTIMENTS = {"bullish", "bearish", "neutral"}
+_PUBLIC_EVIDENCE_STATES = {"unscored", "single mention", "limited signal"}
 _VERDICTS = {"buy", "watch", "avoid"}
 _CONFIDENCE = {"low", "moderate", "high"}
 _PUBLIC_SCAN_FIELDS = (
@@ -23,6 +24,7 @@ _PUBLIC_SCAN_FIELDS = (
     "Evidence",
     "Avg Sentiment Score",
     "Overall Sentiment",
+    "Evidence State",
 )
 _PUBLIC_TILE_KEYS = {
     "last_price",
@@ -112,11 +114,15 @@ def normalize_scan_rows(
 
 def _public_scan_rows(
     rows: Iterable[Mapping[str, Any]],
+    *,
+    include_inconclusive: bool = True,
 ) -> list[dict[str, Any]]:
     public: list[dict[str, Any]] = []
     for row in normalize_scan_rows(rows):
         sentiment = str(row.get("Overall Sentiment") or "").strip().lower()
-        if sentiment not in _PUBLIC_SENTIMENTS:
+        is_signal = sentiment in _PUBLIC_SENTIMENTS
+        is_inconclusive = sentiment in _PUBLIC_EVIDENCE_STATES
+        if not is_signal and not (include_inconclusive and is_inconclusive):
             continue
         ticker = row["Ticker"]
         score = _finite_number(
@@ -136,6 +142,9 @@ def _public_scan_rows(
                 "Evidence": evidence,
                 "Avg Sentiment Score": score,
                 "Overall Sentiment": sentiment.title(),
+                "Evidence State": (
+                    "" if is_signal else "Needs more evidence"
+                ),
             }
         )
         public.append(projection)
@@ -274,6 +283,11 @@ def validate_public_demo_bundle(bundle: Mapping[str, Any]) -> dict[str, Any]:
     if not ticker:
         raise ValueError("Deep Analyze ticker is missing")
     rows = _public_scan_rows(scan.get("validated_rows") or [])
+    total_results = _whole_number(
+        scan.get("total_results", len(rows)),
+        "Market Scan total results",
+        minimum=len(rows),
+    )
     if ticker not in {row["Ticker"] for row in rows}:
         raise ValueError("Deep Analyze ticker must belong to the current Market Scan")
     card = normalize_public_card(
@@ -287,6 +301,7 @@ def validate_public_demo_bundle(bundle: Mapping[str, Any]) -> dict[str, Any]:
             "scan": {
                 "sector": sector,
                 "generated_at": str(scan.get("generated_at") or snapshot_timestamp()),
+                "total_results": total_results,
                 "validated_rows": rows,
             },
             "deep_analysis": {
@@ -358,12 +373,14 @@ def build_public_demo_bundle(
 ) -> dict[str, Any]:
     """Build the safe public projection from one coherent real workflow."""
     now = snapshot_timestamp()
+    scan_rows = list(scan_rows)
     return validate_public_demo_bundle(
         {
             "scan": {
                 "sector": scan_sector,
                 "generated_at": scan_generated_at or now,
-                "validated_rows": list(scan_rows),
+                "total_results": len(scan_rows),
+                "validated_rows": scan_rows,
             },
             "deep_analysis": {
                 "ticker": analysis_ticker,
@@ -413,6 +430,10 @@ def validate_demo_publication(
     bundle: Mapping[str, Any], source_payload: Mapping[str, Any]
 ) -> tuple[dict[str, Any], dict[str, Any]]:
     """Prove that the public view is exactly derived from the private source."""
+    scan_bundle = bundle.get("scan") if isinstance(bundle, Mapping) else None
+    legacy_without_total = (
+        isinstance(scan_bundle, Mapping) and "total_results" not in scan_bundle
+    )
     public = validate_public_demo_bundle(bundle)
     source = validate_demo_source_payload(source_payload)
     scan = source["scan"]
@@ -425,6 +446,16 @@ def validate_demo_publication(
         scan_generated_at=scan["generated_at"],
         analysis_generated_at=analysis["generated_at"],
     )
+    # total_results is an additive v2 field. Publications written before it
+    # existed stored only the allowlisted result rows, so retain exact v2
+    # equality for those durable snapshots while every new publish carries the
+    # complete saved-result count.
+    if legacy_without_total:
+        legacy_rows = _public_scan_rows(
+            scan["rows"], include_inconclusive=False
+        )
+        expected["scan"]["validated_rows"] = legacy_rows
+        expected["scan"]["total_results"] = len(legacy_rows)
     if public != expected:
         raise ValueError(
             "Public demo projection does not match its private source payload"

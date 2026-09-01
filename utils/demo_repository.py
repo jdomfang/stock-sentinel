@@ -36,7 +36,12 @@ def load_latest_public_demo(client=None) -> dict[str, Any] | None:
     row = dict(rows[0])
     if int(row.get("schema_version") or 0) != SCHEMA_VERSION:
         raise ValueError("Unsupported public demo schema version")
-    row["bundle"] = validate_public_demo_bundle(row.get("bundle") or {})
+    raw_bundle = row.get("bundle") or {}
+    raw_scan = raw_bundle.get("scan") if isinstance(raw_bundle, Mapping) else None
+    row["total_results_complete"] = bool(
+        isinstance(raw_scan, Mapping) and "total_results" in raw_scan
+    )
+    row["bundle"] = validate_public_demo_bundle(raw_bundle)
     return row
 
 
@@ -97,4 +102,5 @@ def publish_public_demo(
         raise RuntimeError("Supabase did not return the published demo")
     row = dict(rows[0])
     row["bundle"] = validate_public_demo_bundle(row.get("bundle") or {})
+    row["total_results_complete"] = True
     return row

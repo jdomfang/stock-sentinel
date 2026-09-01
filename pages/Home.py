@@ -71,6 +71,11 @@ def _load_demo_scan() -> pd.DataFrame:
     frame = pd.DataFrame(rows) if rows else pd.DataFrame()
     frame.attrs["sector"] = payload.get("sector", "") or ""
     frame.attrs["generated_at"] = payload.get("generated_at", "") or ""
+    frame.attrs["total_results"] = payload.get("total_results", len(rows))
+    frame.attrs["signal_results"] = sum(
+        str(row.get("Overall Sentiment") or "").strip().lower() in _ASSERTED
+        for row in rows
+    )
     return frame
 
 
@@ -125,6 +130,11 @@ def _scan_frame_from_bundle(bundle: dict) -> pd.DataFrame:
     frame = pd.DataFrame(rows) if rows else pd.DataFrame()
     frame.attrs["sector"] = scan.get("sector") or ""
     frame.attrs["generated_at"] = scan.get("generated_at") or ""
+    frame.attrs["total_results"] = scan.get("total_results", len(rows))
+    frame.attrs["signal_results"] = sum(
+        str(row.get("Overall Sentiment") or "").strip().lower() in _ASSERTED
+        for row in rows
+    )
     return frame
 
 
@@ -144,36 +154,49 @@ def _select_demo_rows(
 ) -> list[dict]:
     """Return a small representative preview without changing scan ranking.
 
-    The landing page demonstrates the three Market Scan sentiment states; it
-    is not a second results page. Rows retain their source order after we make
-    sure the available Bullish, Bearish, and Neutral examples are represented.
+    The landing page is not a second results page. It keeps the analyzed ticker,
+    represents the available directional states, then uses genuine inconclusive
+    rows to show that the scan rejects weak evidence.
     """
     if frame.empty or limit <= 0:
         return []
 
-    records = [
-        row for row in frame.to_dict("records")
-        if str(row.get("Overall Sentiment", "")).strip().lower() in _ASSERTED
-    ]
+    records = frame.to_dict("records")
     if not records:
         return []
-    chosen: set[int] = set()
+    chosen: list[int] = []
     selected_ticker = str(selected_ticker or "").strip().upper()
     if selected_ticker:
         for index, row in enumerate(records):
             if str(row.get("Ticker", "")).strip().upper() == selected_ticker:
-                chosen.add(index)
+                chosen.append(index)
                 break
     for sentiment in ("bullish", "bearish", "neutral"):
+        if len(chosen) >= limit:
+            break
         for index, row in enumerate(records):
-            if str(row.get("Overall Sentiment", "")).strip().lower() == sentiment:
-                chosen.add(index)
+            if (
+                index not in chosen
+                and str(row.get("Overall Sentiment", "")).strip().lower()
+                == sentiment
+            ):
+                chosen.append(index)
                 break
+    for index, row in enumerate(records):
+        if len(chosen) >= limit:
+            break
+        if (
+            index not in chosen
+            and str(row.get("Overall Sentiment", "")).strip().lower()
+            in _ASSERTED
+        ):
+            chosen.append(index)
     for index in range(len(records)):
         if len(chosen) >= limit:
             break
-        chosen.add(index)
-    return [records[index] for index in sorted(chosen)[:limit]]
+        if index not in chosen:
+            chosen.append(index)
+    return [records[index] for index in sorted(chosen)]
 
 
 def _legacy_public_card(
@@ -202,41 +225,114 @@ def _legacy_public_card(
     }
 
 
+def _count_phrase(count: int, singular: str, plural: str | None = None) -> str:
+    """Render a grammatically correct compact count for public copy."""
+    word = singular if count == 1 else (plural or f"{singular}s")
+    return f"{count} {word}"
+
+
+def _polish_preview_text(value: object, *, kind: str) -> str:
+    """Translate canonical internal phrasing into calm public-facing copy."""
+    text = " ".join(str(value or "").strip().split())
+    lowered = text.lower()
+    if kind == "reason" and lowered.startswith("real evidence"):
+        return "Evidence is present, but it does not support a directional call."
+    if (
+        kind == "change"
+        and "confirmed event" in lowered
+        and "needed to carry a call" in lowered
+    ):
+        return (
+            "A directional call would require the confirmed events to align "
+            "more strongly; their current combined signal remains below the "
+            "decision threshold."
+        )
+    text = text.replace("event(s)", "events")
+    if not text:
+        return ""
+    text = text[0].upper() + text[1:]
+    if text[-1] not in ".!?":
+        text += "."
+    return text
+
+
+def _sector_label(value: object) -> str:
+    sector = str(value or "").strip().lower()
+    return {"tech": "Technology"}.get(sector, sector.title() or "Technology")
+
+
+def _scan_summary(total_results: int, signal_results: int) -> str:
+    """Summarize selectivity without implying inconclusive rows are signals."""
+    total = max(int(total_results), 0)
+    signals = min(max(int(signal_results), 0), total)
+    needs = total - signals
+    needs_label = (
+        f"{needs} need more evidence" if needs != 1 else
+        "1 needs more evidence"
+    )
+    return (
+        f"{total} stocks scanned · {_count_phrase(signals, 'signal')} · "
+        f"{needs_label}"
+    )
+
+
 def _decision_workspace_html(
     rows: list[dict], ticker: str, card: dict, sector: str,
+    *, total_results: int | None = None, durable: bool = False,
+    total_results_complete: bool = False,
+    signal_results: int | None = None,
 ) -> str:
-    """Render a rich, unified preview from the canonical public card."""
+    """Render the date-free, saved-workflow preview from the public card."""
     preview_rows = []
-    for row in rows[:5]:
+    for row in rows[:3]:
         raw_ticker = str(row.get("Ticker") or "—").strip().upper()
         company = str(row.get("Company Name") or "").strip()
         sentiment = str(
             row.get("Overall Sentiment") or "Neutral"
         ).strip().lower()
-        if sentiment not in _ASSERTED:
-            sentiment = "neutral"
+        is_signal = sentiment in _ASSERTED
+        evidence_state = str(row.get("Evidence State") or "").strip()
+        if not is_signal:
+            evidence_state = evidence_state or "Needs more evidence"
+        state_html = (
+            f'<span class="ss-sentiment {sentiment}">{sentiment.title()}</span>'
+            if is_signal else
+            f'<span class="ss-b5-evidence-state">'
+            f'{html.escape(evidence_state)}</span>'
+        )
         social_posts = social_posts_value(row)
         selected = " selected" if raw_ticker == ticker else ""
         selected_context = (
             '<span class="ss-visually-hidden">Selected for the Deep Analyze example. </span>'
             if selected else ""
         )
+        count_label = (
+            f'{html.escape(social_posts)} <span aria-hidden="true">social posts</span>'
+            if social_posts != "—" else "—"
+        )
+        count_aria = (
+            f' aria-label="{html.escape(social_posts)} social posts"'
+            if social_posts != "—" else ' aria-label="Social-post count unavailable"'
+        )
         preview_rows.append(
-            f'<tr class="ss-decision-row{selected}">'
-            f'<th scope="row"><span class="ss-decision-symbol">'
-            f'{selected_context}{html.escape(raw_ticker)}</span>'
-            f'<span class="ss-decision-company">{html.escape(company)}</span></th>'
-            f'<td><span class="ss-sentiment {sentiment}">'
-            f'{sentiment.title()}</span></td>'
-            f'<td class="ss-decision-count">'
-            f'{html.escape(social_posts)}</td></tr>'
+            f'<article class="ss-b5-scan-card{selected}" role="listitem">'
+            f'<div class="ss-b5-stock"><strong>{selected_context}'
+            f'{html.escape(raw_ticker)}</strong>'
+            f'<small>{html.escape(company)}</small></div>'
+            f'{state_html}'
+            f'<span class="ss-b5-count"{count_aria}>{count_label}</span>'
+            f'</article>'
         )
 
     recommendation = html.escape(str(card.get("verdict") or "Watch"))
     confidence = html.escape(str(card.get("confidence") or "Low"))
-    reason = html.escape(str(card.get("reason") or ""))
+    reason = html.escape(
+        _polish_preview_text(card.get("reason"), kind="reason")
+    )
     would_change = card.get("would_change") or []
-    change = html.escape(str(would_change[0])) if would_change else ""
+    change = html.escape(
+        _polish_preview_text(would_change[0], kind="change")
+    ) if would_change else ""
     result_ticker = html.escape(ticker or "NVDA")
     result_class = recommendation.lower()
     if result_class not in {"buy", "watch", "avoid"}:
@@ -245,13 +341,9 @@ def _decision_workspace_html(
     evidence = card.get("evidence") or {}
     movement = card.get("movement") or {}
     independent = evidence.get("independent_voices")
-    mentions = evidence.get("mentions")
-    if independent is not None:
-        evidence_value = f"{int(independent)} independent clusters"
-    elif mentions is not None:
-        evidence_value = f"{int(mentions)} social posts"
-    else:
-        evidence_value = ""
+    evidence_value = (
+        f"{int(independent)} clusters" if independent is not None else "Unavailable"
+    )
     horizon = movement.get("horizon_days")
     price_points = evidence.get("price_points")
     range_tile = next(
@@ -261,60 +353,100 @@ def _decision_workspace_html(
         ),
         {},
     )
-    metrics = []
-    if evidence_value:
-        metrics.append(("Evidence", evidence_value))
-    if horizon is not None:
-        metrics.append(("Signal horizon", f"{int(horizon)} trading days"))
-    if price_points is not None:
-        metrics.append(("Price history", f"{int(price_points)} daily closes"))
-    if range_tile.get("value"):
-        metrics.append(("30D risk range", str(range_tile["value"])))
+    selected_row = next(
+        (
+            row for row in rows
+            if str(row.get("Ticker") or "").strip().upper() == ticker
+        ),
+        {},
+    )
+    social_sentiment = str(
+        selected_row.get("Overall Sentiment") or "Neutral"
+    ).strip().title()
+    range_value = str(range_tile.get("value") or "Unavailable")
+    metrics = [
+        ("Scan sentiment", social_sentiment, "Saved scan classification"),
+        ("Independent evidence", evidence_value, "Distinct evidence groups"),
+        (
+            "Signal horizon",
+            f"{int(horizon)} trading days" if horizon is not None else "Unavailable",
+            "Monitoring window",
+        ),
+        (
+            "Recent volatility range",
+            range_value,
+            "Historical movement context · not a forecast"
+            if range_value != "Unavailable" else "",
+        ),
+    ]
     metric_html = "".join(
-        '<div class="ss-decision-metric"><span>'
-        f'{html.escape(label)}</span><strong>{html.escape(value)}</strong></div>'
-        for label, value in metrics
+        '<div class="ss-b5-metric"><span>'
+        f'{html.escape(label)}</span><strong>{html.escape(value)}</strong>'
+        f'<small>{html.escape(helper)}</small></div>'
+        for label, value, helper in metrics
     )
     change_html = (
-        '<div class="ss-decision-change"><span>What would change this</span>'
-        f'<strong>{change}</strong></div>' if change else ""
+        '<div class="ss-b5-change"><span>What would change this</span>'
+        f'<p>{change}</p></div>' if change else ""
+    )
+    shown_count = len(rows)
+    total_results = max(int(total_results or shown_count), shown_count)
+    signal_count = (
+        int(signal_results) if signal_results is not None else
+        sum(
+            str(row.get("Overall Sentiment") or "").strip().lower() in _ASSERTED
+            for row in rows
+        )
+    )
+    if durable and total_results_complete:
+        provenance = "Actual saved run · not live market data"
+        shown_label = _scan_summary(total_results, signal_count)
+    elif durable:
+        provenance = "Saved example from an actual run · not live market data"
+        shown_label = f"{_count_phrase(shown_count, 'public result')} shown"
+    else:
+        provenance = "Illustrative fallback example · not live market data"
+        shown_label = f"{_count_phrase(shown_count, 'fallback result')} shown"
+    closes = (
+        f"{int(price_points)} daily closes"
+        if price_points is not None else "Price-history count unavailable"
     )
     return f"""
-      <section class="ss-decision" aria-label="Illustrative decision workspace">
-        <header class="ss-decision-head">
+      <section class="ss-b5-workspace" aria-label="Illustrative decision workspace">
+        <header class="ss-b5-workspace-head">
           <div>
-            <div class="ss-decision-kicker">Product preview · illustrative</div>
+            <div class="ss-b5-kicker">Product preview · illustrative</div>
             <h2>Decision Workspace</h2>
           </div>
-          <div class="ss-decision-meta">
-            <strong>{html.escape(str(sector or 'Technology').title())}</strong>
-            <span>{len(rows)} shortlisted stocks</span>
-            <small>Saved illustrative example · not live market data</small>
+          <div class="ss-b5-provenance">
+            <strong>{html.escape(_sector_label(sector))}</strong>
+            <span>{provenance}</span>
           </div>
         </header>
-        <div class="ss-decision-grid">
-          <div class="ss-decision-scan">
-            <div class="ss-decision-section-label">Market Scan</div>
-            <table class="ss-decision-table">
-              <caption>Illustrative saved Market Scan results.</caption>
-              <colgroup><col class="stock"><col class="sentiment"><col class="posts"></colgroup>
-              <thead><tr><th scope="col">Stock</th><th scope="col">Sentiment</th>
-              <th scope="col">Social posts</th></tr></thead>
-              <tbody>{''.join(preview_rows)}</tbody>
-            </table>
+        <div class="ss-b5-workspace-body">
+          <div class="ss-b5-section-head">
+            <span>Market Scan</span><strong>{shown_label}</strong>
           </div>
-          <aside class="ss-decision-analysis">
-            <div class="ss-decision-section-label">Deep Analyze</div>
-            <div class="ss-decision-verdict">
-              <div><strong>{result_ticker}</strong><span class="{result_class}">{recommendation}</span></div>
-              <span>{confidence} confidence</span>
+          <div class="ss-b5-scan-grid items-{min(max(shown_count, 1), 3)}" role="list" aria-label="Illustrative saved Market Scan results">
+            {''.join(preview_rows)}
+          </div>
+          <p class="ss-b5-attention-note">Social-post count indicates attention, not independent evidence.</p>
+          <div class="ss-b5-divider"></div>
+          <aside class="ss-b5-analysis" aria-label="Illustrative Deep Analysis result">
+            <div class="ss-b5-analysis-head">
+              <div>
+                <span class="ss-b5-section-label">Deep Analysis · model output</span>
+                <div class="ss-b5-verdict"><strong>{result_ticker}</strong><b class="{result_class}">{recommendation}</b><span>{confidence} confidence</span></div>
+              </div>
             </div>
-            <p class="ss-decision-reason">{reason}</p>
-            <div class="ss-decision-metrics">{metric_html}</div>
+            <div class="ss-b5-insight">
+              <span>Why this output</span><p>{reason}</p>
+            </div>
+            <div class="ss-b5-metrics">{metric_html}</div>
             {change_html}
-            <div class="ss-decision-context">
-              <span>Market context</span>
-              <strong>Public social discussion + market-price history</strong>
+            <div class="ss-b5-source">
+              <span>Sources: public social discussion + market-price history · {html.escape(closes)}</span>
+              <small>Confidence reflects evidence quality and agreement, not probability of return.</small>
             </div>
           </aside>
         </div>
@@ -331,7 +463,7 @@ st.set_page_config(
 
 apply_theme()
 render_sidebar_navigation()
-render_top_nav()
+render_top_nav(signup_primary=False)
 from utils.auth import flush_pending_rt_save; flush_pending_rt_save()
 
 # --- Home-specific styling (global theme comes from utils.ui.apply_theme) ---
@@ -965,6 +1097,173 @@ st.markdown(
       .ss-decision-table col.posts {width:29%;}
       .ss-decision-verdict {align-items:flex-start;flex-direction:column;gap:4px;}
     }
+
+    /* Panel-selected B5 landing: one quiet hero and one evidence-rich surface. */
+    .st-key-home_public_intro [data-testid="stHorizontalBlock"] {
+      align-items:center!important;gap:clamp(32px,4vw,58px)!important;
+    }
+    .st-key-home_public_intro [data-testid="stColumn"]:first-child {
+      flex:1.38 1 0!important;min-width:0!important;
+    }
+    .st-key-home_public_intro [data-testid="stColumn"]:last-child {
+      flex:.82 1 0!important;min-width:300px!important;
+    }
+    .ss-b5-hero {padding:clamp(1.9rem,3.5vw,2.6rem) 0 clamp(1.7rem,3vw,2.2rem);}
+    .ss-b5-eyebrow,.ss-b5-kicker,.ss-b5-section-label,
+    .ss-b5-section-head > span {
+      color:var(--accent);font-size:.75rem;font-weight:800;
+      letter-spacing:.08em;text-transform:uppercase;
+    }
+    .ss-b5-hero h1 {
+      max-width:720px;margin:.75rem 0 0;color:var(--text);
+      font-size:clamp(2.75rem,4.4vw,3.8rem);font-weight:880;
+      letter-spacing:-.052em;line-height:1;
+    }
+    .ss-b5-hero-side p {
+      max-width:430px;margin:0 0 1.2rem;color:#b4c1d2;
+      font-size:1.125rem;line-height:1.55;
+    }
+    .st-key-home_intro_action_shell {
+      padding:0!important;border:0!important;border-radius:0!important;
+      background:transparent!important;box-shadow:none!important;
+    }
+    .ss-b5-cta-copy {margin-top:.75rem;color:#a8b5c7;font-size:.8125rem;line-height:1.5;}
+    .st-key-home_intro_action .stButton > button,
+    .st-key-home_intro_action [data-testid="stPageLink"] a {
+      min-height:52px!important;width:100%;display:flex;align-items:center;
+      justify-content:center;border-radius:10px;font-weight:780;
+    }
+    .ss-b5-workspace {
+      margin:.1rem 0 0;border:1px solid rgba(56,189,248,.3);border-radius:18px;
+      overflow:hidden;background:linear-gradient(145deg,rgba(7,20,39,.99),rgba(7,15,29,.98));
+      box-shadow:0 30px 70px rgba(0,0,0,.2);
+    }
+    .ss-b5-workspace-head {
+      display:flex;align-items:flex-end;justify-content:space-between;gap:28px;
+      padding:22px 24px;border-bottom:1px solid rgba(148,163,184,.15);
+    }
+    .ss-b5-workspace-head h2 {margin:.45rem 0 0;font-size:1.625rem;letter-spacing:-.025em;}
+    .ss-b5-provenance {max-width:520px;text-align:right;}
+    .ss-b5-provenance strong,.ss-b5-provenance span {display:block;}
+    .ss-b5-provenance strong {color:#dbe3ee;font-size:.875rem;}
+    .ss-b5-provenance span {margin-top:4px;color:#a8b5c7;font-size:.8125rem;line-height:1.5;}
+    .ss-b5-workspace-body {padding:21px 24px 24px;}
+    .ss-b5-section-head {
+      display:flex;align-items:center;justify-content:space-between;gap:20px;margin-bottom:11px;
+    }
+    .ss-b5-section-head > strong {color:#a8b5c7;font-size:.8125rem;font-weight:650;line-height:1.4;}
+    .ss-b5-scan-grid {display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:9px;}
+    .ss-b5-scan-card {
+      position:relative;display:grid;grid-template-columns:minmax(0,1fr) auto;
+      align-items:center;gap:8px 12px;min-height:78px;padding:13px 14px;
+      border:1px solid rgba(148,163,184,.16);border-radius:10px;
+      background:rgba(15,23,42,.5);
+    }
+    .ss-b5-scan-card.selected {background:rgba(56,189,248,.065);}
+    .ss-b5-scan-card.selected::before {
+      content:"";position:absolute;inset:0 auto 0 0;width:2px;border-radius:10px 0 0 10px;
+      background:var(--accent);
+    }
+    .ss-b5-stock {grid-column:1 / -1;min-width:0;}
+    .ss-b5-stock strong {display:block;color:#e2e8f0;font-size:.9375rem;font-weight:820;}
+    .ss-b5-stock small {display:block;margin-top:3px;color:#a8b5c7;font-size:.8125rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+    .ss-b5-scan-grid.items-1 {grid-template-columns:1fr;}
+    .ss-b5-scan-grid.items-1 .ss-b5-scan-card {
+      grid-template-columns:minmax(240px,1fr) auto auto;min-height:62px;
+    }
+    .ss-b5-scan-grid.items-1 .ss-b5-stock {grid-column:auto;}
+    .ss-b5-count {color:#cbd5e1;font-size:.8125rem;font-variant-numeric:tabular-nums;}
+    .ss-b5-count {text-align:right;}
+    .ss-b5-count span {color:#a8b5c7;}
+    .ss-b5-evidence-state {color:#cbd5e1;font-size:.8125rem;font-weight:650;}
+    .ss-b5-attention-note {margin:9px 0 0;color:#a8b5c7;font-size:.8125rem;}
+    .ss-b5-divider {height:1px;margin:20px 0;background:rgba(148,163,184,.15);}
+    .ss-b5-analysis {
+      position:relative;overflow:hidden;padding:20px;border:1px solid rgba(56,189,248,.2);
+      border-radius:14px;background:linear-gradient(180deg,rgba(11,24,42,.96),rgba(8,20,36,.92));
+      box-shadow:inset 0 1px 0 rgba(226,232,240,.035);
+    }
+    .ss-b5-analysis::before {
+      content:"";position:absolute;inset:0 34% auto 0;height:2px;
+      background:linear-gradient(90deg,rgba(56,189,248,.8),rgba(56,189,248,0));
+    }
+    .ss-b5-analysis-head {display:flex;align-items:flex-end;justify-content:space-between;gap:24px;}
+    .ss-b5-verdict {display:flex;align-items:center;flex-wrap:wrap;gap:10px;margin-top:8px;}
+    .ss-b5-verdict strong {font-size:1.75rem;letter-spacing:-.02em;}
+    .ss-b5-verdict b {
+      display:inline-flex;align-items:center;min-height:30px;padding:3px 10px;
+      border:1px solid transparent;border-radius:999px;font-size:1rem;font-weight:800;
+    }
+    .ss-b5-verdict .buy {color:var(--ss-color-recommendation-buy);background:rgba(34,197,94,.09);border-color:rgba(34,197,94,.28);}
+    .ss-b5-verdict .watch {color:#fbbf24;background:rgba(245,158,11,.1);border-color:rgba(245,158,11,.3);}
+    .ss-b5-verdict .avoid {color:var(--ss-color-recommendation-avoid);background:rgba(248,113,113,.09);border-color:rgba(248,113,113,.28);}
+    .ss-b5-verdict > span {
+      display:inline-flex;align-items:center;min-height:30px;padding:3px 10px;
+      border:1px solid rgba(148,163,184,.18);border-radius:999px;
+      color:#cbd5e1;background:rgba(15,30,51,.66);font-size:.875rem;font-weight:650;
+    }
+    .ss-b5-insight,.ss-b5-change {
+      position:relative;margin-top:16px;padding:13px 15px 14px;border:1px solid rgba(148,163,184,.16);
+      border-radius:10px;background:rgba(15,30,51,.55);
+    }
+    .ss-b5-insight {border-left:2px solid rgba(56,189,248,.72);background:rgba(56,189,248,.045);}
+    .ss-b5-change {border-left:2px solid rgba(245,158,11,.62);background:rgba(245,158,11,.035);}
+    .ss-b5-insight span,.ss-b5-change span {
+      display:block;color:#afc0d2;font-size:.78125rem;font-weight:700;letter-spacing:.01em;
+    }
+    .ss-b5-insight p,.ss-b5-change p {
+      max-width:72ch;margin:6px 0 0;color:#e6edf5;font-size:.9375rem;
+      font-weight:520;line-height:1.55;
+    }
+    .ss-b5-metrics {
+      display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;margin-top:16px;
+    }
+    .ss-b5-metric {
+      min-height:94px;padding:15px 16px;border:1px solid rgba(148,163,184,.2);
+      border-radius:10px;background:rgba(15,30,51,.72);box-shadow:inset 0 1px 0 rgba(226,232,240,.025);
+    }
+    .ss-b5-metric span {display:block;color:#afc0d2;font-size:.78125rem;font-weight:650;letter-spacing:.01em;text-transform:none;}
+    .ss-b5-metric strong {display:block;margin-top:7px;color:#f1f5f9;font-size:1rem;line-height:1.35;}
+    .ss-b5-metric small {display:block;margin-top:5px;color:#afc0d2;font-size:.8125rem;line-height:1.45;}
+    .ss-b5-source {
+      display:flex;justify-content:space-between;gap:20px;margin-top:17px;padding-top:14px;
+      border-top:1px solid rgba(148,163,184,.16);color:#afc0d2;font-size:.8125rem;line-height:1.5;
+    }
+    .ss-b5-source small {font-size:inherit;text-align:right;}
+    .ss-b5-assurance {
+      display:grid;grid-template-columns:repeat(3,1fr);gap:0;margin:1.35rem 0 .25rem;
+      padding:15px 0;border-top:1px solid rgba(148,163,184,.14);border-bottom:1px solid rgba(148,163,184,.14);
+    }
+    .ss-b5-assurance span {padding:0 18px;text-align:center;color:#a8b5c7;font-size:.875rem;}
+    .ss-b5-assurance span + span {border-left:1px solid rgba(148,163,184,.14);}
+    @media (max-width:900px) {
+      .st-key-home_public_intro [data-testid="stHorizontalBlock"] {flex-wrap:wrap!important;}
+      .st-key-home_public_intro [data-testid="stColumn"]:first-child,
+      .st-key-home_public_intro [data-testid="stColumn"]:last-child {
+        flex:1 1 100%!important;min-width:100%!important;width:100%!important;
+      }
+      .ss-b5-hero {padding-bottom:1rem;}
+      .st-key-home_intro_action_shell {max-width:420px;}
+      .ss-b5-metrics {grid-template-columns:repeat(2,minmax(0,1fr));}
+    }
+    @media (max-width:800px) {
+      .ss-b5-scan-grid {grid-template-columns:1fr;}
+    }
+    @media (max-width:650px) {
+      .ss-b5-hero {padding-top:2rem;}
+      .ss-b5-hero h1 {font-size:clamp(2.35rem,11vw,2.55rem);}
+      .ss-b5-workspace-head,.ss-b5-analysis-head,.ss-b5-source {align-items:flex-start;flex-direction:column;}
+      .ss-b5-provenance,.ss-b5-source small {text-align:left;}
+      .ss-b5-stock small,.ss-b5-count,.ss-b5-evidence-state,
+      .ss-b5-attention-note,.ss-b5-metric small,.ss-b5-source {font-size:.8125rem;}
+      .ss-b5-metrics,.ss-b5-assurance {grid-template-columns:1fr;}
+      .ss-b5-scan-grid.items-1 .ss-b5-scan-card {grid-template-columns:minmax(0,1fr) auto;}
+      .ss-b5-scan-grid.items-1 .ss-b5-stock {grid-column:1 / -1;}
+      .ss-b5-analysis {padding:16px;}
+      .ss-b5-workspace-head,.ss-b5-workspace-body {padding-left:16px;padding-right:16px;}
+      .ss-b5-assurance span {padding:8px 4px;text-align:left;}
+      .ss-b5-assurance span + span {border-left:0;border-top:1px solid rgba(148,163,184,.12);}
+    }
     </style>
     """,
     unsafe_allow_html=True,
@@ -1000,17 +1299,17 @@ else:
         _demo_sector or _demo_frame.attrs.get("sector") or "tech",
     )
 _demo_rows = _select_demo_rows(
-    _demo_frame, limit=5, selected_ticker=_demo_ticker,
+    _demo_frame, limit=3, selected_ticker=_demo_ticker,
 )
 
 with st.container(key="home_public_intro"):
-    story_col, action_col = st.columns([1.12, .88])
+    story_col, action_col = st.columns([1.38, .82])
     with story_col:
         st.html(
             """
-            <div class="ss-public-value">
+            <div class="ss-b5-hero">
+              <div class="ss-b5-eyebrow">Short-term market intelligence</div>
               <h1>Finding short-term opportunities shouldn't feel like a full-time job.</h1>
-              <p>Stock Sentinel turns social chatter into a ranked sentiment shortlist, then validates a selected ticker with market data.</p>
             </div>
             """
         )
@@ -1018,10 +1317,8 @@ with st.container(key="home_public_intro"):
         with st.container(key="home_intro_action_shell"):
             st.html(
                 """
-                <div class="ss-public-action">
-                  <div class="ss-decision-kicker">A complete decision path</div>
-                  <h2>One scan. One analysis. Clear evidence.</h2>
-                  <p>See the cost before every action. No card is required to begin.</p>
+                <div class="ss-b5-hero-side">
+                  <p>Turn sector chatter into a focused shortlist, then evaluate one ticker with evidence, market context, and what could change the result.</p>
                 </div>
                 """
             )
@@ -1039,15 +1336,9 @@ with st.container(key="home_public_intro"):
                     st.session_state["_after_auth_page"] = "Discovery"
                     st.switch_page("pages/Auth.py")
             st.html(
-                """
-                <div class="ss-public-action">
-                  <ul>
-                    <li><span>Coverage</span><strong>US-listed stocks in the supported market universe</strong></li>
-                    <li><span>Transparency</span><strong>Evidence age shown on live results</strong></li>
-                    <li><span>Explanation</span><strong>Reasons and confidence included</strong></li>
-                  </ul>
-                </div>
-                """
+                '<p class="ss-b5-cta-copy">Continue to Market Scan.</p>'
+                if _logged_in else
+                '<p class="ss-b5-cta-copy">Enough for one sector scan + one ticker analysis · no card required</p>'
             )
 
 st.html(
@@ -1056,33 +1347,21 @@ st.html(
         _demo_ticker or "NVDA",
         _demo_card,
         _demo_sector or _demo_frame.attrs.get("sector") or "tech",
+        total_results=_demo_frame.attrs.get("total_results"),
+        signal_results=_demo_frame.attrs.get("signal_results"),
+        durable=bool(_demo_bundle),
+        total_results_complete=bool(
+            (_demo_publication or {}).get("total_results_complete")
+        ),
     )
 )
 
 st.markdown("<div style='height:.1rem'></div>", unsafe_allow_html=True)
 
-# The preview already proves the product. The remaining landing content is a
-# short process explanation and transaction-trust strip for every visitor.
+# The workspace demonstrates the workflow; keep the final reassurance flat.
 st.html(
     """
-    <section class="ss-workflow-section" id="how-it-works" aria-labelledby="how-heading">
-      <h2 id="how-heading">From market noise to a clearer next step</h2>
-      <div class="ss-workflow-grid">
-        <article class="ss-workflow-step">
-          <span class="ss-workflow-number">1</span>
-          <div><h3>Scan a sector</h3><p>Find unusual social attention.</p></div>
-        </article>
-        <article class="ss-workflow-step">
-          <span class="ss-workflow-number">2</span>
-          <div><h3>Analyze a ticker</h3><p>Review catalysts, risks, and confidence.</p></div>
-        </article>
-        <article class="ss-workflow-step">
-          <span class="ss-workflow-number">3</span>
-          <div><h3>Inspect the evidence</h3><p>See what supports the result and what could change it.</p></div>
-        </article>
-      </div>
-    </section>
-    <aside class="ss-trust-strip" aria-label="Credit and purchase assurances">
+    <aside class="ss-b5-assurance" aria-label="Credit and purchase assurances">
       <span>Costs shown before every action</span>
       <span>Eligible failed runs are automatically refunded</span>
       <span>Credits never expire</span>

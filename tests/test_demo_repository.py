@@ -187,6 +187,7 @@ def test_loads_only_latest_valid_bundle() -> None:
     assert loaded and loaded["bundle"]["scan"]["validated_rows"][0][
         "Mentions"
     ] == 21
+    assert loaded["total_results_complete"] is False
 
 
 def test_empty_repository_is_an_expected_state() -> None:
@@ -227,6 +228,7 @@ def test_publisher_validates_actor_and_payload_before_insert() -> None:
         "Sample Tweets"
     ] == ["private post"]
     assert saved["bundle"]["deep_analysis"]["ticker"] == "WAY"
+    assert saved["total_results_complete"] is True
 
     invalid_client = _Client([])
     try:
