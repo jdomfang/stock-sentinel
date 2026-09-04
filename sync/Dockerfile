@@ -26,6 +26,11 @@ COPY utils/__init__.py          utils/
 # stdlib-only, so this image keeps its "import it with nothing installed"
 # property -- but it MUST ship, or the container dies at import.
 COPY utils/config.py            utils/
+# The sector pulse runs after the price write. sector_query is copied for its
+# UI_TO_NASDAQ map only -- one source of truth for what "utilities" means --
+# and is stdlib + utils.config, so the image stays dependency-free.
+COPY utils/sector_query.py      utils/
+COPY utils/sector_pulse.py      utils/
 COPY scripts/sync_stock_prices.py scripts/
 COPY sync/run_sync.py           ./
 

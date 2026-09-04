@@ -336,6 +336,12 @@ SERVICE_ROLE_ALLOWED = {
     # pipeline reads and caches
     "utils/prices.py", "utils/finance.py", "utils/sector_query.py",
     "utils/deep_analysis.py", "utils/seed.py",
+    # sector_pulse: the WRITE path only. It runs in the sync container beside
+    # utils/prices.py, with the same key that container already holds, and
+    # upserts ten rows a night into a table with no user data. The portal's
+    # read path (latest()) uses the anon key through a SECURITY DEFINER RPC
+    # and never touches this key -- so the radius does not reach the browser.
+    "utils/sector_pulse.py",
     # auth + contact: remember_tokens and contact_messages are service-role only
     "utils/auth.py", "utils/contact.py",
     # the admin page. The single riskiest entry, and the first one that should
