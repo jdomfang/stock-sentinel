@@ -86,6 +86,28 @@ exists so a dev session does not start with the wake-up dance.
 * GitHub disables scheduled workflows after 60 days with no commits to the repo.
   You get an email; re-enable with one click.
 
+## Price sync timing, and why history exists
+
+The `sync` service pulls the whole US market's daily bar in one Polygon call and
+writes it twice: `stock_prices` (the "latest close" the app reads) and
+`price_history` (the same bar filed under its own `trade_date`).
+
+**It must run at 23:00 UTC, not 01:00.** The free tier does not publish a day's
+bar by 01:00 the next morning — verified 2026-09-03: the 09-02 bar was refused
+at 01:03 and present at 23:43. At 01:00 the walk-back lands on the previous day
+every night and the newest bar the app ever sees is two days old. The schedule
+is a Railway UI field; `sync/railway.toml` records what it should say.
+
+**`price_history` is backfilled, not just accumulated.** It started 2026-08-07,
+and any baseline computed on a fortnight of bars is one event away from
+meaningless — MRNA's 90x day on 08-19 sat inside every 10-day median for two
+weeks. `scripts/backfill_price_history.py` walks a year of trading days through
+the same sync function, **oldest to newest**. That order is load-bearing: every
+call also overwrites `stock_prices`, so whatever day is written last is what
+Discovery then believes is current. The script warns when a range does not end
+yesterday for exactly that reason, and exits non-zero if any day failed — a
+closed market is recorded as `closed`, a failed request is not.
+
 ## Where the domain takes effect
 
 Exactly three places, none of them in application code:
