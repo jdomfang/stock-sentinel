@@ -30,19 +30,51 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from scripts.sync_stock_prices import sync_prices  # noqa: E402
 
 HC = os.environ.get("HEALTHCHECK_PRICE_SYNC_URL", "")
+# Its own check, on purpose. The pulse and the price sync fail for unrelated
+# reasons -- Polygon down versus a bad sector map -- and one dead-man switch for
+# both would make whichever failed second invisible (worker/run_jobs.py says the
+# same about the reaper and the inference probe).
+HC_PULSE = os.environ.get("HEALTHCHECK_SECTOR_PULSE_URL", "")
 
 
-def ping(suffix: str = "") -> None:
+def ping(suffix: str = "", url: str | None = None) -> None:
     """Best-effort. Monitoring must never be able to fail the job it monitors --
     the laptop wrapper once died before the sync ran because a grep for this
     very URL returned non-zero under `set -o pipefail`."""
-    if not HC:
+    target = HC if url is None else url
+    if not target:
         return
     try:
-        urllib.request.urlopen(f"{HC.rstrip('/')}{suffix}", timeout=10).read()
+        urllib.request.urlopen(f"{target.rstrip('/')}{suffix}", timeout=10).read()
     except Exception as e:
         print(f"WARN healthcheck ping{suffix or ' (success)'} failed: {type(e).__name__}",
               flush=True)
+
+
+def run_sector_pulse() -> bool:
+    """Compute tonight's sector rows from the bars just written. Never raises.
+
+    Runs AFTER the price sync has succeeded and pinged, so a broken pulse can
+    only cost the pulse. Its result is the exit code's business, not the
+    price sync's.
+    """
+    ping("/start", HC_PULSE)
+    try:
+        from utils import sector_pulse
+        summary = sector_pulse.run()
+    except Exception as e:  # noqa: BLE001 -- run() swallows; this is the import
+        print(f"ERROR sector pulse could not start: {type(e).__name__}: {e}", flush=True)
+        ping("/fail", HC_PULSE)
+        return False
+    if not summary.get("ok"):
+        print(f"ERROR sector pulse failed: {summary.get('error')}", flush=True)
+        ping("/fail", HC_PULSE)
+        return False
+    states = ", ".join(f"{r['sector']}={r['state']}" for r in summary.get("rows", []))
+    print(f"sector pulse: {summary.get('written')} rows for {summary.get('trade_date')}  [{states}]",
+          flush=True)
+    ping("", HC_PULSE)
+    return True
 
 
 def main() -> int:
@@ -66,7 +98,10 @@ def main() -> int:
         return 1
 
     ping()
-    return 0
+    # Prices are written and reported. Whatever happens next cannot un-succeed
+    # that; it can only decide whether tonight's pulse rows exist.
+    pulse_ok = run_sector_pulse()
+    return 0 if pulse_ok else 1
 
 
 if __name__ == "__main__":

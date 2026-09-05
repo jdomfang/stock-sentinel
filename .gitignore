@@ -33,3 +33,17 @@ data/model_scores.json
 
 # local disk corpus cache written by utils/deep_analysis.py
 data/cache/
+
+# per-run report from scripts/backfill_price_history.py. A record of one
+# machine's run -- which days it wrote, which were closed, which failed -- not
+# a description of the repository.
+backfill_summary.json
+
+# Landing-page design mockups (~18 MB of PNG variants a/b/b3/b4/b5, decision
+# workspace v2-v4). Working exploration, superseded by whatever shipped, and
+# referenced by no code or document. Git keeps every blob forever and this repo
+# is public, so committing them would weigh down every future clone for images
+# nothing links to. Keep them locally or move them outside the repository.
+docs/home/
+docs/home_landing/
+docs/landing-page-decision-workspace-*.png

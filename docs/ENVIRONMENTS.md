@@ -86,6 +86,59 @@ exists so a dev session does not start with the wake-up dance.
 * GitHub disables scheduled workflows after 60 days with no commits to the repo.
   You get an email; re-enable with one click.
 
+## Price sync timing, and why history exists
+
+The `sync` service pulls the whole US market's daily bar in one Polygon call and
+writes it twice: `stock_prices` (the "latest close" the app reads) and
+`price_history` (the same bar filed under its own `trade_date`).
+
+**It must run at 23:00 UTC, not 01:00.** The free tier does not publish a day's
+bar by 01:00 the next morning — verified 2026-09-03: the 09-02 bar was refused
+at 01:03 and present at 23:43. At 01:00 the walk-back lands on the previous day
+every night and the newest bar the app ever sees is two days old. The schedule
+is a Railway UI field; `sync/railway.toml` records what it should say.
+
+**`price_history` is backfilled, not just accumulated.** It started 2026-08-07,
+and any baseline computed on a fortnight of bars is one event away from
+meaningless — MRNA's 90x day on 08-19 sat inside every 10-day median for two
+weeks. `scripts/backfill_price_history.py` walks a year of trading days through
+the same sync function, **oldest to newest**. That order is load-bearing: every
+call also overwrites `stock_prices`, so whatever day is written last is what
+Discovery then believes is current. The script warns when a range does not end
+yesterday for exactly that reason, and exits non-zero if any day failed — a
+closed market is recorded as `closed`, a failed request is not.
+
+## The sector pulse
+
+`sync` computes it immediately after the nightly price write and upserts ten
+rows into `public.sector_pulse` — one per sector per trading day: breadth
+against a spike-robust baseline, the up/down volume ratio, accumulation and
+distribution days, the equal-weight 5-session return, a state, and the names
+driving the day. `utils/sector_pulse.py` holds the computation; nothing here
+calls X or Polygon, so the feature costs nothing per night beyond the bars the
+sync already fetched.
+
+**It runs after the prices are already committed, and cannot fail them.** A
+pulse failure pings its own `HEALTHCHECK_SECTOR_PULSE_URL` and sets the exit
+code; the price rows are written and their own dead-man switch has already gone
+green. That separation is deliberate — Polygon being down and the sector map
+being wrong are unrelated failures, and one check for both would hide whichever
+broke second.
+
+**Browsers never read the table.** RLS is on with no policies and the table is
+granted only to `service_role`; `get_sector_pulse_recent(days)` is a
+`SECURITY DEFINER` reader with a pinned `search_path` that anon may execute,
+returning every sector for the most recent N (≤30) dates. `latest()` uses the
+**anon** key deliberately, so the portal's read path does not widen the
+service-role blast radius by one table.
+
+**The thresholds are validated, and the validation is the contract.**
+`docs/SECTOR_PULSE.md` records the rule, the year-long result, and — more
+usefully — what the numbers do *not* support. The short version: the strip may
+rank and describe, and may not imply a return. Change the constants only via
+`scripts/sector_pulse_backtest.py`, which is read-only and caches its bars so a
+re-run is instant.
+
 ## Where the domain takes effect
 
 Exactly three places, none of them in application code:

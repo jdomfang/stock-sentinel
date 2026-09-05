@@ -50,6 +50,23 @@ Each of these has already cost something. Several are enforced by tests.
 * **Migrations have no undo.** `pg_dump` before touching `profiles`,
   `purchases`, `usage_events` or `work_runs`.
 
+* **Sector-pulse thresholds change in the backtest first.** The four constants
+  in `utils/sector_pulse.py` were validated over a year of bars against a rule
+  written before the run (`docs/SECTOR_PULSE.md`). Editing them to improve a
+  number you have already seen is how a measurement becomes a wish. Change the
+  pre-registered rule, re-run `scripts/sector_pulse_backtest.py`, record the
+  table, then edit the constants.
+
+* **The pulse may not imply a return.** The measured edge is +0.25 percentage
+  points of median 5-session excess, inside an interquartile range 3.4 points
+  wide — a tilt across hundreds of overlapping sector-days, not a forecast for
+  any one of them. UI copy may rank sectors and describe breadth, direction and
+  the names driving a move. It may not say a sector will rise, call one a "top
+  opportunity", or present a state as a signal to buy. `event` is the exception
+  worth stating firmly, because it is the one state that is reliably negative:
+  naming a single-name spike as *not a sector move* is a warning the data
+  supports.
+
 ## Tests
 
 ```
