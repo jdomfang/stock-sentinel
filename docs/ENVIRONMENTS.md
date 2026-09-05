@@ -108,6 +108,37 @@ Discovery then believes is current. The script warns when a range does not end
 yesterday for exactly that reason, and exits non-zero if any day failed — a
 closed market is recorded as `closed`, a failed request is not.
 
+## The sector pulse
+
+`sync` computes it immediately after the nightly price write and upserts ten
+rows into `public.sector_pulse` — one per sector per trading day: breadth
+against a spike-robust baseline, the up/down volume ratio, accumulation and
+distribution days, the equal-weight 5-session return, a state, and the names
+driving the day. `utils/sector_pulse.py` holds the computation; nothing here
+calls X or Polygon, so the feature costs nothing per night beyond the bars the
+sync already fetched.
+
+**It runs after the prices are already committed, and cannot fail them.** A
+pulse failure pings its own `HEALTHCHECK_SECTOR_PULSE_URL` and sets the exit
+code; the price rows are written and their own dead-man switch has already gone
+green. That separation is deliberate — Polygon being down and the sector map
+being wrong are unrelated failures, and one check for both would hide whichever
+broke second.
+
+**Browsers never read the table.** RLS is on with no policies and the table is
+granted only to `service_role`; `get_sector_pulse_recent(days)` is a
+`SECURITY DEFINER` reader with a pinned `search_path` that anon may execute,
+returning every sector for the most recent N (≤30) dates. `latest()` uses the
+**anon** key deliberately, so the portal's read path does not widen the
+service-role blast radius by one table.
+
+**The thresholds are validated, and the validation is the contract.**
+`docs/SECTOR_PULSE.md` records the rule, the year-long result, and — more
+usefully — what the numbers do *not* support. The short version: the strip may
+rank and describe, and may not imply a return. Change the constants only via
+`scripts/sector_pulse_backtest.py`, which is read-only and caches its bars so a
+re-run is instant.
+
 ## Where the domain takes effect
 
 Exactly three places, none of them in application code:
