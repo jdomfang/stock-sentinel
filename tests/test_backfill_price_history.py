@@ -143,13 +143,42 @@ def test_dry_run_makes_no_requests():
     check("plan counts the weekdays", s["planned"] == 5, str(s["planned"]))
 
 
+def test_today_is_utc_not_local():
+    """The bug that let the first real run finish without its warning.
+
+    Every date in this system is a MARKET date -- Polygon's grouped endpoint,
+    price_history.trade_date, utils/prices.py's own start. date.today() is the
+    LOCAL date, and for four hours of every evening in the Americas that is a
+    day behind UTC. On the first production run, at 22:32 EDT, local said
+    09-03 while the database had moved to 09-04, so `end < today-1` compared
+    09-02 against 09-02, came back False, and the stale-snapshot warning never
+    printed.
+    """
+    print("\ntoday: UTC, because trade_date is a market date")
+    from datetime import datetime, timezone
+    check("utc_today() is the UTC date", B.utc_today() == datetime.now(timezone.utc).date(),
+          f"{B.utc_today()} vs {datetime.now(timezone.utc).date()}")
+    # The distinguishing case, forced rather than waited for: pretend UTC has
+    # rolled over and local has not. Only the UTC answer makes the flag fire.
+    orig = B.utc_today
+    try:
+        B.utc_today = lambda: date(2026, 9, 4)      # UTC "today"
+        s, _ = _run(date(2026, 8, 31), date(2026, 9, 2), Recorder())
+        check("a range ending before UTC-yesterday is flagged stale", s["snapshot_stale"] is True,
+              "this is the case the local date silently missed")
+        s2, _ = _run(date(2026, 8, 31), date(2026, 9, 3), Recorder())
+        check("a range ending on UTC-yesterday is not", s2["snapshot_stale"] is False)
+    finally:
+        B.utc_today = orig
+
+
 def test_stale_snapshot_flag():
     print("\nstale snapshot: flagged when the range does not reach yesterday")
     f = Recorder()
     s_old, _ = _run(date(2026, 1, 5), date(2026, 1, 9), f)
     check("old range flags the snapshot as stale", s_old["snapshot_stale"] is True)
     from datetime import timedelta
-    y = date.today() - timedelta(days=1)
+    y = B.utc_today() - timedelta(days=1)
     s_new, _ = _run(y - timedelta(days=4), y, Recorder())
     check("a range ending yesterday does not", s_new["snapshot_stale"] is False)
     # The flag means "this run overwrote stock_prices with old closes". A run
@@ -178,7 +207,8 @@ def main() -> int:
     for t in (test_order_and_weekends, test_holiday_is_closed_not_failed,
               test_failure_is_non_zero_and_does_not_stop_the_loop, test_closed_message_with_403_is_a_failure,
               test_partial_and_misresolved_days_fail, test_skip_existing_makes_no_request,
-              test_dry_run_makes_no_requests, test_stale_snapshot_flag, test_end_before_start_is_refused):
+              test_dry_run_makes_no_requests, test_today_is_utc_not_local,
+              test_stale_snapshot_flag, test_end_before_start_is_refused):
         try:
             t()
         except Exception as e:  # noqa: BLE001

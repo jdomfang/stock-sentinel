@@ -57,7 +57,7 @@ import urllib.error
 import urllib.parse
 import urllib.request
 from collections import defaultdict
-from datetime import date, datetime, timedelta
+from datetime import date, datetime, timedelta, timezone
 from typing import Any, Callable
 
 from utils.config import get as _config
@@ -324,7 +324,9 @@ def run(day: date | None = None, *, dry_run: bool = False,
         sec, names = load_s(base, key)
         # 20 baseline sessions + a 5-day window + 2 days of breadth history,
         # in calendar days with weekends and a holiday or two.
-        since = (day or date.today()) - timedelta(days=50)
+        # UTC, not date.today(): trade_date is a market date, and a local
+        # date in the Americas is a day behind for part of every evening.
+        since = (day or datetime.now(timezone.utc).date()) - timedelta(days=50)
         bars = load_b(base, key, since)
         dates = sorted({d for s in bars.values() for d in s})
         if not dates:

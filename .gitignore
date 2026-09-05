@@ -33,3 +33,8 @@ data/model_scores.json
 
 # local disk corpus cache written by utils/deep_analysis.py
 data/cache/
+
+# per-run report from scripts/backfill_price_history.py. A record of one
+# machine's run -- which days it wrote, which were closed, which failed -- not
+# a description of the repository.
+backfill_summary.json

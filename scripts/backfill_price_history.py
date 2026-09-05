@@ -61,7 +61,7 @@ import sys
 import time
 import urllib.parse
 import urllib.request
-from datetime import date, datetime, timedelta
+from datetime import date, datetime, timedelta, timezone
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
@@ -77,6 +77,21 @@ FETCH = _prices.fetch_and_cache_grouped_daily
 DEFAULT_PACE_S = 13.0          # 5 req/min on the free tier, with headroom
 CLOSED_PREFIX = "No trading day found"   # the sync's holiday message
 ROWS_PER_DAY_FLOOR = 5000      # a full grouped day is ~6,300 rows; below this it is partial
+
+
+def utc_today() -> date:
+    """Today in UTC, which is the only 'today' this system has.
+
+    NOT date.today(). Every date here is a MARKET date: Polygon's grouped
+    endpoint takes one, price_history.trade_date stores one, and utils/prices.py
+    derives its own start from utcnow(). date.today() is the LOCAL date, so
+    running this in the evening in the Americas silently shifts both the default
+    --end and the stale-snapshot check back a day -- which is exactly what
+    happened on the first real run: at 22:32 EDT the local date was 09-03 while
+    the market and the database had moved to 09-04, and the warning that the
+    snapshot was left stale never printed.
+    """
+    return datetime.now(timezone.utc).date()
 
 
 def count_rows_for_date(day: date) -> int:
@@ -132,7 +147,7 @@ def run(start: date, end: date, *, pace_s: float = DEFAULT_PACE_S, dry_run: bool
     # a run that skipped every day (all present already) touched nothing.
     def _finish() -> dict:
         wrote = bool(summary["written"] or summary["partial"])
-        summary["snapshot_stale"] = wrote and end < (date.today() - timedelta(days=1))
+        summary["snapshot_stale"] = wrote and end < (utc_today() - timedelta(days=1))
         return summary
 
     fetched_any = False
@@ -202,8 +217,8 @@ def _parse_date(s: str) -> date:
 
 def main(argv: list[str] | None = None) -> int:
     ap = argparse.ArgumentParser(description=__doc__.split("\n\n")[0])
-    ap.add_argument("--start", type=_parse_date, default=date.today() - timedelta(days=365))
-    ap.add_argument("--end", type=_parse_date, default=date.today() - timedelta(days=1))
+    ap.add_argument("--start", type=_parse_date, default=utc_today() - timedelta(days=365))
+    ap.add_argument("--end", type=_parse_date, default=utc_today() - timedelta(days=1))
     ap.add_argument("--pace-seconds", type=float, default=DEFAULT_PACE_S)
     ap.add_argument("--dry-run", action="store_true", help="print the plan; make no requests")
     ap.add_argument("--no-skip-existing", action="store_true", help="rewrite days already present")
