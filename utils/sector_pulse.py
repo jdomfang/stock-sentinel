@@ -188,11 +188,18 @@ def calendar_flag(day: date) -> str | None:
     return None
 
 
-def compute_day(sector: str, day: str, dates: list[str], bars: dict, sec: dict, names: dict) -> dict | None:
-    """One sector's row for `day`. `dates` is the ascending list of trading dates loaded."""
+def eligible_names(sector: str, day: str, dates: list[str], bars: dict, sec: dict,
+                   names: dict) -> tuple[list[str], dict[str, float]]:
+    """The sector's tradeable names on `day`, and each one's robust baseline.
+
+    Extracted so the backtest measures forward returns over EXACTLY the set the
+    pulse scored, rather than re-deriving "eligible" beside it. Two copies of a
+    filter is the drift this repo has been bitten by before (four suites each
+    carrying their own migration list, and only one of them current).
+    """
     i = dates.index(day)
     if i < WINDOW:
-        return None
+        return [], {}
     base_days = dates[max(0, i - BASELINE_SESSIONS):i]
     win = dates[i - WINDOW + 1:i + 1]          # the 5 sessions ending on `day`
     prev5 = dates[i - WINDOW]                   # the close 5 sessions before `day`
@@ -211,10 +218,22 @@ def compute_day(sector: str, day: str, dates: list[str], bars: dict, sec: dict, 
         b = robust_baseline(hist)
         if b is None or b < MIN_BASELINE_DOLLAR_VOL:
             continue
-        if any(d not in series for d in win) or dates[i - WINDOW] not in series:
+        if any(d not in series for d in win):
             continue
         eligible.append(t)
         baseline[t] = b
+    return eligible, baseline
+
+
+def compute_day(sector: str, day: str, dates: list[str], bars: dict, sec: dict, names: dict) -> dict | None:
+    """One sector's row for `day`. `dates` is the ascending list of trading dates loaded."""
+    i = dates.index(day)
+    if i < WINDOW:
+        return None
+    win = dates[i - WINDOW + 1:i + 1]          # the 5 sessions ending on `day`
+    prev5 = dates[i - WINDOW]                   # the close 5 sessions before `day`
+
+    eligible, baseline = eligible_names(sector, day, dates, bars, sec, names)
     if not eligible:
         return None
 
