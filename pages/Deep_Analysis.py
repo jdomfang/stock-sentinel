@@ -67,7 +67,7 @@ st.markdown(
 )
 
 from utils.credits import consume_credit, refund_credit, complete_work
-from utils.scan_intent import get_query_params
+from utils.scan_intent import get_query_params, patch_query_params, take_research_intent
 
 
 def _bail() -> None:
@@ -93,7 +93,14 @@ if not re.fullmatch(r"[A-Z0-9.\-]{1,6}", _qp_ticker or ""):
 if _qp_ticker and not st.session_state.get("prefill_deep_ticker"):
     st.session_state["prefill_deep_ticker"] = _qp_ticker
 
-_prefill = (st.session_state.pop("prefill_deep_ticker", None) or "").strip().upper()
+_research_ticker = take_research_intent("deep")
+_prefill = (_research_ticker or st.session_state.pop("prefill_deep_ticker", None) or "").strip().upper()
+if _prefill:
+    st.session_state["da_ticker_input"] = _prefill
+    st.session_state.pop("prefill_deep_ticker", None)
+    patch_query_params({"ticker": None})
+if _research_ticker:
+    st.session_state.pop("_autorun_deep_analysis", None)
 _autorun = bool(st.session_state.pop("_autorun_deep_analysis", False))
 
 # One task command: desktop uses the approved split panel; narrower viewports
@@ -118,7 +125,6 @@ with st.container(key="deep_command_shell"):
                 with ticker_col:
                     ticker = st.text_input(
                         "Ticker",
-                        value=_prefill,
                         placeholder="e.g. TSLA",
                         key="da_ticker_input",
                         label_visibility="visible",

@@ -24,7 +24,7 @@ def test_public_home_is_not_a_duplicate_authenticated_workspace() -> None:
     assert "Welcome back," not in home
     assert '"Open Market Scan"' in home
     assert '"Start with 2 free credits"' in home
-    assert "Decision Workspace" in home
+    assert "See what a scan and analysis deliver" in home
 
 
 def test_authenticated_navigation_has_one_destination_per_job() -> None:

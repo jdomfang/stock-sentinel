@@ -74,7 +74,7 @@ def test_public_how_it_works_uses_a_real_route() -> None:
     nav = _read("utils/navigation.py")
     home = _read("pages/Home.py")
 
-    assert '"pages/How_It_Works.py", "How it works"' in nav
+    assert 'st.page_link("pages/How_It_Works.py", label="How it works")' in _read("utils/ui.py")
     assert 'href="#how-it-works"' not in nav
     assert 'href="#how-it-works"' not in home
     assert (REPO / "pages" / "How_It_Works.py").is_file()
@@ -92,14 +92,11 @@ def test_public_how_it_works_uses_a_real_route() -> None:
 
 def test_primary_public_navigation_stays_minimal() -> None:
     nav = _read("utils/navigation.py")
-    marketing = nav.split("def _marketing_links", 1)[1].split(
-        "def render_top_nav", 1
-    )[0]
-
-    assert '"How it works"' in marketing
-    assert '"FAQ"' in marketing
-    assert 'label="Methodology"' not in marketing
-    assert 'label="Trust Center"' not in marketing
+    assert '"How it works"' not in nav
+    assert '"FAQ"' not in nav
+    footer = _read("utils/ui.py")
+    assert 'st.page_link("pages/FAQ.py", label="FAQ")' in footer
+    assert 'st.page_link("pages/How_It_Works.py", label="How it works")' in footer
 
 
 def test_how_it_works_explains_output_and_credit_boundaries() -> None:

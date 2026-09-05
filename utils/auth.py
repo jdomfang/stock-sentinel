@@ -51,6 +51,7 @@ USER_SCOPED_SESSION_KEYS = frozenset({
     # Cross-page intents and in-flight actions. These must never replay for the
     # next person who signs into the same browser tab.
     "_pending_discovery_analysis",
+    "_pulse_scan_request",
     "discovery_sector",
     "_intent_sector_applied",
     "_autostart_discovery_scan",
@@ -285,6 +286,7 @@ def sign_out() -> None:
         pass
 
     clear_user_scoped_state()
+    st.session_state.pop("_public_research_intent", None)
     _clear_identity_scoped_auth_state(include_form=True)
     st.session_state.pop(SESSION_KEY, None)
     st.session_state.pop(USER_KEY, None)

@@ -24,7 +24,7 @@ _sys.path.insert(0, str(_Path(__file__).resolve().parents[1]))
 
 
 from utils.navigation import render_sidebar_navigation, render_top_nav
-from utils.ui import apply_theme, close_page
+from utils.ui import apply_theme, close_page, load_sector_pulse, render_sector_pulse
 from utils.deep_analysis import generate_ai_summary
 from utils.demo_snapshots import social_posts_value
 from utils.demo_repository import load_latest_public_demo
@@ -412,18 +412,19 @@ def _decision_workspace_html(
         if price_points is not None else "Price-history count unavailable"
     )
     return f"""
-      <section class="ss-b5-workspace" aria-label="Illustrative decision workspace">
+      <section class="ss-b5-workspace" aria-label="Saved product example">
         <header class="ss-b5-workspace-head">
           <div>
-            <div class="ss-b5-kicker">Product preview · illustrative</div>
-            <h2>Decision Workspace</h2>
+            <div class="ss-b5-kicker">Saved product example</div>
+            <h2>See what a scan and analysis deliver</h2>
+            <p class="ss-demo-description">A previously saved sector scan and ticker analysis, separate from the current Sector Pulse above.</p>
           </div>
           <div class="ss-b5-provenance">
             <strong>{html.escape(_sector_label(sector))}</strong>
             <span>{provenance}</span>
           </div>
         </header>
-        <div class="ss-b5-workspace-body">
+        <div class="ss-b5-workspace-body"><div class="ss-demo-grid"><div>
           <div class="ss-b5-section-head">
             <span>Market Scan</span><strong>{shown_label}</strong>
           </div>
@@ -431,7 +432,7 @@ def _decision_workspace_html(
             {''.join(preview_rows)}
           </div>
           <p class="ss-b5-attention-note">Social-post count indicates attention, not independent evidence.</p>
-          <div class="ss-b5-divider"></div>
+          </div>
           <aside class="ss-b5-analysis" aria-label="Illustrative Deep Analysis result">
             <div class="ss-b5-analysis-head">
               <div>
@@ -442,14 +443,17 @@ def _decision_workspace_html(
             <div class="ss-b5-insight">
               <span>Why this output</span><p>{reason}</p>
             </div>
+            <p class="ss-demo-summary">{html.escape(evidence_value)} · {html.escape(str(int(horizon)) + " trading days" if horizon is not None else "Horizon unavailable")}</p>
+            <details class="ss-demo-details"><summary>Explore the full example</summary>
             <div class="ss-b5-metrics">{metric_html}</div>
             {change_html}
+            </details>
             <div class="ss-b5-source">
               <span>Sources: public social discussion + market-price history · {html.escape(closes)}</span>
               <small>Confidence reflects evidence quality and agreement, not probability of return.</small>
             </div>
           </aside>
-        </div>
+        </div></div>
       </section>
     """
 
@@ -1236,6 +1240,25 @@ st.markdown(
     }
     .ss-b5-assurance span {padding:0 18px;text-align:center;color:#a8b5c7;font-size:.875rem;}
     .ss-b5-assurance span + span {border-left:1px solid rgba(148,163,184,.14);}
+    .ss-demo-description {max-width:570px;color:var(--muted);font-size:.875rem;line-height:1.6;margin:10px 0 0;}
+    .ss-demo-grid {display:grid;grid-template-columns:1fr 1.3fr;gap:26px;align-items:start;}
+    .ss-demo-grid .ss-b5-scan-grid {grid-template-columns:1fr;}
+    .ss-demo-grid .ss-b5-scan-grid .ss-b5-scan-card {grid-template-columns:minmax(0,1fr) auto;}
+    .ss-demo-grid .ss-b5-scan-grid .ss-b5-stock {grid-column:1 / -1;}
+    .ss-demo-grid .ss-b5-count {white-space:nowrap;}
+    .ss-demo-grid .ss-b5-stock small {white-space:normal;}
+    .ss-demo-grid .ss-b5-analysis {padding:0 0 0 24px;border:0;border-left:1px solid var(--border);border-radius:0;background:none;box-shadow:none;}
+    .ss-demo-grid .ss-b5-analysis::before {display:none;}
+    .ss-demo-grid .ss-b5-insight {padding:0;border:0;background:none;}
+    .ss-demo-grid .ss-b5-metrics {grid-template-columns:repeat(2,minmax(0,1fr));}
+    .ss-demo-summary {margin:12px 0;color:var(--muted);font-size:.875rem;}
+    .ss-demo-details summary {cursor:pointer;color:var(--accent);min-height:44px;display:list-item;padding:12px 0;font-size:.875rem;}
+    .ss-demo-grid .ss-b5-source {flex-direction:column;gap:8px;}
+    .ss-demo-grid .ss-b5-source small {text-align:left;}
+    @media(max-width:700px) {
+      .ss-demo-grid {grid-template-columns:1fr;}
+      .ss-demo-grid .ss-b5-analysis {padding:22px 0 0;border-left:0;border-top:1px solid var(--border);}
+    }
     @media (max-width:900px) {
       .st-key-home_public_intro [data-testid="stHorizontalBlock"] {flex-wrap:wrap!important;}
       .st-key-home_public_intro [data-testid="stColumn"]:first-child,
@@ -1318,7 +1341,7 @@ with st.container(key="home_public_intro"):
             st.html(
                 """
                 <div class="ss-b5-hero-side">
-                  <p>Turn sector chatter into a focused shortlist, then evaluate one ticker with evidence, market context, and what could change the result.</p>
+                  <p>Explore trading activity across sectors. Scan the conversation, then examine the evidence behind a company.</p>
                 </div>
                 """
             )
@@ -1332,6 +1355,7 @@ with st.container(key="home_public_intro"):
                     "Start with 2 free credits", type="primary",
                     key="home_start_free", use_container_width=True,
                 ):
+                    st.session_state.pop("_public_research_intent", None)
                     st.session_state["auth_initial_mode"] = "Create Account"
                     st.session_state["_after_auth_page"] = "Discovery"
                     st.switch_page("pages/Auth.py")
@@ -1340,6 +1364,10 @@ with st.container(key="home_public_intro"):
                 if _logged_in else
                 '<p class="ss-b5-cta-copy">Enough for one sector scan + one ticker analysis · no card required</p>'
             )
+
+render_sector_pulse(load_sector_pulse(), surface="home")
+with st.container(key="home_direct_analysis"):
+    st.page_link("pages/Deep_Analysis.py", label="Already have a company in mind? Open Deep Analyze")
 
 st.html(
     _decision_workspace_html(
