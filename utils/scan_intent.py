@@ -183,3 +183,87 @@ def redirect_to_next_page(default: str = "Discovery") -> None:
     nxt = get_next_page(default=default)
     qp.pop("next", None)
     redirect(nxt, qp)
+
+
+# Public research choices contain no results or payment intent. They survive the
+# anonymous -> authenticated boundary separately from private account state.
+def _research_choice(kind: str, value: str) -> dict | None:
+    import re
+    from utils.sector_query import UI_TO_NASDAQ
+
+    if kind == "scan" and value.strip().lower() in UI_TO_NASDAQ:
+        return {"kind": kind, "value": value.strip().lower()}
+    if kind == "deep" and re.fullmatch(r"[A-Z0-9.\-]{1,6}", value.strip().upper()):
+        return {"kind": kind, "value": value.strip().upper()}
+    return None
+
+
+def public_research_intent() -> dict | None:
+    """Return a short-lived, nonpaying choice, rejecting other-account intent."""
+    import time
+    from utils.auth import user_id
+
+    raw = st.session_state.get("_public_research_intent")
+    if not isinstance(raw, dict):
+        return None
+    try:
+        valid_age = 0 <= time.time() - float(raw.get("created_at", 0)) <= 1800
+    except (TypeError, ValueError):
+        valid_age = False
+    owner = raw.get("owner") or ""
+    choice = _research_choice(str(raw.get("kind", "")), str(raw.get("value", "")))
+    if not valid_age or not choice or (owner and owner != user_id()):
+        st.session_state.pop("_public_research_intent", None)
+        return None
+    return choice
+
+
+def open_research(kind: str, value: str) -> None:
+    """Navigate to a selected research task; never request automatic execution."""
+    import time
+    from utils.auth import is_logged_in, user_id
+
+    choice = _research_choice(kind, value)
+    if not choice:
+        return
+    st.session_state["_public_research_intent"] = {
+        **choice, "created_at": time.time(), "owner": user_id(),
+    }
+    # A new explicit, nonpaying selection must not inherit old autorun flags.
+    for key in ("_autostart_discovery_scan", "_autorun_deep_analysis", "_pulse_scan_request"):
+        st.session_state.pop(key, None)
+    patch_query_params({"autostart": None, "ticker": None, "sector": None})
+    destination = "Discovery" if kind == "scan" else "Deep_Analysis"
+    if is_logged_in():
+        st.switch_page(f"pages/{destination}.py")
+    else:
+        st.session_state["_after_auth_page"] = destination
+        st.session_state["auth_initial_mode"] = "Create Account"
+        st.switch_page("pages/Auth.py")
+
+
+def take_research_intent(kind: str) -> str | None:
+    """Consume only on the protected destination, after its identity guard."""
+    choice = public_research_intent()
+    if not choice or choice["kind"] != kind:
+        return None
+    st.session_state.pop("_public_research_intent", None)
+    return choice["value"]
+
+
+def queue_pulse_scan(sector: str) -> None:
+    """Capture the clicked row before a cache refresh can change its position."""
+    from utils.auth import user_id
+    choice = _research_choice("scan", sector)
+    uid = user_id()
+    if choice and uid:
+        st.session_state["_pulse_scan_request"] = {"owner": uid, "sector": choice["value"]}
+
+
+def take_pulse_scan() -> str | None:
+    from utils.auth import user_id
+    pending = st.session_state.pop("_pulse_scan_request", None)
+    if not isinstance(pending, dict) or not pending.get("owner") or pending["owner"] != user_id():
+        return None
+    choice = _research_choice("scan", str(pending.get("sector", "")))
+    return choice["value"] if choice else None

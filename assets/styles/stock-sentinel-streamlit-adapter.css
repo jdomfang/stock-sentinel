@@ -594,3 +594,38 @@ textarea:focus-visible,
     animation-iteration-count: 1 !important;
   }
 }
+
+/* Disposable Streamlit geometry for the shared Sector Pulse component. */
+.st-key-ss_pulse_home,.st-key-ss_pulse_discovery{border:1px solid rgba(56,189,248,.25);border-radius:var(--ss-radius-panel);background:var(--ss-color-panel);padding:24px;margin:12px 0 0}
+.st-key-ss_pulse_home [data-testid="stHtml"],.st-key-ss_pulse_discovery [data-testid="stHtml"]{width:100%!important;max-width:100%!important}
+.st-key-ss_pulse_home [data-testid="stElementContainer"],.st-key-ss_pulse_discovery [data-testid="stElementContainer"]{width:100%!important;max-width:100%!important;min-width:0!important}
+[class*="st-key-ss_pulse_row_"]{border-top:1px solid var(--ss-color-border);padding:16px 0 8px}
+[class*="st-key-ss_pulse_row_"] [data-testid="stHorizontalBlock"]{align-items:flex-start!important;gap:24px!important}
+[class*="st-key-ss_pulse_row_"] .stButton button{font-size:.8rem!important;color:#a6e1fb!important;border-color:rgba(148,163,184,.25)!important;min-height:44px}
+[class*="st-key-pulse_alternate_"] .stButton button{border-color:transparent!important;background:transparent!important;font-size:.75rem!important}
+[class*="st-key-ss_pulse_row_"] [data-testid="stCaptionContainer"] p{font-size:.7rem!important;line-height:1.4;text-align:center}
+.st-key-home_direct_analysis,.st-key-discovery_direct_analysis{padding:10px 0 18px}
+.st-key-home_direct_analysis [data-testid="stPageLink"] a,.st-key-discovery_direct_analysis [data-testid="stPageLink"] a{font-size:.875rem;color:var(--ss-color-action)}
+.st-key-discovery_pulse_command{padding:24px 0 12px}
+.st-key-discovery_pulse_command [data-testid="stHorizontalBlock"]{align-items:center}
+@media(max-width:640px){
+ .st-key-ss_pulse_home,.st-key-ss_pulse_discovery{padding:18px 16px}
+ [class*="st-key-ss_pulse_row_"] [data-testid="stHorizontalBlock"]{display:grid!important;grid-template-columns:minmax(0,1fr) 110px!important;gap:12px!important}
+ [class*="st-key-ss_pulse_row_"] [data-testid="stColumn"]{width:auto!important;min-width:0!important;flex:none!important}
+ [class*="st-key-ss_pulse_row_"] [data-testid="stColumn"]:nth-child(n+3){grid-column:1/-1}
+ [class*="st-key-ss_pulse_row_"] .stButton button{min-height:48px}
+}
+
+/* Pulse rhythm: group related facts without shrinking interaction targets. */
+.st-key-ss_pulse_home,.st-key-ss_pulse_discovery{gap:10px}
+[class*="st-key-ss_pulse_row_"] [data-testid="stVerticalBlock"]{gap:6px}
+[class*="st-key-ss_pulse_row_"] [data-testid="stCaptionContainer"] p{margin:0}
+.st-key-home_direct_analysis{padding:2px 0 10px}
+.st-key-home_direct_analysis [data-testid="stPageLink"] a p{color:var(--ss-color-text-muted);font-size:.875rem}
+.st-key-home_direct_analysis [data-testid="stPageLink"] a strong{color:var(--ss-color-action);font-weight:600}
+/* CSS-only elements must not create empty rows in Streamlit's flex layout. */
+[data-testid="stElementContainer"]:has(> .stMarkdown > [data-testid="stMarkdownContainer"] > style:only-child){display:none}
+[data-testid="stMainBlockContainer"]:has(.st-key-ss_top_nav){padding-top:24px!important}
+@media(max-width:640px){
+ [data-testid="stMainBlockContainer"]:has(.st-key-ss_top_nav){padding-top:16px!important}
+}

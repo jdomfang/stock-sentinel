@@ -24,7 +24,7 @@ _sys.path.insert(0, str(_Path(__file__).resolve().parents[1]))
 
 
 from utils.navigation import render_sidebar_navigation, render_top_nav
-from utils.ui import apply_theme, close_page
+from utils.ui import apply_theme, close_page, load_sector_pulse, render_sector_pulse
 from utils.deep_analysis import generate_ai_summary
 from utils.demo_snapshots import social_posts_value
 from utils.demo_repository import load_latest_public_demo
@@ -412,18 +412,19 @@ def _decision_workspace_html(
         if price_points is not None else "Price-history count unavailable"
     )
     return f"""
-      <section class="ss-b5-workspace" aria-label="Illustrative decision workspace">
+      <section class="ss-b5-workspace" aria-label="Saved product example">
         <header class="ss-b5-workspace-head">
           <div>
-            <div class="ss-b5-kicker">Product preview · illustrative</div>
-            <h2>Decision Workspace</h2>
+            <div class="ss-b5-kicker">Saved product example</div>
+            <h2>See what a scan and analysis deliver</h2>
+            <p class="ss-demo-description">A previously saved sector scan and ticker analysis, separate from the current Sector Pulse above.</p>
           </div>
           <div class="ss-b5-provenance">
             <strong>{html.escape(_sector_label(sector))}</strong>
             <span>{provenance}</span>
           </div>
         </header>
-        <div class="ss-b5-workspace-body">
+        <div class="ss-b5-workspace-body"><div class="ss-demo-grid"><div>
           <div class="ss-b5-section-head">
             <span>Market Scan</span><strong>{shown_label}</strong>
           </div>
@@ -431,7 +432,7 @@ def _decision_workspace_html(
             {''.join(preview_rows)}
           </div>
           <p class="ss-b5-attention-note">Social-post count indicates attention, not independent evidence.</p>
-          <div class="ss-b5-divider"></div>
+          </div>
           <aside class="ss-b5-analysis" aria-label="Illustrative Deep Analysis result">
             <div class="ss-b5-analysis-head">
               <div>
@@ -442,13 +443,17 @@ def _decision_workspace_html(
             <div class="ss-b5-insight">
               <span>Why this output</span><p>{reason}</p>
             </div>
+            <p class="ss-demo-summary">{html.escape(evidence_value)} · {html.escape(str(int(horizon)) + " trading days" if horizon is not None else "Horizon unavailable")}</p>
+            <details class="ss-demo-details"><summary>Explore the full example</summary>
             <div class="ss-b5-metrics">{metric_html}</div>
             {change_html}
-            <div class="ss-b5-source">
+            </details>
+          </aside>
+        </div>
+            <div class="ss-b5-source ss-demo-source">
               <span>Sources: public social discussion + market-price history · {html.escape(closes)}</span>
               <small>Confidence reflects evidence quality and agreement, not probability of return.</small>
             </div>
-          </aside>
         </div>
       </section>
     """
@@ -1108,16 +1113,16 @@ st.markdown(
     .st-key-home_public_intro [data-testid="stColumn"]:last-child {
       flex:.82 1 0!important;min-width:300px!important;
     }
-    .ss-b5-hero {padding:clamp(1.9rem,3.5vw,2.6rem) 0 clamp(1.7rem,3vw,2.2rem);}
+    .ss-b5-hero {padding:1.25rem 0 1.5rem;}
     .ss-b5-eyebrow,.ss-b5-kicker,.ss-b5-section-label,
     .ss-b5-section-head > span {
       color:var(--accent);font-size:.75rem;font-weight:800;
       letter-spacing:.08em;text-transform:uppercase;
     }
     .ss-b5-hero h1 {
-      max-width:720px;margin:.75rem 0 0;color:var(--text);
-      font-size:clamp(2.75rem,4.4vw,3.8rem);font-weight:880;
-      letter-spacing:-.052em;line-height:1;
+      max-width:720px;margin:.75rem 0 0;padding:0;color:var(--text);
+      font-size:clamp(2.6rem,3.85vw,3.3rem);font-weight:820;
+      letter-spacing:-.052em;line-height:1.06;
     }
     .ss-b5-hero-side p {
       max-width:430px;margin:0 0 1.2rem;color:#b4c1d2;
@@ -1130,19 +1135,19 @@ st.markdown(
     .ss-b5-cta-copy {margin-top:.75rem;color:#a8b5c7;font-size:.8125rem;line-height:1.5;}
     .st-key-home_intro_action .stButton > button,
     .st-key-home_intro_action [data-testid="stPageLink"] a {
-      min-height:52px!important;width:100%;display:flex;align-items:center;
+      min-height:52px!important;width:100%;max-width:288px;display:flex;align-items:center;
       justify-content:center;border-radius:10px;font-weight:780;
     }
     .ss-b5-workspace {
-      margin:.1rem 0 0;border:1px solid rgba(56,189,248,.3);border-radius:18px;
+      margin:.1rem 0 0;border:1px solid rgba(56,189,248,.3);border-radius:var(--ss-radius-panel);
       overflow:hidden;background:linear-gradient(145deg,rgba(7,20,39,.99),rgba(7,15,29,.98));
-      box-shadow:0 30px 70px rgba(0,0,0,.2);
+      box-shadow:none;
     }
     .ss-b5-workspace-head {
       display:flex;align-items:flex-end;justify-content:space-between;gap:28px;
-      padding:22px 24px;border-bottom:1px solid rgba(148,163,184,.15);
+      padding:20px 24px;border-bottom:1px solid rgba(148,163,184,.15);
     }
-    .ss-b5-workspace-head h2 {margin:.45rem 0 0;font-size:1.625rem;letter-spacing:-.025em;}
+    .ss-b5-workspace-head h2 {margin:.45rem 0 0;padding:0;font-size:1.625rem;letter-spacing:-.025em;}
     .ss-b5-provenance {max-width:520px;text-align:right;}
     .ss-b5-provenance strong,.ss-b5-provenance span {display:block;}
     .ss-b5-provenance strong {color:#dbe3ee;font-size:.875rem;}
@@ -1236,6 +1241,26 @@ st.markdown(
     }
     .ss-b5-assurance span {padding:0 18px;text-align:center;color:#a8b5c7;font-size:.875rem;}
     .ss-b5-assurance span + span {border-left:1px solid rgba(148,163,184,.14);}
+    .ss-demo-description {max-width:570px;color:var(--muted);font-size:.875rem;line-height:1.6;margin:10px 0 0;}
+    .ss-demo-grid {display:grid;grid-template-columns:minmax(0,2fr) minmax(0,3fr);gap:26px;align-items:start;}
+    .ss-demo-grid .ss-b5-scan-grid {grid-template-columns:1fr;}
+    .ss-demo-grid .ss-b5-scan-grid .ss-b5-scan-card {grid-template-columns:minmax(0,1fr) auto;}
+    .ss-demo-grid .ss-b5-scan-grid .ss-b5-stock {grid-column:1 / -1;}
+    .ss-demo-grid .ss-b5-count {white-space:nowrap;}
+    .ss-demo-grid .ss-sentiment {justify-self:start;width:fit-content;}
+    .ss-demo-grid .ss-b5-stock small {white-space:normal;}
+    .ss-demo-grid .ss-b5-analysis {padding:0 0 0 24px;border:0;border-left:1px solid var(--border);border-radius:0;background:none;box-shadow:none;}
+    .ss-demo-grid .ss-b5-analysis::before {display:none;}
+    .ss-demo-grid .ss-b5-insight {padding:0;border:0;background:none;}
+    .ss-demo-grid .ss-b5-metrics {grid-template-columns:repeat(2,minmax(0,1fr));}
+    .ss-demo-summary {margin:12px 0;color:var(--muted);font-size:.875rem;}
+    .ss-demo-details summary {cursor:pointer;color:var(--accent);min-height:44px;display:flex;align-items:center;gap:8px;padding:12px 0;font-size:.875rem;}
+    .ss-demo-source {align-items:flex-start;gap:12px 28px;font-size:.78rem;}
+    .ss-demo-source > * {flex:1;min-width:0;}
+    @media(max-width:700px) {
+      .ss-demo-grid {grid-template-columns:1fr;}
+      .ss-demo-grid .ss-b5-analysis {padding:22px 0 0;border-left:0;border-top:1px solid var(--border);}
+    }
     @media (max-width:900px) {
       .st-key-home_public_intro [data-testid="stHorizontalBlock"] {flex-wrap:wrap!important;}
       .st-key-home_public_intro [data-testid="stColumn"]:first-child,
@@ -1250,7 +1275,8 @@ st.markdown(
       .ss-b5-scan-grid {grid-template-columns:1fr;}
     }
     @media (max-width:650px) {
-      .ss-b5-hero {padding-top:2rem;}
+      .ss-b5-hero {padding-top:.75rem;}
+      .st-key-home_intro_action .stButton > button {max-width:100%;}
       .ss-b5-hero h1 {font-size:clamp(2.35rem,11vw,2.55rem);}
       .ss-b5-workspace-head,.ss-b5-analysis-head,.ss-b5-source {align-items:flex-start;flex-direction:column;}
       .ss-b5-provenance,.ss-b5-source small {text-align:left;}
@@ -1318,7 +1344,7 @@ with st.container(key="home_public_intro"):
             st.html(
                 """
                 <div class="ss-b5-hero-side">
-                  <p>Turn sector chatter into a focused shortlist, then evaluate one ticker with evidence, market context, and what could change the result.</p>
+                  <p>Explore trading activity across sectors. Scan the conversation, then examine the evidence behind a company.</p>
                 </div>
                 """
             )
@@ -1332,6 +1358,7 @@ with st.container(key="home_public_intro"):
                     "Start with 2 free credits", type="primary",
                     key="home_start_free", use_container_width=True,
                 ):
+                    st.session_state.pop("_public_research_intent", None)
                     st.session_state["auth_initial_mode"] = "Create Account"
                     st.session_state["_after_auth_page"] = "Discovery"
                     st.switch_page("pages/Auth.py")
@@ -1340,6 +1367,10 @@ with st.container(key="home_public_intro"):
                 if _logged_in else
                 '<p class="ss-b5-cta-copy">Enough for one sector scan + one ticker analysis · no card required</p>'
             )
+
+render_sector_pulse(load_sector_pulse(), surface="home")
+with st.container(key="home_direct_analysis"):
+    st.page_link("pages/Deep_Analysis.py", label="Already have a company in mind? **Open Deep Analyze →**")
 
 st.html(
     _decision_workspace_html(

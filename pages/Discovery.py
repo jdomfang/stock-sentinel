@@ -644,93 +644,47 @@ def _process_pending_discovery_analysis(pending: dict) -> dict | None:
     return failure_state
 
 
-# One task command: desktop uses the approved split panel; narrower viewports
-# retain the established stacked introduction and compact toolbar.
+# The existing paid execution below receives one account-bound row selection.
+from utils.ui import load_sector_pulse, render_sector_pulse, PULSE_SECTORS
+from utils.scan_intent import queue_pulse_scan, take_pulse_scan, take_research_intent
+
+_research_sector = take_research_intent("scan")
+if _research_sector:
+    st.session_state["discovery_sector"] = _research_sector
+    _autostart_scan = False
+    st.session_state.pop("_autostart_discovery_scan", None)
+    patch_query_params({"autostart": None, "sector": None})
+_pulse_requested_sector = take_pulse_scan()
+if _pulse_requested_sector:
+    st.session_state["discovery_sector"] = _pulse_requested_sector
+sector = st.session_state.get("discovery_sector") or st.session_state.get("selected_sector") or "tech"
+if sector not in PULSE_SECTORS:
+    sector = "tech"
 _credits = int((_profile or {}).get("credits") or 0)
-with st.container(key="discovery_command_shell"):
-    intro_col, task_col = st.columns([0.72, 1.28], gap="large")
+with st.container(key="discovery_pulse_command"):
+    intro_col, meter_col = st.columns([2, 1])
     with intro_col:
-        st.html(
-            """
-            <header class="ss-task-command-intro">
-              <h1>Market Scan</h1>
-              <p>Find unusual social attention by sector.</p>
-            </header>
-            """
-        )
-
-    with task_col:
-        with st.container(key="discovery_scan_card"):
-            with st.container(key="discovery_control_row"):
-                sel_col, btn_col, meter_col = st.columns([1.45, 1.0, 1.1])
-
-                with sel_col:
-                    SECTOR_OPTIONS = [
-                        "tech",
-                        "healthcare",
-                        "energy",
-                        "finance",
-                        "consumer",
-                        "utilities",
-                        "real estate",
-                        "industrials",
-                        "materials",
-                        "communication",
-                    ]
-
-                    # Prefer query-param intent, otherwise use prior session selection.
-                    _default_sector = (
-                        (st.session_state.get("discovery_sector") or "").strip().lower()
-                        or (st.session_state.get("selected_sector") or "").strip().lower()
-                        or SECTOR_OPTIONS[0]
-                    )
-                    if _default_sector not in SECTOR_OPTIONS:
-                        _default_sector = SECTOR_OPTIONS[0]
-
-                    # Seed the key instead of passing index=. Streamlit renders a visible
-                    # warning -- in the user's face, not the log -- when a keyed widget has
-                    # BOTH a default and a value set through the Session State API, which is
-                    # what the query-param handler above does. Session state is the single
-                    # source of truth; the guard keeps a user's own selection intact on
-                    # rerun and only repairs a missing or stale-invalid value.
-                    if st.session_state.get("discovery_sector") not in SECTOR_OPTIONS:
-                        st.session_state["discovery_sector"] = _default_sector
-
-                    sector = st.selectbox(
-                        "Sector",
-                        options=SECTOR_OPTIONS,
-                        key="discovery_sector",
-                        label_visibility="visible",
-                    )
-
-                with btn_col:
-                    scan_clicked = st.button(
-                        "Run scan · 1 credit",
-                        type="primary",
-                        use_container_width=True,
-                        disabled=_credits <= 0,
-                    )
-
-                with meter_col:
-                    billing.render_credit_meter(profile=_profile, key="discovery")
-
-            # Last scan context line
-            _last_sector = (
-                st.session_state.get("demo_scan_sector")
-                or st.session_state.get("selected_sector")
-            )
-            if str(_last_sector or "").strip().lower() == "unknown":
-                _last_sector = sector
-            _last_count = (
-                len(st.session_state.df_valid)
-                if st.session_state.get("df_valid") is not None else None
-            )
-            if _last_sector and _last_count is not None:
-                st.markdown(
-                    f'<div style="color:var(--muted);font-size:0.78rem;margin-top:0.35rem;">'
-                    f'Last scan: <b style="color:rgba(148,163,184,.80);">{_last_sector}</b> · {_last_count} stocks found</div>',
-                    unsafe_allow_html=True,
-                )
+        st.html('<header class="ss-task-command-intro"><h1>Market Scan</h1><p>Find unusual social attention by sector.</p></header>')
+    with meter_col:
+        billing.render_credit_meter(profile=_profile, key="discovery")
+_pulse = load_sector_pulse()
+render_sector_pulse(_pulse, surface="discovery", on_scan=queue_pulse_scan, credits=_credits,
+                    selected=st.session_state.get("discovery_sector", ""))
+scan_clicked = bool(_pulse_requested_sector)
+# Missing observations never prevent independent research. When all ten are
+# available the pulse itself is the chooser, without a duplicate toolbar.
+if _pulse["missing"]:
+    with st.container(key="discovery_scan_card"):
+        with st.container(key="discovery_control_row"):
+            sel_col, btn_col = st.columns([1.45, 1.0])
+            with sel_col:
+                if st.session_state.get("discovery_sector") not in PULSE_SECTORS:
+                    st.session_state["discovery_sector"] = sector
+                sector = st.selectbox("Sector", options=list(PULSE_SECTORS), key="discovery_sector")
+            with btn_col:
+                scan_clicked = st.button("Run scan · 1 credit", type="primary", use_container_width=True, disabled=_credits <= 0) or scan_clicked
+with st.container(key="discovery_direct_analysis"):
+    st.page_link("pages/Deep_Analysis.py", label="Already have a company in mind? Open Deep Analyze")
 
 # Basket retrieval is the only path. The hand-written topic queries it
 # replaced were measured head-to-head on two sectors, same hour, equal spend:

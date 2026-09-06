@@ -276,12 +276,14 @@ def render_footer() -> None:
     # sources, privacy, and terms together instead of adding four nav items.
     try:
         with st.container(key="footer_links"):
-            c1, c2, c3, _sp = st.columns([0.25, 0.35, 0.7, 4.3])
+            c1, c2, c3, c4, _sp = st.columns([.35, .7, .45, .8, 3.3])
             with c1:
                 st.page_link("pages/FAQ.py", label="FAQ")
             with c2:
-                st.page_link("pages/Contact.py", label="Contact")
+                st.page_link("pages/How_It_Works.py", label="How it works")
             with c3:
+                st.page_link("pages/Contact.py", label="Contact")
+            with c4:
                 st.page_link("pages/Trust_Center.py", label="Trust Center")
     except Exception:
         # Older Streamlit builds: fail silently
@@ -1119,3 +1121,201 @@ def render_delivered_analysis_result(
             "The recommendation is available above; its optional detailed "
             "breakdown could not be displayed."
         )
+
+
+# Sector Pulse presentation. The engine's latest() is the sole read path;
+# these helpers format observations and never classify or recompute a state.
+PULSE_SECTORS = (
+    "tech", "healthcare", "energy", "finance", "consumer", "utilities",
+    "real estate", "industrials", "materials", "communication",
+)
+_PULSE_ORDER = {"accumulating": 0, "event": 1, "quiet": 2, "distributing": 3}
+
+
+def pulse_sector_label(sector: str) -> str:
+    return "Technology" if sector == "tech" else sector.title()
+
+
+def _pulse_number(value, low=None, high=None):
+    if isinstance(value, bool) or not isinstance(value, (float, int)):
+        return None
+    if not math.isfinite(value) or (low is not None and value < low) or (high is not None and value > high):
+        return None
+    return value
+
+
+def pulse_snapshot(rows: list[dict]) -> dict:
+    """One dated, ordered snapshot; never fill its gaps with older rows."""
+    from datetime import date
+
+    dated = {}
+    for row in rows if isinstance(rows, list) else []:
+        if not isinstance(row, dict) or row.get("sector") not in PULSE_SECTORS:
+            continue
+        try:
+            day = date.fromisoformat(row.get("trade_date", "")).isoformat()
+        except (ValueError, TypeError):
+            continue
+        dated.setdefault(day, {})[row["sector"]] = row
+    if not dated:
+        return {"date": None, "rows": [], "missing": list(PULSE_SECTORS)}
+    days = sorted(dated, reverse=True)
+    current = dated[days[0]]
+    result = []
+    for sector, raw in current.items():
+        row = dict(raw)
+        row["state"] = raw.get("state") if raw.get("state") in _PULSE_ORDER else "unavailable"
+        row["breadth"] = _pulse_number(raw.get("breadth"), 0, 1)
+        row["previous_date"] = None
+        row["change_pp"] = None
+        for prior_day in days[1:]:
+            prior = dated[prior_day].get(sector)
+            prior_breadth = _pulse_number((prior or {}).get("breadth"), 0, 1)
+            if prior is not None:
+                if prior_breadth is not None and row["breadth"] is not None:
+                    row["previous_date"] = prior_day
+                    row["change_pp"] = 100 * (row["breadth"] - prior_breadth)
+                break
+        result.append(row)
+    result.sort(key=lambda r: (_PULSE_ORDER.get(r["state"], 4), -(r["breadth"] if r["breadth"] is not None else -1), r["sector"]))
+    return {"date": days[0], "rows": result, "missing": [s for s in PULSE_SECTORS if s not in current]}
+
+
+def pulse_contributor(row: dict) -> dict | None:
+    import re
+
+    contributors = row.get("top_contrib")
+    top = contributors[0] if isinstance(contributors, list) and contributors else None
+    if not isinstance(top, dict):
+        return None
+    ticker = str(top.get("ticker") or "").strip().upper()
+    share = _pulse_number(top.get("share_of_rise"), 0, 1)
+    if not re.fullmatch(r"[A-Z0-9.\-]{1,6}", ticker) or share is None:
+        return None
+    return {"ticker": ticker, "share": share, "rel_vol": _pulse_number(top.get("rel_vol"), 0)}
+
+
+def pulse_explanation(row: dict) -> str:
+    state = row.get("state")
+    if state == "event":
+        top = pulse_contributor(row)
+        return (f'{top["ticker"]} drove {top["share"]:.0%} of the positive volume increase.'
+                if top else "Single-name event; contributor detail unavailable.")
+    if state == "accumulating":
+        count = _pulse_number(row.get("acc_days_5d"), 0, 5)
+        return (f"{int(count)} of 5 sessions up on heavier volume"
+                if count is not None and count == int(count) else "Accumulating; session detail unavailable.")
+    if state == "distributing":
+        ratio = _pulse_number(row.get("ud_ratio_5d"), 0)
+        return "Up-day / down-day dollar volume: " + (f"{ratio:.2f}× over 5 sessions" if ratio is not None else "—")
+    if state == "quiet":
+        breadth = _pulse_number(row.get("breadth"), 0, 1)
+        return (f"{breadth:.0%} of companies above 1.5× normal dollar volume"
+                if breadth is not None else "No broad accumulation pattern; participation unavailable.")
+    return "Sector observation unavailable."
+
+
+@st.cache_data(ttl=300, show_spinner=False)
+def load_sector_pulse() -> dict:
+    from utils import sector_pulse
+    return pulse_snapshot(sector_pulse.latest(days=6))
+
+
+def pulse_evidence_html(row: dict) -> str:
+    """Safe factual explanation; no action or financial meaning in CSS."""
+    state = row.get("state")
+    top = pulse_contributor(row)
+    ratio = _pulse_number(row.get("ud_ratio_5d"), 0)
+    eligible = _pulse_number(row.get("n_eligible"), 0)
+    breadth = _pulse_number(row.get("breadth"), 0, 1)
+    facts = [
+        f'{breadth:.0%} of {int(eligible):,} eligible companies traded above 1.5× their normal dollar volume.'
+        if breadth is not None and eligible is not None else "Participation coverage unavailable.",
+        "Up-day / down-day dollar volume over 5 sessions: " + (f"{ratio:.2f}×." if ratio is not None else "—."),
+    ]
+    if top:
+        facts.append(f'{top["ticker"]}: {top["share"]:.0%} of the positive volume increase'
+                     + (f', at {top["rel_vol"]:.2f}× normal dollar volume.' if top["rel_vol"] is not None else "."))
+    warning = '<strong class="ss-pulse-warning">One company, not a sector move.</strong>' if state == "event" else ""
+    flag = {"month_end": "Month-end", "quarter_end": "Quarter-end", "opex": "Options-expiration"}.get(row.get("calendar_flag"))
+    calendar = f'<p class="ss-pulse-calendar">{flag} session · scheduled activity may affect volume.</p>' if flag else ""
+    return (
+        '<div class="ss-pulse-evidence"><p>' + html.escape(pulse_explanation(row)) + '</p>' + warning + calendar
+        + '<details><summary>Why this ' + ('event' if state == 'event' else 'sector') + '</summary><div>'
+        + ''.join('<p>' + html.escape(fact) + '</p>' for fact in facts)
+        + '<p>Observed trading activity, not a forecast.</p></div></details></div>'
+    )
+
+
+def render_sector_pulse(snapshot: dict, *, surface: str, on_scan=None, credits: int = 0, selected: str = "") -> None:
+    """Shared public/working pulse; native controls reuse caller-owned execution."""
+    from datetime import date
+    from utils.scan_intent import open_research
+
+    with st.container(key=f"ss_pulse_{surface}"):
+        trade_date = snapshot.get("date")
+        if not trade_date:
+            st.caption("Sector Pulse is temporarily unavailable. You can still choose a sector to scan.")
+            return
+        date_label = date.fromisoformat(trade_date).strftime("%b %d, %Y")
+        st.html(
+            '<header class="ss-pulse-head"><div><div class="ss-pulse-kicker">Current market observations</div>'
+            '<h2>Sector Pulse</h2><p>Trading activity across sectors</p></div>'
+            f'<p class="ss-pulse-date">Market data through {date_label}<br><span>Updated nightly</span></p></header>'
+        )
+        rows = snapshot["rows"]
+        if not any(r["state"] == "accumulating" for r in rows):
+            st.caption("No accumulating sectors in the available observations." if snapshot.get("missing")
+                       else "No sectors currently meet the accumulation criteria.")
+        if snapshot.get("missing"):
+            st.caption(f"Observations available for {len(rows)} of {len(PULSE_SECTORS)} sectors on this date.")
+        st.html('<div class="ss-pulse-columns" aria-hidden="true"><span>Sector / state</span><span>Participation</span><span>What the data shows</span><span>Next step</span></div>')
+
+        def render_row(row):
+            sector = row["sector"]
+            label = pulse_sector_label(sector)
+            state = row["state"]
+            event = state == "event"
+            with st.container(key=f"ss_pulse_row_{surface}_{sector.replace(' ', '_')}"):
+                name_col, breadth_col, why_col, action_col = st.columns([1.05, .85, 1.65, 1.05], gap="medium")
+                with name_col:
+                    symbol = {"accumulating": "●", "event": "◆", "quiet": "○", "distributing": "▼"}.get(state, "—")
+                    state_label = "Single-name event" if event else state.title()
+                    st.html(f'<div class="ss-pulse-name">{html.escape(label)}</div><div class="ss-pulse-state" data-state="{state}"><span aria-hidden="true">{symbol}</span> {state_label}</div>')
+                with breadth_col:
+                    breadth = row["breadth"]
+                    number = f"{breadth:.0%}" if breadth is not None else "—"
+                    bar = f'<div class="ss-pulse-bar" aria-hidden="true"><span style="width:{breadth * 100:.2f}%"></span></div>' if breadth is not None else ""
+                    delta = row.get("change_pp")
+                    change = (f'<small>{delta:+.1f} pp vs {date.fromisoformat(row["previous_date"]).strftime("%b %d")}</small>' if delta is not None else "")
+                    st.html(f'<div class="ss-pulse-participation"><strong>{number}</strong>{bar}{change}</div>')
+                with why_col:
+                    st.html(pulse_evidence_html(row))
+                with action_col:
+                    top = pulse_contributor(row) if event else None
+                    key = f"pulse_{surface}_{sector}"
+                    if top:
+                        if st.button(f'Explore {top["ticker"]} →', key=key + "_deep", use_container_width=True):
+                            open_research("deep", top["ticker"])
+                        st.caption("Analysis costs 1 credit")
+                    scan_label = f"Scan {label} instead" if event else ("Run scan · 1 credit" if on_scan else f"Scan {label} →")
+                    with st.container(key=f"pulse_{'alternate' if event else 'action'}_{surface}_{sector.replace(' ', '_')}"):
+                        if on_scan:
+                            st.button(scan_label, key=key + "_scan", use_container_width=True,
+                                      disabled=credits <= 0, on_click=on_scan, args=(sector,))
+                        elif st.button(scan_label, key=key + "_scan", use_container_width=True):
+                            # Page switching must run in the script body; Streamlit
+                            # discards a rerun requested inside a widget callback.
+                            open_research("scan", sector)
+                    if on_scan is None:
+                        st.caption("1 credit · account required" if not st.session_state.get("auth.user") else "Open in Market Scan · 1 credit per scan")
+                    elif event:
+                        st.caption("Sector scan costs 1 credit")
+
+        for row in rows[:3]:
+            render_row(row)
+        if len(rows) > 3:
+            with st.expander(f"View all {len(rows)} sectors", expanded=selected in {r["sector"] for r in rows[3:]}):
+                for row in rows[3:]:
+                    render_row(row)
+        st.html('<p class="ss-pulse-definition">Participation = companies above 1.5× their normal dollar volume</p><details class="ss-pulse-method"><summary>How the pulse is measured</summary><p>Normal uses a trailing 20-session median with the three highest-volume sessions removed. States describe observed trading activity. Order: accumulating, event, quiet, distributing; then participation within each state. Comparisons use the stated market date. Updated nightly, not intraday.</p></details>')

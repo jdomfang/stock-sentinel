@@ -19,7 +19,7 @@ def test_market_scan_uses_one_compact_scoped_control_row():
     discovery = _read("pages/Discovery.py")
     adapter = _read("assets/styles/stock-sentinel-streamlit-adapter.css")
 
-    assert 'key="discovery_command_shell"' in discovery
+    assert 'key="discovery_pulse_command"' in discovery
     assert '<h1>Market Scan</h1>' in discovery
     assert 'key="discovery_control_row"' in discovery
     assert ".st-key-discovery_scan_card" in adapter

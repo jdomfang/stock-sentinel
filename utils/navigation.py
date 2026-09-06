@@ -73,6 +73,7 @@ def _login_control(
         with st.container(key=f"nav_{surface}_auth"):
             if st.button("Log in", use_container_width=True,
                          key=f"nav_{surface}_login_button"):
+                st.session_state.pop("_public_research_intent", None)
                 st.session_state["auth_initial_mode"] = "Sign In"
                 st.session_state["_after_auth_page"] = after_auth_page
                 st.switch_page("pages/Auth.py")
@@ -87,23 +88,10 @@ def _signup_control(column, *, surface: str, primary: bool = True) -> None:
                 use_container_width=True,
                 key=f"nav_{surface}_signup_button",
             ):
+                st.session_state.pop("_public_research_intent", None)
                 st.session_state["auth_initial_mode"] = "Create Account"
                 st.session_state["_after_auth_page"] = "Discovery"
                 st.switch_page("pages/Auth.py")
-
-
-def _marketing_links(column, surface: str, active: str) -> None:
-    """Public information architecture shared by every marketing route."""
-    with column:
-        with st.container(key=f"nav_{surface}_marketing"):
-            how, faq = st.columns(2)
-            _nav_link(
-                how, "pages/How_It_Works.py", "How it works",
-                "how_it_works", active, surface,
-            )
-            _nav_link(
-                faq, "pages/FAQ.py", "FAQ", "faq", active, surface,
-            )
 
 
 def _session_initial(user: object, email: str) -> str:
@@ -210,7 +198,7 @@ def render_top_nav(
         }
         .st-key-ss_top_nav {
           border-bottom:1px solid rgba(148,163,184,.18);
-          background:rgba(6,13,27,.94);padding:.62rem 0 .58rem;
+          background:transparent;padding:.62rem 0 .58rem;
           margin:0 0 1.05rem;
         }
         .st-key-ss_top_nav [data-testid="stHorizontalBlock"] {
@@ -433,7 +421,6 @@ def render_top_nav(
                     [1.55, 2.15, .72, .82]
                 )
                 _brand(brand, "desktop")
-                _marketing_links(marketing, "desktop", active)
                 _login_control(
                     login, surface="desktop", after_auth_page=after_auth_page,
                 )
@@ -512,17 +499,6 @@ def render_top_nav(
                 if signup_col is not None:
                     _signup_control(
                         signup_col, surface="mobile", primary=signup_primary,
-                    )
-
-            if not logged_in:
-                with st.container(key="ss_nav_mobile_marketing"):
-                    how, faq = st.columns(2)
-                    _nav_link(
-                        how, "pages/How_It_Works.py", "How it works",
-                        "how_it_works", active, "mobile",
-                    )
-                    _nav_link(
-                        faq, "pages/FAQ.py", "FAQ", "faq", active, "mobile",
                     )
 
             if logged_in:

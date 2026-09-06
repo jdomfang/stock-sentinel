@@ -157,6 +157,10 @@ def _switch_to_next_page() -> None:
     nxt = (
         st.session_state.pop("_after_auth_page", None) or "Discovery"
     ).strip().lower()
+    from utils.scan_intent import public_research_intent
+    choice = public_research_intent()
+    if choice:
+        nxt = "discovery" if choice["kind"] == "scan" else "deep_analysis"
     if nxt in {"deep_analysis", "deep-analysis", "deep", "analysis"}:
         st.switch_page("pages/Deep_Analysis.py")
     elif nxt in {"analysis_result", "analysis-result", "result"}:

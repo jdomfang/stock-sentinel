@@ -49,11 +49,11 @@ def main() -> int:
         and "_decision_workspace_html(" in home
         and 'class="ss-b5-workspace"' in home
         and 'class="ss-b5-scan-grid items-' in home
-        and "Product preview" in home,
+        and "Saved product example" in home,
     )
     check(
         "public preview is clearly illustrative",
-        'aria-label="Illustrative decision workspace"' in home
+        'aria-label="Saved product example"' in home
         and home.lower().count("illustrative") >= 2,
     )
     check(

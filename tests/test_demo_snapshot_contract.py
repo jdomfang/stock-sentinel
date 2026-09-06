@@ -316,7 +316,7 @@ def test_all_snapshot_publishers_keep_the_contract() -> None:
     assert "Attention unavailable" not in home
     assert 'class="ss-b5-scan-grid items-' in home
     assert 'role="listitem"' in home
-    assert "Decision Workspace" in home
+    assert "See what a scan and analysis deliver" in home
     assert "Independent evidence" in home
     assert "Recent volatility range" in home
     assert "not probability of return" in home

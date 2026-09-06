@@ -87,7 +87,7 @@ def main() -> int:
     )
     check(
         "the product preview is named for assistive technology",
-        'aria-label="Illustrative decision workspace"' in home,
+        'aria-label="Saved product example"' in home,
     )
     check(
         "full breakdown is keyboard reachable and mobile contained",
