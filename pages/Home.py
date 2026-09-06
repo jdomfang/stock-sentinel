@@ -448,12 +448,13 @@ def _decision_workspace_html(
             <div class="ss-b5-metrics">{metric_html}</div>
             {change_html}
             </details>
-            <div class="ss-b5-source">
+          </aside>
+        </div>
+            <div class="ss-b5-source ss-demo-source">
               <span>Sources: public social discussion + market-price history · {html.escape(closes)}</span>
               <small>Confidence reflects evidence quality and agreement, not probability of return.</small>
             </div>
-          </aside>
-        </div></div>
+        </div>
       </section>
     """
 
@@ -1112,16 +1113,16 @@ st.markdown(
     .st-key-home_public_intro [data-testid="stColumn"]:last-child {
       flex:.82 1 0!important;min-width:300px!important;
     }
-    .ss-b5-hero {padding:clamp(1.9rem,3.5vw,2.6rem) 0 clamp(1.7rem,3vw,2.2rem);}
+    .ss-b5-hero {padding:1.25rem 0 1.5rem;}
     .ss-b5-eyebrow,.ss-b5-kicker,.ss-b5-section-label,
     .ss-b5-section-head > span {
       color:var(--accent);font-size:.75rem;font-weight:800;
       letter-spacing:.08em;text-transform:uppercase;
     }
     .ss-b5-hero h1 {
-      max-width:720px;margin:.75rem 0 0;color:var(--text);
-      font-size:clamp(2.75rem,4.4vw,3.8rem);font-weight:880;
-      letter-spacing:-.052em;line-height:1;
+      max-width:720px;margin:.75rem 0 0;padding:0;color:var(--text);
+      font-size:clamp(2.6rem,3.85vw,3.3rem);font-weight:820;
+      letter-spacing:-.052em;line-height:1.06;
     }
     .ss-b5-hero-side p {
       max-width:430px;margin:0 0 1.2rem;color:#b4c1d2;
@@ -1134,19 +1135,19 @@ st.markdown(
     .ss-b5-cta-copy {margin-top:.75rem;color:#a8b5c7;font-size:.8125rem;line-height:1.5;}
     .st-key-home_intro_action .stButton > button,
     .st-key-home_intro_action [data-testid="stPageLink"] a {
-      min-height:52px!important;width:100%;display:flex;align-items:center;
+      min-height:52px!important;width:100%;max-width:288px;display:flex;align-items:center;
       justify-content:center;border-radius:10px;font-weight:780;
     }
     .ss-b5-workspace {
-      margin:.1rem 0 0;border:1px solid rgba(56,189,248,.3);border-radius:18px;
+      margin:.1rem 0 0;border:1px solid rgba(56,189,248,.3);border-radius:var(--ss-radius-panel);
       overflow:hidden;background:linear-gradient(145deg,rgba(7,20,39,.99),rgba(7,15,29,.98));
-      box-shadow:0 30px 70px rgba(0,0,0,.2);
+      box-shadow:none;
     }
     .ss-b5-workspace-head {
       display:flex;align-items:flex-end;justify-content:space-between;gap:28px;
-      padding:22px 24px;border-bottom:1px solid rgba(148,163,184,.15);
+      padding:20px 24px;border-bottom:1px solid rgba(148,163,184,.15);
     }
-    .ss-b5-workspace-head h2 {margin:.45rem 0 0;font-size:1.625rem;letter-spacing:-.025em;}
+    .ss-b5-workspace-head h2 {margin:.45rem 0 0;padding:0;font-size:1.625rem;letter-spacing:-.025em;}
     .ss-b5-provenance {max-width:520px;text-align:right;}
     .ss-b5-provenance strong,.ss-b5-provenance span {display:block;}
     .ss-b5-provenance strong {color:#dbe3ee;font-size:.875rem;}
@@ -1241,20 +1242,21 @@ st.markdown(
     .ss-b5-assurance span {padding:0 18px;text-align:center;color:#a8b5c7;font-size:.875rem;}
     .ss-b5-assurance span + span {border-left:1px solid rgba(148,163,184,.14);}
     .ss-demo-description {max-width:570px;color:var(--muted);font-size:.875rem;line-height:1.6;margin:10px 0 0;}
-    .ss-demo-grid {display:grid;grid-template-columns:1fr 1.3fr;gap:26px;align-items:start;}
+    .ss-demo-grid {display:grid;grid-template-columns:minmax(0,2fr) minmax(0,3fr);gap:26px;align-items:start;}
     .ss-demo-grid .ss-b5-scan-grid {grid-template-columns:1fr;}
     .ss-demo-grid .ss-b5-scan-grid .ss-b5-scan-card {grid-template-columns:minmax(0,1fr) auto;}
     .ss-demo-grid .ss-b5-scan-grid .ss-b5-stock {grid-column:1 / -1;}
     .ss-demo-grid .ss-b5-count {white-space:nowrap;}
+    .ss-demo-grid .ss-sentiment {justify-self:start;width:fit-content;}
     .ss-demo-grid .ss-b5-stock small {white-space:normal;}
     .ss-demo-grid .ss-b5-analysis {padding:0 0 0 24px;border:0;border-left:1px solid var(--border);border-radius:0;background:none;box-shadow:none;}
     .ss-demo-grid .ss-b5-analysis::before {display:none;}
     .ss-demo-grid .ss-b5-insight {padding:0;border:0;background:none;}
     .ss-demo-grid .ss-b5-metrics {grid-template-columns:repeat(2,minmax(0,1fr));}
     .ss-demo-summary {margin:12px 0;color:var(--muted);font-size:.875rem;}
-    .ss-demo-details summary {cursor:pointer;color:var(--accent);min-height:44px;display:list-item;padding:12px 0;font-size:.875rem;}
-    .ss-demo-grid .ss-b5-source {flex-direction:column;gap:8px;}
-    .ss-demo-grid .ss-b5-source small {text-align:left;}
+    .ss-demo-details summary {cursor:pointer;color:var(--accent);min-height:44px;display:flex;align-items:center;gap:8px;padding:12px 0;font-size:.875rem;}
+    .ss-demo-source {align-items:flex-start;gap:12px 28px;font-size:.78rem;}
+    .ss-demo-source > * {flex:1;min-width:0;}
     @media(max-width:700px) {
       .ss-demo-grid {grid-template-columns:1fr;}
       .ss-demo-grid .ss-b5-analysis {padding:22px 0 0;border-left:0;border-top:1px solid var(--border);}
@@ -1273,7 +1275,8 @@ st.markdown(
       .ss-b5-scan-grid {grid-template-columns:1fr;}
     }
     @media (max-width:650px) {
-      .ss-b5-hero {padding-top:2rem;}
+      .ss-b5-hero {padding-top:.75rem;}
+      .st-key-home_intro_action .stButton > button {max-width:100%;}
       .ss-b5-hero h1 {font-size:clamp(2.35rem,11vw,2.55rem);}
       .ss-b5-workspace-head,.ss-b5-analysis-head,.ss-b5-source {align-items:flex-start;flex-direction:column;}
       .ss-b5-provenance,.ss-b5-source small {text-align:left;}
@@ -1367,7 +1370,7 @@ with st.container(key="home_public_intro"):
 
 render_sector_pulse(load_sector_pulse(), surface="home")
 with st.container(key="home_direct_analysis"):
-    st.page_link("pages/Deep_Analysis.py", label="Already have a company in mind? Open Deep Analyze")
+    st.page_link("pages/Deep_Analysis.py", label="Already have a company in mind? **Open Deep Analyze →**")
 
 st.html(
     _decision_workspace_html(

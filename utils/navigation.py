@@ -198,7 +198,7 @@ def render_top_nav(
         }
         .st-key-ss_top_nav {
           border-bottom:1px solid rgba(148,163,184,.18);
-          background:rgba(6,13,27,.94);padding:.62rem 0 .58rem;
+          background:transparent;padding:.62rem 0 .58rem;
           margin:0 0 1.05rem;
         }
         .st-key-ss_top_nav [data-testid="stHorizontalBlock"] {
