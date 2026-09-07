@@ -1,0 +1,7 @@
+# Stock Sentinel — marketing site
+# Everything here is public and meant to be indexed.
+
+User-agent: *
+Allow: /
+
+Sitemap: https://about.thestocksentinel.com/sitemap.xml

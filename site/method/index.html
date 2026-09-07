@@ -1,0 +1,133 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Method — how Stock Sentinel measures sentiment</title>
+<meta name="description" content="How sentiment is scored, why a ticker mentioned once gets no reading, and how a sector move is told apart from one loud company.">
+<link rel="canonical" href="https://about.thestocksentinel.com/method/">
+<meta name="robots" content="index, follow, max-image-preview:large">
+<meta property="og:type" content="article">
+<meta property="og:site_name" content="Stock Sentinel">
+<meta property="og:url" content="https://about.thestocksentinel.com/method/">
+<meta property="og:title" content="Method — how Stock Sentinel measures sentiment, and when it refuses to">
+<meta property="og:description" content="Why a ticker mentioned once gets no sentiment reading, and how a sector-wide move is told apart from one loud company.">
+<meta property="og:image" content="https://about.thestocksentinel.com/assets/og.png">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:image" content="https://about.thestocksentinel.com/assets/og.png">
+<link rel="stylesheet" href="/assets/style.css">
+<script type="application/ld+json">
+{"@context":"https://schema.org","@type":"Article",
+ "headline":"How Stock Sentinel measures sentiment, and when it refuses to",
+ "description":"The evidence floor, how sector activity is measured, and the limits of the measurement.",
+ "publisher":{"@type":"Organization","name":"Stock Sentinel","url":"https://thestocksentinel.com/"}}
+</script>
+</head>
+<body>
+
+<header class="site">
+  <div class="wrap">
+    <a class="brand" href="/">Stock Sentinel</a>
+    <nav aria-label="Main">
+      <a href="/how-it-works/">How it works</a>
+      <a href="/method/" aria-current="page">Method</a>
+      <a href="/pulse/">Sector activity</a>
+      <a href="/pricing/">Pricing</a>
+      <a href="/faq/">FAQ</a>
+    </nav>
+  </div>
+</header>
+
+<main class="wrap">
+  <section class="hero">
+    <div class="eyebrow">Method</div>
+    <h1>How the measurement works — and when it declines to make one</h1>
+    <p class="lead">Most tools always return a confident answer, because a confident answer is what gets clicked. The more useful thing is knowing when the evidence does not support one. Here is how that judgement is made.</p>
+  </section>
+
+  <hr class="lede-rule">
+
+  <section>
+    <h2>Sentiment starts with counted mentions, not a mood</h2>
+    <p>A scan looks at recent public discussion of the companies in one sector and attributes each post to the tickers it actually names. Every post that contributes to a result had to mention a specific security — the measurement is anchored to companies, not to market chatter that happens to contain a topic word.</p>
+    <p>Each attributed post is scored for financial sentiment, and a ticker&rsquo;s reading is the aggregate of the posts about it. Discussion volume alone is not a direction: a company can be talked about a great deal and score neutral.</p>
+  </section>
+
+  <section>
+    <h2>The evidence floor</h2>
+    <p>A reading built on one post is not a reading. So below a minimum amount of evidence, the tool reports the shortage instead of a sentiment:</p>
+    <table class="spec">
+      <thead><tr><th>Posts scored</th><th>What is shown</th><th>Why</th></tr></thead>
+      <tbody>
+        <tr><td>0</td><td>Unscored</td><td>Nothing to measure.</td></tr>
+        <tr><td>1</td><td>Single mention</td><td>One person is not a signal, and presenting it as one would be the same shape as a result.</td></tr>
+        <tr><td>2</td><td>Limited signal</td><td>Still too thin to average meaningfully.</td></tr>
+        <tr><td>3 or more</td><td>Bullish / Bearish / Neutral</td><td>Enough attributed posts to report a direction.</td></tr>
+      </tbody>
+    </table>
+    <p>This is why a scan can return a shortlist where several rows carry no sentiment at all. Those rows are not failures — they are the tool declining to assert something it cannot support.</p>
+  </section>
+
+  <section>
+    <h2>Telling a sector move from one loud company</h2>
+    <p>Trading volume is the obvious way to spot a sector waking up, and on its own it is badly misleading: one company having a news day can lift an entire sector&rsquo;s totals and look identical to broad interest.</p>
+    <p>So sector activity is measured by <strong>participation</strong> rather than size — how many companies in the sector are trading above their own normal level, weighted equally, so a single large name cannot stand in for the group. Alongside it, the tool records which companies actually drove the day&rsquo;s increase and by how much.</p>
+
+    <div class="note">
+      <p><strong>A worked example.</strong> On 19&nbsp;August, healthcare&rsquo;s trading volume rose sharply. One company accounted for <strong>65% of that increase</strong>, trading at <strong>124&nbsp;times</strong> its own normal volume. The sector was flagged as a single-company <em>event</em> rather than a sector move — and the company was named, so the interesting question became that one stock rather than the whole sector.</p>
+    </div>
+  </section>
+
+  <section>
+    <h2>What &ldquo;normal&rdquo; means, and why it is not a simple average</h2>
+    <p>Judging whether today is unusual requires knowing what ordinary looks like for that specific company &mdash; a stock that trades ten million dollars a day and one that trades ten billion are not comparable in absolute terms.</p>
+    <p>The comparison is therefore always against a company&rsquo;s own recent history, and that history deliberately excludes its own loudest days. Otherwise a single enormous session quietly redefines the baseline: a stock that has just traded at a hundred times its usual volume would, a few days later, appear <em>calmer than normal</em> while still trading at several times its true ordinary level. Dropping the extremes keeps &ldquo;normal&rdquo; meaning what it meant before the event.</p>
+  </section>
+
+  <section>
+    <h2>Direction is recorded separately from activity</h2>
+    <p>Heavy trading is not the same as buying. A sector being sold hard and a sector being accumulated both produce large volume, and a measure that only counted activity would present them identically.</p>
+    <p>So volume on rising days and falling days is tracked separately, and the summary states which way money moved rather than only how much moved. A sector can be busy and falling, and the description says so.</p>
+  </section>
+
+  <section>
+    <h2>What this measurement cannot do</h2>
+    <ul class="plain">
+      <li><strong>It is a sample, not a census.</strong> Social evidence is a sampled discussion set, not exhaustive or independently verified.</li>
+      <li><strong>It can be stale.</strong> Recent social and price data may be cached for reliability and rate-limit reasons. Where that happens, the age of the underlying discussion is labelled so you can judge it.</li>
+      <li><strong>Coverage varies.</strong> Availability differs by ticker, source and timeframe. Missing values are shown as unavailable rather than estimated.</li>
+      <li><strong>Confidence is not probability.</strong> It summarises how consistent and complete the available evidence is. It is not a probability of gain or a guarantee of an outcome.</li>
+      <li><strong>Short-term signals reverse.</strong> Sentiment can turn quickly, and market data can lag or be affected by news and halts.</li>
+      <li><strong>It does not forecast prices.</strong> Nothing here predicts what a stock or sector will do next. The tool describes what has happened and how much evidence sits behind that description.</li>
+    </ul>
+  </section>
+
+  <div class="cta-row">
+    <a class="cta" href="https://thestocksentinel.com/" rel="noopener">Open Stock Sentinel &rarr;</a>
+    <a class="cta ghost" href="/how-it-works/">See the workflow</a>
+  </div>
+
+  <div class="note warn">
+    <p><strong>Not financial advice.</strong> Stock Sentinel is an informational research tool. Outputs are not financial advice, an offer, or a guarantee of future performance. You remain responsible for your own decisions and risk management.</p>
+  </div>
+</main>
+
+<footer class="site">
+  <div class="wrap">
+    <div class="cols">
+      <a href="/how-it-works/">How it works</a>
+      <a href="/method/">Method</a>
+      <a href="/pulse/">Sector activity</a>
+      <a href="/pricing/">Pricing</a>
+      <a href="/faq/">FAQ</a>
+      <a href="/terms/">Terms</a>
+      <a href="/privacy/">Privacy</a>
+      <a href="https://thestocksentinel.com/Contact" rel="noopener">Contact</a>
+      <a href="https://thestocksentinel.com/" rel="noopener">Sign in</a>
+    </div>
+    <p class="disclaim">Stock Sentinel measures public discussion about publicly traded companies and presents it alongside market price data. It does not provide financial advice, does not manage money, and does not execute trades.</p>
+  </div>
+</footer>
+
+</body>
+</html>

@@ -1,0 +1,125 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>How Stock Sentinel works — scan, then analyse one ticker</title>
+<meta name="description" content="A sector scan produces a sentiment shortlist. Deep Analyze evaluates one ticker with Buy, Watch or Avoid, confidence, reasons, risks and evidence.">
+<link rel="canonical" href="https://about.thestocksentinel.com/how-it-works/">
+<meta name="robots" content="index, follow, max-image-preview:large">
+<meta property="og:type" content="article">
+<meta property="og:site_name" content="Stock Sentinel">
+<meta property="og:url" content="https://about.thestocksentinel.com/how-it-works/">
+<meta property="og:title" content="How Stock Sentinel works — scan a sector, then analyse one ticker">
+<meta property="og:description" content="A sector scan produces a sentiment shortlist. Deep Analyze evaluates one ticker and shows the evidence behind the result.">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="stylesheet" href="/assets/style.css">
+<script type="application/ld+json">
+{"@context":"https://schema.org","@type":"BreadcrumbList","itemListElement":[
+ {"@type":"ListItem","position":1,"name":"Home","item":"https://about.thestocksentinel.com/"},
+ {"@type":"ListItem","position":2,"name":"How it works","item":"https://about.thestocksentinel.com/how-it-works/"}]}
+</script>
+</head>
+<body>
+
+<header class="site">
+  <div class="wrap">
+    <a class="brand" href="/">Stock Sentinel</a>
+    <nav aria-label="Main">
+      <a href="/how-it-works/" aria-current="page">How it works</a>
+      <a href="/method/">Method</a>
+      <a href="/pulse/">Sector activity</a>
+      <a href="/pricing/">Pricing</a>
+      <a href="/faq/">FAQ</a>
+    </nav>
+  </div>
+</header>
+
+<main class="wrap">
+  <section class="hero">
+    <div class="eyebrow">How it works</div>
+    <h1>Two actions, and they answer different questions</h1>
+    <p class="lead">Scan and Deep Analyze solve different problems. The scan creates a sentiment shortlist; Deep Analyze evaluates one selected ticker and produces a separate action recommendation.</p>
+  </section>
+
+  <section>
+    <div class="grid three">
+      <article class="card">
+        <span class="step-n">Step 01</span>
+        <h3>Scan a sector</h3>
+        <p>Choose a sector to find stocks receiving unusual recent social attention. Scan results use only Bullish, Bearish or Neutral sentiment — no recommendation is produced here.</p>
+      </article>
+      <article class="card">
+        <span class="step-n">Step 02</span>
+        <h3>Select one ticker</h3>
+        <p>Review the shortlist, price context, sentiment and evidence availability. No Buy, Watch or Avoid recommendation appears at this stage.</p>
+      </article>
+      <article class="card">
+        <span class="step-n">Step 03</span>
+        <h3>Run Deep Analyze</h3>
+        <p>Analyse the selected ticker to receive Buy, Watch or Avoid, confidence, key reasons, risks, and the evidence behind the result.</p>
+      </article>
+    </div>
+  </section>
+
+  <section>
+    <h2>Why the two are kept apart</h2>
+    <p>Finding a candidate and judging one are different jobs, and merging them is how a shortlist starts reading like a set of recommendations. A scan tells you where discussion is unusual. It does not tell you to buy anything, and it deliberately cannot: the strongest thing a scan row can say is <strong>Bullish</strong>.</p>
+    <p>Only when you ask about a single company does the tool commit to <strong>Buy</strong>, <strong>Watch</strong> or <strong>Avoid</strong> — and it shows the reasoning, the risks, and what evidence the call rests on, so you can disagree with it on specifics rather than on faith.</p>
+  </section>
+
+  <section>
+    <h2>What each label means</h2>
+    <table class="spec">
+      <thead><tr><th>Label</th><th>Where it appears</th><th>Meaning</th></tr></thead>
+      <tbody>
+        <tr><td>Bullish / Bearish / Neutral</td><td>Market Scan</td><td>The direction of measured sentiment for that ticker. A shortlist signal, not a recommendation.</td></tr>
+        <tr><td>Single mention</td><td>Market Scan</td><td>Seen once in the sampled discussion. Too little to score, so no sentiment is asserted.</td></tr>
+        <tr><td>Limited signal</td><td>Market Scan</td><td>Seen twice. Still below the floor for a sentiment reading.</td></tr>
+        <tr><td>Buy</td><td>Deep Analyze</td><td>Supportive signals and catalysts, with risks noted.</td></tr>
+        <tr><td>Watch</td><td>Deep Analyze</td><td>Mixed signals; needs confirmation.</td></tr>
+        <tr><td>Avoid</td><td>Deep Analyze</td><td>Weak or unstable setup, or elevated red flags.</td></tr>
+        <tr><td>Confidence</td><td>Deep Analyze</td><td>How consistent and complete the available evidence is. Not a probability of gain.</td></tr>
+      </tbody>
+    </table>
+    <div class="note">
+      <p>Buy, Watch and Avoid are shorthand for short-term trade triage. They are not guarantees — think of them as a structured second opinion, then confirm with your own checklist.</p>
+    </div>
+  </section>
+
+  <section>
+    <h2>How the signal is formed</h2>
+    <p>Analysis draws on recent public posts from X together with market-price and ticker-reference data. Coverage and availability vary by ticker, source and timeframe — social evidence is a sampled discussion set, not an exhaustive or independently verified one.</p>
+    <p>Recent social corpora and closing-price data may be cached for reliability and rate-limit management, and cached scan context is age-labelled so you can see how fresh the underlying discussion is. Missing values are shown as unavailable rather than estimated.</p>
+    <p><a href="/method/">More on how the measurement works &rarr;</a></p>
+  </section>
+
+  <div class="cta-row">
+    <a class="cta" href="https://thestocksentinel.com/" rel="noopener">Open Stock Sentinel &rarr;</a>
+    <span class="cta-note"><b>$5</b> for 2 credits &middot; never expire &middot; no subscription</span>
+  </div>
+
+  <div class="note warn">
+    <p><strong>Not financial advice.</strong> Stock Sentinel is an informational research tool. Outputs are not financial advice, an offer, or a guarantee of future performance.</p>
+  </div>
+</main>
+
+<footer class="site">
+  <div class="wrap">
+    <div class="cols">
+      <a href="/how-it-works/">How it works</a>
+      <a href="/method/">Method</a>
+      <a href="/pulse/">Sector activity</a>
+      <a href="/pricing/">Pricing</a>
+      <a href="/faq/">FAQ</a>
+      <a href="/terms/">Terms</a>
+      <a href="/privacy/">Privacy</a>
+      <a href="https://thestocksentinel.com/Contact" rel="noopener">Contact</a>
+      <a href="https://thestocksentinel.com/" rel="noopener">Sign in</a>
+    </div>
+    <p class="disclaim">Stock Sentinel measures public discussion about publicly traded companies and presents it alongside market price data. It does not provide financial advice, does not manage money, and does not execute trades.</p>
+  </div>
+</footer>
+
+</body>
+</html>

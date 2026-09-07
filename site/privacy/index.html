@@ -1,0 +1,130 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Privacy — what Stock Sentinel stores and why</title>
+<meta name="description" content="An email address, a credit balance, and a record of what each credit bought. Card details are handled by Stripe and never reach our servers.">
+<link rel="canonical" href="https://about.thestocksentinel.com/privacy/">
+<meta name="robots" content="index, follow">
+<meta property="og:type" content="article">
+<meta property="og:site_name" content="Stock Sentinel">
+<meta property="og:url" content="https://about.thestocksentinel.com/privacy/">
+<meta property="og:title" content="Privacy — what Stock Sentinel stores and why">
+<meta property="og:description" content="An email address, a credit balance, and a record of what each credit was spent on. No advertising trackers.">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="stylesheet" href="/assets/style.css">
+</head>
+<body>
+
+<header class="site">
+  <div class="wrap">
+    <a class="brand" href="/">Stock Sentinel</a>
+    <nav aria-label="Main">
+      <a href="/how-it-works/">How it works</a>
+      <a href="/method/">Method</a>
+      <a href="/pulse/">Sector activity</a>
+      <a href="/pricing/">Pricing</a>
+      <a href="/faq/">FAQ</a>
+    </nav>
+  </div>
+</header>
+
+<main class="wrap">
+  <section class="hero">
+    <div class="eyebrow">Privacy</div>
+    <h1>What we store, and what we never see</h1>
+    <p class="lead">A plain-language description of the data Stock Sentinel holds, written to match what the product actually does rather than what a template assumes.</p>
+  </section>
+
+  <div class="note">
+    <p>This is a plain-language summary, not a legal document drafted by a lawyer. It describes current behaviour accurately. If anything here matters to a decision you are making, <a href="https://thestocksentinel.com/Contact" rel="noopener">ask us</a>.</p>
+  </div>
+
+  <section>
+    <h2>What we collect</h2>
+    <table class="spec">
+      <thead><tr><th>Data</th><th>Why</th></tr></thead>
+      <tbody>
+        <tr><td>Email address</td><td>To create your account, sign you in, and contact you about your account.</td></tr>
+        <tr><td>Password</td><td>Stored only as a cryptographic hash by our authentication provider. We cannot read it.</td></tr>
+        <tr><td>Credit balance</td><td>To know what you have bought and what remains.</td></tr>
+        <tr><td>Purchase records</td><td>Date, amount, currency, status, and the reference identifiers Stripe returns for each payment. Used for support and reconciliation.</td></tr>
+        <tr><td>Usage records</td><td>What each credit was spent on — which action, and when — so a balance can be explained and a failed run refunded.</td></tr>
+        <tr><td>Support messages</td><td>If you contact us: the topic, your email, your message, and your browser's user-agent string.</td></tr>
+        <tr><td>Sign-in token</td><td>If you choose &ldquo;remember me&rdquo;, a token that expires after 30 days.</td></tr>
+      </tbody>
+    </table>
+  </section>
+
+  <section>
+    <h2>What we never see</h2>
+    <p><strong>Card numbers.</strong> Payment details are entered on Stripe&rsquo;s own checkout page. They are not displayed to Stock Sentinel, do not pass through our servers, and are not stored in any of our records. What we keep is a reference identifier and an amount.</p>
+    <p><strong>Anything you do not give us.</strong> We do not buy data about you, and we do not attempt to identify you beyond the account you created.</p>
+  </section>
+
+  <section>
+    <h2>No advertising trackers</h2>
+    <p>Stock Sentinel does not use advertising networks, analytics trackers, or third-party marketing pixels. There is no Google Analytics, no advertising cookie, and nothing that follows you to other sites.</p>
+  </section>
+
+  <section>
+    <h2>Who processes data on our behalf</h2>
+    <p>Running the product requires a small number of service providers. Each sees only what its job requires.</p>
+    <table class="spec">
+      <thead><tr><th>Provider</th><th>Role</th><th>What it handles</th></tr></thead>
+      <tbody>
+        <tr><td>Supabase</td><td>Database and sign-in</td><td>Your account record, credit balance, purchase and usage history, support messages.</td></tr>
+        <tr><td>Stripe</td><td>Payments</td><td>Your card details, entered directly on Stripe&rsquo;s checkout page, and the resulting payment record.</td></tr>
+        <tr><td>Railway</td><td>Application hosting</td><td>Runs the application. Server logs may include request metadata.</td></tr>
+        <tr><td>Cloudflare</td><td>Domain and site delivery</td><td>Routes traffic to the site.</td></tr>
+        <tr><td>Sentry</td><td>Error reporting</td><td>Technical detail about application errors, so faults can be diagnosed.</td></tr>
+      </tbody>
+    </table>
+    <p>Market and social data providers supply information <em>about publicly traded companies</em>. They do not receive information about you, and your searches are not sent to them as identifiable activity.</p>
+  </section>
+
+  <section>
+    <h2>How long we keep it</h2>
+    <ul class="plain">
+      <li><strong>Account data</strong> — for as long as your account exists.</li>
+      <li><strong>&ldquo;Remember me&rdquo; tokens</strong> — 30 days, then they expire and stop working.</li>
+      <li><strong>Purchase records</strong> — retained after account deletion where required for financial record-keeping, since they evidence money that actually moved.</li>
+      <li><strong>Support messages</strong> — kept so a conversation can be continued and a decision explained.</li>
+    </ul>
+  </section>
+
+  <section>
+    <h2>Your choices</h2>
+    <p>You can ask us to show you what we hold about you, correct it, or delete your account. <a href="https://thestocksentinel.com/Contact" rel="noopener">Contact us</a> and we will do it.</p>
+    <p>Please do not put sensitive personal information into ticker inputs or support messages — neither field needs it, and neither is designed to protect it.</p>
+  </section>
+
+  <section>
+    <h2>Changes</h2>
+    <p>If what we collect changes, this page changes with it. It is written to describe the product as it currently works, so it is updated when the product is.</p>
+  </section>
+
+  <div class="cta-row">
+    <span class="cta-note">Questions about any of this? <a href="https://thestocksentinel.com/Contact" rel="noopener">Contact us</a>.</span>
+  </div>
+</main>
+
+<footer class="site">
+  <div class="wrap">
+    <div class="cols">
+      <a href="/how-it-works/">How it works</a>
+      <a href="/method/">Method</a>
+      <a href="/pulse/">Sector activity</a>
+      <a href="/pricing/">Pricing</a>
+      <a href="/faq/">FAQ</a>
+      <a href="/terms/">Terms</a>
+      <a href="/privacy/">Privacy</a>
+      <a href="https://thestocksentinel.com/Contact" rel="noopener">Contact</a>
+    </div>
+    <p class="disclaim">Stock Sentinel measures public discussion about publicly traded companies and presents it alongside market price data. It does not provide financial advice, does not manage money, and does not execute trades.</p>
+  </div>
+</footer>
+
+</body>
+</html>
