@@ -99,9 +99,10 @@ def _publisher(u):
 <p>The application does not upload content to unrelated YouTube channels and does not publish newly generated content without owner approval.</p></section>
 <section class="ed-card"><h2>Current Use</h2>
 <p>AI Ed Shorts Publisher is currently operated as a personal, single-user educational publishing workflow. It is not currently offered as a public publishing service for third parties.</p>
-<a class="ed-button" href="{u['privacy']}">AI Ed Shorts Privacy Policy</a>
-<p class="ed-meta"><a href="{u['contact']}">Contact The Stock Sentinel</a></p>
-<p class="ed-meta"><a href="{u['terms']}">Stock Sentinel Terms</a></p></section></div>
+<nav class="ed-resource-links" aria-label="Publisher resources">
+<a href="{u['privacy']}">AI Ed Shorts Privacy Policy</a>
+<a href="{u['contact']}">Contact The Stock Sentinel</a>
+<a href="{u['terms']}">Stock Sentinel Terms</a></nav></section></div>
 <section class="ed-section"><h2>Topics Covered</h2><ul class="ed-topics">{topic_html}</ul></section>'''
 
 
