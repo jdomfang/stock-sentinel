@@ -250,7 +250,8 @@ def render_footer() -> None:
             line-height: 1.45;
             margin-top: 10px;
           }
-          .st-key-footer_links [data-testid="stPageLink"] a {
+          .st-key-footer_links [data-testid="stPageLink"] a,
+          .st-key-footer_links .ss-footer-education {
             color: rgba(229,231,235,.88) !important;
             text-decoration: none !important;
             font-weight: 650;
@@ -272,19 +273,30 @@ def render_footer() -> None:
         unsafe_allow_html=True,
     )
 
-    # Small, stable support/trust set. The trust center keeps methodology,
-    # sources, privacy, and terms together instead of adding four nav items.
+    # Public resources stay in the shared footer; the application header is unchanged.
     try:
         with st.container(key="footer_links"):
-            c1, c2, c3, c4, _sp = st.columns([.35, .7, .45, .8, 3.3])
-            with c1:
+            from utils.education_public import education_footer_destination
+            faq, how, education, contact, trust, privacy, terms, _sp = st.columns(
+                [.35, .7, .65, .45, .8, .45, .4, 1.8])
+            with faq:
                 st.page_link("pages/FAQ.py", label="FAQ")
-            with c2:
+            with how:
                 st.page_link("pages/How_It_Works.py", label="How it works")
-            with c3:
+            with education:
+                destination = education_footer_destination()
+                if destination == "/education":
+                    st.html('<a class="ss-footer-education" href="/education">Education</a>')
+                else:
+                    st.page_link(destination, label="Education")
+            with contact:
                 st.page_link("pages/Contact.py", label="Contact")
-            with c4:
+            with trust:
                 st.page_link("pages/Trust_Center.py", label="Trust Center")
+            with privacy:
+                st.page_link("https://about.thestocksentinel.com/privacy/", label="Privacy")
+            with terms:
+                st.page_link("https://about.thestocksentinel.com/terms/", label="Terms")
     except Exception:
         # Older Streamlit builds: fail silently
         pass

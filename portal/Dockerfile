@@ -39,6 +39,7 @@ COPY app.py           ./
 COPY utils/           utils/
 COPY pages/           pages/
 COPY assets/          assets/
+COPY portal/run.py portal/education_routes.py portal/
 
 # Only the data the portal actually reads. data/cache and data/corpora are
 # working directories and captured corpora -- large, and rebuilt at runtime.
@@ -65,4 +66,4 @@ EXPOSE 8501
 # Shell form so $PORT expands. Railway assigns a port per deploy and probes
 # THAT port; a hardcoded 8501 starts fine and then fails the healthcheck
 # because nothing is listening where the platform is looking.
-CMD ["sh", "-c", "streamlit run app.py --server.port ${PORT:-8501} --server.address 0.0.0.0 --server.headless true"]
+CMD ["sh", "-c", "python -m portal.run run app.py --server.port ${PORT:-8501} --server.address 0.0.0.0 --server.headless true"]

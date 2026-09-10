@@ -7,6 +7,7 @@ analysis. Browser journey coverage complements them during visual QA.
 import ast
 from pathlib import Path
 import re
+import sys
 
 
 REPO = Path(__file__).resolve().parent.parent
@@ -21,6 +22,12 @@ def test_all_literal_internal_link_targets_exist() -> None:
     source_files.extend((REPO / "pages").glob("*.py"))
     source_files.extend((REPO / "utils").glob("*.py"))
 
+    # Native pages coexist with the exact public HTML routes tested by
+    # test_education_routes.py. Both are real routes, not unresolved fragments.
+    sys.path.insert(0, str(REPO))
+    from utils.education_public import CSS_FILES, PATHS
+    public_targets = set(PATHS.values())
+    native_targets = {"/" + path.stem for path in (REPO / "pages").glob("*.py")}
     found_targets: set[str] = set()
     for path in source_files:
         source = path.read_text(encoding="utf-8")
@@ -59,7 +66,10 @@ def test_all_literal_internal_link_targets_exist() -> None:
                 ), f"{path}: missing page-local fragment target {href}"
                 continue
             if href.startswith("/") and not href.startswith("//"):
-                raise AssertionError(f"{path}: unresolved hardcoded route {href}")
+                if href == "/education-assets/{name}":
+                    assert all((REPO / "assets/styles" / name).is_file() for name in CSS_FILES)
+                else:
+                    assert href in public_targets | native_targets, f"{path}: unresolved hardcoded route {href}"
 
     expected = {
         "pages/Home.py", "pages/How_It_Works.py", "pages/FAQ.py",
