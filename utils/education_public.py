@@ -73,5 +73,8 @@ def render_native_page(page):
     render_sidebar_navigation()
     render_top_nav()
     st.html('<style>' + (ROOT / "assets/styles/education.css").read_text() + '</style>')
-    st.html(page_body(page, PATHS if public_routes_enabled() else NATIVE_PATHS))
+    from utils.education_native import render_native_body
+    destinations = {NATIVE_PATHS[key]: value for key, value in NATIVE_PAGES.items()}
+    destinations.update({"/Home": "pages/Home.py", "/Contact": "pages/Contact.py"})
+    render_native_body(page_body(page, NATIVE_PATHS), destinations)
     close_page()

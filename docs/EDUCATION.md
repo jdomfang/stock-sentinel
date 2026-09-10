@@ -20,7 +20,9 @@ normal reviewed merge and Railway deployment, not merely a develop push.
 `utils/education_content.py` provides the same approved content to both renderers.
 `assets/styles/education.css` scopes the layout to Education and uses the existing
 Stock Sentinel design tokens. Native previews reuse the shared navigation and
-footer. The static header retains the existing anonymous navigation labels;
+footer. Content links use native Streamlit page-link widgets, so Community
+Cloud updates the outer browser address as well as the embedded page. Static
+Railway documents retain ordinary crawlable links. The static header retains the existing anonymous navigation labels;
 Start free returns to Home, where the existing signup button starts registration.
 No auth flow was changed.
 
@@ -75,3 +77,17 @@ CHROMIUM_EXECUTABLE set to the local Chromium binary.
 
 Build with `docker build -f portal/Dockerfile .`. Checks use local test services
 and do not run paid scans, checkout, workers, or production database mutations.
+
+## Community Cloud navigation regression
+
+The original native renderer used raw HTML anchors. Community Cloud embeds the
+app in a sandboxed frame; those anchors changed frame content without updating
+the outer browser URL. Checking only a heading therefore missed broken refresh,
+sharing, and history behavior. Rebooting the app does not repair this code path.
+
+`tests/browser/education-cloud.cjs` checks the real outer URL together with the
+page heading, then exercises refresh, browser history, direct entries,
+breadcrumbs, both publisher privacy links, Contact, and footer navigation. Run
+it with Playwright available in NODE_PATH and CHROMIUM_EXECUTABLE set if needed.
+The default target is the deployed develop site. A passing local content test
+must not be reported as a passing deployed navigation test.

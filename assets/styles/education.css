@@ -37,3 +37,51 @@
 .ed-footer a{min-height:44px;display:inline-flex;align-items:center;font-size:14px;color:var(--ss-color-text)}.ed-footer p{font-size:13px;color:var(--ss-color-text-muted)}
 .ed-skip{position:absolute;left:16px;top:-100px;background:var(--ss-color-panel);padding:12px;z-index:10}.ed-skip:focus{top:12px}
 @media(max-width:700px){.ed-content{padding-top:28px}.ed-content .ed-lead{font-size:19px}.ed-grid,.ed-steps{grid-template-columns:1fr}.ed-card{padding:22px}.ed-header nav{gap:15px}.ed-header nav a{font-size:12px}.ed-footer nav{gap:16px}.ed-crumbs{gap:7px}}
+
+/* Native pages use Streamlit navigation so Community Cloud updates its outer URL.
+   Keyed containers mirror the shared HTML's cards without affecting other pages. */
+.st-key-ed_native_content{padding:40px 0 55px;gap:0!important}
+.st-key-ed_native_content [data-testid="stVerticalBlock"]{gap:0}
+.st-key-ed_native_content .ed-native-fragment{padding:0}
+.st-key-ed_native_content [class*="st-key-ed_native_grid_"]{margin:34px 0}
+.st-key-ed_native_content [class*="st-key-ed_native_card_"],
+.st-key-ed_native_content [class*="st-key-ed_native_feature_"]{border:1px solid var(--ss-color-border);border-radius:var(--ss-radius-panel);padding:28px;background:var(--ss-color-panel);height:100%}
+.st-key-ed_native_content [class*="st-key-ed_native_feature_"]{border-color:var(--ss-color-info-border)}
+.st-key-ed_native_content [class*="st-key-ed_native_card_"] .ed-eyebrow+h2,
+.st-key-ed_native_content [class*="st-key-ed_native_feature_"] .ed-eyebrow+h2{margin-top:16px}
+.st-key-ed_native_content [class*="st-key-ed_native_subcard_"]{border-top:1px solid var(--ss-color-border);padding-top:20px;margin-top:24px}
+.st-key-ed_native_content [class*="st-key-ed_native_reading_"]{max-width:780px}
+.st-key-ed_native_content [class*="st-key-ed_native_section_"]{margin-top:34px}
+.st-key-ed_native_content [class*="st-key-ed_native_resources_"]{margin-top:14px;gap:4px}
+.st-key-ed_native_content [class*="st-key-ed_native_quiet_"]{border-top:1px solid var(--ss-color-border);margin-top:35px;padding-top:22px}
+.st-key-ed_native_content [data-testid="stPageLink-NavLink"]{width:fit-content;min-height:44px;padding:0;color:var(--ss-color-action);border-radius:4px;background:transparent}
+.st-key-ed_native_content [data-testid="stPageLink-NavLink"] p{color:inherit;font-size:16px;font-weight:400}
+.st-key-ed_native_content [data-testid="stPageLink-NavLink"]:hover{background:transparent;text-decoration:underline}
+.st-key-ed_native_content [data-testid="stPageLink-NavLink"]:focus-visible{outline:2px solid var(--ss-color-focus);outline-offset:4px}
+.st-key-ed_native_content [class*="st-key-ed_native_primary_"]{margin-top:14px}
+.st-key-ed_native_content [class*="st-key-ed_native_primary_"] [data-testid="stPageLink-NavLink"]{padding:10px 18px;border:1px solid var(--ss-color-info-border);border-radius:var(--ss-radius-control);color:var(--ss-color-action-ink);background:linear-gradient(var(--ss-color-action),var(--ss-color-action-rest-end))}
+.st-key-ed_native_content [class*="st-key-ed_native_primary_"] [data-testid="stPageLink-NavLink"] p{font-size:14px;font-weight:650}
+.st-key-ed_native_content [class*="st-key-ed_native_resources_"] [data-testid="stPageLink-NavLink"] p,
+.st-key-ed_native_content [class*="st-key-ed_native_resources_"] .ed-native-fragment{font-size:14px}
+.st-key-ed_native_content [class*="st-key-ed_native_crumbs_"]{margin-bottom:25px}
+.st-key-ed_native_content [class*="st-key-ed_native_crumbs_"] [data-testid="stHorizontalBlock"]{gap:10px;flex-wrap:wrap;align-items:center}
+.st-key-ed_native_content [class*="st-key-ed_native_crumbs_"] [data-testid="stColumn"]{width:auto!important;flex:0 0 auto!important;min-width:0!important}
+.st-key-ed_native_content [class*="st-key-ed_native_crumbs_"] .ed-native-fragment{font-size:13px;color:var(--ss-color-text-muted);min-height:44px;display:flex;align-items:center}
+.st-key-ed_native_content [class*="st-key-ed_native_crumbs_"] [data-testid="stPageLink-NavLink"] p{font-size:13px}
+@media(max-width:700px){.st-key-ed_native_content{padding-top:28px}.st-key-ed_native_content [class*="st-key-ed_native_card_"],.st-key-ed_native_content [class*="st-key-ed_native_feature_"]{padding:22px}.st-key-ed_native_content [class*="st-key-ed_native_grid_"]>[data-testid="stHorizontalBlock"]{flex-wrap:wrap}.st-key-ed_native_content [class*="st-key-ed_native_grid_"]>[data-testid="stHorizontalBlock"]>[data-testid="stColumn"]{width:100%!important;flex:1 1 100%!important}}
+/* Streamlit computes element widths before native card padding is applied. */
+.st-key-ed_native_content [data-testid="stElementContainer"],
+.st-key-ed_native_content [data-testid="stPageLink"]{width:100%!important;max-width:100%}
+.st-key-ed_native_content [data-testid="stPageLink-NavLink"] p{color:var(--ss-color-action)!important}
+.st-key-ed_native_content [class*="st-key-ed_native_primary_"] [data-testid="stPageLink-NavLink"] p{color:var(--ss-color-action-ink)!important}
+.st-key-ed_native_content [data-testid="stHtml"]{width:100%!important;max-width:100%}
+.st-key-ed_native_content [class*="st-key-ed_native_crumbs_"] [data-testid="stVerticalBlock"],
+.st-key-ed_native_content [class*="st-key-ed_native_crumbs_"] [data-testid="stElementContainer"],
+.st-key-ed_native_content [class*="st-key-ed_native_crumbs_"] [data-testid="stHtml"],
+.st-key-ed_native_content [class*="st-key-ed_native_crumbs_"] [data-testid="stPageLink"]{width:auto!important}
+.st-key-ed_native_content [class*="st-key-ed_native_grid_"]>[data-testid="stHorizontalBlock"]>[data-testid="stColumn"]>[data-testid="stVerticalBlockBorderWrapper"],
+.st-key-ed_native_content [class*="st-key-ed_native_grid_"]>[data-testid="stHorizontalBlock"]>[data-testid="stColumn"]>[data-testid="stVerticalBlockBorderWrapper"]>div{height:100%}
+.st-key-ed_native_content [class*="st-key-ed_native_grid_"]>[data-testid="stHorizontalBlock"]{align-items:stretch}
+.st-key-ed_native_content [class*="st-key-ed_native_grid_"]>[data-testid="stHorizontalBlock"]>[data-testid="stColumn"]>[data-testid="stVerticalBlockBorderWrapper"]>div>[data-testid="stVerticalBlock"],
+.st-key-ed_native_content [class*="st-key-ed_native_grid_"]>[data-testid="stHorizontalBlock"]>[data-testid="stColumn"]>[data-testid="stVerticalBlockBorderWrapper"]>div>[data-testid="stVerticalBlock"]>[data-testid="stVerticalBlockBorderWrapper"],
+.st-key-ed_native_content [class*="st-key-ed_native_grid_"]>[data-testid="stHorizontalBlock"]>[data-testid="stColumn"]>[data-testid="stVerticalBlockBorderWrapper"]>div>[data-testid="stVerticalBlock"]>[data-testid="stVerticalBlockBorderWrapper"]>div{height:100%}

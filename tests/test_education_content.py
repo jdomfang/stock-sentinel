@@ -13,10 +13,18 @@ from utils.education_public import NATIVE_PATHS, NATIVE_PAGES, render_document
 
 class Document(HTMLParser):
     def __init__(self, source):
-        super().__init__(); self.h1 = 0; self.hrefs = []; self.feed(source)
+        super().__init__(); self.h1 = 0; self.hrefs = []; self.anchors = []; self._anchor = None; self.text = []; self.feed(source)
     def handle_starttag(self, tag, attrs):
         if tag == 'h1': self.h1 += 1
-        if tag == 'a': self.hrefs.append(dict(attrs).get('href'))
+        if tag == 'a':
+            self.hrefs.append(dict(attrs).get('href'))
+            self._anchor = [dict(attrs).get('href'), '']
+    def handle_data(self, data):
+        self.text.append(data)
+        if self._anchor is not None: self._anchor[1] += data
+    def handle_endtag(self, tag):
+        if tag == 'a' and self._anchor is not None:
+            self.anchors.append(tuple(self._anchor)); self._anchor = None
 
 
 class EducationTests(unittest.TestCase):
@@ -62,7 +70,29 @@ class EducationTests(unittest.TestCase):
                 self.assertTrue(any(label=='Privacy' for _,label in links))
                 self.assertTrue(any(label=='Terms' for _,label in links))
                 html=''.join(node.proto.body for node in app.get('html'))
-                self.assertIn(page_body(key,NATIVE_PATHS),html)
+                # Content rendering alone missed the Cloud iframe regression. Every
+                # internal content link must now be a native page_link widget.
+                expected = Document(page_body(key,NATIVE_PATHS))
+                for href,label in expected.anchors:
+                    destination = ('pages/' + href.lstrip('/') + '.py'
+                                   if href.startswith('/') else href)
+                    label = label.replace('←', '').strip()
+                    self.assertIn((destination,label),links)
+                self.assertFalse(Document(html).hrefs,
+                                 'Content links must use native navigation, including external links')
+                self.assertEqual(Document(html).h1,1)
+                # Shared prose remains rendered even though links are widgets.
+                rendered = ' '.join(Document(html).text)
+                for phrase in ('AI Ed Shorts',):
+                    self.assertIn(phrase,rendered)
+
+    def test_unmapped_native_link_fails_before_rendering(self):
+        from utils.education_native import render_native_body
+        import streamlit as st
+        with patch.object(st, 'html') as paint:
+            with self.assertRaisesRegex(ValueError, 'no native destination'):
+                render_native_body('<p>Intro</p><a href="/Education/ai-ed-shorts">Open</a>', {})
+            paint.assert_not_called()
 
     def test_generated_and_existing_static_footers_keep_education(self):
         root=Path(__file__).resolve().parents[1]
