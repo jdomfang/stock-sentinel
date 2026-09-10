@@ -40,6 +40,7 @@ class FakeUI:
         return self.clicked is not None and kwargs.get("key") == self.clicked
     def switch_page(self, path): self.destination = path
     def page_link(self, *args, **kwargs): pass
+    def empty(self): return self
     def selectbox(self, label, *, options, key): return self.session_state.get(key, options[0])
 
 
@@ -210,6 +211,105 @@ class PulseTests(unittest.TestCase):
         namespace["_switch_to_next_page"]()
         self.assertEqual(self.st.destination, "pages/Deep_Analysis.py")
 
+
+
+class ScanFeedbackIntegrationTests(unittest.TestCase):
+    """Real Streamlit button callbacks and emitted UI, with no paid services."""
+
+    def exercise(self, mode="success", *, missing=False, abort=False):
+        from streamlit.testing.v1 import AppTest
+        from streamlit.runtime.scriptrunner_utils.script_run_context import ScriptRunContext
+        from streamlit.runtime.scriptrunner import StopException
+        from sector_pulse_feedback_harness import offline_discovery
+        case = dict(mode=mode, missing=missing)
+        messages = []
+        boundaries = []
+        original = ScriptRunContext.enqueue
+
+        def capture(ctx, msg):
+            messages.append(type(msg).FromString(msg.SerializeToString()))
+            original(ctx, msg)
+
+        def observe(phase):
+            # These are actual messages already sent by Streamlit, not FakeUI kwargs.
+            surfaces = [m for m in messages if m.HasField("delta") and
+                        "discovery_scan_progress" in str(m.delta.add_block)]
+            self.assertTrue(surfaces, "No processing surface before " + phase)
+            path = tuple(surfaces[-1].metadata.delta_path)
+            status = [m for m in messages if m.HasField("delta") and
+                      "Scanning recent discussion for" in m.delta.new_element.markdown.body
+                      and tuple(m.metadata.delta_path)[:len(path)] == path]
+            self.assertTrue(status, "No existing processing state before " + phase)
+            status_path = tuple(status[-1].metadata.delta_path)
+            latest_status = next(m for m in reversed(messages)
+                                 if tuple(m.metadata.delta_path) == status_path)
+            self.assertIn("Scanning recent discussion", latest_status.delta.new_element.markdown.body,
+                          "Processing status cleared before " + phase)
+            boundaries.append(phase)
+            if abort and phase == "debit":
+                # Stop at the next UI yield on the script thread, as fastReruns does.
+                case["abort_ready"] = True
+
+        def capture_with_abort(ctx, msg):
+            if case.pop("abort_ready", False):
+                raise StopException()
+            capture(ctx,msg)
+
+        page = Path(__file__).resolve().parents[1] / "pages" / "Discovery.py"
+        with offline_discovery(case, observe), patch.object(ScriptRunContext,"enqueue",capture_with_abort):
+            app = AppTest.from_file(str(page), default_timeout=15)
+            app.session_state[auth.USER_KEY] = dict(id="offline-user")
+            app.session_state[auth.PRODUCT_STATE_OWNER_KEY] = "offline-user"
+            app.run()
+            self.assertFalse(list(app.exception))
+            messages.clear()
+            if missing:
+                next(b for b in app.button if b.label == "Run scan · 1 credit").click().run()
+            else:
+                app.button(key="pulse_discovery_utilities_scan").click().run()
+            self.assertFalse(list(app.exception), str(list(app.exception)))
+            # Cleanup overwrites the reserved slot. A stale busy card must not survive.
+            self.assertFalse(any("discovery_scan_progress" in getattr(n.proto,"id","")
+                                 for n in app if hasattr(n,"proto")))
+            if mode == "success" and not abort:
+                before_rerun = len(messages)
+                app.run()
+                self.assertFalse(list(app.exception))
+                rerun_html = [m.delta.new_element.iframe.srcdoc for m in messages[before_rerun:]]
+                self.assertFalse(any('"phase": "complete"' in value for value in rerun_html),
+                                 "Ordinary rerun must not repeat the results handoff")
+                del messages[before_rerun:]
+        return case["events"], boundaries, messages
+
+    def test_real_pulse_click_paints_before_debit_and_remote_then_cleans_up(self):
+        events, boundaries, messages = self.exercise()
+        self.assertEqual(events, [("debit","utilities"),("remote","utilities"),("complete","completed")])
+        self.assertEqual(boundaries, ["debit","remote","complete"])
+        surface = next(m for m in messages if "discovery_scan_progress" in str(m.delta.add_block))
+        pulse = next(m for m in messages if "ss_pulse_discovery" in str(m.delta.add_block))
+        self.assertLess(tuple(surface.metadata.delta_path),tuple(pulse.metadata.delta_path))
+
+    def test_surface_clears_for_refusal_unavailable_empty_failure_and_abort(self):
+        for mode in ("refused","unconfigured","empty","failure","exception","refund_failure"):
+            with self.subTest(mode=mode):
+                events, _, _ = self.exercise(mode)
+                if mode == "unconfigured": self.assertEqual(events, [])
+                elif mode == "refused": self.assertEqual(events, [("debit","utilities")])
+                elif mode == "empty": self.assertIn(("complete","completed"),events)
+                else:
+                    self.assertIn(("refund",),events)
+                    if mode == "refund_failure":
+                        self.assertFalse(any(e[0] == "complete" for e in events))
+                    else:
+                        self.assertIn(("complete","failed"),events)
+        events, _, _ = self.exercise(abort=True)
+        self.assertIn(("refund",),events)
+        self.assertIn(("complete","failed"),events)
+
+    def test_fallback_toolbar_uses_the_same_pre_debit_feedback(self):
+        events, boundaries, _ = self.exercise(missing=True)
+        self.assertEqual(events[0], ("debit","tech"))
+        self.assertEqual(boundaries[:2], ["debit","remote"])
 
 
 if __name__ == "__main__":

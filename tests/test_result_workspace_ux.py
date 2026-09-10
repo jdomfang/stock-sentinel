@@ -3,6 +3,7 @@
 
 from __future__ import annotations
 
+import ast
 from pathlib import Path
 
 
@@ -254,13 +255,14 @@ def test_scan_analysis_has_one_stable_processing_and_paint_cycle() -> None:
         "# No Streamlit calls occur", 1
     )[1]
 
-    result_render = discovery.index(
-        "render_delivered_analysis_result(\n                        card="
-    )
-    first_header = discovery.index(
-        "def _render_scan_header", result_render
-    )
+    tree = ast.parse(discovery)
+    result_render = next(node.lineno for node in ast.walk(tree)
+                         if isinstance(node, ast.Call) and isinstance(node.func, ast.Name)
+                         and node.func.id == "render_delivered_analysis_result")
+    first_header = next(node.lineno for node in ast.walk(tree)
+                        if isinstance(node, ast.FunctionDef) and node.name == "_render_scan_header")
     assert result_render < first_header
+
 
 
 def test_market_scan_sector_cannot_be_overwritten_by_independent_analysis() -> None:

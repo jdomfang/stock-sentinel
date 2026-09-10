@@ -6,8 +6,11 @@ import sys
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 import html
+import json
+import streamlit.components.v1 as components
 import pandas as pd
 import logging
+from contextlib import contextmanager
 
 from utils.navigation import render_sidebar_navigation, render_top_nav
 from utils.ui import (
@@ -298,7 +301,8 @@ st.markdown(
        was mounted inside that same cell and effectively disappeared. Keep the
        work state in a stable, centered surface that cannot be mistaken for a
        frozen page. */
-    .st-key-discovery_analysis_progress {
+    .st-key-discovery_analysis_progress,
+    .st-key-discovery_scan_progress {
       position:fixed!important;z-index:999990!important;
       left:50%!important;top:50%!important;transform:translate(-50%,-50%)!important;
       width:min(520px,calc(100vw - 2rem))!important;
@@ -309,10 +313,10 @@ st.markdown(
       box-shadow:0 28px 80px rgba(0,0,0,.64),0 0 0 9999px rgba(2,6,23,.48)!important;
       opacity:1!important;
     }
-    .st-key-discovery_analysis_progress [data-testid="stVerticalBlock"] {
+    :is(.st-key-discovery_analysis_progress,.st-key-discovery_scan_progress) [data-testid="stVerticalBlock"] {
       gap:.7rem!important;
     }
-    .st-key-discovery_analysis_progress p {
+    :is(.st-key-discovery_analysis_progress,.st-key-discovery_scan_progress) p {
       color:rgba(226,232,240,.96)!important;
     }
 
@@ -372,6 +376,29 @@ st.markdown(
 st.markdown('<div class="clawd-app-wrapper discovery-wrapper">', unsafe_allow_html=True)
 
 
+class _ScanFeedbackStop(BaseException):
+    """Defer Streamlit stop until scan presentation cleanup has been emitted."""
+
+
+_scan_feedback_active = False
+_scan_feedback_pending = False
+_scan_feedback_run = None
+
+
+def _scan_handoff(phase, target="ss-scan-outcome"):
+    payload = json.dumps(dict(phase=phase, run=_scan_feedback_run, target=target))
+    script = (Path(__file__).resolve().parents[1] / "assets/scripts/scan-handoff.js").read_text()
+    components.html(f"<script>window.scanHandoff={payload};{script}</script>", height=0)
+
+
+def _finish_scan_feedback(target="ss-scan-outcome"):
+    global _scan_feedback_pending
+    if _scan_feedback_pending:
+        _scan_feedback_pending = False
+        _scan_feedback_slot.empty()
+        _scan_handoff("complete", target)
+
+
 def _bail() -> None:
     """Stop the script WITHOUT leaving the page half-drawn.
 
@@ -385,6 +412,9 @@ def _bail() -> None:
     The two pages charge from the same ledger and must not differ in how they
     fail; this file already says so about refunds.
     """
+    if _scan_feedback_active:
+        raise _ScanFeedbackStop()
+    _finish_scan_feedback()
     close_page()
     st.stop()
 
@@ -401,6 +431,42 @@ if "df_unvalidated" not in st.session_state:
     st.session_state.df_unvalidated = None
 if "scan_corpus_age_s" not in st.session_state:
     st.session_state.scan_corpus_age_s = 0.0
+
+
+@contextmanager
+def _scan_progress_surface(slot, sector_name):
+    """Presentation lifetime encloses work; ledger cleanup always runs first."""
+    global _scan_feedback_active, _scan_feedback_pending, _scan_feedback_run
+    _scan_feedback_active = True
+    _scan_feedback_run = new_request_id()
+    stopped = False
+    ready = False
+    try:
+        with slot.container():
+            with st.container(key="discovery_scan_progress"):
+                st.markdown("### Market Scan")
+                progress = st.progress(0)
+                status = st.empty()
+                status.markdown(
+                    processing_state_html(
+                        f"Scanning recent discussion for {sector_name} momentum…"
+                    ),
+                    unsafe_allow_html=True,
+                )
+        _scan_handoff("start")
+        yield progress, status
+        ready = True
+    except _ScanFeedbackStop:
+        stopped = True
+        ready = True
+    finally:
+        # Outside the charged-work finally: UI calls must never interrupt it.
+        _scan_feedback_active = False
+        _scan_feedback_pending = ready
+        if not ready:
+            slot.empty()
+    if stopped:
+        _bail()
 
 
 def _queue_discovery_analysis(ticker: str, sector_name: str) -> None:
@@ -667,6 +733,9 @@ with st.container(key="discovery_pulse_command"):
         st.html('<header class="ss-task-command-intro"><h1>Market Scan</h1><p>Find unusual social attention by sector.</p></header>')
     with meter_col:
         billing.render_credit_meter(profile=_profile, key="discovery")
+# Reserve the surface before Pulse; fixed positioning also covers lower-row clicks.
+_scan_feedback_slot = st.empty()
+st.html('<div id="sector-pulse" tabindex="-1" aria-label="Sector Pulse"></div>')
 _pulse = load_sector_pulse()
 render_sector_pulse(_pulse, surface="discovery", on_scan=queue_pulse_scan, credits=_credits,
                     selected=st.session_state.get("discovery_sector", ""))
@@ -714,810 +783,816 @@ if st.session_state.df_valid is None and not scan_triggered:
 # callers rather than the owner.
 
 
+st.html('<div id="ss-scan-outcome" tabindex="-1" aria-label="Scan outcome"></div>')
+
 if scan_triggered:
-    # Must be logged in to scan.
-    if not st.session_state.get("auth.user"):
-        st.error("Please log in to scan.")
-        _bail()
+    with _scan_progress_surface(_scan_feedback_slot, sector) as (progress_bar, status_text):
+        # Must be logged in to scan.
+        if not st.session_state.get("auth.user"):
+            st.error("Please log in to scan.")
+            _bail()
 
-    # Open a request scope BEFORE the charge, so the debit, every downstream X
-    # and Supabase call, and any refund all log under one id -- and so the
-    # usage_events row carries it too. This is the correlation key that did not
-    # exist when a scan died mid-run and had to be reconstructed by timestamp.
-    _rid = new_request_id()
-    logger.info("scan requested sector=%s", sector)
+        # Open a request scope BEFORE the charge, so the debit, every downstream X
+        # and Supabase call, and any refund all log under one id -- and so the
+        # usage_events row carries it too. This is the correlation key that did not
+        # exist when a scan died mid-run and had to be reconstructed by timestamp.
+        _rid = new_request_id()
+        logger.info("scan requested sector=%s", sector)
 
-    # NOTHING TO CALL, SO NOTHING TO CHARGE. Mandatory now that the local
-    # path is gone: without it a misconfigured CORE_API_URL would take a
-    # credit and refund it, once per click, each refund another chance for the
-    # RPC to fail and lose it for real. configured() asks the same question
-    # _base() asks, so a bare host or an http:// URL is refused here.
-    if not _client.configured():
-        logger.error("scan unavailable: core-api not configured")
-        render_system_state(
-            kind="error",
-            title="Market Scan is temporarily unavailable",
-            message="The analysis service is not available right now.",
-            meta="No credit has been used.",
-        )
-        _bail()
-
-    _credit = consume_credit("scan", {"sector": sector, "page": "discovery"})
-    if not _credit.ok:
-        logger.info("scan refused reason=%s", _credit.reason)
-        billing.render_credit_refusal(
-            _credit, "A sector scan costs 1 credit.", key="scan")
-        _bail()
-
-    # Set when X refuses to serve us. Drives the refund below: the user paid for
-    # a scan, so if the upstream never delivered any posts they must not be
-    # charged for it. Observed in production as a 402 credits-depleted.
-
-    # Set to True the moment this scan has produced an answer the user can see.
-    # The `finally` below refunds whenever it is still False.
-    #
-    # This exists because every refund on this page used to live in an
-    # `except Exception`, and Streamlit's abort path does NOT raise Exception:
-    # StopException and RerunException both derive from BaseException. With
-    # runner.fastReruns on (the default), ANY new interaction stops the running
-    # script at its next yield point -- and st.progress()/st.markdown() inside
-    # the pagination loop are yield points. So the single most likely way a scan
-    # dies is a user clicking again because nothing looks like it is happening:
-    # the first run was killed with no refund, and the second run charged again.
-    # Two credits, one scan. `finally` runs on BaseException; `except` does not.
-    _delivered = False
-
-    try:
-        progress_bar = st.progress(0)
-        status_text = st.empty()
-        status_text.markdown(
-            processing_state_html(
-                f"Scanning recent discussion for {sector} momentum…"
-            ),
-            unsafe_allow_html=True,
-        )
-        progress_bar.progress(8)
-
-        # ONE PATH. The in-process branch that sat here was scaffolding for
-        # the cutover and is gone: verified warm (posts_billed 0 from cache),
-        # cold (260 posts over 11 pages, corpus written back) and failing
-        # (kind=ticker_db, right panel, credit refunded, nothing spent).
-        #
-        # A fallback was never an option here even while it existed. core-api
-        # refuses a concurrent scan of one sector with 429 sector-busy
-        # precisely BECAUSE another request is buying that corpus right now;
-        # substituting a local scan defeats the duplicate-suppression the
-        # service exists for and buys the same 300 posts again.
-        import threading
-
-        _holder: dict = {}
-        _done = threading.Event()
-
-        def _run_scan():
-            # A new thread starts with a FRESH context, so the ContextVar
-            # holding the request id reverts to its default. Without this
-            # every log line the scan produces would be stamped "-".
-            _set_request_id(_rid)
-            try:
-                _r = _client.scan_remote(
-                    sector, event_id=getattr(_credit, "event_id", None))
-                _holder["remote"] = _r
-                if _r.ok:
-                    # PROCESSED, not billed, and the label says so. The two
-                    # differ by however many posts came back from more than
-                    # one basket -- 246 processed against 260 billed on the
-                    # first cold scan -- and reading one as the other is how
-                    # a free replay looks like a purchase.
-                    logger.info(
-                        "scan served by CORE-API in %.1fs sector=%s rows=%d "
-                        "posts_processed=%d from_cache=%s",
-                        _r.elapsed_s or -1, sector, len(_r.rows),
-                        _r.posts_seen, _r.from_cache)
-                else:
-                    logger.error("core-api scan failed (%s): %s",
-                                 _r.kind, _r.error)
-            except BaseException as _e:      # noqa: BLE001
-                # Anything escaping here would die silently in the thread and
-                # leave the script waiting on a flag that never sets.
-                logger.exception("scan failed sector=%s", sector)
-                _holder["error"] = str(_e)
-            finally:
-                _done.set()
-
-        threading.Thread(target=_run_scan, daemon=True).start()
-
-        # DELIBERATELY these steps, then silence. Streamlit notices an abort
-        # only at an st.* call, so ticking for the whole scan would make the
-        # entire run abortable -- and an abort after the service has
-        # paginated is up to 300 posts bought that nobody sees.
-        _steps = [
-            (20, "Scanning recent discussion for %s momentum…" % sector),
-            (40, "Filtering noise and validating tickers…"),
-            (60, "Building your shortlist…"),
-            (80, "Reading the mood on your shortlist…"),
-            (92, "Ranking unusual attention…"),
-        ]
-        _i = 0
-        while not _done.wait(timeout=1.5):
-            if _i < len(_steps):
-                _pct, _msg = _steps[_i]
-                progress_bar.progress(_pct)
-                status_text.markdown(
-                    processing_state_html(_msg),
-                    unsafe_allow_html=True)
-                _i += 1
-
-        progress_bar.progress(100)
-        status_text.empty()
-        progress_bar.empty()
-
-        if "error" in _holder:
-            _refunded = refund_credit("scan", _credit.event_id,
-                                      f"scan failed: {str(_holder['error'])[:120]}")
+        # NOTHING TO CALL, SO NOTHING TO CHARGE. Mandatory now that the local
+        # path is gone: without it a misconfigured CORE_API_URL would take a
+        # credit and refund it, once per click, each refund another chance for the
+        # RPC to fail and lose it for real. configured() asks the same question
+        # _base() asks, so a bare host or an http:// URL is refused here.
+        if not _client.configured():
+            logger.error("scan unavailable: core-api not configured")
             render_system_state(
                 kind="error",
-                title="The scan could not be completed",
-                message=(
+                title="Market Scan is temporarily unavailable",
+                message="The analysis service is not available right now.",
+                meta="No credit has been used.",
+            )
+            _bail()
+
+        _credit = consume_credit("scan", {"sector": sector, "page": "discovery"})
+        if not _credit.ok:
+            logger.info("scan refused reason=%s", _credit.reason)
+            billing.render_credit_refusal(
+                _credit, "A sector scan costs 1 credit.", key="scan")
+            _bail()
+
+        # Set when X refuses to serve us. Drives the refund below: the user paid for
+        # a scan, so if the upstream never delivered any posts they must not be
+        # charged for it. Observed in production as a 402 credits-depleted.
+
+        # Set to True the moment this scan has produced an answer the user can see.
+        # The `finally` below refunds whenever it is still False.
+        #
+        # This exists because every refund on this page used to live in an
+        # `except Exception`, and Streamlit's abort path does NOT raise Exception:
+        # StopException and RerunException both derive from BaseException. With
+        # runner.fastReruns on (the default), ANY new interaction stops the running
+        # script at its next yield point -- and st.progress()/st.markdown() inside
+        # the pagination loop are yield points. So the single most likely way a scan
+        # dies is a user clicking again because nothing looks like it is happening:
+        # the first run was killed with no refund, and the second run charged again.
+        # Two credits, one scan. `finally` runs on BaseException; `except` does not.
+        _delivered = False
+
+        try:
+            progress_bar.progress(8)
+
+            # ONE PATH. The in-process branch that sat here was scaffolding for
+            # the cutover and is gone: verified warm (posts_billed 0 from cache),
+            # cold (260 posts over 11 pages, corpus written back) and failing
+            # (kind=ticker_db, right panel, credit refunded, nothing spent).
+            #
+            # A fallback was never an option here even while it existed. core-api
+            # refuses a concurrent scan of one sector with 429 sector-busy
+            # precisely BECAUSE another request is buying that corpus right now;
+            # substituting a local scan defeats the duplicate-suppression the
+            # service exists for and buys the same 300 posts again.
+            import threading
+
+            _holder: dict = {}
+            _done = threading.Event()
+
+            def _run_scan():
+                # A new thread starts with a FRESH context, so the ContextVar
+                # holding the request id reverts to its default. Without this
+                # every log line the scan produces would be stamped "-".
+                _set_request_id(_rid)
+                try:
+                    _r = _client.scan_remote(
+                        sector, event_id=getattr(_credit, "event_id", None))
+                    _holder["remote"] = _r
+                    if _r.ok:
+                        # PROCESSED, not billed, and the label says so. The two
+                        # differ by however many posts came back from more than
+                        # one basket -- 246 processed against 260 billed on the
+                        # first cold scan -- and reading one as the other is how
+                        # a free replay looks like a purchase.
+                        logger.info(
+                            "scan served by CORE-API in %.1fs sector=%s rows=%d "
+                            "posts_processed=%d from_cache=%s",
+                            _r.elapsed_s or -1, sector, len(_r.rows),
+                            _r.posts_seen, _r.from_cache)
+                    else:
+                        logger.error("core-api scan failed (%s): %s",
+                                     _r.kind, _r.error)
+                except BaseException as _e:      # noqa: BLE001
+                    # Anything escaping here would die silently in the thread and
+                    # leave the script waiting on a flag that never sets.
+                    logger.exception("scan failed sector=%s", sector)
+                    _holder["error"] = str(_e)
+                finally:
+                    _done.set()
+
+            threading.Thread(target=_run_scan, daemon=True).start()
+
+            # DELIBERATELY these steps, then silence. Streamlit notices an abort
+            # only at an st.* call, so ticking for the whole scan would make the
+            # entire run abortable -- and an abort after the service has
+            # paginated is up to 300 posts bought that nobody sees.
+            _steps = [
+                (20, "Scanning recent discussion for %s momentum…" % sector),
+                (40, "Filtering noise and validating tickers…"),
+                (60, "Building your shortlist…"),
+                (80, "Reading the mood on your shortlist…"),
+                (92, "Ranking unusual attention…"),
+            ]
+            _i = 0
+            while not _done.wait(timeout=1.5):
+                if _i < len(_steps):
+                    _pct, _msg = _steps[_i]
+                    progress_bar.progress(_pct)
+                    status_text.markdown(
+                        processing_state_html(_msg),
+                        unsafe_allow_html=True)
+                    _i += 1
+
+            # Keep the processing surface through validation, delivery, and ledger cleanup.
+
+            if "error" in _holder:
+                _refunded = refund_credit("scan", _credit.event_id,
+                                          f"scan failed: {str(_holder['error'])[:120]}")
+                render_system_state(
+                    kind="error",
+                    title="The scan could not be completed",
+                    message=(
+                        "Your credit was not used."
+                        if _refunded else
+                        "If your credit was not returned, it will be released "
+                        "automatically within 15 minutes."
+                    ),
+                    # The worker escaped without a service response, so spend
+                    # status is unknown even if the credit refund succeeded.
+                    meta="",
+                )
+                _bail()
+
+            # ONE SHAPE, because there is one path. The local Scan and the
+            # RemoteScan had to be reconciled here while both existed.
+            _r = _holder["remote"]
+            _rows, _ok, _err, _kind = _r.rows, _r.ok, _r.error, _r.kind
+            _x_err, _age, _posts = _r.x_error, _r.corpus_age_s, _r.posts_seen
+            _retryable = bool(_r.retryable)
+            _no_query = (_r.kind == "no_query")
+
+            if _no_query:
+                # NO FALLBACK, DELIBERATELY -- see utils/scan.py. The credit is
+                # returned here; the finally below would also refund, but naming
+                # the reason makes the ledger row diagnosable instead of "aborted
+                # or errored".
+                #
+                # Only promise a refund that actually happened. refund_credit
+                # returns False without raising when its RPC fails, and telling a
+                # user in writing that they were not charged when they were is
+                # worse than the original failure.
+                _refunded = refund_credit(
+                    "scan", _credit.event_id, f"query build failed: {(_err or '')[:120]}")
+                _credit_line = ("Your credit was not used."
+                                if _refunded
+                                else "If your credit was not returned, it will be released "
+                                     "automatically within 15 minutes.")
+                render_system_state(
+                    kind="warning",
+                    title="Could not build this sector scan",
+                    message=_credit_line,
+                    meta=("This is usually temporary—try again shortly."
+                          if _refunded else ""),
+                )
+                _bail()
+
+            if _err:
+                # ONE PANEL PER FAILURE KIND, as before. These used to be reached
+                # by `except KeyError` and `except requests.exceptions.
+                # RequestException`; both went unreachable when the pipeline moved
+                # behind a function that returns instead of raising, so every
+                # failure collapsed into the generic panel and a missing API key
+                # started reporting itself as an X outage. scan.error_kind carries
+                # the distinction across that boundary.
+                logger.error("scan failed for %s (%s): %s", sector, _kind, _err)
+                _REASONS = {"credentials": "missing API credentials",
+                            "network": "network failure reaching X",
+                            # The portal could not reach CORE-API. Labelling that
+                            # as an X failure sends every audit of refund reasons
+                            # looking at the wrong provider.
+                            "transport": "core-api unreachable",
+                            "ticker_db": "ticker database unavailable"}
+                _refunded = refund_credit(
+                    "scan", _credit.event_id,
+                    _REASONS.get(_kind, f"scan error: {(_err or '')[:120]}"),
+                )
+                if _kind == "credentials":
+                    _title, _body = (
+                        "Configuration error",
+                        "Missing API credentials. Contact support if this keeps happening.")
+                elif _kind in ("network", "transport"):
+                    _title, _body = (
+                        "Connection issue",
+                        "Couldn't reach the data source.")
+                elif _kind == "ticker_db":
+                    _title, _body = (
+                        "Could not load ticker database",
+                        "Please check the data directory.")
+                else:
+                    _title, _body = (
+                        "Something went wrong",
+                        "The scan hit an unexpected error.")
+                _credit_line = (
                     "Your credit was not used."
                     if _refunded else
                     "If your credit was not returned, it will be released "
                     "automatically within 15 minutes."
-                ),
-                # The worker escaped without a service response, so spend
-                # status is unknown even if the credit refund succeeded.
-                meta="",
-            )
-            _bail()
-
-        # ONE SHAPE, because there is one path. The local Scan and the
-        # RemoteScan had to be reconciled here while both existed.
-        _r = _holder["remote"]
-        _rows, _ok, _err, _kind = _r.rows, _r.ok, _r.error, _r.kind
-        _x_err, _age, _posts = _r.x_error, _r.corpus_age_s, _r.posts_seen
-        _retryable = bool(_r.retryable)
-        _no_query = (_r.kind == "no_query")
-
-        if _no_query:
-            # NO FALLBACK, DELIBERATELY -- see utils/scan.py. The credit is
-            # returned here; the finally below would also refund, but naming
-            # the reason makes the ledger row diagnosable instead of "aborted
-            # or errored".
-            #
-            # Only promise a refund that actually happened. refund_credit
-            # returns False without raising when its RPC fails, and telling a
-            # user in writing that they were not charged when they were is
-            # worse than the original failure.
-            _refunded = refund_credit(
-                "scan", _credit.event_id, f"query build failed: {(_err or '')[:120]}")
-            _credit_line = ("Your credit was not used."
-                            if _refunded
-                            else "If your credit was not returned, it will be released "
-                                 "automatically within 15 minutes.")
-            render_system_state(
-                kind="warning",
-                title="Could not build this sector scan",
-                message=_credit_line,
-                meta=("This is usually temporary—try again shortly."
-                      if _refunded else ""),
-            )
-            _bail()
-
-        if _err:
-            # ONE PANEL PER FAILURE KIND, as before. These used to be reached
-            # by `except KeyError` and `except requests.exceptions.
-            # RequestException`; both went unreachable when the pipeline moved
-            # behind a function that returns instead of raising, so every
-            # failure collapsed into the generic panel and a missing API key
-            # started reporting itself as an X outage. scan.error_kind carries
-            # the distinction across that boundary.
-            logger.error("scan failed for %s (%s): %s", sector, _kind, _err)
-            _REASONS = {"credentials": "missing API credentials",
-                        "network": "network failure reaching X",
-                        # The portal could not reach CORE-API. Labelling that
-                        # as an X failure sends every audit of refund reasons
-                        # looking at the wrong provider.
-                        "transport": "core-api unreachable",
-                        "ticker_db": "ticker database unavailable"}
-            _refunded = refund_credit(
-                "scan", _credit.event_id,
-                _REASONS.get(_kind, f"scan error: {(_err or '')[:120]}"),
-            )
-            if _kind == "credentials":
-                _title, _body = (
-                    "Configuration error",
-                    "Missing API credentials. Contact support if this keeps happening.")
-            elif _kind in ("network", "transport"):
-                _title, _body = (
-                    "Connection issue",
-                    "Couldn't reach the data source.")
-            elif _kind == "ticker_db":
-                _title, _body = (
-                    "Could not load ticker database",
-                    "Please check the data directory.")
-            else:
-                _title, _body = (
-                    "Something went wrong",
-                    "The scan hit an unexpected error.")
-            _credit_line = (
-                "Your credit was not used."
-                if _refunded else
-                "If your credit was not returned, it will be released "
-                "automatically within 15 minutes."
-            )
-            render_system_state(
-                kind="warning" if _kind in ("network", "transport") else "error",
-                title=_title,
-                message=f"{_body} {_credit_line}",
-                meta=(
-                    "Try again in a moment."
-                    if _refunded and _retryable
-                    and _kind in ("network", "transport")
-                    else ""
-                ),
-            )
-            _bail()
-
-        if _x_err and _posts != 0:
-            render_system_state(
-                kind="warning",
-                title="Social data feed unavailable",
-                message=_x_err[:200],
-                meta="The availability issue is upstream and may be temporary.",
-            )
-
-        if _posts == 0:
-            if _x_err:
-                # Upstream failure, zero posts: the user paid and got nothing.
-                _refunded = refund_credit(
-                    "scan", _credit.event_id, f"x api: {_x_err[:120]}")
-                render_system_state(
-                    kind="error",
-                    title="Social data feed unavailable",
-                    message=(
-                        "No scan result was delivered. Your credit was not used."
-                        if _refunded else
-                        "No scan result was delivered. If your credit was not "
-                        "returned, it will be released automatically within "
-                        "15 minutes."
-                    ),
-                    # The upstream call returned no posts; it may already have
-                    # incurred provider work, so a second purchase is not
-                    # suggested here.
-                    meta="",
                 )
+                render_system_state(
+                    kind="warning" if _kind in ("network", "transport") else "error",
+                    title=_title,
+                    message=f"{_body} {_credit_line}",
+                    meta=(
+                        "Try again in a moment."
+                        if _refunded and _retryable
+                        and _kind in ("network", "transport")
+                        else ""
+                    ),
+                )
+                _bail()
+
+            if _x_err and _posts != 0:
+                render_system_state(
+                    kind="warning",
+                    title="Social data feed unavailable",
+                    message=_x_err[:200],
+                    meta="The availability issue is upstream and may be temporary.",
+                )
+
+            if _posts == 0:
+                if _x_err:
+                    # Upstream failure, zero posts: the user paid and got nothing.
+                    _refunded = refund_credit(
+                        "scan", _credit.event_id, f"x api: {_x_err[:120]}")
+                    render_system_state(
+                        kind="error",
+                        title="Social data feed unavailable",
+                        message=(
+                            "No scan result was delivered. Your credit was not used."
+                            if _refunded else
+                            "No scan result was delivered. If your credit was not "
+                            "returned, it will be released automatically within "
+                            "15 minutes."
+                        ),
+                        # The upstream call returned no posts; it may already have
+                        # incurred provider work, so a second purchase is not
+                        # suggested here.
+                        meta="",
+                    )
+                else:
+                    # A genuinely empty result is an answer, not a failure -- the
+                    # scan ran and the sector simply had no chatter. Still charged,
+                    # and _delivered says so: without it the finally refunded every
+                    # single time while this comment claimed the opposite, which
+                    # made a quiet sector an unlimited supply of free scans paid
+                    # for at X.
+                    _delivered = True
+                    render_system_state(
+                        kind="info",
+                        title="No recent discussion found",
+                        message=(
+                            "No posts returned from the social data feed for "
+                            "this query."
+                        ),
+                        meta="Try another sector or return later.",
+                    )
+                _bail()
+
+            # AFTER the bails, as it was. Setting it earlier overwrote the
+            # previous scan's age with 0.0 on every failed run -- the old table
+            # kept rendering and simply lost its "Market chatter from 3h ago"
+            # caption, which is stale-and-silent, the failure this page keeps
+            # rediscovering.
+            st.session_state.scan_corpus_age_s = _age
+
+            _display = _rows
+            # ON THE ROWS, not on _ok. Reaching here means no_query and error are
+            # both clear, so _ok is unconditionally True and `_rows or _ok` was
+            # always taken -- which made the else dead, silently retired the
+            # "No stock tickers found in the posts" message, and started wiping
+            # the previous table on a zero-row scan where it used to be left alone.
+            if _rows:
+                # NO WRITE HERE. core-api persisted scan_sentiment_log and
+                # recorded its own x_call_metrics row before it answered -- it was
+                # handed this credit's event_id for exactly that reason. Writing
+                # again would double every per-ticker observation for one buy, and
+                # scan_sentiment_log has no unique constraint to catch it.
+
+                # The DataFrame is built HERE, from rows the service ordered and
+                # cut. It is the one thing that cannot cross a service boundary,
+                # which is why /scan returns dicts and the page renders them.
+                df_valid = pd.DataFrame(_display)
+
+                ensure_user_scoped_state_owner()
+                st.session_state.df_valid = df_valid
+                st.session_state.df_unvalidated = None  # not shown
+                # A fresh scan can return the same ticker set with newer closes.
+                # Invalidate the presentation cache by scan generation, not only
+                # when the list of symbols changes.
+                st.session_state.pop("_scan_last_close_key", None)
+                st.session_state.pop("_scan_last_close_map", None)
+                st.session_state.selected_sector = sector
+                # Keep the source sector with the scan itself. Deep Analyze can be
+                # opened independently and may update other route state, but the
+                # durable public demo must publish a coherent scan/analysis pair.
+                st.session_state.demo_scan_sector = sector
+                st.session_state.scan_completed_at = snapshot_timestamp()
+                st.session_state.scan_result_metadata = {
+                    "posts_seen": _r.posts_seen,
+                    "from_cache": _r.from_cache,
+                    "corpus_age_s": _r.corpus_age_s,
+                    "stop_reason": _r.stop_reason,
+                    "x_error": _r.x_error,
+                    "elapsed_s": _r.elapsed_s,
+                }
+                st.session_state.selected_ticker = None
+                st.session_state.deep_analysis_results = None
+                st.session_state.deep_analysis_card = None
+                st.session_state.deep_analysis_completed_at = None
+                st.session_state.deep_analysis_metadata = {}
+                st.session_state.analysis_sector = None
+
+                # Results are durable in session_state: the scan ran and produced an
+                # answer. An empty answer is still an answer -- the sector genuinely
+                # had no validated chatter -- so it is charged, as before.
+                _delivered = True
+
+                if len(df_valid) == 0:
+                    render_system_state(
+                        kind="info",
+                        title="No validated stock tickers found",
+                        message="The scan completed without a trustworthy ticker match.",
+                        meta="Try a different sector or time window.",
+                    )
             else:
-                # A genuinely empty result is an answer, not a failure -- the
-                # scan ran and the sector simply had no chatter. Still charged,
-                # and _delivered says so: without it the finally refunded every
-                # single time while this comment claimed the opposite, which
-                # made a quiet sector an unlimited supply of free scans paid
-                # for at X.
+                # Posts were fetched and scored, they just contained no tickers.
+                # Work was done and an answer given, so this stays charged.
                 _delivered = True
                 render_system_state(
                     kind="info",
-                    title="No recent discussion found",
-                    message=(
-                        "No posts returned from the social data feed for "
-                        "this query."
-                    ),
-                    meta="Try another sector or return later.",
+                    title="No stock tickers found",
+                    message="The retrieved discussion did not contain usable ticker references.",
+                    meta="Try a different sector.",
                 )
-            _bail()
 
-        # AFTER the bails, as it was. Setting it earlier overwrote the
-        # previous scan's age with 0.0 on every failed run -- the old table
-        # kept rendering and simply lost its "Market chatter from 3h ago"
-        # caption, which is stale-and-silent, the failure this page keeps
-        # rediscovering.
-        st.session_state.scan_corpus_age_s = _age
-
-        _display = _rows
-        # ON THE ROWS, not on _ok. Reaching here means no_query and error are
-        # both clear, so _ok is unconditionally True and `_rows or _ok` was
-        # always taken -- which made the else dead, silently retired the
-        # "No stock tickers found in the posts" message, and started wiping
-        # the previous table on a zero-row scan where it used to be left alone.
-        if _rows:
-            # NO WRITE HERE. core-api persisted scan_sentiment_log and
-            # recorded its own x_call_metrics row before it answered -- it was
-            # handed this credit's event_id for exactly that reason. Writing
-            # again would double every per-ticker observation for one buy, and
-            # scan_sentiment_log has no unique constraint to catch it.
-
-            # The DataFrame is built HERE, from rows the service ordered and
-            # cut. It is the one thing that cannot cross a service boundary,
-            # which is why /scan returns dicts and the page renders them.
-            df_valid = pd.DataFrame(_display)
-
-            ensure_user_scoped_state_owner()
-            st.session_state.df_valid = df_valid
-            st.session_state.df_unvalidated = None  # not shown
-            # A fresh scan can return the same ticker set with newer closes.
-            # Invalidate the presentation cache by scan generation, not only
-            # when the list of symbols changes.
-            st.session_state.pop("_scan_last_close_key", None)
-            st.session_state.pop("_scan_last_close_map", None)
-            st.session_state.selected_sector = sector
-            # Keep the source sector with the scan itself. Deep Analyze can be
-            # opened independently and may update other route state, but the
-            # durable public demo must publish a coherent scan/analysis pair.
-            st.session_state.demo_scan_sector = sector
-            st.session_state.scan_completed_at = snapshot_timestamp()
-            st.session_state.scan_result_metadata = {
-                "posts_seen": _r.posts_seen,
-                "from_cache": _r.from_cache,
-                "corpus_age_s": _r.corpus_age_s,
-                "stop_reason": _r.stop_reason,
-                "x_error": _r.x_error,
-                "elapsed_s": _r.elapsed_s,
-            }
-            st.session_state.selected_ticker = None
-            st.session_state.deep_analysis_results = None
-            st.session_state.deep_analysis_card = None
-            st.session_state.deep_analysis_completed_at = None
-            st.session_state.deep_analysis_metadata = {}
-            st.session_state.analysis_sector = None
-
-            # Results are durable in session_state: the scan ran and produced an
-            # answer. An empty answer is still an answer -- the sector genuinely
-            # had no validated chatter -- so it is charged, as before.
-            _delivered = True
-
-            if len(df_valid) == 0:
-                render_system_state(
-                    kind="info",
-                    title="No validated stock tickers found",
-                    message="The scan completed without a trustworthy ticker match.",
-                    meta="Try a different sector or time window.",
-                )
-        else:
-            # Posts were fetched and scored, they just contained no tickers.
-            # Work was done and an answer given, so this stays charged.
-            _delivered = True
+        # `except KeyError` and `except requests.exceptions.RequestException`
+        # used to live here. They are gone rather than left as dead code: scan()
+        # returns instead of raising, so neither could ever fire again, and their
+        # panels are now selected by the normalised _kind above. A dead handler for a
+        # message the user still sees is worse than no handler -- it reads as
+        # coverage.
+        except Exception:
+            logger.exception("Discovery scan failed")
+            _refunded = refund_credit(
+                "scan", _credit.event_id, "unhandled scan error")
             render_system_state(
-                kind="info",
-                title="No stock tickers found",
-                message="The retrieved discussion did not contain usable ticker references.",
-                meta="Try a different sector.",
+                kind="error",
+                title="Something went wrong",
+                message=(
+                    "The scan could not be completed. Your credit was not used."
+                    if _refunded else
+                    "The scan could not be completed. If your credit was not "
+                    "returned, it will be released automatically within 15 minutes."
+                ),
+                # This catch-all has no reliable pre-spend signal.
+                meta="",
             )
 
-    # `except KeyError` and `except requests.exceptions.RequestException`
-    # used to live here. They are gone rather than left as dead code: scan()
-    # returns instead of raising, so neither could ever fire again, and their
-    # panels are now selected by the normalised _kind above. A dead handler for a
-    # message the user still sees is worse than no handler -- it reads as
-    # coverage.
-    except Exception:
-        logger.exception("Discovery scan failed")
-        _refunded = refund_credit(
-            "scan", _credit.event_id, "unhandled scan error")
-        render_system_state(
-            kind="error",
-            title="Something went wrong",
-            message=(
-                "The scan could not be completed. Your credit was not used."
-                if _refunded else
-                "The scan could not be completed. If your credit was not "
-                "returned, it will be released automatically within 15 minutes."
-            ),
-            # This catch-all has no reliable pre-spend signal.
-            meta="",
-        )
-
-    finally:
-        # The backstop. Runs on BaseException too, so it covers the paths every
-        # `except Exception` above misses: Streamlit stopping the script because
-        # the user clicked again, changed the sector, or navigated away.
-        #
-        # Safe to overlap with the explicit refunds above -- refund_credit is
-        # idempotent (the usage_events_refund_of unique index makes a second
-        # attempt return already_refunded), so the more specific reason recorded
-        # by an except block wins and this becomes a no-op. It only actually
-        # refunds when nothing else did.
-        #
-        # Still does NOT cover an OOM kill: SIGKILL runs no finally either. That
-        # remains the orphan reaper's job.
-        # Record the buy even when the scan died. The single most likely way a
-        # scan ends is the user clicking again mid-run, which raises
-        # StopException (a BaseException) and skips every explicit call site
-        # above -- and those aborted runs are the MOST wasteful, since 100% of
-        # the posts were bought and 0% were used. Excluding exactly the worst
-        # cases would bias the waste number downward in the flattering
-        # direction. record_scan cannot raise, so this is safe in a finally.
-        # NO METRICS BACKSTOP HERE ANY MORE. It existed for the local Scan,
-        # whose record_metrics the page had to call from a finally because an
-        # abort skipped every explicit site. core-api records its own row
-        # inside the request -- it catches BaseException to guarantee it -- so
-        # an abort on this side cannot lose one.
-
-        if _delivered:
-            complete_work(_credit.event_id, "completed", f"sector={sector}")
-        else:
-            # Close the run ONLY if the refund actually landed.
+        finally:
+            # The backstop. Runs on BaseException too, so it covers the paths every
+            # `except Exception` above misses: Streamlit stopping the script because
+            # the user clicked again, changed the sector, or navigated away.
             #
-            # refund_credit returns False and does not raise when its RPC fails.
-            # Closing the run regardless would set work_runs.status='failed',
-            # and reap_orphaned_work only scans status='running' -- so a user
-            # charged during a Supabase blip would be silently stranded, with
-            # the one backstop designed to catch that case disarmed.
+            # Safe to overlap with the explicit refunds above -- refund_credit is
+            # idempotent (the usage_events_refund_of unique index makes a second
+            # attempt return already_refunded), so the more specific reason recorded
+            # by an except block wins and this becomes a no-op. It only actually
+            # refunds when nothing else did.
             #
-            # This is exactly the choice reap_orphaned_work makes for itself:
-            # when its own refund fails it leaves the row 'running' so the next
-            # pass retries. Left open, the reaper picks this up in <=15 minutes.
-            if refund_credit("scan", _credit.event_id, "scan did not complete"):
-                complete_work(_credit.event_id, "failed", "aborted or errored")
+            # Still does NOT cover an OOM kill: SIGKILL runs no finally either. That
+            # remains the orphan reaper's job.
+            # Record the buy even when the scan died. The single most likely way a
+            # scan ends is the user clicking again mid-run, which raises
+            # StopException (a BaseException) and skips every explicit call site
+            # above -- and those aborted runs are the MOST wasteful, since 100% of
+            # the posts were bought and 0% were used. Excluding exactly the worst
+            # cases would bias the waste number downward in the flattering
+            # direction. record_scan cannot raise, so this is safe in a finally.
+            # NO METRICS BACKSTOP HERE ANY MORE. It existed for the local Scan,
+            # whose record_metrics the page had to call from a finally because an
+            # abort skipped every explicit site. core-api records its own row
+            # inside the request -- it catches BaseException to guarantee it -- so
+            # an abort on this side cannot lose one.
+
+            if _delivered:
+                complete_work(_credit.event_id, "completed", f"sector={sector}")
             else:
-                logger.error("refund failed for event %s; leaving work_run open "
-                             "so the reaper retries", _credit.event_id)
+                # Close the run ONLY if the refund actually landed.
+                #
+                # refund_credit returns False and does not raise when its RPC fails.
+                # Closing the run regardless would set work_runs.status='failed',
+                # and reap_orphaned_work only scans status='running' -- so a user
+                # charged during a Supabase blip would be silently stranded, with
+                # the one backstop designed to catch that case disarmed.
+                #
+                # This is exactly the choice reap_orphaned_work makes for itself:
+                # when its own refund fails it leaves the row 'running' so the next
+                # pass retries. Left open, the reaper picks this up in <=15 minutes.
+                if refund_credit("scan", _credit.event_id, "scan did not complete"):
+                    complete_work(_credit.event_id, "failed", "aborted or errored")
+                else:
+                    logger.error("refund failed for event %s; leaving work_run open "
+                                 "so the reaper retries", _credit.event_id)
 
-    # Clear one-shot redirect flags after a scan attempt (success or failure).
-    # This keeps refreshes from unexpectedly re-triggering autostart.
-    if _intent_autostart:
-        patch_query_params({"autostart": None, "next": None})
+        # Clear one-shot redirect flags after a scan attempt (success or failure).
+        # This keeps refreshes from unexpectedly re-triggering autostart.
+        if _intent_autostart:
+            patch_query_params({"autostart": None, "next": None})
 
 # ── Results table ──
-if st.session_state.df_valid is not None:
-    df_valid_display = st.session_state.df_valid.drop(
-        columns=["Sample Tweets"], errors="ignore"
-    ).copy()
+try:
+    if st.session_state.df_valid is not None:
+        df_valid_display = st.session_state.df_valid.drop(
+            columns=["Sample Tweets"], errors="ignore"
+        ).copy()
 
-    if len(df_valid_display) > 0:
-        # Say how old the chatter is whenever it did not come from X just now.
-        # The page badges "Real-time social sentiment", and a corpus may be up
-        # to six hours old -- unlabelled, that is a claim the product does not
-        # keep. Stale-but-labelled is honest; stale-and-silent is the failure
-        # mode this codebase keeps rediscovering.
-        _age_s = float(st.session_state.get("scan_corpus_age_s") or 0.0)
-        if _age_s >= 60:
-            _mins = int(_age_s // 60)
-            _age_label = f"{_mins // 60}h {_mins % 60}m" if _mins >= 60 else f"{_mins}m"
-            _freshness = f"Market chatter from {_age_label} ago"
-        else:
-            _freshness = "Updated just now"
+        if len(df_valid_display) > 0:
+            # Say how old the chatter is whenever it did not come from X just now.
+            # The page badges "Real-time social sentiment", and a corpus may be up
+            # to six hours old -- unlabelled, that is a claim the product does not
+            # keep. Stale-but-labelled is honest; stale-and-silent is the failure
+            # mode this codebase keeps rediscovering.
+            _age_s = float(st.session_state.get("scan_corpus_age_s") or 0.0)
+            if _age_s >= 60:
+                _mins = int(_age_s // 60)
+                _age_label = f"{_mins // 60}h {_mins % 60}m" if _mins >= 60 else f"{_mins}m"
+                _freshness = f"Market chatter from {_age_label} ago"
+            else:
+                _freshness = "Updated just now"
 
-        # Market Scan has exactly three sentiment states. Sparse evidence is
-        # grouped separately instead of masquerading as a fourth sentiment.
-        if "Mentions" not in df_valid_display.columns:
-            df_valid_display["Mentions"] = 0
-        if "Evidence" not in df_valid_display.columns:
-            df_valid_display["Evidence"] = 0
-        for _numeric_column in ("Mentions", "Evidence"):
-            df_valid_display[_numeric_column] = (
-                pd.to_numeric(
-                    df_valid_display[_numeric_column], errors="coerce"
+            # Market Scan has exactly three sentiment states. Sparse evidence is
+            # grouped separately instead of masquerading as a fourth sentiment.
+            if "Mentions" not in df_valid_display.columns:
+                df_valid_display["Mentions"] = 0
+            if "Evidence" not in df_valid_display.columns:
+                df_valid_display["Evidence"] = 0
+            for _numeric_column in ("Mentions", "Evidence"):
+                df_valid_display[_numeric_column] = (
+                    pd.to_numeric(
+                        df_valid_display[_numeric_column], errors="coerce"
+                    )
+                    .fillna(0)
+                    .clip(lower=0)
+                    .astype(int)
                 )
-                .fillna(0)
-                .clip(lower=0)
-                .astype(int)
+            _labels = df_valid_display["Overall Sentiment"].fillna("").str.lower()
+            df_valid_display["_group"] = [
+                0 if label in _ASSERTED and evidence >= 3 else 1
+                for label, evidence in zip(_labels, df_valid_display["Evidence"])
+            ]
+            df_valid_display = df_valid_display.sort_values(
+                ["_group", "Evidence", "Mentions", "Ticker"],
+                ascending=[True, False, False, True],
             )
-        _labels = df_valid_display["Overall Sentiment"].fillna("").str.lower()
-        df_valid_display["_group"] = [
-            0 if label in _ASSERTED and evidence >= 3 else 1
-            for label, evidence in zip(_labels, df_valid_display["Evidence"])
-        ]
-        df_valid_display = df_valid_display.sort_values(
-            ["_group", "Evidence", "Mentions", "Ticker"],
-            ascending=[True, False, False, True],
-        )
-        df_valid_display = df_valid_display.reset_index(drop=True)
+            df_valid_display = df_valid_display.reset_index(drop=True)
 
-        _scored_count = int((df_valid_display["_group"] == 0).sum())
-        _low_count = int((df_valid_display["_group"] == 1).sum())
-        _summary_parts = [f"{_scored_count} with a sentiment signal"]
-        if _low_count:
-            _summary_parts.append(f"{_low_count} need more evidence")
-        # Deep Analyze has its own sector context. Never let an independent
-        # analysis (whose sector can legitimately be "unknown") relabel an
-        # already-completed Market Scan.
-        _result_sector = (
-            st.session_state.get("demo_scan_sector")
-            or st.session_state.get("selected_sector")
-            or sector
-        )
-        if str(_result_sector).strip().lower() == "unknown":
-            _result_sector = sector
-        st.markdown(
-            f'<div class="scan-results-intro">'
-            f'<div><h2>{html.escape(str(_result_sector).title())} scan · {len(df_valid_display)} stocks</h2>'
-            f'<p>{" · ".join(_summary_parts)}</p></div>'
-            f'<div class="scan-results-freshness">{_freshness}</div>'
-            f'</div>',
-            unsafe_allow_html=True,
-        )
-        # Row buttons only enqueue work. Execute it here, outside all table
-        # columns, so Streamlit can mount a prominent progress surface before
-        # the long request starts.
-        _analysis_notice = None
-        _pending_analysis = st.session_state.get(
-            "_pending_discovery_analysis"
-        )
-        if _pending_analysis:
-            _pending_ticker = str(
-                _pending_analysis.get("ticker") or ""
-            ).strip().upper()
-            _known_scan_tickers = {
+            _scored_count = int((df_valid_display["_group"] == 0).sum())
+            _low_count = int((df_valid_display["_group"] == 1).sum())
+            _summary_parts = [f"{_scored_count} with a sentiment signal"]
+            if _low_count:
+                _summary_parts.append(f"{_low_count} need more evidence")
+            # Deep Analyze has its own sector context. Never let an independent
+            # analysis (whose sector can legitimately be "unknown") relabel an
+            # already-completed Market Scan.
+            _result_sector = (
+                st.session_state.get("demo_scan_sector")
+                or st.session_state.get("selected_sector")
+                or sector
+            )
+            if str(_result_sector).strip().lower() == "unknown":
+                _result_sector = sector
+            st.markdown(
+                f'<div class="scan-results-intro">'
+                f'<div><h2 id="ss-scan-results" tabindex="-1">{html.escape(str(_result_sector).title())} scan · {len(df_valid_display)} {"stock" if len(df_valid_display) == 1 else "stocks"}</h2>'
+                f'<p>{" · ".join(_summary_parts)}</p>'
+                '<a id="ss-back-to-pulse" href="#sector-pulse">Back to Sector Pulse ↑</a></div>'
+                f'<div class="scan-results-freshness">{_freshness}</div>'
+                f'</div>',
+                unsafe_allow_html=True,
+            )
+            # Row buttons only enqueue work. Execute it here, outside all table
+            # columns, so Streamlit can mount a prominent progress surface before
+            # the long request starts.
+            _analysis_notice = None
+            _pending_analysis = st.session_state.get(
+                "_pending_discovery_analysis"
+            )
+            if _pending_analysis:
+                _pending_ticker = str(
+                    _pending_analysis.get("ticker") or ""
+                ).strip().upper()
+                _known_scan_tickers = {
+                    str(value).strip().upper()
+                    for value in df_valid_display["Ticker"].tolist()
+                }
+                if _pending_ticker in _known_scan_tickers:
+                    _analysis_notice = _process_pending_discovery_analysis(
+                        _pending_analysis
+                    )
+                else:
+                    logger.warning(
+                        "discarded pending analysis for ticker outside scan: %s",
+                        _pending_ticker,
+                    )
+                    st.session_state.pop("_pending_discovery_analysis", None)
+            if _analysis_notice:
+                render_system_state(kind="error", **_analysis_notice)
+
+            # Reuse prices for an unchanged result set. Previously every analysis
+            # button rerun refetched all closes before starting the paid request,
+            # extending the stale/dim interval with unrelated network work.
+            tickers_for_prices = [str(t) for t in df_valid_display["Ticker"].tolist()]
+            _price_cache_key = tuple(sorted(
+                str(ticker).strip().upper() for ticker in tickers_for_prices
+            ))
+            if st.session_state.get("_scan_last_close_key") == _price_cache_key:
+                last_close_map = dict(
+                    st.session_state.get("_scan_last_close_map") or {}
+                )
+            else:
+                last_close_map = {}
+                _price_prog = progress_bar if _scan_feedback_pending else st.progress(0)
+                _price_status = status_text if _scan_feedback_pending else st.empty()
+                _price_status.markdown(
+                    processing_state_html("Fetching recent closing prices…"),
+                    unsafe_allow_html=True,
+                )
+                try:
+                    _price_prog.progress(40)
+                    last_close_map = get_last_close_prices_best_effort(
+                        tickers_for_prices
+                    )
+                    _price_prog.progress(100)
+                    st.session_state["_scan_last_close_key"] = _price_cache_key
+                    st.session_state["_scan_last_close_map"] = last_close_map
+                except Exception:
+                    logger.exception("Last close price lookup failed")
+                    last_close_map = {}
+                    # Cache the completed attempt for this scan generation. A
+                    # failed optional price lookup must not rerun immediately
+                    # after paid analysis and recreate an unexplained dim interval.
+                    st.session_state["_scan_last_close_key"] = _price_cache_key
+                    st.session_state["_scan_last_close_map"] = {}
+                finally:
+                    _price_prog.empty()
+                    _price_status.empty()
+
+            _selected_ticker = st.session_state.get("selected_ticker")
+            _scan_tickers = {
                 str(value).strip().upper()
                 for value in df_valid_display["Ticker"].tolist()
             }
-            if _pending_ticker in _known_scan_tickers:
-                _analysis_notice = _process_pending_discovery_analysis(
-                    _pending_analysis
-                )
+            # A delivered recommendation card is the paid product. Detailed signal
+            # excerpts are optional for results returned by older core-api builds,
+            # so their absence must never expose a second paid Analyze action.
+            _has_delivered_analysis = bool(
+                _selected_ticker
+                and str(_selected_ticker).strip().upper() in _scan_tickers
+                and st.session_state.get("deep_analysis_card")
+            )
+            _workspace = st.container(key="scan_result_workspace")
+            if _has_delivered_analysis:
+                # The paid result is one full-width decision surface above the
+                # shortlist. This preserves the table's financial-data tracks and
+                # gives the evidence disclosure enough room without a nested rail.
+                _analysis_col = _workspace.container(key="scan_workspace_analysis")
+                _results_col = _workspace.container(key="scan_workspace_results")
             else:
-                logger.warning(
-                    "discarded pending analysis for ticker outside scan: %s",
-                    _pending_ticker,
+                _results_col, _analysis_col = _workspace, None
+
+            # Populate the result container immediately. Creating an empty slot,
+            # painting the whole shortlist, then backfilling a long card above it
+            # caused a large post-render layout shift that looked like the page had
+            # jumped or become stuck.
+            if _has_delivered_analysis and _analysis_col is not None:
+                with _analysis_col:
+                    with st.container(key="selected_analysis_panel"):
+                        render_delivered_analysis_result(
+                            card=st.session_state.deep_analysis_card,
+                            analysis_results=(
+                                st.session_state.deep_analysis_results or {}
+                            ),
+                            ticker=_selected_ticker,
+                            sector=_result_sector,
+                            key_suffix=f"_discovery_{_selected_ticker}",
+                            element_id="selected-analysis",
+                            freshness="Analysis generated now",
+                        )
+
+            # Header and rows share this one track contract. Keeping the action
+            # track wider prevents paid-action labels from wrapping in split view.
+            _SCAN_RESULT_COLUMNS = [1.75, 0.72, 0.92, 0.62, 1.15]
+
+            def _render_scan_header(signal_label: str, parent=None) -> None:
+                if parent is None:
+                    parent = _results_col
+                _header = parent.container(
+                    key=f"scan_header_{signal_label.lower().replace(' ', '_')}"
                 )
-                st.session_state.pop("_pending_discovery_analysis", None)
-        if _analysis_notice:
-            render_system_state(kind="error", **_analysis_notice)
-
-        # Reuse prices for an unchanged result set. Previously every analysis
-        # button rerun refetched all closes before starting the paid request,
-        # extending the stale/dim interval with unrelated network work.
-        tickers_for_prices = [str(t) for t in df_valid_display["Ticker"].tolist()]
-        _price_cache_key = tuple(sorted(
-            str(ticker).strip().upper() for ticker in tickers_for_prices
-        ))
-        if st.session_state.get("_scan_last_close_key") == _price_cache_key:
-            last_close_map = dict(
-                st.session_state.get("_scan_last_close_map") or {}
-            )
-        else:
-            last_close_map = {}
-            _price_prog = st.progress(0)
-            _price_status = st.empty()
-            _price_status.markdown(
-                processing_state_html("Fetching recent closing prices…"),
-                unsafe_allow_html=True,
-            )
-            try:
-                _price_prog.progress(40)
-                last_close_map = get_last_close_prices_best_effort(
-                    tickers_for_prices
-                )
-                _price_prog.progress(100)
-                st.session_state["_scan_last_close_key"] = _price_cache_key
-                st.session_state["_scan_last_close_map"] = last_close_map
-            except Exception:
-                logger.exception("Last close price lookup failed")
-                last_close_map = {}
-                # Cache the completed attempt for this scan generation. A
-                # failed optional price lookup must not rerun immediately
-                # after paid analysis and recreate an unexplained dim interval.
-                st.session_state["_scan_last_close_key"] = _price_cache_key
-                st.session_state["_scan_last_close_map"] = {}
-            finally:
-                _price_prog.empty()
-                _price_status.empty()
-
-        _selected_ticker = st.session_state.get("selected_ticker")
-        _scan_tickers = {
-            str(value).strip().upper()
-            for value in df_valid_display["Ticker"].tolist()
-        }
-        # A delivered recommendation card is the paid product. Detailed signal
-        # excerpts are optional for results returned by older core-api builds,
-        # so their absence must never expose a second paid Analyze action.
-        _has_delivered_analysis = bool(
-            _selected_ticker
-            and str(_selected_ticker).strip().upper() in _scan_tickers
-            and st.session_state.get("deep_analysis_card")
-        )
-        _workspace = st.container(key="scan_result_workspace")
-        if _has_delivered_analysis:
-            # The paid result is one full-width decision surface above the
-            # shortlist. This preserves the table's financial-data tracks and
-            # gives the evidence disclosure enough room without a nested rail.
-            _analysis_col = _workspace.container(key="scan_workspace_analysis")
-            _results_col = _workspace.container(key="scan_workspace_results")
-        else:
-            _results_col, _analysis_col = _workspace, None
-
-        # Populate the result container immediately. Creating an empty slot,
-        # painting the whole shortlist, then backfilling a long card above it
-        # caused a large post-render layout shift that looked like the page had
-        # jumped or become stuck.
-        if _has_delivered_analysis and _analysis_col is not None:
-            with _analysis_col:
-                with st.container(key="selected_analysis_panel"):
-                    render_delivered_analysis_result(
-                        card=st.session_state.deep_analysis_card,
-                        analysis_results=(
-                            st.session_state.deep_analysis_results or {}
-                        ),
-                        ticker=_selected_ticker,
-                        sector=_result_sector,
-                        key_suffix=f"_discovery_{_selected_ticker}",
-                        element_id="selected-analysis",
-                        freshness="Analysis generated now",
+                _header_cols = _header.columns(_SCAN_RESULT_COLUMNS, gap="small")
+                for _col, _label in zip(
+                    _header_cols,
+                    ["Stock", "Last close", signal_label, "Social posts", "Action"],
+                ):
+                    _col.markdown(
+                        f'<span style="font-size:0.72rem;font-weight:700;letter-spacing:0.06em;'
+                        f'text-transform:uppercase;color:var(--muted);">{_label}</span>',
+                        unsafe_allow_html=True,
                     )
 
-        # Header and rows share this one track contract. Keeping the action
-        # track wider prevents paid-action labels from wrapping in split view.
-        _SCAN_RESULT_COLUMNS = [1.75, 0.72, 0.92, 0.62, 1.15]
-
-        def _render_scan_header(signal_label: str, parent=None) -> None:
-            if parent is None:
-                parent = _results_col
-            _header = parent.container(
-                key=f"scan_header_{signal_label.lower().replace(' ', '_')}"
-            )
-            _header_cols = _header.columns(_SCAN_RESULT_COLUMNS, gap="small")
-            for _col, _label in zip(
-                _header_cols,
-                ["Stock", "Last close", signal_label, "Social posts", "Action"],
-            ):
-                _col.markdown(
-                    f'<span style="font-size:0.72rem;font-weight:700;letter-spacing:0.06em;'
-                    f'text-transform:uppercase;color:var(--muted);">{_label}</span>',
+            if _scored_count:
+                _results_col.markdown(
+                    '<div class="scan-section-label">Sentiment signals</div>',
                     unsafe_allow_html=True,
                 )
+                _render_scan_header("Sentiment")
 
-        if _scored_count:
-            _results_col.markdown(
-                '<div class="scan-section-label">Sentiment signals</div>',
-                unsafe_allow_html=True,
-            )
-            _render_scan_header("Sentiment")
+            _low_parent = None
+            if _low_count:
+                _selected_for_expander = st.session_state.get("selected_ticker")
+                _selected_is_low = bool(
+                    _selected_for_expander
+                    and (
+                        (df_valid_display["_group"] == 1)
+                        & (df_valid_display["Ticker"] == _selected_for_expander)
+                    ).any()
+                )
+            _low_header_shown = False
+            for _, row in df_valid_display.iterrows():
+                ticker_symbol = row["Ticker"]
+                company_name = row["Company Name"]
+                overall_sentiment = row["Overall Sentiment"]
+                _is_low_evidence = int(row["_group"]) == 1
+                _mentions = int(row.get("Mentions") or 0)
+                _evidence = int(row.get("Evidence") or 0)
+                last_close = last_close_map.get(str(ticker_symbol).upper())
+                last_close_display = "N/A" if last_close is None else f"${float(last_close):.2f}"
 
-        _low_parent = None
-        if _low_count:
-            _selected_for_expander = st.session_state.get("selected_ticker")
-            _selected_is_low = bool(
-                _selected_for_expander
-                and (
-                    (df_valid_display["_group"] == 1)
-                    & (df_valid_display["Ticker"] == _selected_for_expander)
-                ).any()
-            )
-        _low_header_shown = False
-        for _, row in df_valid_display.iterrows():
-            ticker_symbol = row["Ticker"]
-            company_name = row["Company Name"]
-            overall_sentiment = row["Overall Sentiment"]
-            _is_low_evidence = int(row["_group"]) == 1
-            _mentions = int(row.get("Mentions") or 0)
-            _evidence = int(row.get("Evidence") or 0)
-            last_close = last_close_map.get(str(ticker_symbol).upper())
-            last_close_display = "N/A" if last_close is None else f"${float(last_close):.2f}"
+                _is_selected = ticker_symbol == st.session_state.get("selected_ticker")
+                if _is_low_evidence and not _low_header_shown:
+                    # Create this lazily after every scored row has rendered;
+                    # Streamlit fixes a container's page position when created.
+                    _low_parent = _results_col.expander(
+                        f"Needs more evidence ({_low_count})",
+                        expanded=(not bool(_scored_count)) or _selected_is_low,
+                    )
+                    _low_parent.caption(
+                        "These stocks had too little directional evidence for a "
+                        "Bullish, Bearish, or Neutral scan result."
+                    )
+                    _render_scan_header("Evidence state", parent=_low_parent)
+                    _low_header_shown = True
 
-            _is_selected = ticker_symbol == st.session_state.get("selected_ticker")
-            if _is_low_evidence and not _low_header_shown:
-                # Create this lazily after every scored row has rendered;
-                # Streamlit fixes a container's page position when created.
-                _low_parent = _results_col.expander(
-                    f"Needs more evidence ({_low_count})",
-                    expanded=(not bool(_scored_count)) or _selected_is_low,
+                _safe_ticker = "".join(
+                    character if character.isalnum() else "_"
+                    for character in str(ticker_symbol)
                 )
-                _low_parent.caption(
-                    "These stocks had too little directional evidence for a "
-                    "Bullish, Bearish, or Neutral scan result."
+                _ticker_html = html.escape(str(ticker_symbol))
+                _company_html = html.escape(str(company_name))
+                _row_prefix = "scan_row_selected" if _is_selected else "scan_row"
+                _row_parent = _low_parent if _is_low_evidence else _results_col
+                _row = _row_parent.container(key=f"{_row_prefix}_{_safe_ticker}")
+                col1, col2, col3, col4, col5 = _row.columns(
+                    _SCAN_RESULT_COLUMNS, gap="small"
                 )
-                _render_scan_header("Evidence state", parent=_low_parent)
-                _low_header_shown = True
-
-            _safe_ticker = "".join(
-                character if character.isalnum() else "_"
-                for character in str(ticker_symbol)
-            )
-            _ticker_html = html.escape(str(ticker_symbol))
-            _company_html = html.escape(str(company_name))
-            _row_prefix = "scan_row_selected" if _is_selected else "scan_row"
-            _row_parent = _low_parent if _is_low_evidence else _results_col
-            _row = _row_parent.container(key=f"{_row_prefix}_{_safe_ticker}")
-            col1, col2, col3, col4, col5 = _row.columns(
-                _SCAN_RESULT_COLUMNS, gap="small"
-            )
-            with col1:
-                st.markdown(
-                    f'<div class="scan-stock-cell"><strong>{_ticker_html}</strong>'
-                    f'<span>{_company_html}</span></div>',
-                    unsafe_allow_html=True,
-                )
-            with col2:
-                st.markdown(
-                    f'<div class="scan-meta-cell"><span class="scan-mobile-label">'
-                    f'Last close</span>{last_close_display}</div>',
-                    unsafe_allow_html=True,
-                )
-            with col3:
-                if _is_low_evidence:
-                    if _evidence <= 0:
-                        _evidence_label = "Unscored"
-                    elif _evidence == 1:
-                        _evidence_label = "Single mention"
-                    else:
-                        _evidence_label = "Limited signal"
+                with col1:
+                    st.markdown(
+                        f'<div class="scan-stock-cell"><strong>{_ticker_html}</strong>'
+                        f'<span>{_company_html}</span></div>',
+                        unsafe_allow_html=True,
+                    )
+                with col2:
                     st.markdown(
                         f'<div class="scan-meta-cell"><span class="scan-mobile-label">'
-                        f'Evidence state</span><span class="scan-evidence-state">'
-                        f'{_evidence_label}</span></div>',
+                        f'Last close</span>{last_close_display}</div>',
                         unsafe_allow_html=True,
                     )
-                else:
+                with col3:
+                    if _is_low_evidence:
+                        if _evidence <= 0:
+                            _evidence_label = "Unscored"
+                        elif _evidence == 1:
+                            _evidence_label = "Single mention"
+                        else:
+                            _evidence_label = "Limited signal"
+                        st.markdown(
+                            f'<div class="scan-meta-cell"><span class="scan-mobile-label">'
+                            f'Evidence state</span><span class="scan-evidence-state">'
+                            f'{_evidence_label}</span></div>',
+                            unsafe_allow_html=True,
+                        )
+                    else:
+                        st.markdown(
+                            '<div class="scan-meta-cell"><span class="scan-mobile-label">'
+                            'Sentiment</span>' + _sentiment_pill(overall_sentiment) + '</div>',
+                            unsafe_allow_html=True,
+                        )
+                with col4:
                     st.markdown(
-                        '<div class="scan-meta-cell"><span class="scan-mobile-label">'
-                        'Sentiment</span>' + _sentiment_pill(overall_sentiment) + '</div>',
+                        f'<div class="scan-meta-cell"><span class="scan-mobile-label">'
+                        f'Social posts</span><span class="scan-social-posts">'
+                        f'{_mentions}</span></div>',
                         unsafe_allow_html=True,
                     )
-            with col4:
-                st.markdown(
-                    f'<div class="scan-meta-cell"><span class="scan-mobile-label">'
-                    f'Social posts</span><span class="scan-social-posts">'
-                    f'{_mentions}</span></div>',
-                    unsafe_allow_html=True,
-                )
-            with col5:
-                _has_selected_result = bool(
-                    _is_selected and st.session_state.get("deep_analysis_card")
-                )
-                if _has_selected_result:
-                    st.markdown(
-                        f'<a class="scan-view-result" href="#selected-analysis" '
-                        f'aria-label="View {_ticker_html} analysis result" '
-                        f'aria-current="true">View result</a>',
-                        unsafe_allow_html=True,
+                with col5:
+                    _has_selected_result = bool(
+                        _is_selected and st.session_state.get("deep_analysis_card")
                     )
-                else:
-                    st.button(
-                        "Analyze · 1 credit",
-                        key=f"deep_analyze_{ticker_symbol}",
-                        use_container_width=True,
-                        disabled=_credits <= 0,
-                        on_click=_queue_discovery_analysis,
-                        args=(ticker_symbol, _result_sector),
-                    )
-        _results_col.markdown(
-            '<div class="scan-table-note">Market Scan reports sentiment only: '
-            'Bullish, Bearish, or Neutral. Analyze a stock to get a separate '
-            'Buy, Watch, or Avoid recommendation.</div>',
-            unsafe_allow_html=True,
-        )
+                    if _has_selected_result:
+                        st.markdown(
+                            f'<a class="scan-view-result" href="#selected-analysis" '
+                            f'aria-label="View {_ticker_html} analysis result" '
+                            f'aria-current="true">View result</a>',
+                            unsafe_allow_html=True,
+                        )
+                    else:
+                        st.button(
+                            "Analyze · 1 credit",
+                            key=f"deep_analyze_{ticker_symbol}",
+                            use_container_width=True,
+                            disabled=_credits <= 0,
+                            on_click=_queue_discovery_analysis,
+                            args=(ticker_symbol, _result_sector),
+                        )
+            _results_col.markdown(
+                '<div class="scan-table-note">Market Scan reports sentiment only: '
+                'Bullish, Bearish, or Neutral. Analyze a stock to get a separate '
+                'Buy, Watch, or Avoid recommendation.</div>',
+                unsafe_allow_html=True,
+            )
 
-    else:
-        st.markdown(
-            """
-            <div style="
-              border:1px solid rgba(148,163,184,.15);
-              border-radius:16px;
-              padding:32px 24px;
-              text-align:center;
-              background:rgba(15,23,42,.45);
-              margin:1rem 0;
-            ">
-              <div style="font-size:2rem;margin-bottom:10px;">🔭</div>
-              <div style="font-size:1.05rem;font-weight:700;color:rgba(229,231,235,.90);margin-bottom:6px;">No signals found this scan</div>
-              <div style="color:rgba(148,163,184,.75);font-size:0.90rem;max-width:380px;margin:0 auto;">
-                Not enough chatter in this sector right now. Try a different sector or run again in a few hours when momentum picks up.
-              </div>
-            </div>
-            """,
-            unsafe_allow_html=True,
-        )
+        else:
+            st.markdown(
+                """
+                <div style="
+                  border:1px solid rgba(148,163,184,.15);
+                  border-radius:16px;
+                  padding:32px 24px;
+                  text-align:center;
+                  background:rgba(15,23,42,.45);
+                  margin:1rem 0;
+                ">
+                  <div style="font-size:2rem;margin-bottom:10px;">🔭</div>
+                  <div style="font-size:1.05rem;font-weight:700;color:rgba(229,231,235,.90);margin-bottom:6px;">No signals found this scan</div>
+                  <div style="color:rgba(148,163,184,.75);font-size:0.90rem;max-width:380px;margin:0 auto;">
+                    Not enough chatter in this sector right now. Try a different sector or run again in a few hours when momentum picks up.
+                  </div>
+                </div>
+                """,
+                unsafe_allow_html=True,
+            )
 
-# Performance statistics (show in expander) - HIDDEN FROM UI
-# with st.expander("📊 Performance & Database Stats"):
-#     from utils.finance import get_cache_stats, get_ticker_master_list
+    # Performance statistics (show in expander) - HIDDEN FROM UI
+    # with st.expander("📊 Performance & Database Stats"):
+    #     from utils.finance import get_cache_stats, get_ticker_master_list
 
-#     # Show ticker database stats
-#     ticker_db = get_ticker_master_list()
-#     db_size = len(ticker_db) if ticker_db else 0
+    #     # Show ticker database stats
+    #     ticker_db = get_ticker_master_list()
+    #     db_size = len(ticker_db) if ticker_db else 0
 
-#     col1, col2 = st.columns(2)
+    #     col1, col2 = st.columns(2)
 
-#     with col1:
-#         st.metric("US Stock Database", f"{db_size} tickers")
-#         st.caption("Comprehensive US stock database")
+    #     with col1:
+    #         st.metric("US Stock Database", f"{db_size} tickers")
+    #         st.caption("Comprehensive US stock database")
 
-#     with col2:
-#         cache_stats = get_cache_stats()
-#         st.metric("Price Data Cache", f"{cache_stats['stock_data_cache']['entries']} entries")
-#         st.caption("30-minute cache for price data")
+    #     with col2:
+    #         cache_stats = get_cache_stats()
+    #         st.metric("Price Data Cache", f"{cache_stats['stock_data_cache']['entries']} entries")
+    #         st.caption("30-minute cache for price data")
 
-#     st.success("✅ **Optimized Performance**: Local database validation eliminates most API calls!")
-#     st.info("• Ticker validation: Instant (local database lookup)")
-#     st.info("• Price data: Cached for 30 minutes")
-#     st.info("• Only price analysis requires API calls")
+    #     st.success("✅ **Optimized Performance**: Local database validation eliminates most API calls!")
+    #     st.info("• Ticker validation: Instant (local database lookup)")
+    #     st.info("• Price data: Cached for 30 minutes")
+    #     st.info("• Only price analysis requires API calls")
 
-close_page()
+    if _scan_feedback_pending:
+        _finish_scan_feedback("ss-scan-results" if st.session_state.df_valid is not None
+                              and len(st.session_state.df_valid) else "ss-scan-outcome")
+    elif st.session_state.df_valid is not None and len(st.session_state.df_valid):
+        # Restore the back link's focus handling on ordinary reruns without scrolling.
+        _scan_handoff("bind", "ss-scan-results")
+
+    close_page()
+finally:
+    # A rendering error or interruption must not leave the processing card mounted.
+    if _scan_feedback_pending:
+        _scan_feedback_slot.empty()
