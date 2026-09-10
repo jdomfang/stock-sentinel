@@ -3,6 +3,7 @@
 
 from __future__ import annotations
 
+import ast
 import json
 from pathlib import Path
 
@@ -68,9 +69,18 @@ def main() -> int:
     zero_post_upstream_failure = discovery.split(
         "        if _posts == 0:", 1
     )[1].split("            else:", 1)[0]
-    catch_all_scan_failure = discovery.split(
-        '    except Exception:\n        logger.exception("Discovery scan failed")', 1
-    )[1].split("    finally:", 1)[0]
+    # The scan may be nested in a presentation context; indentation is not behavior.
+    scan_handler = next(
+        node for node in ast.walk(ast.parse(discovery))
+        if isinstance(node, ast.ExceptHandler)
+        and any(isinstance(child, ast.Call)
+                and isinstance(child.func, ast.Attribute)
+                and child.func.attr == "exception"
+                and child.args and isinstance(child.args[0], ast.Constant)
+                and child.args[0].value == "Discovery scan failed"
+                for child in ast.walk(node))
+    )
+    catch_all_scan_failure = ast.get_source_segment(discovery, scan_handler)
 
     print("=" * 72)
     print("  Release E UI: responsive production polish")

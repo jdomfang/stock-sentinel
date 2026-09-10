@@ -629,3 +629,42 @@ textarea:focus-visible,
 @media(max-width:640px){
  [data-testid="stMainBlockContainer"]:has(.st-key-ss_top_nav){padding-top:16px!important}
 }
+
+/* Disabled pulse actions stay visibly unavailable, including on hover/press. */
+[class*="st-key-ss_pulse_row_"] .stButton button:disabled,
+[class*="st-key-ss_pulse_row_"] .stButton button:disabled:hover,
+[class*="st-key-ss_pulse_row_"] .stButton button:disabled:active {
+  background:rgba(148,163,184,.04)!important;
+  border-color:rgba(148,163,184,.14)!important;
+  color:var(--ss-color-text-muted)!important;
+  opacity:.48!important;box-shadow:none!important;cursor:not-allowed!important;
+}
+[class*="st-key-ss_pulse_row_"] .stButton button:disabled :is(p,span,div) {
+  color:var(--ss-color-text-muted)!important;
+  -webkit-text-fill-color:var(--ss-color-text-muted)!important;
+}
+/* The scan card's transparent hit area catches repeat pointer clicks while busy.
+   This is not a keyboard focus trap or a change to Streamlit cancellation. */
+.st-key-discovery_scan_progress::before {
+  content:"";position:absolute;inset:-100vmax;z-index:-1;pointer-events:auto;
+}
+/* Streamlit measures child widths before the card becomes viewport-fixed. */
+.st-key-discovery_scan_progress [data-testid="stVerticalBlock"],
+.st-key-discovery_scan_progress [data-testid="stElementContainer"],
+.st-key-discovery_scan_progress .element-container {
+  width:100%!important;max-width:100%!important;min-width:0!important;
+}
+.st-key-discovery_scan_progress .stMarkdown,
+.st-key-discovery_scan_progress [data-testid="stMarkdownContainer"] {
+  width:100%!important;max-width:100%!important;min-width:0!important;
+}
+.st-key-discovery_scan_progress .ss-processing-state {
+  white-space:normal!important;overflow-wrap:anywhere;max-width:100%;
+}
+#ss-scan-results,#ss-scan-outcome,.st-key-ss_pulse_discovery :is(h2,h3) {scroll-margin-top:2rem;}
+#ss-back-to-pulse {color:var(--ss-color-action);font-size:.875rem;}
+#ss-scan-completion-link {
+  position:fixed;bottom:1.5rem;right:1.5rem;z-index:999991;
+  padding:.85rem 1.2rem;border:1px solid var(--ss-color-action);border-radius:12px;
+  color:var(--ss-color-action);background:#0b1424;text-decoration:none;
+}
