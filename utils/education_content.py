@@ -58,7 +58,7 @@ def _education(u):
 <article class="ed-card ed-feature"><div class="ed-eyebrow">Technology</div><h2>AI &amp; Technology</h2>
 <p>Explore artificial intelligence, large language models, machine learning, AI infrastructure, inference, training, retrieval systems, agents, and other emerging technologies.</p>
 <div class="ed-subcard"><h3>AI Ed Shorts</h3><p>Short visual lessons designed to explain complex AI and machine-learning concepts clearly and quickly.</p>
-<a class="ed-button ed-primary" href="{u['ai-ed-shorts']}">Explore AI Ed Shorts <span aria-hidden="true">→</span></a></div></article>
+<a class="ed-button ed-primary" href="{u['ai-ed-shorts']}">Explore AI Ed Shorts</a></div></article>
 </div>'''
 
 
@@ -75,7 +75,7 @@ def _publisher(u):
 <div class="ed-eyebrow">AI &amp; Technology</div><h1>AI Ed Shorts</h1>
 <p class="ed-lead">Short visual lessons for understanding AI, LLMs, machine learning, and AI engineering.</p>
 <p>AI Ed Shorts is an educational content series focused on making complex artificial-intelligence concepts easier to understand through concise visual explanations. Topics may include large language models, machine learning, retrieval-augmented generation, model training, inference, attention mechanisms, AI infrastructure, optimization, evaluation, and related technical concepts.</p>
-<a href="{u['privacy']}">AI Ed Shorts Privacy Policy <span aria-hidden="true">→</span></a>
+<a href="{u['privacy']}">AI Ed Shorts Privacy Policy</a>
 <section class="ed-section"><h2>About AI Ed Shorts Publisher</h2>
 <p>AI Ed Shorts Publisher is a personal content-creation and publishing application used to produce and publish short-form educational videos for the AI Ed Shorts series.</p>
 <p>The application generates an educational video together with proposed publishing metadata such as a title, description, and hashtags. The complete content package is reviewed by the account owner before any publishing action occurs.</p></section>
@@ -99,7 +99,7 @@ def _publisher(u):
 <p>The application does not upload content to unrelated YouTube channels and does not publish newly generated content without owner approval.</p></section>
 <section class="ed-card"><h2>Current Use</h2>
 <p>AI Ed Shorts Publisher is currently operated as a personal, single-user educational publishing workflow. It is not currently offered as a public publishing service for third parties.</p>
-<a class="ed-button" href="{u['privacy']}">AI Ed Shorts Privacy Policy <span aria-hidden="true">→</span></a>
+<a class="ed-button" href="{u['privacy']}">AI Ed Shorts Privacy Policy</a>
 <p class="ed-meta"><a href="{u['contact']}">Contact The Stock Sentinel</a></p>
 <p class="ed-meta"><a href="{u['terms']}">Stock Sentinel Terms</a></p></section></div>
 <section class="ed-section"><h2>Topics Covered</h2><ul class="ed-topics">{topic_html}</ul></section>'''
