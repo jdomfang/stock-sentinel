@@ -171,6 +171,7 @@ FOOT = f"""</main>
       <a href="/pulse/">Sector activity</a>
       <a href="/pricing/">Pricing</a>
       <a href="/faq/">FAQ</a>
+      <a href="https://thestocksentinel.com/education">Education</a>
       <a href="/terms/">Terms</a>
       <a href="/privacy/">Privacy</a>
       <a href="{APP}/Contact" rel="noopener">Contact</a>

@@ -1,0 +1,38 @@
+/* Education consumes the existing Stock Sentinel tokens; no global app overrides. */
+.ed-content{color:var(--ss-color-text);font-size:16px;line-height:1.65;padding:40px 0 55px}
+.ed-content *,.ed-public *{box-sizing:border-box}
+.ed-content h1,.ed-content h2,.ed-content h3{line-height:1.2;letter-spacing:-.025em;color:var(--ss-color-text)}
+.ed-content h1{font-size:clamp(34px,4vw,44px);margin:8px 0 18px;max-width:780px}
+.ed-content h2{font-size:25px;margin:0 0 14px}.ed-content h3{font-size:19px;margin:0 0 10px}
+.ed-content p{color:var(--ss-color-text-muted);max-width:78ch;margin:12px 0}
+.ed-content a,.ed-public a{color:var(--ss-color-action);text-decoration:none}
+.ed-content a:hover,.ed-public a:hover{text-decoration:underline}
+.ed-content a:focus-visible,.ed-public a:focus-visible{outline:2px solid var(--ss-color-focus);outline-offset:4px}
+.ed-content a{display:inline-flex;align-items:center;min-height:44px}
+.ed-crumbs{display:flex;gap:10px;align-items:center;flex-wrap:wrap;font-size:13px;color:var(--ss-color-text-muted);margin-bottom:25px}
+.ed-content .ed-lead{font-size:21px;max-width:760px}
+.ed-eyebrow{color:var(--ss-color-action);font-size:11px;font-weight:750;letter-spacing:.12em;text-transform:uppercase}
+.ed-grid{display:grid;grid-template-columns:1fr 1fr;gap:22px;margin:34px 0}
+.ed-card{border:1px solid var(--ss-color-border);border-radius:var(--ss-radius-panel);padding:28px;background:var(--ss-color-panel)}
+.ed-card>.ed-eyebrow+h2{margin-top:16px}.ed-feature{border-color:var(--ss-color-info-border)}
+.ed-button{display:inline-flex;min-height:44px;align-items:center;justify-content:center;padding:10px 18px;border:1px solid var(--ss-color-info-border);border-radius:var(--ss-radius-control);font-size:14px;margin-top:14px}
+.ed-content .ed-primary{color:var(--ss-color-action-ink);background:linear-gradient(var(--ss-color-action),var(--ss-color-action-rest-end));font-weight:650}
+.ed-subcard{border-top:1px solid var(--ss-color-border);padding-top:20px;margin-top:24px}.ed-section{margin-top:38px}
+.ed-steps{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;list-style:none;padding:0}
+.ed-steps li{border:1px solid var(--ss-color-border);border-radius:12px;padding:18px;background:var(--ss-color-panel);font-size:15px}
+.ed-steps span{display:block;color:var(--ss-color-action);font-size:12px;margin-bottom:10px}
+.ed-steps .ed-approval{border-color:var(--ss-color-info-border);background:var(--ss-color-info-surface)}
+.ed-content .ed-meta{font-size:13px}.ed-topics{display:flex;gap:9px;flex-wrap:wrap;margin-top:18px;list-style:none;padding:0}
+.ed-topics li{border:1px solid var(--ss-color-border);border-radius:8px;padding:5px 12px;font-size:13px;color:var(--ss-color-text-muted)}
+.ed-reading{max-width:780px}.ed-reading section{margin-top:34px}.ed-reading ul{color:var(--ss-color-text-muted)}
+.ed-content code{overflow-wrap:anywhere;white-space:normal;color:var(--ss-color-text);font-size:13px}
+.ed-content .ed-quiet{border-top:1px solid var(--ss-color-border);margin-top:35px;padding-top:22px}
+.ed-public{margin:0;background:var(--ss-color-bg);color:var(--ss-color-text);font:16px/1.65 system-ui,sans-serif}
+.ed-shell{max-width:var(--ss-shell-max-width);margin:auto;padding:0 var(--ss-shell-gutter)}
+.ed-header{display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid var(--ss-color-border);padding:26px 0;gap:20px}
+.ed-header .ed-brand{color:var(--ss-color-text);font-weight:700;font-size:15px;letter-spacing:.08em}
+.ed-header nav{display:flex;gap:25px;align-items:center}.ed-header nav a{font-size:14px;min-height:44px;display:inline-flex;align-items:center}.ed-header .ed-button{margin:0}
+.ed-footer{border-top:1px solid var(--ss-color-border);padding:24px 0 40px}.ed-footer nav{display:flex;gap:25px;flex-wrap:wrap}
+.ed-footer a{min-height:44px;display:inline-flex;align-items:center;font-size:14px;color:var(--ss-color-text)}.ed-footer p{font-size:13px;color:var(--ss-color-text-muted)}
+.ed-skip{position:absolute;left:16px;top:-100px;background:var(--ss-color-panel);padding:12px;z-index:10}.ed-skip:focus{top:12px}
+@media(max-width:700px){.ed-content{padding-top:28px}.ed-content .ed-lead{font-size:19px}.ed-grid,.ed-steps{grid-template-columns:1fr}.ed-card{padding:22px}.ed-header nav{gap:15px}.ed-header nav a{font-size:12px}.ed-footer nav{gap:16px}.ed-crumbs{gap:7px}}
