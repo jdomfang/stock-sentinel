@@ -91,3 +91,20 @@ breadcrumbs, both publisher privacy links, Contact, and footer navigation. Run
 it with Playwright available in NODE_PATH and CHROMIUM_EXECUTABLE set if needed.
 The default target is the deployed develop site. A passing local content test
 must not be reported as a passing deployed navigation test.
+
+### Live Cloud history limitation (verified September 10, 2026)
+
+The native-link correction was verified on develop: clicking Education links
+updates the outer URL, and refreshing preserves the selected page. The strict
+Cloud browser regression also exposed a separate host-history limitation after
+an outer-page reload: Back can consume a duplicate frame-history entry or change
+the outer URL before the inner page follows. The same sequence reproduced on
+unchanged FAQ → Contact → How It Works navigation, with duplicate entries visible
+in Chrome's navigation history. This is not an Education-only test failure.
+
+Keep the strict history assertion: do not report the entire live regression as
+passing when it fails there. Verify click destinations, direct entry, refresh,
+and external tabs separately. There is no supported application setting in the
+pinned Streamlit version that controls Community Cloud's parent/frame history;
+do not replace native navigation with parent-frame JavaScript workarounds.
+This observation applies to the Cloud preview, not the static Railway routes.
