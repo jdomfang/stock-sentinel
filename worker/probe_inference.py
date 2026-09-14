@@ -25,8 +25,18 @@ matter to the product:
   LATENCY      under a ceiling. Slow-but-right is the failure that already
                happened and the one nothing else would report.
 
-Runs on the worker's existing 5-minute tick, so the service is always warm and
-the timing is meaningful rather than dominated by a cold start.
+Rides the worker's 5-minute tick but runs ONCE AN HOUR (PROBE_EVERY_MINUTES).
+Inference sleeps under Railway's Serverless setting -- FinBERT resident around
+the clock was three quarters of the bill -- and Railway measures inactivity by
+traffic, so a probe every five minutes would keep it awake and save nothing.
+The reaper is untouched: it costs nothing to run and backs the "released within
+15 minutes" promise the pages make.
+
+Every probe therefore lands on a COLD container. That is fine: the warm-up call
+below was already untimed for exactly that reason, and the timed measurement
+happens after it, against the steady state. The warm-up duration is logged
+because it IS the wake-up latency a user pays on the first scan after a quiet
+spell -- the number that decides whether the client timeout is right.
 """
 
 from __future__ import annotations
@@ -77,9 +87,63 @@ CONFIDENCE_TOLERANCE = float(os.environ.get("PROBE_CONFIDENCE_TOLERANCE", "0.01"
 # variance, and less than the 6.0s the real degradation produced.
 MAX_SECONDS = float(os.environ.get("PROBE_MAX_SECONDS", "5"))
 
+# How often to actually probe. The worker ticks every 5 minutes; the probe runs
+# on the first tick of each PROBE_EVERY_MINUTES window. 60 = hourly. 5 = every
+# tick, which is the old behaviour and the rollback. 360 = every six hours,
+# for when the wake-up graph has been seen and trusted.
+PROBE_EVERY_MINUTES = int(os.environ.get("PROBE_EVERY_MINUTES", "60"))
+TICK_MINUTES = 5
+
+# How long to wait for a SLEEPING service to answer /health. Railway documents
+# that the first request may 502 while the container starts; the service is
+# not broken, it is booting. Generous, because a false "unreachable" here pages
+# someone at 3am about a service that is doing exactly what it was told to.
+WAKE_DEADLINE_S = float(os.environ.get("PROBE_WAKE_DEADLINE_S", "90"))
+
 
 def log(msg: str) -> None:
     print(msg, flush=True)
+
+
+def due_now(now: time.struct_time | None = None) -> bool:
+    """True on the first worker tick of each PROBE_EVERY_MINUTES window (UTC).
+
+    Cron fires at :00, :05, ... so "first tick" means minute-of-window < 5.
+    A tick that starts a few seconds late still lands inside the window; one
+    delayed past it is skipped and the probe runs next window, which the
+    healthchecks.io grace period absorbs.
+    """
+    now = now or time.gmtime()
+    return ((now.tm_hour * 60 + now.tm_min) % PROBE_EVERY_MINUTES) < TICK_MINUTES
+
+
+def health_with_wake(url: str) -> dict:
+    """GET /health, tolerating a sleeping service. Raises on a real failure.
+
+    5xx and connection errors mean "still booting" until WAKE_DEADLINE_S has
+    passed; a 4xx is a real answer and is raised at once.
+    """
+    t0 = time.time()
+    attempt = 0
+    last: Exception | None = None
+    while True:
+        attempt += 1
+        try:
+            with urllib.request.urlopen(f"{url}/health", timeout=20) as r:
+                body = json.loads(r.read() or b"{}")
+            if attempt > 1:
+                log(f"service woke in {time.time() - t0:.1f}s ({attempt} attempts)")
+            return body
+        except urllib.error.HTTPError as e:
+            if e.code < 500:
+                raise
+            last = e
+        except Exception as e:  # URLError, timeout, connection reset
+            last = e
+        if time.time() - t0 >= WAKE_DEADLINE_S:
+            raise RuntimeError(f"no answer within {WAKE_DEADLINE_S:.0f}s: "
+                               f"{type(last).__name__}: {str(last)[:120]}")
+        time.sleep(3)
 
 
 def ping(base: str, suffix: str = "") -> None:
@@ -103,11 +167,18 @@ def main() -> int:
         log("INFERENCE_URL / INFERENCE_SHARED_SECRET not set; skipping probe")
         return 0
 
+    if not due_now():
+        # Not this tick. No healthcheck ping either: pinging without probing
+        # would report a check that was never made.
+        log(f"not due (every {PROBE_EVERY_MINUTES} min); skipping")
+        return 0
+
     ping(hc, "/start")
 
     # Distinguish a COLD container from a DEGRADED one. They look identical to a
     # stopwatch and need opposite responses: a cold start is normal after any
-    # deploy, while steady-state slowness is the bug this probe exists to catch.
+    # deploy -- and, now that the service sleeps, after any quiet hour -- while
+    # steady-state slowness is the bug this probe exists to catch.
     #
     # Railway redeploys every service on every push to master, so a commit
     # touching an unrelated folder restarts inference and drops its model. The
@@ -117,8 +188,7 @@ def main() -> int:
     # /health reports whether the model is resident without loading it. If it is
     # not, spend one UNTIMED call warming it, then measure the steady state.
     try:
-        with urllib.request.urlopen(f"{url}/health", timeout=15) as r:
-            _h = json.loads(r.read() or b"{}")
+        _h = health_with_wake(url)
         loaded = bool(_h.get("loaded"))
         served_model = str(_h.get("model") or "").strip()
         expect_confidence = _EXPECT_BY_MODEL.get(served_model.lower())
@@ -135,12 +205,15 @@ def main() -> int:
             headers={"Content-Type": "application/json", "X-Inference-Secret": secret},
             method="POST",
         )
+        t_warm = time.time()
         try:
             urllib.request.urlopen(warm, timeout=120).read()
         except Exception as e:
             log(f"ERROR warm-up failed: {type(e).__name__}: {str(e)[:160]}")
             ping(hc, "/fail")
             return 1
+        # This is what a user pays on the first scan after a quiet spell.
+        log(f"warm-up (model load) took {time.time() - t_warm:.1f}s")
 
     req = urllib.request.Request(
         f"{url}/score",
