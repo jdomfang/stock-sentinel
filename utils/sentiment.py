@@ -4,6 +4,7 @@ Sentiment analysis module.
 
 import os
 import re
+import time
 from typing import List, Dict
 import logging
 
@@ -424,7 +425,7 @@ def _remote_scorer():
         import urllib.error
         import urllib.request
 
-        # 30s, and one retry. 8s was too tight: measured against the deployed
+        # 30s, and retries. 8s was too tight: measured against the deployed
         # service, the FIRST request after the container has been idle exceeds it
         # and times out, while the very next one succeeds in under a second.
         # While torch is installed that only causes a silent fall back to local
@@ -434,6 +435,15 @@ def _remote_scorer():
         # A scan already spends 15-30s on the X API, so 30s here does not change
         # what the user experiences; it just stops a cold container being
         # mistaken for a broken one.
+        #
+        # THE SERVICE SLEEPS. Inference runs with Railway's Serverless setting
+        # because FinBERT resident around the clock was three quarters of the
+        # bill. Railway documents that "the first request sent to a slept
+        # service may return a 502 Bad Gateway" while the container starts, so
+        # a 5xx here is usually a service WAKING, not a service broken -- and
+        # since core-api has no torch, giving up on it refunds a scan that was
+        # about to work. 5xx retries; 4xx still fails fast, because a bad secret
+        # or an oversized batch will not get better by asking again.
         req = urllib.request.Request(
             f"{url}/score",
             data=_json.dumps({"texts": texts}).encode(),
@@ -441,7 +451,8 @@ def _remote_scorer():
             method="POST",
         )
         last_err = None
-        for attempt in (1, 2):
+        t0 = time.time()
+        for attempt in (1, 2, 3):
             try:
                 with urllib.request.urlopen(req, timeout=30) as resp:
                     payload = _json.loads(resp.read() or b"{}")
@@ -449,20 +460,26 @@ def _remote_scorer():
                 if not isinstance(results, list):
                     logger.error("inference returned no results list")
                     return None
+                if attempt > 1:
+                    # The wake-up cost, measured on real traffic. This is the
+                    # number that decides whether the timeout above is right.
+                    logger.info("inference answered on attempt %d after %.1fs (service was waking)",
+                                attempt, time.time() - t0)
                 return results
             except urllib.error.HTTPError as e:
-                # 4xx is a real rejection -- a bad secret or an oversized batch.
-                # Retrying cannot help and would double the latency of a
-                # misconfiguration, so fail fast.
-                logger.error("inference HTTP %s: %s", e.code, e.read()[:200])
-                return None
+                if e.code < 500:
+                    logger.error("inference HTTP %s: %s", e.code, e.read()[:200])
+                    return None
+                last_err = e
+                logger.warning("inference HTTP %s on attempt %d (waking?); retrying", e.code, attempt)
             except Exception as e:
                 last_err = e
-                if attempt == 1:
-                    logger.warning("inference attempt 1 failed (%s); retrying",
-                                   type(e).__name__)
-        logger.error("inference call failed after 2 attempts: %s: %s",
-                     type(last_err).__name__, str(last_err)[:160])
+                logger.warning("inference attempt %d failed (%s); retrying",
+                               attempt, type(e).__name__)
+            if attempt < 3:
+                time.sleep(2 * attempt)
+        logger.error("inference call failed after 3 attempts in %.1fs: %s: %s",
+                     time.time() - t0, type(last_err).__name__, str(last_err)[:160])
         return None
 
     return _call
