@@ -34,7 +34,7 @@ def test_authenticated_navigation_has_one_destination_per_job() -> None:
     assert 'nav_cols = iter(st.columns(nav_widths))' in nav
     assert 'nav_widths.append(.30)' in nav
     assert 'flex-wrap:nowrap!important' in nav
-    assert 'scan, deep = st.columns(2)' in nav
+    # Mobile destination visibility and geometry are exercised in mobile_layout.cjs.
     assert '"pages/Discovery.py", "Market Scan"' in nav
     assert '"pages/Deep_Analysis.py", "Deep Analyze"' in nav
     assert '"pages/Account.py", "Account"' in nav

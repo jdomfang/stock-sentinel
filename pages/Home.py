@@ -1275,8 +1275,24 @@ st.markdown(
       .ss-b5-scan-grid {grid-template-columns:1fr;}
     }
     @media (max-width:650px) {
-      .ss-b5-hero {padding-top:.75rem;}
-      .st-key-home_intro_action .stButton > button {max-width:100%;}
+      .st-key-home_public_intro [data-testid="stHorizontalBlock"] {gap:16px!important;}
+      .ss-b5-hero {padding:.5rem 0 0;}
+      .ss-b5-hero-side p {margin-bottom:.5rem;font-size:1rem;}
+      .st-key-home_intro_action_shell {max-width:none;}
+      .st-key-home_intro_action .stButton > button,
+      .st-key-home_intro_action [data-testid="stPageLink"] a {max-width:100%;}
+      .st-key-home_intro_action [data-testid="stPageLink"] a {
+        box-sizing:border-box;padding:12px 16px;
+        border:1px solid rgba(56,189,248,.45);
+        background:rgba(56,189,248,.09);color:var(--text);
+        text-decoration:none;
+      }
+      .st-key-home_intro_action [data-testid="stPageLink"] a:hover {
+        background:rgba(56,189,248,.15);
+      }
+      .st-key-home_intro_action [data-testid="stPageLink"] a:focus-visible {
+        outline:2px solid var(--accent);outline-offset:3px;
+      }
       .ss-b5-hero h1 {font-size:clamp(2.35rem,11vw,2.55rem);}
       .ss-b5-workspace-head,.ss-b5-analysis-head,.ss-b5-source {align-items:flex-start;flex-direction:column;}
       .ss-b5-provenance,.ss-b5-source small {text-align:left;}
@@ -1362,11 +1378,10 @@ with st.container(key="home_public_intro"):
                     st.session_state["auth_initial_mode"] = "Create Account"
                     st.session_state["_after_auth_page"] = "Discovery"
                     st.switch_page("pages/Auth.py")
-            st.html(
-                '<p class="ss-b5-cta-copy">Continue to Market Scan.</p>'
-                if _logged_in else
-                '<p class="ss-b5-cta-copy">Enough for one sector scan + one ticker analysis · no card required</p>'
-            )
+            if not _logged_in:
+                st.html(
+                    '<p class="ss-b5-cta-copy">Enough for one sector scan + one ticker analysis · no card required</p>'
+                )
 
 render_sector_pulse(load_sector_pulse(), surface="home")
 with st.container(key="home_direct_analysis"):

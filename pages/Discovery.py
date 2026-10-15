@@ -328,22 +328,29 @@ st.markdown(
       }
       [class*="st-key-scan_header_"] { display: none !important; }
       [class*="st-key-scan_row_"] [data-testid="stHorizontalBlock"] {
-        display: flex !important;
-        flex-wrap: wrap;
-        gap: 0.35rem;
+        display: grid !important;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 12px !important;
         padding-inline: 8px !important;
         box-sizing: border-box !important;
       }
       [class*="st-key-scan_row_"] [data-testid="stColumn"] {
-        flex: 1 1 calc(50% - 0.5rem) !important;
+        flex: none !important;
+        min-width: 0 !important;
         width: auto !important;
       }
       [class*="st-key-scan_row_"] [data-testid="stColumn"]:first-child {
-        flex-basis: 100% !important;
+        grid-column: 1 / -1;
       }
       [class*="st-key-scan_row_"] [data-testid="stColumn"]:last-child {
-        flex-basis: 100% !important;
+        grid-column: 1 / -1;
       }
+      /* Streamlit subtracts a paragraph's 1rem trailing margin. These raw
+         HTML cells contain no paragraph, so that subtraction overlaps rows. */
+      [class*="st-key-scan_row_"] [data-testid="stMarkdownContainer"] {
+        margin-bottom: 0 !important;
+      }
+      .scan-stock-cell, .scan-meta-cell {overflow-wrap:anywhere;}
       .scan-mobile-label {
         display: block;
         margin-bottom: .16rem;
@@ -733,6 +740,13 @@ with st.container(key="discovery_pulse_command"):
         st.html('<header class="ss-task-command-intro"><h1>Market Scan</h1><p>Find unusual social attention by sector.</p></header>')
     with meter_col:
         billing.render_credit_meter(profile=_profile, key="discovery")
+    if st.session_state.get("discovery_sector") in PULSE_SECTORS:
+        from utils.ui import pulse_sector_label
+        with st.container(key="discovery_selected_scan"):
+            st.caption(f"{pulse_sector_label(sector)} selected")
+            st.button(f"Run {pulse_sector_label(sector)} scan · 1 credit",
+                      key="discovery_selected_scan_run", disabled=_credits <= 0,
+                      on_click=queue_pulse_scan, args=(sector,))
 # Reserve the surface before Pulse; fixed positioning also covers lower-row clicks.
 _scan_feedback_slot = st.empty()
 st.html('<div id="sector-pulse" tabindex="-1" aria-label="Sector Pulse"></div>')

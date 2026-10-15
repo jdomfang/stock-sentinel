@@ -1,0 +1,84 @@
+{
+  "before": {
+    "width": 322.40625,
+    "height": 194.296875,
+    "cells": [
+      {
+        "text": "OGNOrganon & Co. Common Stock",
+        "x": 8,
+        "y": 11.515625,
+        "width": 306.40625,
+        "height": 45.40625
+      },
+      {
+        "text": "Last closeN/A",
+        "x": 8,
+        "y": 46.515625,
+        "width": 306.40625,
+        "height": 45.53125
+      },
+      {
+        "text": "Evidence stateSingle mention",
+        "x": 8,
+        "y": 81.640625,
+        "width": 306.40625,
+        "height": 39.75
+      },
+      {
+        "text": "Social posts4",
+        "x": 8,
+        "y": 110.984375,
+        "width": 306.40625,
+        "height": 37.203125
+      },
+      {
+        "text": "Analyze · 1 credit",
+        "x": 8,
+        "y": 137.78125,
+        "width": 306.40625,
+        "height": 44
+      }
+    ]
+  },
+  "after": {
+    "width": 322.40625,
+    "height": 232.171875,
+    "cells": [
+      {
+        "text": "OGNOrganon & Co. Common Stock",
+        "x": 8,
+        "y": 11.515625,
+        "width": 306.40625,
+        "height": 45.40625
+      },
+      {
+        "text": "Last closeN/A",
+        "x": 8,
+        "y": 68.921875,
+        "width": 147.203125,
+        "height": 45.53125
+      },
+      {
+        "text": "Evidence stateSingle mention",
+        "x": 167.203125,
+        "y": 68.921875,
+        "width": 147.203125,
+        "height": 39.75
+      },
+      {
+        "text": "Social posts4",
+        "x": 8,
+        "y": 126.453125,
+        "width": 147.203125,
+        "height": 37.203125
+      },
+      {
+        "text": "Analyze · 1 credit",
+        "x": 8,
+        "y": 175.65625,
+        "width": 306.40625,
+        "height": 44
+      }
+    ]
+  }
+}

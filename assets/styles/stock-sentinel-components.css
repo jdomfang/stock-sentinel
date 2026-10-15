@@ -245,3 +245,9 @@
 .ss-pulse-evidence summary::-webkit-details-marker,.ss-pulse-method summary::-webkit-details-marker,.ss-demo-details summary::-webkit-details-marker{display:none}
 .ss-pulse-evidence summary::before,.ss-pulse-method summary::before,.ss-demo-details summary::before{content:"›";display:inline-block;font-size:1.1rem;line-height:1;transform-origin:center}
 .ss-pulse-evidence details[open]>summary::before,.ss-pulse-method[open]>summary::before,.ss-demo-details[open]>summary::before{transform:rotate(90deg)}
+
+/* Mobile cards retain the meaning of the desktop column heading. */
+.ss-pulse-mobile-label {display:none}
+@media(max-width:640px) {
+  .ss-pulse-mobile-label {display:block;color:var(--ss-color-text-muted);font-size:.75rem;line-height:1.4;margin-bottom:4px}
+}

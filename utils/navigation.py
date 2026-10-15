@@ -503,13 +503,11 @@ def render_top_nav(
 
             if logged_in:
                 with st.container(key="ss_nav_mobile_links"):
-                    scan, deep = st.columns(2)
+                    mobile_links = st.columns(3 if is_admin else 2)
+                    scan, deep = mobile_links[:2]
                     _nav_link(scan, "pages/Discovery.py", "Market Scan",
                               "market_scan", active, "mobile")
                     _nav_link(deep, "pages/Deep_Analysis.py", "Deep Analyze",
                               "deep_analyze", active, "mobile")
-            if is_admin:
-                with st.container(key="ss_nav_mobile_admin_row"):
-                    spacer, admin = st.columns([2.5, .7])
-                    del spacer
-                    _admin_link(admin, "mobile", active)
+                    if is_admin:
+                        _admin_link(mobile_links[2], "mobile", active)

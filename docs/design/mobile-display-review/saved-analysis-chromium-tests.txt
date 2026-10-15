@@ -1,0 +1,2 @@
+PASS chromium 390px: delivered analysis layout without debit
+PASS chromium 1440px: delivered analysis layout without debit

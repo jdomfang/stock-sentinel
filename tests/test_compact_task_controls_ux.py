@@ -9,6 +9,7 @@ import sys
 
 
 ROOT = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(ROOT))
 
 
 def _read(relative: str) -> str:
@@ -82,10 +83,25 @@ def test_task_credit_links_route_to_account_without_starting_checkout():
 
 
 def test_every_paid_task_action_disables_at_zero_credits():
-    discovery = _read("pages/Discovery.py")
+    # Exercise rendered Discovery controls, including the selected-sector handoff.
+    # Counting source substrings misses new controls and says nothing about state.
+    from streamlit.testing.v1 import AppTest
+    from sector_pulse_feedback_harness import offline_discovery
+    from utils import auth
+    for balance in (0, 2):
+        case = dict(credits=balance)
+        with offline_discovery(case):
+            app = AppTest.from_file(str(ROOT / "pages/Discovery.py"))
+            app.session_state[auth.USER_KEY] = dict(id="offline-controls")
+            app.session_state[auth.PRODUCT_STATE_OWNER_KEY] = "offline-controls"
+            app.session_state["discovery_sector"] = "healthcare"
+            app.run()
+            assert not list(app.exception)
+            actions = [b for b in app.button if "scan" in b.label.lower()]
+            assert actions
+            assert all(b.disabled == (balance == 0) for b in actions)
+            assert not case["events"], "Rendering a selection must not spend credits"
     deep = _read("pages/Deep_Analysis.py")
-
-    assert discovery.count("disabled=_credits <= 0") == 2
     assert deep.count("disabled=_credits <= 0") == 1
 
 
