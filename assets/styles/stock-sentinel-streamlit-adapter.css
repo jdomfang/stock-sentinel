@@ -668,3 +668,20 @@ textarea:focus-visible,
   padding:.85rem 1.2rem;border:1px solid var(--ss-color-action);border-radius:12px;
   color:var(--ss-color-action);background:#0b1424;text-decoration:none;
 }
+
+/* Selected research is a navigation handoff, never an implicit credit charge. */
+.st-key-discovery_selected_scan {padding:12px 0}
+@media(max-width:720px) {
+  .st-key-discovery_selected_scan .stButton > button {width:100%}
+  .st-key-discovery_pulse_command [data-testid="stHorizontalBlock"] {gap:12px!important}
+  .st-key-footer_links [data-testid="stHorizontalBlock"] {display:grid!important;grid-template-columns:repeat(2,minmax(0,1fr));gap:4px 12px!important}
+  .st-key-footer_links [data-testid="stColumn"] {width:auto!important;min-width:0!important;flex:none!important}
+  .st-key-footer_links [data-testid="stColumn"]:last-child {display:none}
+}
+
+@media(max-width:720px) {
+  .st-key-home_direct_analysis [data-testid="stPageLink"] a,
+  .st-key-discovery_direct_analysis [data-testid="stPageLink"] a {max-width:100%;white-space:normal;height:auto;min-height:44px}
+  .st-key-home_direct_analysis [data-testid="stPageLink"] p,
+  .st-key-discovery_direct_analysis [data-testid="stPageLink"] p {white-space:normal;overflow-wrap:anywhere}
+}

@@ -1,0 +1,7 @@
+PASS chromium 320px: public/signed-in Home, intent, single debit, low/mixed result geometry
+PASS chromium 375px: public/signed-in Home, intent, single debit, low/mixed result geometry
+PASS chromium 390px: public/signed-in Home, intent, single debit, low/mixed result geometry
+PASS chromium 430px: public/signed-in Home, intent, single debit, low/mixed result geometry
+PASS chromium 720px: public/signed-in Home, intent, single debit, low/mixed result geometry
+PASS chromium 1024px: public/signed-in Home, intent, single debit, low/mixed result geometry
+PASS chromium 1440px: public/signed-in Home, intent, single debit, low/mixed result geometry

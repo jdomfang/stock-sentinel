@@ -1300,7 +1300,7 @@ def render_sector_pulse(snapshot: dict, *, surface: str, on_scan=None, credits: 
                     bar = f'<div class="ss-pulse-bar" aria-hidden="true"><span style="width:{breadth * 100:.2f}%"></span></div>' if breadth is not None else ""
                     delta = row.get("change_pp")
                     change = (f'<small>{delta:+.1f} pp vs {date.fromisoformat(row["previous_date"]).strftime("%b %d")}</small>' if delta is not None else "")
-                    st.html(f'<div class="ss-pulse-participation"><strong>{number}</strong>{bar}{change}</div>')
+                    st.html(f'<div class="ss-pulse-participation"><span class="ss-pulse-mobile-label">Participation</span><strong>{number}</strong>{bar}{change}</div>')
                 with why_col:
                     st.html(pulse_evidence_html(row))
                 with action_col:
@@ -1310,7 +1310,8 @@ def render_sector_pulse(snapshot: dict, *, surface: str, on_scan=None, credits: 
                         if st.button(f'Explore {top["ticker"]} →', key=key + "_deep", use_container_width=True):
                             open_research("deep", top["ticker"])
                         st.caption("Analysis costs 1 credit")
-                    scan_label = f"Scan {label} instead" if event else ("Run scan · 1 credit" if on_scan else f"Scan {label} →")
+                    scan_label = ((f"Scan {label} instead" if event else "Run scan · 1 credit")
+                                  if on_scan else f"Explore {label} →")
                     with st.container(key=f"pulse_{'alternate' if event else 'action'}_{surface}_{sector.replace(' ', '_')}"):
                         if on_scan:
                             st.button(scan_label, key=key + "_scan", use_container_width=True,

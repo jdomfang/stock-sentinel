@@ -1,0 +1,8 @@
+PASS 1440px utilities: success
+PASS 1440px communication: success
+PASS 390px communication: success
+PASS 1440px utilities: displaced
+PASS 1440px utilities: empty
+PASS 1440px utilities: refused
+PASS 1440px utilities: failure
+PASS zero-credit disabled styling, including hover

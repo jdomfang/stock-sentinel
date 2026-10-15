@@ -31,7 +31,7 @@ def offline_discovery(case, observe=lambda phase: None, *, native_links=False):
             return analyze_client.RemoteScan(error="offline failure", kind="transport")
         if case.get("mode") == "empty":
             return analyze_client.RemoteScan(ok=True)
-        return analyze_client.RemoteScan(ok=True, posts_seen=4, rows=[{
+        return analyze_client.RemoteScan(ok=True, posts_seen=4, rows=case.get("rows") or [{
             "Ticker":"DUK", "Company Name":"Duke Energy", "Overall Sentiment":"Neutral",
             "Mentions":4, "Evidence":4,
         }])
@@ -66,5 +66,6 @@ def offline_discovery(case, observe=lambda phase: None, *, native_links=False):
         # Fail closed if a later page edit accidentally reaches an HTTP client.
         stack.enter_context(patch("requests.sessions.Session.request",prohibit))
         stack.enter_context(patch("httpx.Client.send",prohibit))
+        stack.enter_context(patch("httpx.AsyncClient.send",prohibit))
         stack.enter_context(patch("urllib.request.urlopen",prohibit))
         yield

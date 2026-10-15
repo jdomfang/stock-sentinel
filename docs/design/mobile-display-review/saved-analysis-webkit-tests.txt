@@ -1,0 +1,2 @@
+PASS webkit 390px: delivered analysis layout without debit
+PASS webkit 1440px: delivered analysis layout without debit

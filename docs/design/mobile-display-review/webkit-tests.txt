@@ -1,0 +1,7 @@
+PASS webkit 320px: public/signed-in Home, intent, single debit, low/mixed result geometry
+PASS webkit 375px: public/signed-in Home, intent, single debit, low/mixed result geometry
+PASS webkit 390px: public/signed-in Home, intent, single debit, low/mixed result geometry
+PASS webkit 430px: public/signed-in Home, intent, single debit, low/mixed result geometry
+PASS webkit 720px: public/signed-in Home, intent, single debit, low/mixed result geometry
+PASS webkit 1024px: public/signed-in Home, intent, single debit, low/mixed result geometry
+PASS webkit 1440px: public/signed-in Home, intent, single debit, low/mixed result geometry

@@ -1,0 +1,46 @@
+  ok    test_account_isolation.py          24 passed, 0 failed
+  ok    test_analyze.py                    63 passed, 0 failed
+  ok    test_analyze_client.py             92 passed, 0 failed
+  ok    test_backfill_price_history.py     35 passed, 0 failed
+  ok    test_billing.py                    90 passed, 0 failed
+  ok    test_characterization.py           47 passed, 0 failed
+  ok    test_compact_task_controls_ux.py   8 passed, 0 failed
+  ok    test_contact.py                    38 passed, 0 failed
+  ok    test_core_api.py                   174 passed, 0 failed
+  ok    test_demo_repository.py            5 passed, 0 failed
+  ok    test_demo_snapshot_contract.py     11 passed, 0 failed
+  ok    test_education_content.py          (own format)
+  ok    test_education_routes.py           (own format)
+  ok    test_evidence.py                   33 passed, 0 failed
+  ok    test_golden.py                     (own format)
+  ok    test_grouped_prices.py             33 passed, 0 failed
+  ok    test_modules.py                    33 passed, 0 failed
+  ok    test_navigation_simplification_ux.py 9 passed, 0 failed
+  ok    test_newswire.py                   58 passed, 0 failed
+  ok    test_payments.py                   107 passed, 0 failed
+  ok    test_profile_fallback.py           23 passed, 0 failed
+  ok    test_projections.py                79 passed, 0 failed
+  ok    test_public_navigation_ux.py       9 passed, 0 failed
+  ok    test_refund_paths.py               41 passed, 0 failed
+  ok    test_relative.py                   63 passed, 0 failed
+  ok    test_release_a_ui.py               15 passed, 0 failed
+  ok    test_release_b_ui.py               15 passed, 0 failed
+  ok    test_release_c_ui.py               15 passed, 0 failed
+  ok    test_release_d_ui.py               15 passed, 0 failed
+  ok    test_release_e_ui.py               17 passed, 0 failed
+  ok    test_result_workspace_ux.py        20 passed, 0 failed
+  ok    test_runtime_compat.py             249 passed, 0 failed
+  ok    test_scan.py                       87 passed, 0 failed
+  ok    test_sector_pulse.py               46 passed, 0 failed
+  ok    test_sector_pulse_ui.py            (own format)
+  ok    test_sector_query.py               74 passed, 0 failed
+  ok    test_seed.py                       27 passed, 0 failed
+  ok    test_sentiment_cache.py            23 passed, 0 failed
+  ok    test_signal_log.py                 70 passed, 0 failed
+  ok    test_verdict.py                    32 passed, 0 failed
+  ok    test_x_metrics.py                  51 passed, 0 failed
+
+======================================================================
+  1831 passed, 0 failed across 41 suites
+  SKIPPED (no database): test_admin_adjust.py, test_bootstrap_safety.py, test_corpus_cache.py, test_credit_integrity.py, test_credit_merge.py, test_grant_credits.py, test_public_demo_snapshots.py, test_remember_me.py, test_sector_pulse_sql.py, test_spend_budget.py, test_work_runs.py
+======================================================================
