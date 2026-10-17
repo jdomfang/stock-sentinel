@@ -1,6 +1,24 @@
 streamlit==1.40.0
 pandas==2.2.2
 numpy==1.26.4
+
+# PINNED BECAUSE NOTHING ELSE CONSTRAINS IT. streamlit asks for `pyarrow>=7.0`
+# with no ceiling, and pyarrow's own metadata declares NO dependency on numpy
+# at all -- so pip pairs the newest pyarrow with the numpy pinned above, the
+# build goes green, and the mismatch surfaces only when something imports it.
+#
+# pyarrow 26.0.0 dropped NumPy 1.x ("pyarrow requires NumPy 2.0 or newer,
+# found 1.26.4", raised from init pyarrow.lib). A routine rebuild in 2026-10
+# shipped that pair and took out pages/Admin.py -- the single st.dataframe in
+# the app, which imports pyarrow lazily on first render. Admin.py no longer
+# calls it, so this pin is now belt to that braces: it keeps the next
+# unpinned-transitive drift from choosing the version for us.
+#
+# 25.0.0 is the last release that works with numpy 1.x; verified by importing
+# it under python:3.11-slim with these pins. Raising numpy to 2.x instead would
+# reach core_api's pinned numpy and the Monte Carlo projection it was pinned
+# for, which is a golden-test re-baseline, not a dependency bump.
+pyarrow==25.0.0
 requests==2.32.3
 polygon-api-client==1.13.7
 supabase==2.5.0
