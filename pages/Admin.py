@@ -12,6 +12,7 @@ import streamlit as st
 # entrypoint was left exposed, so whichever page a user happened to land on
 # first decided whether the app worked. Home is the landing page, so it is the
 # one that fails.
+import html as _html
 from pathlib import Path as _Path
 import sys as _sys
 _sys.path.insert(0, str(_Path(__file__).resolve().parents[1]))
@@ -204,7 +205,88 @@ if not rows:
     st.info("No users found yet.")
     _bail()
 
-st.dataframe(rows, use_container_width=True)
+# NOT st.dataframe. That widget serialises through Arrow, and `import pyarrow`
+# happens lazily inside Streamlit the first time it renders -- so pyarrow being
+# unusable took out this whole page while every other page stayed green. It did
+# on 2026-10: pyarrow 26 dropped NumPy 1.x, requirements.txt pins
+# numpy==1.26.4 and did not pin pyarrow, and a routine rebuild paired the two.
+# The crash landed ABOVE "Manage a user", so the credit controls below never
+# rendered -- a read-only table took out the only way to grant credits.
+#
+# requirements.txt now pins pyarrow, but this page no longer depends on that
+# holding: nothing else in the app touches Arrow, so with this call gone the
+# library is installed and never imported.
+#
+# EVERY CELL IS ESCAPED. `email` is self-asserted at signup and this page
+# renders with the service-role key in scope -- the same reason the message
+# queue above uses st.text and md_escape. st.dataframe never interpreted its
+# input as markup; raw HTML does, so the escaping is what keeps that property.
+st.markdown(
+    """
+    <style>
+    .ss-admin-users { width:100%; overflow-x:auto; -webkit-overflow-scrolling:touch; }
+    .ss-admin-users table {
+      width:100%; min-width:720px; border-collapse:collapse;
+      background:var(--ss-color-panel-raised); border-radius:10px; overflow:hidden;
+    }
+    .ss-admin-users th {
+      text-align:left; padding:8px 10px; font-size:0.70rem; font-weight:700;
+      letter-spacing:0.05em; text-transform:uppercase;
+      color:var(--ss-color-text-muted);
+      border-bottom:1px solid var(--ss-color-border);
+    }
+    .ss-admin-users td {
+      padding:9px 10px; font-size:0.82rem; color:var(--ss-color-text);
+      border-bottom:1px solid var(--ss-color-border);
+    }
+    .ss-admin-users td.num { text-align:right; font-variant-numeric:tabular-nums; }
+    .ss-admin-users td.id  { font-family:ui-monospace,SFMono-Regular,Menlo,monospace; font-size:0.74rem;
+                             color:var(--ss-color-text-muted); }
+    .ss-admin-users tr:last-child td { border-bottom:none; }
+    .ss-admin-users .off { color:var(--ss-color-negative); font-weight:700; }
+    </style>
+    """,
+    unsafe_allow_html=True,
+)
+
+_COLUMNS = (
+    ("email",      "Email",    ""),
+    ("credits",    "Credits",  "num"),
+    ("role",       "Role",     ""),
+    ("disabled",   "Disabled", ""),
+    ("created_at", "Created",  ""),
+    ("user_id",    "User ID",  "id"),
+)
+
+
+def _cell(row: dict, key: str) -> str:
+    """One table cell's text. Booleans and timestamps read better than repr()."""
+    value = row.get(key)
+    if key == "disabled":
+        return "YES" if value else "no"
+    if key == "created_at":
+        return str(value or "")[:16].replace("T", " ")
+    if value is None or value == "":
+        return "—"
+    return str(value)
+
+
+_body = "".join(
+    "<tr>" + "".join(
+        f'<td class="{cls}{" off" if key == "disabled" and row.get("disabled") else ""}">'
+        f'{_html.escape(_cell(row, key))}</td>'
+        for key, _label, cls in _COLUMNS
+    ) + "</tr>"
+    for row in rows
+)
+st.markdown(
+    '<div class="ss-admin-users" role="region" aria-label="Users" tabindex="0"><table>'
+    "<thead><tr>"
+    + "".join(f'<th>{_html.escape(label)}</th>' for _key, label, _cls in _COLUMNS)
+    + f"</tr></thead><tbody>{_body}</tbody></table></div>",
+    unsafe_allow_html=True,
+)
+st.caption(f"{len(rows)} account{'' if len(rows) == 1 else 's'}.")
 
 st.markdown("---")
 st.subheader("Public demo")
