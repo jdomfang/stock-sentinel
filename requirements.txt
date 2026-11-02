@@ -20,12 +20,22 @@ numpy==1.26.4
 # for, which is a golden-test re-baseline, not a dependency bump.
 pyarrow==25.0.0
 requests==2.32.3
-polygon-api-client==1.13.7
-supabase==2.5.0
-websockets==11.0.0
+polygon-api-client==1.14.5
+# 2.33.0, not 2.5.0: Supabase's API keys moved to the sb_publishable_ /
+# sb_secret_ format, and supabase-py rejects those with "Invalid API key" up
+# to 2.15.0 (accepts from 2.18.0). This project runs on JWT Signing Keys, so
+# new-format keys are the only kind it can issue.
+supabase==2.33.0
+# websockets: 13.1. Nothing here imports it directly, but supabase's realtime
+# module imports websockets.asyncio at load time, which only exists from 13 --
+# under 11 or 12 `import supabase` fails while pip reports a clean install.
+# polygon-api-client capped websockets below 13 until 1.14.5, which is why both
+# move together: 1.14.5 allows <15, and the four RESTClient methods utils/
+# finance.py calls have identical signatures in 1.13.7 and 1.14.5.
+websockets==13.1
 setuptools>=69.0.0
 # NOT for building. It was added so `pkg_resources` would exist for an older
-# polygon-api-client that imported it unguarded; 1.13.7 uses
+# polygon-api-client that imported it unguarded; 1.13.7+ uses
 # importlib.metadata instead, and setuptools >= 81 dropped pkg_resources
 # entirely, so this pin no longer supplies it. Kept because nothing has
 # proven Streamlit Cloud's image works without it.

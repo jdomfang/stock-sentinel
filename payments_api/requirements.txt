@@ -1,5 +1,6 @@
 fastapi==0.115.8
 uvicorn[standard]==0.30.6
 stripe==10.12.0
-supabase==2.12.0
+supabase==2.33.0   # new-format API keys; see requirements.txt
+websockets==13.1   # supabase realtime needs >=13; see requirements.txt
 sentry-sdk==2.66.1

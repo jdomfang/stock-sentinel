@@ -24,8 +24,9 @@ pyflakes>=3.0               # tests/test_runtime_compat.py: undefined-name check
 # makes them catch import-time breakage -- so the suite needs whatever those
 # modules need. Kept in step with the per-service requirements files.
 fastapi==0.115.6            # core_api/main.py, payments_api/main.py
-pydantic==2.10.4            # request models in both services
-supabase==2.5.0             # utils/supabase_client.py
+pydantic==2.11.7            # request models in both services; supabase 2.33's realtime needs >=2.11.7
+supabase==2.33.0             # utils/supabase_client.py
+websockets==13.1            # supabase realtime needs >=13
 requests==2.32.3            # utils/billing.py, inference client
 numpy==1.26.4               # tests/test_relative.py -- PINNED: the projection
                             # is a Monte Carlo and streams shift across majors
@@ -33,7 +34,7 @@ pandas>=2.0                 # fixtures shared with the app
 httpx>=0.27                 # fastapi.testclient
 streamlit==1.40.0           # tests/test_refund_paths.py imports the real
                             # StopException; test_runtime_compat imports pages
-polygon-api-client==1.13.7  # utils/finance.py, reached by test_core_api's
+polygon-api-client==1.14.5  # utils/finance.py, reached by test_core_api's
                             # readiness check
 stripe==10.12.0             # payments_api/main.py at module scope
 sentry-sdk==2.66.1          # payments_api/main.py, portal obs
